@@ -1,0 +1,46 @@
+redis:
+  address: 127.0.0.1:6379
+  password: ""
+  database: 0
+  unique_clients: false
+nats:
+  address: 127.0.0.1:4222
+  channel: sandwich
+  cluster: cluster
+http:
+  host: 127.0.0.1:5469
+managers:
+- autostart: true
+  persist: true
+  displayname: Welcomer Beta
+  token: '[TOKEN]'
+  bot:
+    compression: true
+    defaultpresence:
+      name: Default presence test
+      type: 0
+      application_id: 0
+    guildsubscriptions: false
+    intents: 0
+    largethreshold: 100
+    maxheartbeatfailures: 5
+  caching:
+    redisprefix: welcomer
+    cachemembers: false
+    ignorebots: true
+    storemutuals: true
+  events:
+    eventblacklist: []
+    produceblacklist: []
+    checkprefixes: true
+    allowmentionprefix: true
+  messaging:
+    clientname: welcomer
+    channelname: sandwich
+    userandomsuffix: true
+  sharding:
+    concurrentclients: 5
+    autosharded: true
+    shardcount: 2
+    clustercount: 1
+    clusterid: 0
