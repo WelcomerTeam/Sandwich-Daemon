@@ -101,7 +101,7 @@ type Identify struct {
 	Shard              [2]int              `json:"shard,omitempty"`
 	Presence           *Activity           `json:"presence,omitempty"`
 	GuildSubscriptions bool                `json:"guild_subscriptions,omitempty"`
-	Intents            int                 `json:"intent,omitempty"`
+	Intents            int                 `json:"intents,omitempty"`
 }
 
 // IdentifyProperties is the properties sent in the identify packet

@@ -11,10 +11,9 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
 	"github.com/rs/zerolog"
+	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
-
-// var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const identifyRatelimit = 5 * time.Second
 
@@ -74,27 +73,35 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		ready: make(chan void),
 		errs:  make(chan error),
 	}
-	sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	return sh
 }
 
 // Open starts up the shard connection
-func (sh *Shard) Open() (errs chan error) {
-	sh.Logger.Info().Msg("Starting shard")
+func (sh *Shard) Open() {
+	for {
+		err := sh.Listen()
+		if xerrors.Is(err, context.Canceled) {
+			return
+		}
+		if xerrors.Is(err, ErrReconnect) {
+			sh.Close()
+		}
+	}
+}
+
+// Connect connects to the gateway such as identifying however does not listen to new messages
+func (sh *Shard) Connect() (err error) {
+	sh.Logger.Debug().Msg("Starting shard")
+
 	sh.ctx, sh.cancel = context.WithCancel(context.Background())
-
 	gatewayURL := sh.Manager.Gateway.URL
-	sh.Logger.Debug().Str("gurl", gatewayURL).Msg("Connecting to gateway")
 
-	// Allow for a buffer of 1 so we can add to the channel without blocking
-	errs = make(chan error, 1)
-	sh.errs = errs
-
-	err := sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", sh.Manager.Configuration.Token, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
+	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", sh.Manager.Configuration.Token, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
 	if err != nil {
-		errs <- err
 		return
 	}
+
+	sh.Logger.Debug().Str("gurl", gatewayURL).Msg("Connecting to gateway")
 
 	// TODO: Add Concurrent Client Support
 	// This will limit the ammount of shards that can be connecting simultaneously
@@ -103,7 +110,6 @@ func (sh *Shard) Open() (errs chan error) {
 
 	conn, _, err := websocket.Dial(sh.ctx, gatewayURL, nil)
 	if err != nil {
-		errs <- err
 		return
 	}
 	conn.SetReadLimit(512 << 20)
@@ -111,7 +117,6 @@ func (sh *Shard) Open() (errs chan error) {
 
 	err = sh.readMessage(sh.wsConn)
 	if err != nil {
-		errs <- err
 		return
 	}
 
@@ -121,12 +126,13 @@ func (sh *Shard) Open() (errs chan error) {
 	sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
 	sh.MaxHeartbeatFailures = sh.HeartbeatInterval * (time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures) * time.Millisecond)
 
-	sh.Logger.Info().Dur("interval", sh.HeartbeatInterval).Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).Msg("Retrieved HELLO event from discord")
+	sh.Logger.Debug().Dur("interval", sh.HeartbeatInterval).Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).Msg("Retrieved HELLO event from discord")
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
 	seq := atomic.LoadInt64(sh.seq)
 	if sh.sessionID == "" && seq == 0 {
 		sh.Logger.Debug().Msg("Sending identify")
+
 		err = sh.WriteJSON(structs.SentPayload{
 			Op: 2,
 			Data: structs.Identify{
@@ -144,8 +150,12 @@ func (sh *Shard) Open() (errs chan error) {
 				Intents:            sh.Manager.Configuration.Bot.Intents,
 			},
 		})
+		if err != nil {
+			return
+		}
 	} else {
 		sh.Logger.Debug().Msg("Sending resume")
+
 		err = sh.WriteJSON(structs.SentPayload{
 			Op: 6,
 			Data: structs.Resume{
@@ -154,21 +164,33 @@ func (sh *Shard) Open() (errs chan error) {
 				Seq:       seq,
 			},
 		})
+		if err != nil {
+			return
+		}
 	}
-	if err != nil {
-		errs <- err
 
+	err = sh.readMessage(sh.wsConn)
+	if err != nil {
 		return
 	}
 
-	go sh.Heartbeat()
-	go sh.Listen()
+	err = sh.OnEvent(sh.msg)
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Error whilst handling event")
+	}
 
-	return errs
+	go sh.Heartbeat()
+	return
+}
+
+// OnEvent processes an event
+func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
+	// println(sh.ShardID, msg.Op, msg.Type, len(msg.Data))
+	return
 }
 
 // Listen to gateway and process accordingly
-func (sh *Shard) Listen() {
+func (sh *Shard) Listen() (err error) {
 	wsConn := sh.wsConn
 	evnts := int64(0)
 	t := time.NewTicker(1 * time.Second)
@@ -182,20 +204,28 @@ func (sh *Shard) Listen() {
 		default:
 		}
 
-		err := sh.readMessage(wsConn)
+		err = sh.readMessage(wsConn)
 		if err != nil {
+			if xerrors.Is(err, context.Canceled) {
+				return
+			}
+
 			sh.Logger.Error().Err(err).Msg("Error reading from gateway")
 			if wsConn == sh.wsConn {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection, reconnecting...")
-				sh.Reconnect()
+				return ErrReconnect
 			}
 			wsConn = sh.wsConn
 		}
 
 		evnts++
+
 		// TODO: Actually do something here :)
-		// println(sh.ShardID, sh.msg.Op, sh.msg.Type, len(sh.msg.Data))
+		sh.OnEvent(sh.msg)
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Error whilst handling event")
+		}
 	}
 }
 
@@ -222,31 +252,35 @@ func (sh *Shard) Heartbeat() {
 	}
 }
 
+// decodeContent converts the stored msg into the passed interface
+func (sh *Shard) decodeContent(out interface{}) (err error) {
+	err = json.Unmarshal(sh.msg.Data, &out)
+	return
+}
+
 // readMessage fills the shard msg buffer from a websocket message
 func (sh *Shard) readMessage(wsConn *websocket.Conn) (err error) {
 	var mt websocket.MessageType
 
 	mt, sh.buf, err = wsConn.Read(sh.ctx)
-	if err != nil {
-		sh.Logger.Error().Msg("Failed to read websocket")
+	select {
+	case <-sh.ctx.Done():
 		return
+	default:
+	}
+
+	if err != nil {
+		return xerrors.Errorf("readMessage read: %w", err)
 	}
 
 	if mt == websocket.MessageBinary {
 		sh.buf, err = czlib.Decompress(sh.buf)
 		if err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to decompress buffer")
-			return
+			return xerrors.Errorf("readMessage failed to decompress buffer: %w", err)
 		}
 	}
 
 	err = json.Unmarshal(sh.buf, &sh.msg)
-	return
-}
-
-// decodeContent converts the stored msg into the passed interface
-func (sh *Shard) decodeContent(out interface{}) (err error) {
-	err = json.Unmarshal(sh.msg.Data, &out)
 	return
 }
 
@@ -271,22 +305,8 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 	return
 }
 
-// Reconnect will reconnect the session when closing
-func (sh *Shard) Reconnect() {
-	sh.CloseWS(websocket.StatusNormalClosure)
-	sh.Close()
-	sh.errs <- ErrReconnect
-}
-
-// Close closes the shard connection
-func (sh *Shard) Close() {
-	// Ensure that if we close during shardgroup connecting, it will not
-	// feedback loop.
-	sh.cancel()
-}
-
-// WaitUntilReady waits until the shard is ready
-func (sh *Shard) WaitUntilReady() {
+// WaitForReady waits until the shard is ready
+func (sh *Shard) WaitForReady() {
 	select {
 	case <-sh.ready:
 	case <-sh.ctx.Done():
@@ -294,9 +314,10 @@ func (sh *Shard) WaitUntilReady() {
 	return
 }
 
-// Recoverable returns a boolean if the shard can be recovered
-func (sh *Shard) Recoverable(err error) bool {
-	return err == ErrReconnect
-	// return !contains(websocket.CloseStatus(err), structs.CloseShardingRequired, structs.CloseAuthenticationFailed, structs.CloseInvalidShard, websocket.StatusNormalClosure) &&
-	// 	!contains(err, ErrSessionLimitExhausted, ErrInvalidToken)
+// Close closes the shard connection
+func (sh *Shard) Close() {
+	// Ensure that if we close during shardgroup connecting, it will not
+	// feedback loop.
+	sh.cancel()
+	sh.CloseWS(websocket.StatusNormalClosure)
 }

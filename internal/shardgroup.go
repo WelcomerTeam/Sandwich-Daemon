@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/net/context"
+	"golang.org/x/xerrors"
 )
 
 // ShardGroupStatus represents a shardgroups status
@@ -13,12 +15,13 @@ type ShardGroupStatus int32
 
 // Status Codes for ShardGroups
 const (
-	ShardGroupIdle     ShardGroupStatus = iota // Represents a ShardGroup that has been created but not opened yet
-	ShardGroupStarting                         // Represent a ShardGroup that is still starting up clients
-	ShardGroupReady                            // Represent a ShardGroup that has all its shards ready
-	ShardGroupReplaced                         // Represent a ShardGroup that is going to be replaced soon by a new ShardGroup
-	ShardGroupClosing                          // Represent a ShardGroup in the process of closing
-	ShardGroupClosed                           // Represent a closed ShardGroup
+	ShardGroupIdle       ShardGroupStatus = iota // Represents a ShardGroup that has been created but not opened yet
+	ShardGroupStarting                           // Represent a ShardGroup that is still starting up clients
+	ShardGroupConnecting                         // Represents a ShardGroup waiting for shard to be ready
+	ShardGroupReady                              // Represent a ShardGroup that has all its shards ready
+	ShardGroupReplaced                           // Represent a ShardGroup that is going to be replaced soon by a new ShardGroup
+	ShardGroupClosing                            // Represent a ShardGroup in the process of closing
+	ShardGroupClosed                             // Represent a closed ShardGroup
 )
 
 // ShardGroup groups a selection of shards
@@ -61,7 +64,7 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 }
 
 // Open starts up the shardgroup
-func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (err error) {
+func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
 	sg.SetStatus(ShardGroupStarting)
 
 	sg.ShardCount = ShardCount
@@ -79,35 +82,35 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (err error) {
 		}
 	}()
 
+	sg.Logger.Info().Msgf("Deploying %d shards", len(sg.ShardIDs))
+
 	for _, shardID := range sg.ShardIDs {
 		shard := sg.NewShard(shardID)
 		sg.Shards[shardID] = shard
 
-		go func(shard *Shard) {
-			for {
-				errs := shard.Open()
-				err := <-errs
-				if !shard.Recoverable(err) {
-					shard.Logger.Error().Err(err).Msg("Received error starting ShardGroup. Closing.")
-					sg.Close()
-					return
-				}
-			}
-		}(shard)
+		err = shard.Connect()
+		if err != nil && !xerrors.Is(err, context.Canceled) {
+			sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
+			sg.Close()
+			err = xerrors.Errorf("shardGroup open: %w", err)
+			return
+		}
+
+		go shard.Open()
 	}
 
-	// Wait for all shards to finish
-	for _, shard := range sg.Shards {
-		println("Waiting for ", shard.ShardID)
-		shard.WaitUntilReady()
-	}
+	sg.Logger.Info().Msgf("All shards are now listening")
+	sg.SetStatus(ShardGroupConnecting)
 
-	sg.SetStatus(ShardGroupReady)
-	sg.Logger.Info().Msg("All shards are ready")
-
-	// Make goroutine that waits for the Wait to be done which closes the err channel
-
-	// Read from err channel, if it is empty were fine as all shards are ready
+	go func(sg *ShardGroup) {
+		for _, shard := range sg.Shards {
+			sg.Logger.Debug().Msgf("Waiting for shard %d to be ready", shard.ShardID)
+			shard.WaitForReady()
+		}
+		sg.Logger.Info().Msg("All shards are ready")
+		sg.SetStatus(ShardGroupReady)
+		close(ready)
+	}(sg)
 
 	return
 }
@@ -121,7 +124,7 @@ func (sg *ShardGroup) SetStatus(status ShardGroupStatus) {
 
 // Close closes the shard group and finishes any shards
 func (sg *ShardGroup) Close() {
-	println("Closing shardgroup")
+	sg.Logger.Info().Msg("Closing ShardGroup")
 	sg.SetStatus(ShardGroupClosing)
 	for _, shard := range sg.Shards {
 		shard.Close()

@@ -235,8 +235,6 @@ func (mg *Manager) Open() (err error) {
 	if err != nil {
 		return xerrors.Errorf("manager open get gateway: %w", err)
 	}
-	a, _ := json.Marshal(mg.Gateway)
-	println(string(a))
 
 	var shardCount int
 	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2) {
@@ -251,10 +249,13 @@ func (mg *Manager) Open() (err error) {
 		shardCount = int(math.Ceil(float64(shardCount)/16)) * 16
 	}
 
-	err = sg.Open(mg.GenerateShardIDs(shardCount), shardCount)
+	ready, err := sg.Open(mg.GenerateShardIDs(shardCount), shardCount)
+	if err != nil {
+		return
+	}
 
-	// Create shardgroup
-	// Run shard group which waits for it to finish
+	// Wait for all shards in ShardGroup to be ready
+	<-ready
 
 	return
 }

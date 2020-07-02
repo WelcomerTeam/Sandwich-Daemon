@@ -8,10 +8,13 @@ require (
 	github.com/go-redis/redis v6.15.8+incompatible
 	github.com/go-redis/redis/v8 v8.0.0-beta.5
 	github.com/json-iterator/go v1.1.10
+	github.com/nats-io/nats-streaming-server v0.18.0 // indirect
 	github.com/nats-io/nats.go v1.10.0
 	github.com/nats-io/stan.go v0.7.0
 	github.com/rs/zerolog v1.19.0
+	golang.org/x/net v0.0.0-20190923162816-aa69164e4478
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	nhooyr.io/websocket v1.8.6
 )
