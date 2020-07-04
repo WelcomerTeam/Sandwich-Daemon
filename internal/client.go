@@ -5,7 +5,9 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -45,7 +47,7 @@ func (c *Client) FetchJSON(method string, url string, body io.Reader, structure 
 		return
 	}
 
-	res, err := c.HandleRequest(req)
+	res, err := c.HandleRequest(req, false)
 	defer res.Body.Close()
 	if err != nil {
 		return
@@ -60,9 +62,12 @@ func (c *Client) FetchJSON(method string, url string, body io.Reader, structure 
 }
 
 // HandleRequest makes a request to the Discord API
-// TODO: Buckets and handle ratelimiting
-func (c *Client) HandleRequest(req *http.Request) (res *http.Response, err error) {
-	req.URL.Path = "/api/v" + c.APIVersion + req.URL.Path
+// TODO: Buckets
+func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Response, err error) {
+	if !retry {
+		// If we are trying the request, do not add again
+		req.URL.Path = "/api/v" + c.APIVersion + req.URL.Path
+	}
 
 	// Fill out Host and Scheme if it is empty
 	if req.URL.Host == "" {
@@ -81,6 +86,17 @@ func (c *Client) HandleRequest(req *http.Request) (res *http.Response, err error
 	res, err = c.HTTP.Do(req)
 	if err != nil {
 		return
+	}
+
+	if res.StatusCode == http.StatusTooManyRequests {
+		resp := structs.TooManyRequests{}
+		err = json.NewDecoder(res.Body).Decode(&resp)
+		if err != nil {
+			return
+		}
+
+		<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
+		return c.HandleRequest(req, true)
 	}
 
 	if res.StatusCode == http.StatusUnauthorized {
