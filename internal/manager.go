@@ -30,12 +30,12 @@ type ManagerConfiguration struct {
 
 	// Bot specific configuration
 	Bot struct {
-		Compression          bool              `json:"compression"`
-		DefaultPresence      *structs.Activity `json:"presence"`
-		GuildSubscriptions   bool              `json:"guild_subscriptions"`
-		Intents              int               `json:"intents"`
-		LargeThreshold       int               `json:"large_threshold"`
-		MaxHeartbeatFailures int               `json:"max_heartbeat_failures"`
+		Compression          bool                  `json:"compression"`
+		DefaultPresence      *structs.UpdateStatus `json:"presence"`
+		GuildSubscriptions   bool                  `json:"guild_subscriptions"`
+		Intents              int                   `json:"intents"`
+		LargeThreshold       int                   `json:"large_threshold"`
+		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures"`
 	} `json:"bot"`
 
 	Caching struct {
@@ -211,7 +211,7 @@ func (mg *Manager) Open() (err error) {
 
 	mg.StanClient, err = stan.Connect(
 		mg.Sandwich.Configuration.NATS.Cluster,
-		mg.Configuration.Messaging.ChannelName,
+		mg.Configuration.Messaging.ClientName,
 		stan.NatsConn(mg.NatsClient),
 	)
 	if err != nil {

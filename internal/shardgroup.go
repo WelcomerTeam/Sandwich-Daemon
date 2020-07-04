@@ -50,7 +50,9 @@ type ShardGroup struct {
 // NewShardGroup creates a new shardgroup
 func (mg *Manager) NewShardGroup() *ShardGroup {
 	return &ShardGroup{
-		Status:  ShardGroupIdle,
+		Status:   ShardGroupIdle,
+		StatusMu: sync.RWMutex{},
+
 		Manager: mg,
 		Logger:  mg.Logger,
 
@@ -70,19 +72,28 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 	sg.ShardCount = ShardCount
 	sg.ShardIDs = ShardIDs
 
+	ready = make(chan bool, 1)
+
 	// TEMP
 	// Maybe make this more fleshed out and push to a central event stats thing?
 	go func() {
+		start := time.Now().UTC()
 		t := time.NewTicker(1 * time.Second)
+		totalCount := int64(0)
 		for {
 			<-t.C
-			ttl := atomic.LoadInt64(sg.Events)
-			println(ttl, "events/s")
-			atomic.StoreInt64(sg.Events, 0)
+			count := int64(0)
+			for _, shard := range sg.Shards {
+				count += atomic.SwapInt64(shard.events, 0)
+			}
+			totalCount += count
+			since := time.Now().UTC().Sub(start)
+			sg.Logger.Debug().Msgf("%d events/s | %d total | %d avg/second | %s elapsed",
+				count, totalCount, int(float64(totalCount)/since.Seconds()), since)
 		}
 	}()
 
-	sg.Logger.Info().Msgf("Deploying %d shards", len(sg.ShardIDs))
+	sg.Logger.Info().Msgf("Starting ShardGroup with %d shards", len(sg.ShardIDs))
 
 	for _, shardID := range sg.ShardIDs {
 		shard := sg.NewShard(shardID)
@@ -92,14 +103,14 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
 			sg.Close()
-			err = xerrors.Errorf("shardGroup open: %w", err)
+			err = xerrors.Errorf("ShardGroup open: %w", err)
 			return
 		}
 
 		go shard.Open()
 	}
 
-	sg.Logger.Info().Msgf("All shards are now listening")
+	sg.Logger.Debug().Msgf("All shards are now listening")
 	sg.SetStatus(ShardGroupConnecting)
 
 	go func(sg *ShardGroup) {
@@ -107,7 +118,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 			sg.Logger.Debug().Msgf("Waiting for shard %d to be ready", shard.ShardID)
 			shard.WaitForReady()
 		}
-		sg.Logger.Info().Msg("All shards are ready")
+		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
 		sg.SetStatus(ShardGroupReady)
 		close(ready)
 	}(sg)
@@ -127,7 +138,7 @@ func (sg *ShardGroup) Close() {
 	sg.Logger.Info().Msg("Closing ShardGroup")
 	sg.SetStatus(ShardGroupClosing)
 	for _, shard := range sg.Shards {
-		shard.Close()
+		shard.Close(1000)
 	}
 	sg.SetStatus(ShardGroupClosed)
 }

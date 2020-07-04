@@ -15,10 +15,26 @@ import (
 	"nhooyr.io/websocket"
 )
 
-const identifyRatelimit = 5 * time.Second
+const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
+
+// ShardStatus represents the shard status
+type ShardStatus int32
+
+// Status Codes for Shard
+const (
+	ShardIdle         ShardStatus = iota // Represents a Shard that has been created but not opened yet
+	ShardWaiting                         // Represents a Shard waiting for the identify ratelimit
+	ShardConnected                       // Represents a Shard that has connected to discords gateway
+	ShardReady                           // Represents a Shard that has finished lazy loading
+	ShardReconnecting                    // Represents a Shard that is reconnecting
+	ShardClosed                          // Represents a Shard that has been closed
+)
 
 // Shard represents the shard object
 type Shard struct {
+	Status   ShardStatus
+	StatusMu sync.RWMutex
+
 	Logger zerolog.Logger
 
 	ShardID    int
@@ -28,6 +44,7 @@ type Shard struct {
 	ctx    context.Context
 	cancel func()
 
+	LastHeartbeatMu   sync.RWMutex
 	LastHeartbeatAck  time.Time
 	LastHeartbeatSent time.Time
 
@@ -38,9 +55,11 @@ type Shard struct {
 	wsConn  *websocket.Conn
 	wsMutex sync.Mutex
 
+	op  sync.Pool
 	msg structs.ReceivedPayload
 	buf []byte
 
+	events    *int64
 	seq       *int64
 	sessionID string
 
@@ -54,19 +73,28 @@ type Shard struct {
 func (sg *ShardGroup) NewShard(shardID int) *Shard {
 	logger := sg.Logger.With().Int("shard", shardID).Logger()
 	sh := &Shard{
+		Status:   ShardIdle,
+		StatusMu: sync.RWMutex{},
+
+		Logger: logger,
+
 		ShardID:    shardID,
 		ShardGroup: sg,
 		Manager:    sg.Manager,
-		Logger:     logger,
 
 		ctx: context.Background(),
 
+		LastHeartbeatMu:   sync.RWMutex{},
 		LastHeartbeatAck:  time.Now().UTC(),
 		LastHeartbeatSent: time.Now().UTC(),
 
+		op: sync.Pool{
+			New: func() interface{} { return new(structs.SentPayload) },
+		},
 		msg: structs.ReceivedPayload{},
 		buf: make([]byte, 0),
 
+		events:    new(int64),
 		seq:       new(int64),
 		sessionID: "",
 
@@ -83,8 +111,12 @@ func (sh *Shard) Open() {
 		if xerrors.Is(err, context.Canceled) {
 			return
 		}
-		if xerrors.Is(err, ErrReconnect) {
-			sh.Close()
+
+		// Check if context is done
+		select {
+		case <-sh.ctx.Done():
+			return
+		default:
 		}
 	}
 }
@@ -96,6 +128,7 @@ func (sh *Shard) Connect() (err error) {
 	sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	gatewayURL := sh.Manager.Gateway.URL
 
+	sh.SetStatus(ShardWaiting)
 	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", sh.Manager.Configuration.Token, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
 	if err != nil {
 		return
@@ -108,12 +141,23 @@ func (sh *Shard) Connect() (err error) {
 	// May be abandoned as this boy is fast af :pepega:
 	// Could help with a shit ton running at once whilst scaling
 
-	conn, _, err := websocket.Dial(sh.ctx, gatewayURL, nil)
-	if err != nil {
-		return
+	defer func() {
+		if err != nil {
+			sh.CloseWS(websocket.StatusNormalClosure)
+		}
+	}()
+
+	if sh.wsConn == nil {
+		var conn *websocket.Conn
+		conn, _, err = websocket.Dial(sh.ctx, gatewayURL, nil)
+		if err != nil {
+			return
+		}
+		conn.SetReadLimit(512 << 20)
+		sh.wsConn = conn
+	} else {
+		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
-	conn.SetReadLimit(512 << 20)
-	sh.wsConn = conn
 
 	err = sh.readMessage(sh.wsConn)
 	if err != nil {
@@ -123,47 +167,25 @@ func (sh *Shard) Connect() (err error) {
 	hello := structs.Hello{}
 	err = sh.decodeContent(&hello)
 
+	sh.LastHeartbeatMu.Lock()
+	sh.LastHeartbeatAck = time.Now().UTC()
+	sh.LastHeartbeatSent = time.Now().UTC()
+	sh.LastHeartbeatMu.Unlock()
+
 	sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
-	sh.MaxHeartbeatFailures = sh.HeartbeatInterval * (time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures) * time.Millisecond)
+	sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
 
 	sh.Logger.Debug().Dur("interval", sh.HeartbeatInterval).Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).Msg("Retrieved HELLO event from discord")
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
 	seq := atomic.LoadInt64(sh.seq)
-	if sh.sessionID == "" && seq == 0 {
-		sh.Logger.Debug().Msg("Sending identify")
-
-		err = sh.WriteJSON(structs.SentPayload{
-			Op: 2,
-			Data: structs.Identify{
-				Token: sh.Manager.Configuration.Token,
-				Properties: &structs.IdentifyProperties{
-					OS:      runtime.GOOS,
-					Browser: "Sandwich " + VERSION,
-					Device:  "Sandwich " + VERSION,
-				},
-				Compress:           sh.Manager.Configuration.Bot.Compression,
-				LargeThreshold:     sh.Manager.Configuration.Bot.LargeThreshold,
-				Shard:              [2]int{sh.ShardID, sh.ShardGroup.ShardCount},
-				Presence:           sh.Manager.Configuration.Bot.DefaultPresence,
-				GuildSubscriptions: sh.Manager.Configuration.Bot.GuildSubscriptions,
-				Intents:            sh.Manager.Configuration.Bot.Intents,
-			},
-		})
+	if sh.sessionID == "" || seq == 0 {
+		err = sh.Identify()
 		if err != nil {
 			return
 		}
 	} else {
-		sh.Logger.Debug().Msg("Sending resume")
-
-		err = sh.WriteJSON(structs.SentPayload{
-			Op: 6,
-			Data: structs.Resume{
-				Token:     sh.Manager.Configuration.Token,
-				SessionID: sh.sessionID,
-				Seq:       seq,
-			},
-		})
+		err = sh.Resume()
 		if err != nil {
 			return
 		}
@@ -185,7 +207,72 @@ func (sh *Shard) Connect() (err error) {
 
 // OnEvent processes an event
 func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
-	// println(sh.ShardID, msg.Op, msg.Type, len(msg.Data))
+
+	switch sh.msg.Op {
+
+	case structs.GatewayOpHeartbeat:
+		sh.Logger.Debug().Msg("Received heartbeat request")
+		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
+			sh.Reconnect(websocket.StatusNormalClosure)
+			return
+		}
+
+	case structs.GatewayOpInvalidSession:
+		resumable := json.Get(sh.msg.Data, "d").ToBool()
+		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
+
+		if !resumable || (sh.sessionID == "" || atomic.LoadInt64(sh.seq) == 0) {
+			err = sh.Identify()
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
+				sh.Reconnect(websocket.StatusNormalClosure)
+				return
+			}
+		} else {
+			err = sh.Resume()
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
+				sh.Reconnect(websocket.StatusNormalClosure)
+				return
+			}
+		}
+
+	case structs.GatewayOpHello:
+		sh.Logger.Warn().Msg("Received HELLO whilst listening. This should not occur.")
+		return
+
+	case structs.GatewayOpReconnect:
+		sh.Logger.Info().Msg("Reconnecting in response to gateway")
+		sh.Reconnect(4000)
+		return
+
+	case structs.GatewayOpDispatch:
+		err = sh.OnDispatch(sh.msg)
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Error whilst dispatch event")
+			return
+		}
+
+	case structs.GatewayOpHeartbeatACK:
+		sh.LastHeartbeatMu.Lock()
+		sh.LastHeartbeatAck = time.Now().UTC()
+		sh.Logger.Debug().Msg("Received heartbeack ACK")
+		sh.LastHeartbeatMu.Unlock()
+		return
+
+	default:
+		sh.Logger.Warn().Int("op", int(sh.msg.Op)).Str("type", sh.msg.Type).Msgf("Gateway sent unknown packet")
+		return
+	}
+
+	atomic.StoreInt64(sh.seq, sh.msg.Sequence)
+	return
+}
+
+// OnDispatch handles a dispatch event
+func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	return
 }
 
@@ -207,26 +294,29 @@ func (sh *Shard) Listen() (err error) {
 		err = sh.readMessage(wsConn)
 		if err != nil {
 			if xerrors.Is(err, context.Canceled) {
-				return
+				break
 			}
 
 			sh.Logger.Error().Err(err).Msg("Error reading from gateway")
 			if wsConn == sh.wsConn {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection, reconnecting...")
-				return ErrReconnect
+				sh.Reconnect(websocket.StatusNormalClosure)
 			}
 			wsConn = sh.wsConn
 		}
 
-		evnts++
-
-		// TODO: Actually do something here :)
+		atomic.AddInt64(sh.events, 1)
 		sh.OnEvent(sh.msg)
-		if err != nil {
-			sh.Logger.Error().Err(err).Msg("Error whilst handling event")
+
+		// In the event we have reconnected, the wsConn could have changed,
+		// we will use the new wsConn if this is the case
+		if sh.wsConn != wsConn {
+			sh.Logger.Debug().Msg("New wsConn was assigned to shard")
+			wsConn = sh.wsConn
 		}
 	}
+	return
 }
 
 // Heartbeat maintains a heartbeat with discord
@@ -239,14 +329,22 @@ func (sh *Shard) Heartbeat() {
 		case <-sh.Heartbeater.C:
 			sh.Logger.Debug().Msg("Heartbeating")
 			seq := atomic.LoadInt64(sh.seq)
-			err := sh.WriteJSON(structs.SentPayload{
-				Op:   int(structs.GatewayOpHeartbeat),
-				Data: seq,
-			})
-			if err != nil || time.Now().UTC().Sub(sh.LastHeartbeatAck) > sh.MaxHeartbeatFailures {
-				sh.Logger.Error().Err(err).Msg("Failed to heartbeat")
-				sh.CloseWS(1000)
-				sh.Close()
+
+			err := sh.SendEvent(structs.GatewayOpHeartbeat, seq)
+
+			sh.LastHeartbeatMu.RLock()
+			lastAck := sh.LastHeartbeatAck
+			sh.LastHeartbeatMu.RUnlock()
+
+			sh.Logger.Debug().Msgf("Heartbeat since %dms / %dms", time.Now().UTC().Sub(lastAck).Milliseconds(), sh.MaxHeartbeatFailures.Milliseconds())
+			if err != nil || time.Now().UTC().Sub(lastAck) > sh.MaxHeartbeatFailures {
+				if err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
+				} else {
+					sh.Logger.Warn().Err(err).Msgf("Gateway failed to ACK and has passed MaxHeartbeatFailures of %d. Reconnecting", sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+				}
+				sh.Reconnect(websocket.StatusNormalClosure)
+				return
 			}
 		}
 	}
@@ -286,12 +384,53 @@ func (sh *Shard) readMessage(wsConn *websocket.Conn) (err error) {
 
 // CloseWS closes the websocket
 func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
-	sh.Logger.Info().Str("code", statusCode.String()).Msg("Closing websocket connection")
+	sh.Logger.Debug().Str("code", statusCode.String()).Msg("Closing websocket connection")
 
 	if sh.wsConn != nil {
 		err = sh.wsConn.Close(statusCode, "")
 		sh.wsConn = nil
 	}
+	return
+}
+
+// Resume sends the resume packet to gateway
+func (sh *Shard) Resume() (err error) {
+	sh.Logger.Debug().Msg("Sending resume")
+
+	return sh.SendEvent(structs.GatewayOpResume, structs.Resume{
+		Token:     sh.Manager.Configuration.Token,
+		SessionID: sh.sessionID,
+		Seq:       atomic.LoadInt64(sh.seq),
+	})
+}
+
+// Identify sends the identify packet to gateway
+func (sh *Shard) Identify() (err error) {
+	sh.Logger.Debug().Msg("Sending identify")
+
+	return sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
+		Token: sh.Manager.Configuration.Token,
+		Properties: &structs.IdentifyProperties{
+			OS:      runtime.GOOS,
+			Browser: "Sandwich " + VERSION,
+			Device:  "Sandwich " + VERSION,
+		},
+		Compress:           sh.Manager.Configuration.Bot.Compression,
+		LargeThreshold:     sh.Manager.Configuration.Bot.LargeThreshold,
+		Shard:              [2]int{sh.ShardID, sh.ShardGroup.ShardCount},
+		Presence:           sh.Manager.Configuration.Bot.DefaultPresence,
+		GuildSubscriptions: sh.Manager.Configuration.Bot.GuildSubscriptions,
+		Intents:            sh.Manager.Configuration.Bot.Intents,
+	})
+}
+
+// SendEvent sends an event to discord
+func (sh *Shard) SendEvent(op structs.GatewayOp, data interface{}) (err error) {
+	packet := sh.op.Get().(*structs.SentPayload)
+	packet.Op = int(op)
+	packet.Data = data
+	err = sh.WriteJSON(packet)
+	sh.op.Put(packet)
 	return
 }
 
@@ -301,6 +440,7 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 	if err != nil {
 		return
 	}
+	sh.Logger.Trace().Msg(string(res))
 	err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
 	return
 }
@@ -314,10 +454,48 @@ func (sh *Shard) WaitForReady() {
 	return
 }
 
+// Reconnect attempts to reconnect to the gateway
+func (sh *Shard) Reconnect(code websocket.StatusCode) {
+	wait := time.Second
+
+	sh.Close(code)
+	sh.SetStatus(ShardReconnecting)
+	for {
+		sh.Logger.Info().Msg("Trying to reconnect to gateway")
+
+		err := sh.Connect()
+		if err == nil {
+			sh.Logger.Info().Msg("Successfuly reconnected to gateway")
+			sh.SetStatus(ShardConnected)
+			return
+		}
+
+		sh.Logger.Warn().Err(err).Dur("retry", wait).Msg("Failed to reconnect to gateway")
+		<-time.After(wait)
+
+		wait *= 2
+		if wait > 600 {
+			wait = 600
+		}
+	}
+}
+
+// SetStatus changes the Shard status
+func (sh *Shard) SetStatus(status ShardStatus) {
+	sh.StatusMu.Lock()
+	sh.Status = status
+	sh.StatusMu.Unlock()
+}
+
 // Close closes the shard connection
-func (sh *Shard) Close() {
+func (sh *Shard) Close(code websocket.StatusCode) {
 	// Ensure that if we close during shardgroup connecting, it will not
 	// feedback loop.
-	sh.cancel()
-	sh.CloseWS(websocket.StatusNormalClosure)
+
+	// cancel is only defined when Connect() has been ran on a shard.
+	// If the ShardGroup was closed before this happens, it would segfault.
+	if sh.ctx != nil {
+		sh.cancel()
+	}
+	sh.CloseWS(code)
 }

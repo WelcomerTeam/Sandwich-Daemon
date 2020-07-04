@@ -2,9 +2,7 @@ package gateway
 
 import (
 	"io/ioutil"
-	"os"
 	"strings"
-	"time"
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
 	"github.com/go-redis/redis/v8"
@@ -68,12 +66,7 @@ type Sandwich struct {
 }
 
 // NewSandwich creates the application state and initializes it
-func NewSandwich() (sg *Sandwich, err error) {
-	logger := zerolog.New(zerolog.ConsoleWriter{
-		Out:        os.Stdout,
-		TimeFormat: time.Stamp,
-	}).With().Timestamp().Logger()
-
+func NewSandwich(logger zerolog.Logger) (sg *Sandwich, err error) {
 	sg = &Sandwich{
 		Logger:        logger,
 		Configuration: &SandwichConfiguration{},

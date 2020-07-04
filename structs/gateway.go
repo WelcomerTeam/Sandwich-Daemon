@@ -80,9 +80,9 @@ const (
 
 // ReceivedPayload is the base of a JSON packet received from discord
 type ReceivedPayload struct {
-	Op       int             `json:"op"`
+	Op       GatewayOp       `json:"op"`
 	Data     json.RawMessage `json:"d,omitempty"`
-	Sequence uint64          `json:"s,omitempty"`
+	Sequence int64           `json:"s,omitempty"`
 	Type     string          `json:"t,omitempty"`
 }
 
@@ -99,7 +99,7 @@ type Identify struct {
 	Compress           bool                `json:"compress,omitempty"`
 	LargeThreshold     int                 `json:"large_threshold,omitempty"`
 	Shard              [2]int              `json:"shard,omitempty"`
-	Presence           *Activity           `json:"presence,omitempty"`
+	Presence           *UpdateStatus       `json:"presence,omitempty"`
 	GuildSubscriptions bool                `json:"guild_subscriptions,omitempty"`
 	Intents            int                 `json:"intents,omitempty"`
 }

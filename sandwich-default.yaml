@@ -22,7 +22,7 @@ managers:
       application_id: 0
     guildsubscriptions: false
     intents: 0
-    largethreshold: 100
+    largethreshold: 250
     maxheartbeatfailures: 5
   caching:
     redisprefix: welcomer

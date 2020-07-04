@@ -4,12 +4,20 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	gateway "github.com/TheRockettek/Sandwich-Daemon/internal"
+	"github.com/rs/zerolog"
 )
 
 func main() {
-	sg, err := gateway.NewSandwich()
+	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	logger := zerolog.New(zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: time.Stamp,
+	}).With().Timestamp().Logger()
+
+	sg, err := gateway.NewSandwich(logger)
 	if err != nil {
 		println(err.Error())
 	}
