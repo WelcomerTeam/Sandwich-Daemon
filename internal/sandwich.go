@@ -1,15 +1,21 @@
 package gateway
 
 import (
+	"io"
 	"io/ioutil"
+	"os"
+	"path"
 	"strings"
+	"time"
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/xerrors"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -27,6 +33,19 @@ const ConfigurationPath = "sandwich.yaml"
 
 // SandwichConfiguration represents the configuration of the program
 type SandwichConfiguration struct {
+	Logging struct {
+		ConsoleLoggingEnabled bool `json:"consolelogging" yaml:"consolelogging"`
+		FileLoggingEnabled    bool `json:"filelogging" yaml:"filelogging"`
+
+		EncodeAsJSON bool `json:"encodeasjson" yaml:"encodeasjson"` // Make the framework log as json
+
+		Directory  string `json:"directory" yaml:"directory"`   // Directory to log into
+		Filename   string `json:"filename" yaml:"filename"`     // Name of logfile
+		MaxSize    int    `json:"maxsize" yaml:"maxsize"`       /// Size in MB before a new file
+		MaxBackups int    `json:"maxbackups" yaml:"maxbackups"` // Number of files to keep
+		MaxAge     int    `json:"maxage" yaml:"maxage"`         // Number of days to keep a logfile
+	} `json:"logging" yaml:"logging"`
+
 	Redis struct {
 		Address  string `json:"address" yaml:"address"`
 		Password string `json:"password" yaml:"password"`
@@ -66,9 +85,10 @@ type Sandwich struct {
 }
 
 // NewSandwich creates the application state and initializes it
-func NewSandwich(logger zerolog.Logger) (sg *Sandwich, err error) {
+func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
+
 	sg = &Sandwich{
-		Logger:        logger,
+		Logger:        zerolog.New(logger).With().Timestamp().Logger(),
 		Configuration: &SandwichConfiguration{},
 		Managers:      make(map[string]*Manager),
 		Buckets:       bucketstore.NewBucketStore(),
@@ -83,6 +103,37 @@ func NewSandwich(logger zerolog.Logger) (sg *Sandwich, err error) {
 	if err != nil {
 		return nil, xerrors.Errorf("new sandwich: %w", err)
 	}
+
+	var writers []io.Writer
+
+	if sg.Configuration.Logging.ConsoleLoggingEnabled {
+		writers = append(writers, logger)
+	}
+	if sg.Configuration.Logging.FileLoggingEnabled {
+		if err := os.MkdirAll(sg.Configuration.Logging.Directory, 0744); err != nil {
+			log.Error().Err(err).Str("path", sg.Configuration.Logging.Directory).Msg("Unable to create log directory")
+		} else {
+			lumber := &lumberjack.Logger{
+				Filename:   path.Join(sg.Configuration.Logging.Directory, sg.Configuration.Logging.Filename),
+				MaxBackups: sg.Configuration.Logging.MaxBackups,
+				MaxSize:    sg.Configuration.Logging.MaxSize,
+				MaxAge:     sg.Configuration.Logging.MaxAge,
+			}
+			if sg.Configuration.Logging.EncodeAsJSON {
+				writers = append(writers, lumber)
+			} else {
+				writers = append(writers, zerolog.ConsoleWriter{
+					Out:        lumber,
+					TimeFormat: time.Stamp,
+					NoColor:    true,
+				})
+			}
+		}
+	}
+
+	mw := io.MultiWriter(writers...)
+	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
+	sg.Logger.Info().Msg("Logging configured")
 
 	return
 }

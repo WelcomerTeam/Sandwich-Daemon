@@ -1,3 +1,12 @@
+logging:
+  consolelogging: true
+  filelogging: true
+  encodeasjson: false
+  directory: logs
+  filename: sandwich
+  maxsize: 1024
+  maxbackups: 16
+  maxage: 14
 redis:
   address: 127.0.0.1:6379
   password: ""

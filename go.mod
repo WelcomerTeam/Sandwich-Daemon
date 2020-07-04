@@ -15,6 +15,7 @@ require (
 	golang.org/x/net v0.0.0-20190923162816-aa69164e4478
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	google.golang.org/protobuf v1.25.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.3.0
 	nhooyr.io/websocket v1.8.6
 )

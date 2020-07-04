@@ -12,10 +12,10 @@ import (
 
 func main() {
 	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	logger := zerolog.New(zerolog.ConsoleWriter{
+	logger := zerolog.ConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: time.Stamp,
-	}).With().Timestamp().Logger()
+	}
 
 	sg, err := gateway.NewSandwich(logger)
 	if err != nil {
