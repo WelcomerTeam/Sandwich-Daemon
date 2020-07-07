@@ -230,11 +230,11 @@ func (mg *Manager) Open() (err error) {
 	iter := atomic.AddInt32(mg.ShardGroupIter, 1)
 	mg.ShardGroups[iter] = sg
 
-	sg.Logger.Info().Msg("Retrieving gateway payload")
 	mg.Gateway, err = mg.GetGateway()
 	if err != nil {
 		return xerrors.Errorf("manager open get gateway: %w", err)
 	}
+	sg.Logger.Info().Int("sessions", mg.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
 
 	var shardCount int
 	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2) {
@@ -247,6 +247,10 @@ func (mg *Manager) Open() (err error) {
 	// big bot sharding. This is not necessary but sooner is better than later.
 	if shardCount > 64 {
 		shardCount = int(math.Ceil(float64(shardCount)/16)) * 16
+	}
+
+	if shardCount >= mg.Gateway.SessionStartLimit.Remaining {
+		return xerrors.Errorf("manager open", ErrSessionLimitExhausted)
 	}
 
 	ready, err := sg.Open(mg.GenerateShardIDs(shardCount), shardCount)

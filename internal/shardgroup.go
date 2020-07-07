@@ -83,13 +83,16 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		for {
 			<-t.C
 			count := int64(0)
+			execution := int64(0)
 			for _, shard := range sg.Shards {
 				count += atomic.SwapInt64(shard.events, 0)
+				execution += atomic.SwapInt64(shard.executionTime, 0)
 			}
 			totalCount += count
 			since := time.Now().UTC().Sub(start)
-			sg.Logger.Debug().Msgf("%d events/s | %d total | %d avg/second | %s elapsed",
-				count, totalCount, int(float64(totalCount)/since.Seconds()), since)
+			exec := ((float64(execution) / float64(len(sg.Shards)*1000000000)) * 100)
+			sg.Logger.Debug().Msgf("%d events/s | %d total | %d avg/second | %s elapsed | %f%% execution",
+				count, totalCount, int(float64(totalCount)/since.Seconds()), since, exec)
 		}
 	}()
 

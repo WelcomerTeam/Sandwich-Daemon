@@ -41,6 +41,9 @@ type Shard struct {
 	ShardGroup *ShardGroup
 	Manager    *Manager
 
+	User *structs.User
+	// TODO: Add deque that can allow for an event queue (maybe)
+
 	ctx    context.Context
 	cancel func()
 
@@ -59,7 +62,9 @@ type Shard struct {
 	msg structs.ReceivedPayload
 	buf []byte
 
-	events    *int64
+	events        *int64
+	executionTime *int64
+
 	seq       *int64
 	sessionID string
 
@@ -94,7 +99,9 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		msg: structs.ReceivedPayload{},
 		buf: make([]byte, 0),
 
-		events:    new(int64),
+		events:        new(int64),
+		executionTime: new(int64),
+
 		seq:       new(int64),
 		sessionID: "",
 
@@ -159,7 +166,7 @@ func (sh *Shard) Connect() (err error) {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
 
-	err = sh.readMessage(sh.wsConn)
+	err = sh.readMessage(sh.ctx, sh.wsConn)
 	if err != nil {
 		return
 	}
@@ -191,7 +198,7 @@ func (sh *Shard) Connect() (err error) {
 		}
 	}
 
-	err = sh.readMessage(sh.wsConn)
+	err = sh.readMessage(sh.ctx, sh.wsConn)
 	if err != nil {
 		return
 	}
@@ -208,7 +215,7 @@ func (sh *Shard) Connect() (err error) {
 // OnEvent processes an event
 func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 
-	switch sh.msg.Op {
+	switch msg.Op {
 
 	case structs.GatewayOpHeartbeat:
 		sh.Logger.Debug().Msg("Received heartbeat request")
@@ -220,7 +227,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		}
 
 	case structs.GatewayOpInvalidSession:
-		resumable := json.Get(sh.msg.Data, "d").ToBool()
+		resumable := json.Get(msg.Data, "d").ToBool()
 		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
 
 		if !resumable || (sh.sessionID == "" || atomic.LoadInt64(sh.seq) == 0) {
@@ -249,7 +256,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		return
 
 	case structs.GatewayOpDispatch:
-		err = sh.OnDispatch(sh.msg)
+		err = sh.OnDispatch(msg)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Error whilst dispatch event")
 			return
@@ -263,16 +270,103 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		return
 
 	default:
-		sh.Logger.Warn().Int("op", int(sh.msg.Op)).Str("type", sh.msg.Type).Msgf("Gateway sent unknown packet")
+		sh.Logger.Warn().Int("op", int(msg.Op)).Str("type", msg.Type).Msg("Gateway sent unknown packet")
 		return
 	}
 
-	atomic.StoreInt64(sh.seq, sh.msg.Sequence)
+	atomic.StoreInt64(sh.seq, msg.Sequence)
 	return
 }
 
 // OnDispatch handles a dispatch event
 func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
+	switch msg.Type {
+
+	case "READY":
+		readyPayload := structs.Ready{}
+		if err = sh.decodeContent(&readyPayload); err != nil {
+			return
+		}
+		sh.User = readyPayload.User
+		sh.sessionID = readyPayload.SessionID
+		sh.Logger.Info().Msg("Received READY payload")
+
+		unavailables := make(map[string]bool)
+		events := make([]structs.ReceivedPayload, 0)
+
+		for _, guild := range readyPayload.Guilds {
+			unavailables[guild.ID] = guild.Unavailable
+		}
+
+		wait := time.Now().UTC().Add(2 * time.Second)
+		for {
+			timeout := time.Now().UTC().Sub(wait) > (2 * time.Second)
+
+			if !timeout {
+				err = sh.readMessage(sh.ctx, sh.wsConn)
+			}
+
+			if err != nil || timeout {
+				if xerrors.Is(err, context.Canceled) || timeout {
+					sh.Logger.Debug().Msg("Shard has finished lazy loading")
+					err = nil
+				} else {
+					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
+				}
+				close(sh.ready)
+				sh.SetStatus(ShardReady)
+
+				sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
+				for _, event := range events {
+					sh.Logger.Debug().Str("type", event.Type).Send()
+					if err = sh.OnDispatch(event); err != nil {
+						sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemtive events")
+					}
+				}
+				sh.Logger.Debug().Msg("Finished dispatching events")
+				return
+			}
+
+			if sh.msg.Type == "GUILD_CREATE" {
+				guildPayload := structs.GuildCreate{}
+				if err = sh.decodeContent(&guildPayload); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to unmarshal whilst lazy loading")
+				} else {
+					if ok, unavailable := unavailables[guildPayload.ID]; ok && unavailable {
+						// GUILD_CREATE
+						sh.Logger.Debug().Str("string", guildPayload.ID).Msg("Lazy loaded guild")
+					} else {
+						// GUILD_JOIN
+						sh.Logger.Debug().Str("string", guildPayload.ID).Msg("Joined guild")
+					}
+
+					// Check if request offline members
+
+					wait = time.Now().UTC().Add(2 * time.Second)
+				}
+			} else {
+				events = append(events, sh.msg)
+			}
+		}
+
+		// Wait for messages
+		// 2 second timeout refresh when receive new GUILD_CREATE
+		// get unavailables
+		// requeue all other events
+		// then we are ready :)
+
+		// request guild chunks afterwards (?)
+
+	// case "GUILD_CREATE":
+	// 	guildCreatePayload := structs.GuildCreate{}
+	// 	if err = sh.decodeContent(&guildCreatePayload); err != nil {
+	// 		return
+	// 	}
+
+	default:
+		sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
+
+	}
 	return
 }
 
@@ -291,9 +385,9 @@ func (sh *Shard) Listen() (err error) {
 		default:
 		}
 
-		err = sh.readMessage(wsConn)
+		err = sh.readMessage(sh.ctx, wsConn)
 		if err != nil {
-			if xerrors.Is(err, context.Canceled) {
+			if xerrors.Is(err, context.Canceled) || xerrors.Is(err, context.DeadlineExceeded) {
 				break
 			}
 
@@ -306,6 +400,8 @@ func (sh *Shard) Listen() (err error) {
 			wsConn = sh.wsConn
 		}
 
+		start := time.Now().UTC()
+
 		atomic.AddInt64(sh.events, 1)
 		sh.OnEvent(sh.msg)
 
@@ -315,6 +411,8 @@ func (sh *Shard) Listen() (err error) {
 			sh.Logger.Debug().Msg("New wsConn was assigned to shard")
 			wsConn = sh.wsConn
 		}
+
+		atomic.AddInt64(sh.executionTime, time.Now().UTC().Sub(start).Nanoseconds())
 	}
 	return
 }
@@ -357,10 +455,9 @@ func (sh *Shard) decodeContent(out interface{}) (err error) {
 }
 
 // readMessage fills the shard msg buffer from a websocket message
-func (sh *Shard) readMessage(wsConn *websocket.Conn) (err error) {
+func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err error) {
 	var mt websocket.MessageType
-
-	mt, sh.buf, err = wsConn.Read(sh.ctx)
+	mt, sh.buf, err = wsConn.Read(ctx)
 	select {
 	case <-sh.ctx.Done():
 		return
@@ -400,7 +497,7 @@ func (sh *Shard) Resume() (err error) {
 	return sh.SendEvent(structs.GatewayOpResume, structs.Resume{
 		Token:     sh.Manager.Configuration.Token,
 		SessionID: sh.sessionID,
-		Seq:       atomic.LoadInt64(sh.seq),
+		Sequence:  atomic.LoadInt64(sh.seq),
 	})
 }
 

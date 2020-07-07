@@ -111,13 +111,6 @@ type IdentifyProperties struct {
 	Device  string `json:"$device"`
 }
 
-// Resume represents a resume packet
-type Resume struct {
-	Token     string `json:"token"`
-	SessionID string `json:"session_id"`
-	Seq       int64  `json:"seq"`
-}
-
 // RequestGuildMembers represents a request guild members packet
 type RequestGuildMembers struct {
 	GuildID snowflake.ID `json:"guild_id"`
@@ -163,6 +156,9 @@ type Ready struct {
 	SessionID string   `json:"session_id"`
 }
 
-// Resumed represents a resumed packet
-type Resumed struct {
+// Resume represents a resume packet
+type Resume struct {
+	Token     string `json:"token"`
+	SessionID string `json:"session_id"`
+	Sequence  int64  `json:"seq"`
 }
