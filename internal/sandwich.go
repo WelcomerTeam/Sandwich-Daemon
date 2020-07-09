@@ -254,7 +254,12 @@ func (sg *Sandwich) Open() (err error) {
 			sg.Logger.Error().Err(err).Msg("Could not create manager")
 			continue
 		}
-		sg.Managers[managerConfiguration.DisplayName] = manager
+		if _, ok := sg.Managers[managerConfiguration.Identifier]; ok {
+			sg.Logger.Warn().Str("identifer", managerConfiguration.Identifier).Msg("Found conflicting manager identifiers. Ignoring!")
+			continue
+		}
+
+		sg.Managers[managerConfiguration.Identifier] = manager
 		go func() {
 			err := manager.Open()
 			if err != nil {

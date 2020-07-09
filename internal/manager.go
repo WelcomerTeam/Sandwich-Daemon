@@ -15,6 +15,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
+	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 )
 
@@ -25,6 +26,7 @@ type ManagerConfiguration struct {
 	AutoStart bool `json:"autostart"` // Boolean to stat the Manager when the bot starts
 	Persist   bool `json:"persist"`   // Boolean to dictate if configuration should be saved
 
+	Identifier  string `json:"identifier"`
 	DisplayName string `json:"display_name"`
 	Token       string `json:"token"`
 
@@ -105,6 +107,8 @@ type Manager struct {
 	Client  *Client
 	Gateway structs.GatewayBot
 
+	pp sync.Pool
+
 	// ShardGroups contain the group of shards the Manager is managing. The reason
 	// we have a ShardGroup instead of a map/slice of shards is we can run multiple
 	// shard groups at once. This is used during rolling restarts where we would have
@@ -135,6 +139,10 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 
 		Client:  NewClient(configuration.Token),
 		Gateway: structs.GatewayBot{},
+
+		pp: sync.Pool{
+			New: func() interface{} { return new(structs.PublishEvent) },
+		},
 
 		ShardGroups:       make(map[int32]*ShardGroup),
 		ShardGroupMu:      sync.Mutex{},
@@ -243,11 +251,8 @@ func (mg *Manager) Open() (err error) {
 		shardCount = mg.Configuration.Sharding.ShardCount
 	}
 
-	// If shardcount is greater than 64, we will round the shardCount to the next 16 as a precaution against
-	// big bot sharding. This is not necessary but sooner is better than later.
-	if shardCount > 64 {
-		shardCount = int(math.Ceil(float64(shardCount)/16)) * 16
-	}
+	// We will round up the shard count depending on the concurrent clients specified
+	shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
 
 	if shardCount >= mg.Gateway.SessionStartLimit.Remaining {
 		return xerrors.Errorf("manager open", ErrSessionLimitExhausted)
@@ -260,6 +265,31 @@ func (mg *Manager) Open() (err error) {
 
 	// Wait for all shards in ShardGroup to be ready
 	<-ready
+
+	return
+}
+
+// PublishEvent sends an event to consaumers
+func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
+	packet := mg.pp.Get().(*structs.PublishEvent)
+	defer mg.pp.Put(packet)
+
+	packet.Data = Data
+	packet.From = mg.Configuration.Identifier
+	packet.From = Type
+
+	data, err := msgpack.Marshal(packet)
+	if err != nil {
+		return xerrors.Errorf("publishEvent marshal: %w", err)
+	}
+
+	err = mg.StanClient.Publish(
+		mg.Configuration.Messaging.ChannelName,
+		data,
+	)
+	if err != nil {
+		return xerrors.Errorf("publishEvent publish: %w", err)
+	}
 
 	return
 }

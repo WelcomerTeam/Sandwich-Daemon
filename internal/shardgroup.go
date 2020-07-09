@@ -5,29 +5,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 )
 
-// ShardGroupStatus represents a shardgroups status
-type ShardGroupStatus int32
-
-// Status Codes for ShardGroups
-const (
-	ShardGroupIdle       ShardGroupStatus = iota // Represents a ShardGroup that has been created but not opened yet
-	ShardGroupStarting                           // Represent a ShardGroup that is still starting up clients
-	ShardGroupConnecting                         // Represents a ShardGroup waiting for shard to be ready
-	ShardGroupReady                              // Represent a ShardGroup that has all its shards ready
-	ShardGroupReplaced                           // Represent a ShardGroup that is going to be replaced soon by a new ShardGroup
-	ShardGroupClosing                            // Represent a ShardGroup in the process of closing
-	ShardGroupClosed                             // Represent a closed ShardGroup
-)
-
 // ShardGroup groups a selection of shards
 type ShardGroup struct {
 	StatusMu sync.RWMutex
-	Status   ShardGroupStatus
+	Status   structs.ShardGroupStatus
 
 	Manager *Manager
 	Logger  zerolog.Logger
@@ -50,7 +37,7 @@ type ShardGroup struct {
 // NewShardGroup creates a new shardgroup
 func (mg *Manager) NewShardGroup() *ShardGroup {
 	return &ShardGroup{
-		Status:   ShardGroupIdle,
+		Status:   structs.ShardGroupIdle,
 		StatusMu: sync.RWMutex{},
 
 		Manager: mg,
@@ -67,7 +54,7 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 
 // Open starts up the shardgroup
 func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
-	sg.SetStatus(ShardGroupStarting)
+	sg.SetStatus(structs.ShardGroupStarting)
 
 	sg.ShardCount = ShardCount
 	sg.ShardIDs = ShardIDs
@@ -114,7 +101,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 	}
 
 	sg.Logger.Debug().Msgf("All shards are now listening")
-	sg.SetStatus(ShardGroupConnecting)
+	sg.SetStatus(structs.ShardGroupConnecting)
 
 	go func(sg *ShardGroup) {
 		for _, shard := range sg.Shards {
@@ -122,7 +109,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 			shard.WaitForReady()
 		}
 		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
-		sg.SetStatus(ShardGroupReady)
+		sg.SetStatus(structs.ShardGroupReady)
 		close(ready)
 	}(sg)
 
@@ -130,18 +117,19 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 }
 
 // SetStatus changes the ShardGroup status
-func (sg *ShardGroup) SetStatus(status ShardGroupStatus) {
+func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
 	sg.StatusMu.Lock()
 	sg.Status = status
 	sg.StatusMu.Unlock()
+	sg.Manager.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{Status: int32(status)})
 }
 
 // Close closes the shard group and finishes any shards
 func (sg *ShardGroup) Close() {
 	sg.Logger.Info().Msg("Closing ShardGroup")
-	sg.SetStatus(ShardGroupClosing)
+	sg.SetStatus(structs.ShardGroupClosing)
 	for _, shard := range sg.Shards {
 		shard.Close(1000)
 	}
-	sg.SetStatus(ShardGroupClosed)
+	sg.SetStatus(structs.ShardGroupClosed)
 }

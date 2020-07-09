@@ -11,28 +11,16 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
 	"github.com/rs/zerolog"
+	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
 
 const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
 
-// ShardStatus represents the shard status
-type ShardStatus int32
-
-// Status Codes for Shard
-const (
-	ShardIdle         ShardStatus = iota // Represents a Shard that has been created but not opened yet
-	ShardWaiting                         // Represents a Shard waiting for the identify ratelimit
-	ShardConnected                       // Represents a Shard that has connected to discords gateway
-	ShardReady                           // Represents a Shard that has finished lazy loading
-	ShardReconnecting                    // Represents a Shard that is reconnecting
-	ShardClosed                          // Represents a Shard that has been closed
-)
-
 // Shard represents the shard object
 type Shard struct {
-	Status   ShardStatus
+	Status   structs.ShardStatus
 	StatusMu sync.RWMutex
 
 	Logger zerolog.Logger
@@ -58,7 +46,9 @@ type Shard struct {
 	wsConn  *websocket.Conn
 	wsMutex sync.Mutex
 
-	op  sync.Pool
+	rp sync.Pool
+	pp sync.Pool
+
 	msg structs.ReceivedPayload
 	buf []byte
 
@@ -78,7 +68,7 @@ type Shard struct {
 func (sg *ShardGroup) NewShard(shardID int) *Shard {
 	logger := sg.Logger.With().Int("shard", shardID).Logger()
 	sh := &Shard{
-		Status:   ShardIdle,
+		Status:   structs.ShardIdle,
 		StatusMu: sync.RWMutex{},
 
 		Logger: logger,
@@ -93,8 +83,11 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		LastHeartbeatAck:  time.Now().UTC(),
 		LastHeartbeatSent: time.Now().UTC(),
 
-		op: sync.Pool{
+		rp: sync.Pool{
 			New: func() interface{} { return new(structs.SentPayload) },
+		},
+		pp: sync.Pool{
+			New: func() interface{} { return new(structs.PublishEvent) },
 		},
 		msg: structs.ReceivedPayload{},
 		buf: make([]byte, 0),
@@ -135,12 +128,13 @@ func (sh *Shard) Connect() (err error) {
 	sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	gatewayURL := sh.Manager.Gateway.URL
 
-	sh.SetStatus(ShardWaiting)
+	sh.SetStatus(structs.ShardWaiting)
 	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", sh.Manager.Configuration.Token, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
 	if err != nil {
 		return
 	}
 
+	sh.SetStatus(structs.ShardConnecting)
 	sh.Logger.Debug().Str("gurl", gatewayURL).Msg("Connecting to gateway")
 
 	// TODO: Add Concurrent Client Support
@@ -209,6 +203,7 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	go sh.Heartbeat()
+	sh.SetStatus(structs.ShardConnected)
 	return
 }
 
@@ -265,7 +260,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 	case structs.GatewayOpHeartbeatACK:
 		sh.LastHeartbeatMu.Lock()
 		sh.LastHeartbeatAck = time.Now().UTC()
-		sh.Logger.Debug().Msg("Received heartbeack ACK")
+		sh.Logger.Debug().Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).Msg("Received heartbeack ACK")
 		sh.LastHeartbeatMu.Unlock()
 		return
 
@@ -280,6 +275,14 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 
 // OnDispatch handles a dispatch event
 func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
+	start := time.Now().UTC()
+	defer func() {
+		change := time.Now().UTC().Sub(start)
+		if change > time.Second {
+			sh.Logger.Warn().Msgf("%s took %d ms", msg.Type, change.Milliseconds())
+		}
+	}()
+
 	switch msg.Type {
 
 	case "READY":
@@ -298,23 +301,26 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			unavailables[guild.ID] = guild.Unavailable
 		}
 
+		// I really wanted to just use a context here but it kept cancelling the main
+		// context even if i made a completely new one. Hmu if you know a solution.
 		wait := time.Now().UTC().Add(2 * time.Second)
 		for {
-			timeout := time.Now().UTC().Sub(wait) > (2 * time.Second)
+			timedout := time.Now().UTC().Sub(wait) > (2 * time.Second)
 
-			if !timeout {
+			if !timedout {
 				err = sh.readMessage(sh.ctx, sh.wsConn)
 			}
 
-			if err != nil || timeout {
-				if xerrors.Is(err, context.Canceled) || timeout {
+			if err != nil || timedout {
+				if xerrors.Is(err, context.Canceled) || timedout {
 					sh.Logger.Debug().Msg("Shard has finished lazy loading")
 					err = nil
 				} else {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
 				}
+
 				close(sh.ready)
-				sh.SetStatus(ShardReady)
+				sh.SetStatus(structs.ShardReady)
 
 				sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
 				for _, event := range events {
@@ -323,6 +329,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 						sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemtive events")
 					}
 				}
+
 				sh.Logger.Debug().Msg("Finished dispatching events")
 				return
 			}
@@ -330,7 +337,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			if sh.msg.Type == "GUILD_CREATE" {
 				guildPayload := structs.GuildCreate{}
 				if err = sh.decodeContent(&guildPayload); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to unmarshal whilst lazy loading")
+					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE whilst lazy loading")
 				} else {
 					if ok, unavailable := unavailables[guildPayload.ID]; ok && unavailable {
 						// GUILD_CREATE
@@ -342,8 +349,18 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 					// Check if request offline members
 
-					wait = time.Now().UTC().Add(2 * time.Second)
 				}
+
+				wait = time.Now().UTC().Add(2 * time.Second)
+			} else if sh.msg.Type == "GUILD_MEMBERS_CHUNK" {
+				guildMembersPayload := structs.GuildMembersChunk{}
+				if err = sh.decodeContent(&guildMembersPayload); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK whilst lazy loading")
+				} else {
+
+				}
+
+				wait = time.Now().UTC().Add(2 * time.Second)
 			} else {
 				events = append(events, sh.msg)
 			}
@@ -364,8 +381,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	// 	}
 
 	default:
-		sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
-
+		// sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
 	}
 	return
 }
@@ -402,7 +418,6 @@ func (sh *Shard) Listen() (err error) {
 
 		start := time.Now().UTC()
 
-		atomic.AddInt64(sh.events, 1)
 		sh.OnEvent(sh.msg)
 
 		// In the event we have reconnected, the wsConn could have changed,
@@ -430,17 +445,19 @@ func (sh *Shard) Heartbeat() {
 
 			err := sh.SendEvent(structs.GatewayOpHeartbeat, seq)
 
-			sh.LastHeartbeatMu.RLock()
+			_time := time.Now().UTC()
+			sh.LastHeartbeatMu.Lock()
+			sh.LastHeartbeatSent = _time
 			lastAck := sh.LastHeartbeatAck
-			sh.LastHeartbeatMu.RUnlock()
+			sh.LastHeartbeatMu.Unlock()
 
-			sh.Logger.Debug().Msgf("Heartbeat since %dms / %dms", time.Now().UTC().Sub(lastAck).Milliseconds(), sh.MaxHeartbeatFailures.Milliseconds())
-			if err != nil || time.Now().UTC().Sub(lastAck) > sh.MaxHeartbeatFailures {
+			if err != nil || _time.Sub(lastAck) > sh.MaxHeartbeatFailures {
 				if err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
 				} else {
 					sh.Logger.Warn().Err(err).Msgf("Gateway failed to ACK and has passed MaxHeartbeatFailures of %d. Reconnecting", sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
 				}
+
 				sh.Reconnect(websocket.StatusNormalClosure)
 				return
 			}
@@ -459,7 +476,7 @@ func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err e
 	var mt websocket.MessageType
 	mt, sh.buf, err = wsConn.Read(ctx)
 	select {
-	case <-sh.ctx.Done():
+	case <-ctx.Done():
 		return
 	default:
 	}
@@ -471,11 +488,12 @@ func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err e
 	if mt == websocket.MessageBinary {
 		sh.buf, err = czlib.Decompress(sh.buf)
 		if err != nil {
-			return xerrors.Errorf("readMessage failed to decompress buffer: %w", err)
+			return xerrors.Errorf("readMessage decompress: %w", err)
 		}
 	}
 
 	err = json.Unmarshal(sh.buf, &sh.msg)
+	atomic.AddInt64(sh.events, 1)
 	return
 }
 
@@ -521,13 +539,44 @@ func (sh *Shard) Identify() (err error) {
 	})
 }
 
+// PublishEvent sends an event to consaumers
+func (sh *Shard) PublishEvent(Type string, Data interface{}) (err error) {
+	packet := sh.pp.Get().(*structs.PublishEvent)
+	defer sh.pp.Put(packet)
+
+	packet.Data = Data
+	packet.From = sh.Manager.Configuration.Identifier
+	packet.From = Type
+
+	data, err := msgpack.Marshal(packet)
+	if err != nil {
+		return xerrors.Errorf("publishEvent marshal: %w", err)
+	}
+
+	err = sh.Manager.StanClient.Publish(
+		sh.Manager.Configuration.Messaging.ChannelName,
+		data,
+	)
+	if err != nil {
+		return xerrors.Errorf("publishEvent publish: %w", err)
+	}
+
+	return
+}
+
 // SendEvent sends an event to discord
 func (sh *Shard) SendEvent(op structs.GatewayOp, data interface{}) (err error) {
-	packet := sh.op.Get().(*structs.SentPayload)
+	packet := sh.rp.Get().(*structs.SentPayload)
+	defer sh.rp.Put(packet)
+
 	packet.Op = int(op)
 	packet.Data = data
+
 	err = sh.WriteJSON(packet)
-	sh.op.Put(packet)
+	if err != nil {
+		return xerrors.Errorf("sendEvent writeJson: %w", err)
+	}
+
 	return
 }
 
@@ -535,10 +584,15 @@ func (sh *Shard) SendEvent(op structs.GatewayOp, data interface{}) (err error) {
 func (sh *Shard) WriteJSON(i interface{}) (err error) {
 	res, err := json.Marshal(i)
 	if err != nil {
-		return
+		return xerrors.Errorf("writeJSON marshal: %w", err)
 	}
+
 	sh.Logger.Trace().Msg(string(res))
 	err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
+	if err != nil {
+		return xerrors.Errorf("writeJSON write: %w", err)
+	}
+
 	return
 }
 
@@ -556,14 +610,14 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) {
 	wait := time.Second
 
 	sh.Close(code)
-	sh.SetStatus(ShardReconnecting)
+	sh.SetStatus(structs.ShardReconnecting)
+
 	for {
 		sh.Logger.Info().Msg("Trying to reconnect to gateway")
 
 		err := sh.Connect()
 		if err == nil {
 			sh.Logger.Info().Msg("Successfuly reconnected to gateway")
-			sh.SetStatus(ShardConnected)
 			return
 		}
 
@@ -578,10 +632,11 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) {
 }
 
 // SetStatus changes the Shard status
-func (sh *Shard) SetStatus(status ShardStatus) {
+func (sh *Shard) SetStatus(status structs.ShardStatus) {
 	sh.StatusMu.Lock()
 	sh.Status = status
 	sh.StatusMu.Unlock()
+	sh.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{ShardID: sh.ShardID, Status: int32(status)})
 }
 
 // Close closes the shard connection
