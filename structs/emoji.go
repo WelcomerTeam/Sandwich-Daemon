@@ -1,6 +1,6 @@
 package structs
 
-import "github.com/bwmarrin/snowflake"
+import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 
 // Emoji represents an Emoji on discord
 type Emoji struct {

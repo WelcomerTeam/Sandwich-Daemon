@@ -1,40 +1,40 @@
 package structs
 
-import "github.com/bwmarrin/snowflake"
+import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 
 // Guild represents a guild on Discord
 type Guild struct {
-	ID                          string                     `json:"id"`
+	ID                          snowflake.ID               `json:"id"`
 	Name                        string                     `json:"name"`
 	Icon                        string                     `json:"icon"`
 	Splash                      string                     `json:"splash"`
 	Owner                       bool                       `json:"owner,omitempty"`
-	OwnerID                     string                     `json:"owner_id"`
+	OwnerID                     snowflake.ID               `json:"owner_id,omitempty"`
 	Permissions                 int                        `json:"permissions,omitempty"`
 	Region                      string                     `json:"region"`
-	AFKChannelID                string                     `json:"afk_channel_id"`
+	AFKChannelID                snowflake.ID               `json:"afk_channel_id,omitempty"`
 	AFKTimeout                  int                        `json:"afk_timeout"`
 	EmbedEnabled                bool                       `json:"embed_enabled,omitempty"`
-	EmbedChannelID              string                     `json:"embed_channel_id,omitempty"`
+	EmbedChannelID              snowflake.ID               `json:"embed_channel_id,omitempty"`
 	VerificationLevel           VerificationLevel          `json:"verification_level"`
 	DefaultMessageNotifications MessageNotificationLevel   `json:"default_message_notifications"`
 	ExplicitContentFilter       ExplicitContentFilterLevel `json:"explicit_content_filter"`
 	Roles                       []*Role                    `json:"roles"`
-	Emojis                      []*Emoji                   `json:"emojis"` // TODO: type
+	Emojis                      []*Emoji                   `json:"emojis"`
 	Features                    []string                   `json:"features"`
 	MFALevel                    MFALevel                   `json:"mfa_level"`
-	ApplicationID               string                     `json:"application_id"`
+	ApplicationID               snowflake.ID               `json:"application_id,omitempty"`
 	WidgetEnabled               bool                       `json:"widget_enabled,omitempty"`
-	WidgetChannelID             string                     `json:"widget_channel_id,omitempty"`
-	SystemChannelID             string                     `json:"system_channel_id"`
+	WidgetChannelID             snowflake.ID               `json:"widget_channel_id,omitempty"`
+	SystemChannelID             snowflake.ID               `json:"system_channel_id,omitempty"`
 	JoinedAt                    string                     `json:"joined_at,omitempty"`
 	Large                       bool                       `json:"large,omitempty"`
 	Unavailable                 bool                       `json:"unavailable,omitempty"`
 	MemberCount                 int                        `json:"member_count,omitempty"`
-	VoiceStates                 []*VoiceState              `json:"voice_states,omitempty"` // TODO: type
-	Members                     []*GuildMember             `json:"members,omitempty"`      // TODO: type
+	VoiceStates                 []*VoiceState              `json:"voice_states,omitempty"`
+	Members                     []*GuildMember             `json:"members,omitempty"`
 	Channels                    []*Channel                 `json:"channels,omitempty"`
-	Presences                   []*Activity                `json:"presences,omitempty"` // TODO: type
+	Presences                   []*Activity                `json:"presences,omitempty"`
 }
 
 // UnavailableGuild represents an unavailable guild
@@ -84,7 +84,10 @@ const (
 )
 
 // GuildCreate represents a guild create packet
-type GuildCreate Guild
+type GuildCreate struct {
+	Guild
+	Lazy bool `json:"-"` // Internal use only
+}
 
 // GuildUpdate represents a guild update packet
 type GuildUpdate Guild
@@ -137,8 +140,13 @@ type GuildMemberUpdate struct {
 
 // GuildMembersChunk represents a guild members chunk packet
 type GuildMembersChunk struct {
-	GuildID snowflake.ID   `json:"guild_id"`
-	Members []*GuildMember `json:"members"`
+	GuildID    snowflake.ID     `json:"guild_id"`
+	Members    []*GuildMember   `json:"members"`
+	ChunkIndex int              `json:"chunk_index"`
+	ChunkCount int              `json:"chunk_count"`
+	NotFound   []snowflake.ID   `json:"not_found"`
+	Presences  []PresenceStatus `json:"presences"`
+	Nonce      string           `json:"nonce"`
 }
 
 // GuildRoleCreate represents a guild role create packet

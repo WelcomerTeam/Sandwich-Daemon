@@ -1,6 +1,6 @@
 package structs
 
-import "github.com/bwmarrin/snowflake"
+import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 
 // Role represents a role on Discord
 type Role struct {

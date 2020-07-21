@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
 	"github.com/rs/zerolog"
@@ -16,6 +17,8 @@ import (
 	"nhooyr.io/websocket"
 )
 
+// Amount of snowflake ids per guild members request
+const chunkSize = 50
 const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
 
 // Shard represents the shard object
@@ -294,8 +297,10 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		sh.sessionID = readyPayload.SessionID
 		sh.Logger.Info().Msg("Received READY payload")
 
-		unavailables := make(map[string]bool)
+		unavailables := make(map[snowflake.ID]bool)
 		events := make([]structs.ReceivedPayload, 0)
+
+		guildIDs := make([]int64, 0)
 
 		for _, guild := range readyPayload.Guilds {
 			unavailables[guild.ID] = guild.Unavailable
@@ -319,19 +324,33 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
 				}
 
-				close(sh.ready)
-				sh.SetStatus(structs.ShardReady)
+				if sh.Manager.Configuration.Caching.RequestMembers {
+					var chunk []int64
+					for len(guildIDs) >= chunkSize {
+						chunk, guildIDs = guildIDs[:chunkSize], guildIDs[chunkSize:]
 
-				sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
-				for _, event := range events {
-					sh.Logger.Debug().Str("type", event.Type).Send()
-					if err = sh.OnDispatch(event); err != nil {
-						sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemtive events")
+						sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
+						if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
+							GuildID: chunk,
+							Query:   "",
+							Limit:   0,
+						}); err != nil {
+							sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
+						}
+					}
+					if len(guildIDs) > 0 {
+						sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
+						if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
+							GuildID: guildIDs,
+							Query:   "",
+							Limit:   0,
+						}); err != nil {
+							sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
+						}
 					}
 				}
 
-				sh.Logger.Debug().Msg("Finished dispatching events")
-				return
+				break
 			}
 
 			if sh.msg.Type == "GUILD_CREATE" {
@@ -340,24 +359,13 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE whilst lazy loading")
 				} else {
 					if ok, unavailable := unavailables[guildPayload.ID]; ok && unavailable {
-						// GUILD_CREATE
-						sh.Logger.Debug().Str("string", guildPayload.ID).Msg("Lazy loaded guild")
-					} else {
-						// GUILD_JOIN
-						sh.Logger.Debug().Str("string", guildPayload.ID).Msg("Joined guild")
+						// Guild has been lazy loaded
+						sh.Logger.Trace().Msgf("Lazy loaded guild ID %d", guildPayload.ID)
+						guildPayload.Lazy = true
 					}
+					guildIDs = append(guildIDs, guildPayload.ID.Int64())
 
-					// Check if request offline members
-
-				}
-
-				wait = time.Now().UTC().Add(2 * time.Second)
-			} else if sh.msg.Type == "GUILD_MEMBERS_CHUNK" {
-				guildMembersPayload := structs.GuildMembersChunk{}
-				if err = sh.decodeContent(&guildMembersPayload); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK whilst lazy loading")
-				} else {
-
+					// StateGuildCreate(guildPayload)
 				}
 
 				wait = time.Now().UTC().Add(2 * time.Second)
@@ -366,13 +374,29 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			}
 		}
 
-		// Wait for messages
-		// 2 second timeout refresh when receive new GUILD_CREATE
-		// get unavailables
-		// requeue all other events
-		// then we are ready :)
+		close(sh.ready)
+		sh.SetStatus(structs.ShardReady)
 
-		// request guild chunks afterwards (?)
+		sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
+		for _, event := range events {
+			sh.Logger.Debug().Str("type", event.Type).Send()
+			if err = sh.OnDispatch(event); err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemtive events")
+			}
+		}
+
+		sh.Logger.Debug().Msg("Finished dispatching events")
+		return
+
+	case "GUILD_MEMBERS_CHUNK":
+		guildMembersPayload := structs.GuildMembersChunk{}
+		if err = sh.decodeContent(&guildMembersPayload); err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK whilst lazy loading")
+		} else {
+			if err = sh.Manager.StateGuildMembersChunk(guildMembersPayload); err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to process state")
+			}
+		}
 
 	// case "GUILD_CREATE":
 	// 	guildCreatePayload := structs.GuildCreate{}
@@ -587,6 +611,12 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 		return xerrors.Errorf("writeJSON marshal: %w", err)
 	}
 
+	sh.Manager.Buckets.CreateWaitForBucket(
+		fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount),
+		120,
+		time.Minute,
+	)
+
 	sh.Logger.Trace().Msg(string(res))
 	err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
 	if err != nil {
@@ -646,7 +676,7 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 
 	// cancel is only defined when Connect() has been ran on a shard.
 	// If the ShardGroup was closed before this happens, it would segfault.
-	if sh.ctx != nil {
+	if sh.ctx != nil && sh.cancel != nil {
 		sh.cancel()
 	}
 	sh.CloseWS(code)

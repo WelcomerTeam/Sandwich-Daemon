@@ -6,6 +6,8 @@ github.com/DataDog/sketches-go v0.0.0-20190923095040-43f19ad77ff7/go.mod h1:Q5Db
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/TheRockettek/czlib v0.0.0-20200626001404-f6ab55296689 h1:bS/y+t7wyia9CsSqqVbFNTz0Cl2LPRbSCc70y0iY7AE=
 github.com/TheRockettek/czlib v0.0.0-20200626001404-f6ab55296689/go.mod h1:MKh0ysbWJiaJYAbt4a/sGRVZCQbuiR34aH85WeUauzM=
+github.com/TheRockettek/snowflake v0.3.0 h1:CBHaGUP+Y3PL/dls2Bak6McFwXTgyl6F+wBvqRYzObI=
+github.com/TheRockettek/snowflake v0.3.0/go.mod h1:t8Y8k9+PyDjHvRLxmNTeUQl3GoZjhxWQdK0kTPgo/F8=
 github.com/benbjohnson/clock v1.0.3/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
 github.com/bwmarrin/snowflake v0.3.0 h1:xm67bEhkKh6ij1790JB83OujPR5CzNe8QuQqAgISZN0=
 github.com/bwmarrin/snowflake v0.3.0/go.mod h1:NdZxfVWX+oR6y2K0o6qAYv6gIOP9rjG0/E9WsDpxqwE=

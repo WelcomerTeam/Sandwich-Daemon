@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/bwmarrin/snowflake"
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 )
 
 // Gateway represents a GET /gateway response
@@ -113,9 +113,9 @@ type IdentifyProperties struct {
 
 // RequestGuildMembers represents a request guild members packet
 type RequestGuildMembers struct {
-	GuildID snowflake.ID `json:"guild_id"`
-	Query   string       `json:"query"`
-	Limit   int          `json:"limit"`
+	GuildID []int64 `json:"guild_id"`
+	Query   string  `json:"query"`
+	Limit   int     `json:"limit"`
 }
 
 // UpdateVoiceState represents an update voice state packet

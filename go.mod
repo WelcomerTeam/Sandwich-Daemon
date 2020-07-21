@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/TheRockettek/czlib v0.0.0-20200626001404-f6ab55296689
+	github.com/TheRockettek/snowflake v0.3.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/go-redis/redis/v8 v8.0.0-beta.6
 	github.com/json-iterator/go v1.1.10

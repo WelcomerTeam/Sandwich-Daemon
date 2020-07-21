@@ -43,7 +43,8 @@ type ManagerConfiguration struct {
 	Caching struct {
 		RedisPrefix string `json:"redis_prefix"`
 
-		CacheMembers bool `json:"cache_members"`
+		CacheMembers   bool `json:"cache_members"`
+		RequestMembers bool `json:"request_members"`
 		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
 		// a bot.
 		IgnoreBots   bool `json:"ignore_bots"`

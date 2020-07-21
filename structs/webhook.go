@@ -1,6 +1,6 @@
 package structs
 
-import "github.com/bwmarrin/snowflake"
+import "github.com/TheRockettek/snowflake"
 
 // Webhook represents a webhook on Discord
 type Webhook struct {

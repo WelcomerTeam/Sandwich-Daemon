@@ -29,7 +29,7 @@ func NewBucketStore() (bs *BucketStore) {
 // CreateBucket will create a new bucket or overwrite
 func (bs *BucketStore) CreateBucket(name string, limit int32, duration time.Duration) limiter.DurationLimiter {
 	bs.BucketsMu.Lock()
-	bs.Buckets[name] = limiter.NewDurationLimiter(limit, duration)
+	bs.Buckets[name] = limiter.NewDurationLimiter(name, limit, duration)
 	bs.BucketsMu.Unlock()
 
 	return bs.Buckets[name]

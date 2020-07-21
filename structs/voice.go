@@ -1,6 +1,6 @@
 package structs
 
-import "github.com/bwmarrin/snowflake"
+import "github.com/TheRockettek/snowflake"
 
 // VoiceOp is the voice packet operation codes
 type VoiceOp uint8

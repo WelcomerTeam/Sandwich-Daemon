@@ -1,12 +1,14 @@
 package limiter
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 )
 
 // ConcurrencyLimiter object
 type ConcurrencyLimiter struct {
+	name       string
 	limit      int
 	tickets    chan int
 	inProgress int32
@@ -15,8 +17,9 @@ type ConcurrencyLimiter struct {
 // NewConcurrencyLimiter allocates a new ConcurrencyLimiter. This is useful
 // for limiting the ammount of functions running at once and is used to
 // only allow a specific number of sessions to start at once.
-func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
+func NewConcurrencyLimiter(name string, limit int) *ConcurrencyLimiter {
 	c := &ConcurrencyLimiter{
+		name:    name,
 		limit:   limit,
 		tickets: make(chan int, limit),
 	}
@@ -54,6 +57,7 @@ type DurationLimiter interface {
 
 // DefaultLimiter is the default limiter object
 type DefaultLimiter struct {
+	name     string
 	limit    *int32
 	duration *int64
 
@@ -63,9 +67,10 @@ type DefaultLimiter struct {
 
 // NewDurationLimiter creates a DurationLimiter. This is useful for allowing
 // a specific operation to run only X ammount of times in a duration of Y.
-func NewDurationLimiter(limit int32, duration time.Duration) (bs DurationLimiter) {
+func NewDurationLimiter(name string, limit int32, duration time.Duration) (bs DurationLimiter) {
 	nanos := duration.Nanoseconds()
 	bs = &DefaultLimiter{
+		name:     name,
 		limit:    &limit,
 		duration: &nanos,
 
@@ -90,7 +95,9 @@ func (l *DefaultLimiter) Lock() {
 		// This on its own can create a race condition if 2 routines are
 		// waiting simultaneously. In order to not make this occur, we
 		// must call the lock again to make sure.
-		time.Sleep(time.Duration(atomic.LoadInt64(l.resetsAt) - now))
+		sleepDuration := time.Duration(atomic.LoadInt64(l.resetsAt) - now)
+		println(fmt.Sprintf("%s is being ratelimited! Waiting %dms", l.name, sleepDuration.Milliseconds()))
+		time.Sleep(sleepDuration)
 		l.Lock()
 		return
 	}
