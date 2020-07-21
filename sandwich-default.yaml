@@ -37,7 +37,8 @@ managers:
   caching:
     redisprefix: welcomer
     cachemembers: false
-    requestmembers: true
+    requestmembers: false
+    requestchunksize: 1
     ignorebots: true
     storemutuals: true
   events:

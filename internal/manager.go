@@ -43,8 +43,9 @@ type ManagerConfiguration struct {
 	Caching struct {
 		RedisPrefix string `json:"redis_prefix"`
 
-		CacheMembers   bool `json:"cache_members"`
-		RequestMembers bool `json:"request_members"`
+		CacheMembers     bool `json:"cache_members"`
+		RequestMembers   bool `json:"request_members"`
+		RequestChunkSize int  `json:"request_chunk_size"`
 		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
 		// a bot.
 		IgnoreBots   bool `json:"ignore_bots"`
@@ -188,6 +189,9 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 	}
 	if mg.Configuration.Messaging.UseRandomSuffix {
 		mg.Configuration.Messaging.ClientName += "-" + strconv.Itoa(rand.Intn(9999))
+	}
+	if mg.Configuration.Caching.RequestChunkSize <= 0 {
+		mg.Configuration.Caching.RequestChunkSize = 1
 	}
 
 	return

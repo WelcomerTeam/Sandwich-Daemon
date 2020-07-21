@@ -17,8 +17,6 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// Amount of snowflake ids per guild members request
-const chunkSize = 50
 const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
 
 // Shard represents the shard object
@@ -326,6 +324,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 				if sh.Manager.Configuration.Caching.RequestMembers {
 					var chunk []int64
+					chunkSize := sh.Manager.Configuration.Caching.RequestChunkSize
 					for len(guildIDs) >= chunkSize {
 						chunk, guildIDs = guildIDs[:chunkSize], guildIDs[chunkSize:]
 
