@@ -356,7 +356,6 @@ func (f *ID) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 	if len(b) < 3 || b[0] != '"' || b[len(b)-1] != '"' {
-		println(b, string(b))
 		return JSONSyntaxError{b}
 	}
 
@@ -367,4 +366,14 @@ func (f *ID) UnmarshalJSON(b []byte) error {
 
 	*f = ID(i)
 	return nil
+}
+
+// MarshalBinary returns a json byte array string of the snowflake ID.
+func (f *ID) MarshalBinary() ([]byte, error) {
+	return f.MarshalJSON()
+}
+
+// UnmarshalBinary converts a json byte array of a snowflake ID into an ID type.
+func (f *ID) UnmarshalBinary(data []byte) error {
+	return f.UnmarshalJSON(data)
 }

@@ -44,6 +44,8 @@ type Shard struct {
 	HeartbeatInterval    time.Duration
 	MaxHeartbeatFailures time.Duration
 
+	Unavailable map[snowflake.ID]bool
+
 	wsConn  *websocket.Conn
 	wsMutex sync.Mutex
 
@@ -295,13 +297,13 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		sh.sessionID = readyPayload.SessionID
 		sh.Logger.Info().Msg("Received READY payload")
 
-		unavailables := make(map[snowflake.ID]bool)
+		sh.Unavailable = make(map[snowflake.ID]bool)
 		events := make([]structs.ReceivedPayload, 0)
 
 		guildIDs := make([]int64, 0)
 
 		for _, guild := range readyPayload.Guilds {
-			unavailables[guild.ID] = guild.Unavailable
+			sh.Unavailable[guild.ID] = guild.Unavailable
 		}
 
 		// I really wanted to just use a context here but it kept cancelling the main
@@ -355,18 +357,13 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			if sh.msg.Type == "GUILD_CREATE" {
 				guildPayload := structs.GuildCreate{}
 				if err = sh.decodeContent(&guildPayload); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE whilst lazy loading")
+					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
 				} else {
-					if ok, unavailable := unavailables[guildPayload.ID]; ok && unavailable {
-						// Guild has been lazy loaded
-						sh.Logger.Trace().Msgf("Lazy loaded guild ID %d", guildPayload.ID)
-						guildPayload.Lazy = true
-					}
 					guildIDs = append(guildIDs, guildPayload.ID.Int64())
-
-					// StateGuildCreate(guildPayload)
 				}
-
+				if _, err = sh.Manager.StateGuildCreate(guildPayload); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to handle GUILD_CREATE event")
+				}
 				wait = time.Now().UTC().Add(2 * time.Second)
 			} else {
 				events = append(events, sh.msg)
@@ -387,15 +384,29 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		sh.Logger.Debug().Msg("Finished dispatching events")
 		return
 
+	case "GUILD_CREATE":
+		guildPayload := structs.GuildCreate{}
+		if err = sh.decodeContent(&guildPayload); err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
+		} else {
+			if err = sh.HandleGuildCreate(guildPayload, false); err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to process guild create")
+			}
+		}
+
+		return
+
 	case "GUILD_MEMBERS_CHUNK":
 		guildMembersPayload := structs.GuildMembersChunk{}
 		if err = sh.decodeContent(&guildMembersPayload); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK whilst lazy loading")
+			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK")
 		} else {
 			if err = sh.Manager.StateGuildMembersChunk(guildMembersPayload); err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to process state")
 			}
 		}
+
+		return
 
 	// case "GUILD_CREATE":
 	// 	guildCreatePayload := structs.GuildCreate{}
@@ -405,6 +416,24 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 	default:
 		// sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
+	}
+	return
+}
+
+// HandleGuildCreate handles the guild create event
+func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err error) {
+	guildPayload := structs.GuildCreate{}
+	if err = sh.decodeContent(&guildPayload); err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE whilst lazy loading")
+	} else {
+		if ok, unavailable := sh.Unavailable[guildPayload.ID]; ok && unavailable {
+			// Guild has been lazy loaded
+			sh.Logger.Trace().Msgf("Lazy loaded guild ID %d", guildPayload.ID)
+			guildPayload.Lazy = true || lazy
+		}
+		delete(sh.Unavailable, guildPayload.ID)
+
+		_, err = sh.Manager.StateGuildCreate(guildPayload)
 	}
 	return
 }

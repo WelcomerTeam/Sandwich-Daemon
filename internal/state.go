@@ -1,8 +1,11 @@
 package gateway
 
 import (
+	"fmt"
+
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	"github.com/vmihailenco/msgpack"
 )
 
 // StateGuild represents a guild in the state
@@ -41,9 +44,14 @@ type StateGuild struct {
 
 // FromDiscord converts the discord object into the StateGuild form and returns appropriate maps
 func (sg *StateGuild) FromDiscord(guild structs.Guild) (
-	roles map[snowflake.ID]*structs.Role,
-	emojis map[snowflake.ID]*structs.Emoji,
-	channels map[snowflake.ID]*structs.Channel) {
+	roles map[string]interface{},
+	emojis map[string]interface{},
+	channels map[string]interface{}) {
+
+	// (
+	// 	roles map[snowflake.ID]*structs.Role,
+	// 	emojis map[snowflake.ID]*structs.Emoji,
+	// 	channels map[snowflake.ID]*structs.Channel)
 
 	// Im sorry for commiting war crimes
 	sg.ID = guild.ID
@@ -74,19 +82,51 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	sg.VoiceStates = guild.VoiceStates
 	sg.Presences = guild.Presences
 
+	// roles = make(map[snowflake.ID]*structs.Role, 0)
+	// emojis = make(map[snowflake.ID]*structs.Emoji, 0)
+	// channels = make(map[snowflake.ID]*structs.Channel, 0)
+
+	// for _, role := range guild.Roles {
+	// 	roles[role.ID] = role
+	// 	sg.Roles = append(sg.Roles, role.ID)
+	// }
+
+	// for _, emoji := range guild.Emojis {
+	// 	emojis[emoji.ID] = emoji
+	// 	sg.Emojis = append(sg.Emojis, emoji.ID)
+	// }
+
+	// for _, channel := range guild.Channels {
+	// 	channels[channel.ID] = channel
+	// 	sg.Channels = append(sg.Channels, channel.ID)
+	// }
+
+	var ma interface{}
+	var err error
+
+	roles = make(map[string]interface{}, 0)
+	emojis = make(map[string]interface{}, 0)
+	channels = make(map[string]interface{}, 0)
+
 	for _, role := range guild.Roles {
-		roles[role.ID] = role
-		sg.Roles = append(sg.Roles, role.ID)
+		if ma, err = msgpack.Marshal(role); err == nil {
+			roles[role.ID.String()] = ma
+			sg.Roles = append(sg.Roles, role.ID)
+		}
 	}
 
 	for _, emoji := range guild.Emojis {
-		emojis[emoji.ID] = emoji
-		sg.Emojis = append(sg.Emojis, emoji.ID)
+		if ma, err = msgpack.Marshal(emoji); err == nil {
+			emojis[emoji.ID.String()] = ma
+			sg.Emojis = append(sg.Emojis, emoji.ID)
+		}
 	}
 
 	for _, channel := range guild.Channels {
-		channels[channel.ID] = channel
-		sg.Channels = append(sg.Channels, channel.ID)
+		if ma, err = msgpack.Marshal(channel); err == nil {
+			channels[channel.ID.String()] = ma
+			sg.Channels = append(sg.Channels, channel.ID)
+		}
 	}
 
 	return
@@ -114,15 +154,24 @@ func (sgm *StateGuildMember) FromDiscord(member structs.GuildMember) (user *stru
 	return member.User
 }
 
+// CreateKey creates a redis key from a format and values
+func (mg *Manager) CreateKey(key string, values ...interface{}) string {
+	return mg.Configuration.Caching.RedisPrefix + ":" + fmt.Sprintf(key, values...)
+}
+
 // StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event
 func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err error) {
 
-	println(packet.GuildID, len(packet.Members), packet.ChunkIndex, "/", packet.ChunkCount, packet.NotFound, len(packet.NotFound))
+	if !mg.Configuration.Caching.CacheMembers {
+		return
+	}
 
 	// STORE_MUTUALS = KEYS[1]
+	// GUILD_ID = KEYS[2]
 	// if STORE_MUTUALS do
 	// 	for i,k in pairs(ARGV) do
-	// 		redis.call("HSET", "welcomer:guild:<>:members", k.ID, k)
+	// 		redis.call("HSET", "welcomer:guild:<>:members", GUILD_ID, k.ID, k)
+	//      redis.call("SADD", "welcomer:mutual:<>", k.ID, GUILD_ID)
 	// 	end
 	// else
 	// 	for i,k in pairs(ARGV) do
@@ -130,13 +179,9 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 	// 	end
 	// end
 
-	if !mg.Configuration.Caching.CacheMembers {
-		return
-	}
-
 	err = mg.RedisClient.Eval(
 		mg.ctx,
-		`for i,k in pairs(ARGV) do redis.log(redis.LOG_WARNING, k) end`,
+		``, // TODO
 		nil,
 		packet.Members,
 	).Err()
@@ -145,14 +190,50 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 }
 
 // StateGuildCreate handles the GUILD_CREATE event
-func (mg *Manager) StateGuildCreate(packet structs.GuildCreate) (err error) {
+func (mg *Manager) StateGuildCreate(packet structs.GuildCreate) (ok bool, err error) {
+	var k []byte
+	sg := StateGuild{}
+	roles, emojis, channels := sg.FromDiscord(packet.Guild)
 
-	err = mg.RedisClient.Eval(
-		mg.ctx,
-		``,
-		nil,
-		packet.Members,
-	).Err()
+	if k, err = msgpack.Marshal(sg); err == nil {
+		err = mg.RedisClient.HSet(mg.ctx, mg.CreateKey("guilds"), sg.ID, k).Err()
+		if err != nil {
+			mg.Logger.Error().Err(err).Msg("Failed to push guild to redis")
+		}
+	}
+
+	if len(roles) > 0 {
+		err = mg.RedisClient.HSet(mg.ctx, mg.CreateKey("guild:%s:roles", sg.ID), roles).Err()
+		if err != nil {
+			mg.Logger.Error().Err(err).Msg("Failed to push guild roles to redis")
+		}
+	}
+
+	if len(emojis) > 0 {
+		err = mg.RedisClient.HSet(mg.ctx, mg.CreateKey("emojis"), emojis).Err()
+		if err != nil {
+			mg.Logger.Error().Err(err).Msg("Failed to push guild emojis to redis")
+		}
+	}
+
+	if len(channels) > 0 {
+		err = mg.RedisClient.HSet(mg.ctx, mg.CreateKey("channels"), channels).Err()
+		if err != nil {
+			mg.Logger.Error().Err(err).Msg("Failed to push guild channels to redis")
+		}
+	}
+
+	// ok, err = mg.StoreInterfaceKey(sg, "guilds", sg.ID)
+	// println("guilds", ok, err.Error())
+
+	// ok, err = mg.StoreInterface(roles, "guilds:%s:roles", sg.ID)
+	// println("roles", len(roles), ok, err.Error())
+
+	// ok, err = mg.StoreInterface(emojis, "emojis")
+	// println("emojis", len(emojis), ok, err.Error())
+
+	// ok, err = mg.StoreInterface(channels, "channels")
+	// println("channels", len(channels), ok, err.Error())
 
 	return
 }
