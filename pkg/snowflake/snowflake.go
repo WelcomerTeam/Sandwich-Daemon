@@ -369,7 +369,7 @@ func (f *ID) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalBinary returns a json byte array string of the snowflake ID.
-func (f *ID) MarshalBinary() ([]byte, error) {
+func (f ID) MarshalBinary() ([]byte, error) {
 	return f.MarshalJSON()
 }
 
