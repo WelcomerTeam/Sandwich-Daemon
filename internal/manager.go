@@ -43,19 +43,20 @@ type ManagerConfiguration struct {
 	Caching struct {
 		RedisPrefix string `json:"redis_prefix"`
 
+		CacheUsers       bool `json:"cache_users"`
 		CacheMembers     bool `json:"cache_members"`
 		RequestMembers   bool `json:"request_members"`
 		RequestChunkSize int  `json:"request_chunk_size"`
-		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
-		// a bot.
-		IgnoreBots   bool `json:"ignore_bots"`
-		StoreMutuals bool `json:"store_mutuals"`
+		StoreMutuals     bool `json:"store_mutuals"`
 	} `json:"caching"`
 
 	Events struct {
 		EventBlacklist   []string `json:"event_blacklist"`   // Events completely ignored
 		ProduceBlacklist []string `json:"produce_blacklist"` // Events not sent to consumers
 
+		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
+		// a bot.
+		IgnoreBots bool `json:"ignore_bots"`
 		// CheckPrefixes will HGET {REDIS_PREFIX}:prefix with the key GUILDID after receiving
 		// a MESSAGE_CREATE and if it is not null and the message content does not start with
 		// the prefix, it will not send the message to consumers. Useful if you only want to
