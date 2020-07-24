@@ -55,5 +55,6 @@ managers:
     concurrentclients: 5
     autosharded: true
     shardcount: 2
+    enforce: false
     clustercount: 1
     clusterid: 0
