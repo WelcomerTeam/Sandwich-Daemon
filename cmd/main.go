@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	//zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	logger := zerolog.ConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: time.Stamp,
@@ -21,6 +21,7 @@ func main() {
 	if err != nil {
 		println(err.Error())
 	}
+
 	err = sg.Open()
 	if err != nil {
 		println(err.Error())

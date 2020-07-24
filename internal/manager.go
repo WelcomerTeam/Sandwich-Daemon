@@ -86,6 +86,8 @@ type ManagerConfiguration struct {
 
 		AutoSharded bool `json:"autosharded"`
 		ShardCount  int  `json:"shard_count"`
+		// Useful when testing and you want to force a shardCount. This simply does not round it up.
+		Enforce bool `json:"enforce"`
 
 		ClusterCount int `json:"cluster_count"`
 		ClusterID    int `json:"cluster_id"`
@@ -218,6 +220,28 @@ func (mg *Manager) Open() (err error) {
 		return xerrors.Errorf("manager open verify redis: %w", err)
 	}
 
+	//
+	//
+	//
+
+	// err = mg.StateGuildMembersChunk(structs.GuildMembersChunk{
+	// 	GuildID: snowflake.ID(1),
+	// 	Members: []*structs.GuildMember{
+	// 		{
+	// 			Nick: "test",
+	// 			User: &structs.User{
+	// 				ID:       snowflake.ID(0),
+	// 				Username: "testAccount",
+	// 			},
+	// 		},
+	// 	},
+	// })
+	// mg.Logger.Fatal().Msgf("eval result %s", err.Error())
+
+	//
+	//
+	//
+
 	mg.NatsClient, err = nats.Connect(mg.Sandwich.Configuration.NATS.Address)
 	if err != nil {
 		return xerrors.Errorf("manager open nats connect: %w", err)
@@ -251,14 +275,16 @@ func (mg *Manager) Open() (err error) {
 	sg.Logger.Info().Int("sessions", mg.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
 
 	var shardCount int
-	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2) {
+	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2 && !mg.Configuration.Sharding.Enforce) {
 		shardCount = mg.Gateway.Shards
 	} else {
 		shardCount = mg.Configuration.Sharding.ShardCount
 	}
 
-	// We will round up the shard count depending on the concurrent clients specified
-	shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
+	if !mg.Configuration.Sharding.Enforce {
+		// We will round up the shard count depending on the concurrent clients specified
+		shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
+	}
 
 	if shardCount >= mg.Gateway.SessionStartLimit.Remaining {
 		return xerrors.Errorf("manager open", ErrSessionLimitExhausted)
@@ -316,7 +342,11 @@ func (mg *Manager) Close() {
 	for _, shardGroup := range mg.ShardGroups {
 		shardGroup.Close()
 	}
-	mg.cancel()
+
+	// cancel is not defined when a manager does not autostart
+	if mg.cancel != nil {
+		mg.cancel()
+	}
 
 	return
 }

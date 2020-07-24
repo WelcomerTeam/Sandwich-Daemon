@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
@@ -179,10 +180,19 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 	// 	end
 	// end
 
+	println(len(packet.Members), packet.GuildID)
 	err = mg.RedisClient.Eval(
 		mg.ctx,
-		``, // TODO
-		nil,
+		`
+		local guildID = KEYS[1]
+		local storeMutuals = KEYS[2] == true
+		local cacheUsers = KEYS[3] == true
+		`, // TODO
+		[]string{
+			packet.GuildID.String(),
+			strconv.FormatBool(mg.Configuration.Caching.StoreMutuals),
+			strconv.FormatBool(mg.Configuration.Caching.CacheUsers),
+		},
 		packet.Members,
 	).Err()
 

@@ -132,7 +132,7 @@ func (sh *Shard) Connect() (err error) {
 	gatewayURL := sh.Manager.Gateway.URL
 
 	sh.SetStatus(structs.ShardWaiting)
-	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", sh.Manager.Configuration.Token, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
+	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
 	if err != nil {
 		return
 	}
@@ -226,23 +226,29 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 
 	case structs.GatewayOpInvalidSession:
 		resumable := json.Get(msg.Data, "d").ToBool()
-		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
-
-		if !resumable || (sh.sessionID == "" || atomic.LoadInt64(sh.seq) == 0) {
-			err = sh.Identify()
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
-				sh.Reconnect(websocket.StatusNormalClosure)
-				return
-			}
-		} else {
-			err = sh.Resume()
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
-				sh.Reconnect(websocket.StatusNormalClosure)
-				return
-			}
+		if !resumable {
+			sh.sessionID = ""
+			atomic.StoreInt64(sh.seq, 0)
 		}
+
+		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
+		sh.Reconnect(4000)
+
+		// if !resumable || (sh.sessionID == "" || atomic.LoadInt64(sh.seq) == 0) {
+		// 	err = sh.Identify()
+		// 	if err != nil {
+		// 		sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
+		// 		sh.Reconnect(websocket.StatusNormalClosure)
+		// 		return
+		// 	}
+		// } else {
+		// 	err = sh.Resume()
+		// 	if err != nil {
+		// 		sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
+		// 		sh.Reconnect(websocket.StatusNormalClosure)
+		// 		return
+		// 	}
+		// }
 
 	case structs.GatewayOpHello:
 		sh.Logger.Warn().Msg("Received HELLO whilst listening. This should not occur.")
@@ -322,6 +328,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 					err = nil
 				} else {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
+					break
 				}
 
 				if sh.Manager.Configuration.Caching.RequestMembers {

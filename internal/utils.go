@@ -1,6 +1,10 @@
 package gateway
 
-import "reflect"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"reflect"
+)
 
 func contains(a interface{}, vars ...interface{}) bool {
 	for _var := range vars {
@@ -34,4 +38,11 @@ func DeepEqualExports(tagName string, a interface{}, b interface{}) bool {
 		}
 	}
 	return true
+}
+
+// QuickHash simply returns hash from input
+func QuickHash(hash string) string {
+	h := sha256.New()
+	h.Write([]byte(hash))
+	return hex.EncodeToString(h.Sum(nil))
 }
