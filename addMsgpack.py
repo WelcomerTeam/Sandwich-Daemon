@@ -62,9 +62,9 @@ def scan(dir):
                 res = convert(file.read())
                 file.close()
 
-                # file = open(path, "w")
-                # file.write(res)
-                # file.close()
+                file = open(path, "w")
+                file.write(res)
+                file.close()
             except Exception as e:
                 print(e)
 

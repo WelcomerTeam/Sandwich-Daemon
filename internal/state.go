@@ -11,36 +11,36 @@ import (
 
 // StateGuild represents a guild in the state
 type StateGuild struct {
-	ID                          snowflake.ID                       `json:"id"`
-	Name                        string                             `json:"name"`
-	Icon                        string                             `json:"icon"`
-	Splash                      string                             `json:"splash"`
-	Owner                       bool                               `json:"owner,omitempty"`
-	OwnerID                     snowflake.ID                       `json:"owner_id"`
-	Permissions                 int                                `json:"permissions,omitempty"`
-	Region                      string                             `json:"region"`
-	AFKChannelID                snowflake.ID                       `json:"afk_channel_id"`
-	AFKTimeout                  int                                `json:"afk_timeout"`
-	EmbedEnabled                bool                               `json:"embed_enabled,omitempty"`
-	EmbedChannelID              snowflake.ID                       `json:"embed_channel_id,omitempty"`
-	VerificationLevel           structs.VerificationLevel          `json:"verification_level"`
-	DefaultMessageNotifications structs.MessageNotificationLevel   `json:"default_message_notifications"`
-	ExplicitContentFilter       structs.ExplicitContentFilterLevel `json:"explicit_content_filter"`
-	Roles                       []snowflake.ID                     `json:"roles"`
-	Emojis                      []snowflake.ID                     `json:"emojis"`
-	Features                    []string                           `json:"features"`
-	MFALevel                    structs.MFALevel                   `json:"mfa_level"`
-	ApplicationID               snowflake.ID                       `json:"application_id"`
-	WidgetEnabled               bool                               `json:"widget_enabled,omitempty"`
-	WidgetChannelID             snowflake.ID                       `json:"widget_channel_id,omitempty"`
-	SystemChannelID             snowflake.ID                       `json:"system_channel_id"`
-	JoinedAt                    string                             `json:"joined_at,omitempty"`
-	Large                       bool                               `json:"large,omitempty"`
-	Unavailable                 bool                               `json:"unavailable,omitempty"`
-	MemberCount                 int                                `json:"member_count,omitempty"`
-	VoiceStates                 []*structs.VoiceState              `json:"voice_states,omitempty"`
-	Channels                    []snowflake.ID                     `json:"channels,omitempty"`
-	Presences                   []*structs.Activity                `json:"presences,omitempty"`
+	ID                          snowflake.ID                       `json:"id" msgpack:"id"`
+	Name                        string                             `json:"name" msgpack:"name"`
+	Icon                        string                             `json:"icon" msgpack:"icon"`
+	Splash                      string                             `json:"splash" msgpack:"splash"`
+	Owner                       bool                               `json:"owner,omitempty" msgpack:"owner,omitempty"`
+	OwnerID                     snowflake.ID                       `json:"owner_id" msgpack:"owner_id"`
+	Permissions                 int                                `json:"permissions,omitempty" msgpack:"permissions,omitempty"`
+	Region                      string                             `json:"region" msgpack:"region"`
+	AFKChannelID                snowflake.ID                       `json:"afk_channel_id" msgpack:"afk_channel_id"`
+	AFKTimeout                  int                                `json:"afk_timeout" msgpack:"afk_timeout"`
+	EmbedEnabled                bool                               `json:"embed_enabled,omitempty" msgpack:"embed_enabled,omitempty"`
+	EmbedChannelID              snowflake.ID                       `json:"embed_channel_id,omitempty" msgpack:"embed_channel_id,omitempty"`
+	VerificationLevel           structs.VerificationLevel          `json:"verification_level" msgpack:"verification_level"`
+	DefaultMessageNotifications structs.MessageNotificationLevel   `json:"default_message_notifications" msgpack:"default_message_notifications"`
+	ExplicitContentFilter       structs.ExplicitContentFilterLevel `json:"explicit_content_filter" msgpack:"explicit_content_filter"`
+	Roles                       []snowflake.ID                     `json:"roles" msgpack:"roles"`
+	Emojis                      []snowflake.ID                     `json:"emojis" msgpack:"emojis"`
+	Features                    []string                           `json:"features" msgpack:"features"`
+	MFALevel                    structs.MFALevel                   `json:"mfa_level" msgpack:"mfa_level"`
+	ApplicationID               snowflake.ID                       `json:"application_id" msgpack:"application_id"`
+	WidgetEnabled               bool                               `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
+	WidgetChannelID             snowflake.ID                       `json:"widget_channel_id,omitempty" msgpack:"widget_channel_id,omitempty"`
+	SystemChannelID             snowflake.ID                       `json:"system_channel_id" msgpack:"system_channel_id"`
+	JoinedAt                    string                             `json:"joined_at,omitempty" msgpack:"joined_at,omitempty"`
+	Large                       bool                               `json:"large,omitempty" msgpack:"large,omitempty"`
+	Unavailable                 bool                               `json:"unavailable,omitempty" msgpack:"unavailable,omitempty"`
+	MemberCount                 int                                `json:"member_count,omitempty" msgpack:"member_count,omitempty"`
+	VoiceStates                 []*structs.VoiceState              `json:"voice_states,omitempty" msgpack:"voice_states,omitempty"`
+	Channels                    []snowflake.ID                     `json:"channels,omitempty" msgpack:"channels,omitempty"`
+	Presences                   []*structs.Activity                `json:"presences,omitempty" msgpack:"presences,omitempty"`
 }
 
 // FromDiscord converts the discord object into the StateGuild form and returns appropriate maps
@@ -135,12 +135,12 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 
 // StateGuildMember represents a guild member in the state
 type StateGuildMember struct {
-	User     snowflake.ID   `json:"user"`
-	Nick     string         `json:"nick,omitempty"`
-	Roles    []snowflake.ID `json:"roles"`
-	JoinedAt string         `json:"joined_at"`
-	Deaf     bool           `json:"deaf"`
-	Mute     bool           `json:"mute"`
+	User     snowflake.ID   `json:"user" msgpack:"user"`
+	Nick     string         `json:"nick,omitempty" msgpack:"nick,omitempty"`
+	Roles    []snowflake.ID `json:"roles" msgpack:"roles"`
+	JoinedAt string         `json:"joined_at" msgpack:"joined_at"`
+	Deaf     bool           `json:"deaf" msgpack:"deaf"`
+	Mute     bool           `json:"mute" msgpack:"mute"`
 }
 
 // FromDiscord converts from the discord object into the StateGuild form and returns the user object

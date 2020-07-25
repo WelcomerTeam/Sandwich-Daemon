@@ -24,75 +24,75 @@ type void struct{}
 
 // ManagerConfiguration represents the configuration for the manager
 type ManagerConfiguration struct {
-	AutoStart bool `json:"autostart"` // Boolean to stat the Manager when the bot starts
-	Persist   bool `json:"persist"`   // Boolean to dictate if configuration should be saved
+	AutoStart bool `json:"autostart" msgpack:"autostart"` // Boolean to stat the Manager when the bot starts
+	Persist   bool `json:"persist" msgpack:"persist"`     // Boolean to dictate if configuration should be saved
 
-	Identifier  string `json:"identifier"`
-	DisplayName string `json:"display_name"`
-	Token       string `json:"token"`
+	Identifier  string `json:"identifier" msgpack:"identifier"`
+	DisplayName string `json:"display_name" msgpack:"display_name"`
+	Token       string `json:"token" msgpack:"token"`
 
 	// Bot specific configuration
 	Bot struct {
-		Compression          bool                  `json:"compression"`
-		DefaultPresence      *structs.UpdateStatus `json:"presence"`
-		GuildSubscriptions   bool                  `json:"guild_subscriptions"`
-		Intents              int                   `json:"intents"`
-		LargeThreshold       int                   `json:"large_threshold"`
-		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures"`
-	} `json:"bot"`
+		Compression          bool                  `json:"compression" msgpack:"compression"`
+		DefaultPresence      *structs.UpdateStatus `json:"presence" msgpack:"presence"`
+		GuildSubscriptions   bool                  `json:"guild_subscriptions" msgpack:"guild_subscriptions"`
+		Intents              int                   `json:"intents" msgpack:"intents"`
+		LargeThreshold       int                   `json:"large_threshold" msgpack:"large_threshold"`
+		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures" msgpack:"max_heartbeat_failures"`
+	} `json:"bot" msgpack:"bot"`
 
 	Caching struct {
-		RedisPrefix string `json:"redis_prefix"`
+		RedisPrefix string `json:"redis_prefix" msgpack:"redis_prefix"`
 
-		CacheUsers       bool `json:"cache_users"`
-		CacheMembers     bool `json:"cache_members"`
-		RequestMembers   bool `json:"request_members"`
-		RequestChunkSize int  `json:"request_chunk_size"`
-		StoreMutuals     bool `json:"store_mutuals"`
-	} `json:"caching"`
+		CacheUsers       bool `json:"cache_users" msgpack:"cache_users"`
+		CacheMembers     bool `json:"cache_members" msgpack:"cache_members"`
+		RequestMembers   bool `json:"request_members" msgpack:"request_members"`
+		RequestChunkSize int  `json:"request_chunk_size" msgpack:"request_chunk_size"`
+		StoreMutuals     bool `json:"store_mutuals" msgpack:"store_mutuals"`
+	} `json:"caching" msgpack:"caching"`
 
 	Events struct {
-		EventBlacklist   []string `json:"event_blacklist"`   // Events completely ignored
-		ProduceBlacklist []string `json:"produce_blacklist"` // Events not sent to consumers
+		EventBlacklist   []string `json:"event_blacklist" msgpack:"event_blacklist"`     // Events completely ignored
+		ProduceBlacklist []string `json:"produce_blacklist" msgpack:"produce_blacklist"` // Events not sent to consumers
 
 		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
 		// a bot.
-		IgnoreBots bool `json:"ignore_bots"`
+		IgnoreBots bool `json:"ignore_bots" msgpack:"ignore_bots"`
 		// CheckPrefixes will HGET {REDIS_PREFIX}:prefix with the key GUILDID after receiving
 		// a MESSAGE_CREATE and if it is not null and the message content does not start with
 		// the prefix, it will not send the message to consumers. Useful if you only want to
 		// receive commands.
-		CheckPrefixes bool `json:"check_prefixes"`
+		CheckPrefixes bool `json:"check_prefixes" msgpack:"check_prefixes"`
 		// Also allows for a bot mention to be a prefix
-		AllowMentionPrefix bool `json:"allow_mention_prefix"`
-	} `json:"events"`
+		AllowMentionPrefix bool `json:"allow_mention_prefix" msgpack:"allow_mention_prefix"`
+	} `json:"events" msgpack:"events"`
 
 	// Messaging specific configuration
 	Messaging struct {
-		ClientName string `json:"client_name"`
+		ClientName string `json:"client_name" msgpack:"client_name"`
 		// If empty, this will use SandwichConfiguration.NATS.Channel which all Managers
 		// should use by default.
-		ChannelName string `json:"channel_name"`
+		ChannelName string `json:"channel_name" msgpack:"channel_name"`
 		// UseRandomSuffix will append numbers to the end of the client name in order to
 		// reduce likelyhood of clashing cluster IDs.
-		UseRandomSuffix bool `json:"use_random_suffix"`
-	} `json:"messaging"`
+		UseRandomSuffix bool `json:"use_random_suffix" msgpack:"use_random_suffix"`
+	} `json:"messaging" msgpack:"messaging"`
 
 	// Sharding specific configuration
 	Sharding struct {
 		// ConcurrentClients dictates the ammount of clients that can simultaneously
 		// connect. Disabled if set to 0. If enabled, when sessions start and hit this
 		// limit, they will have to wait until a session has finished lazy loading guilds.
-		ConcurrentClients int `json:"concurrent_clients"`
+		ConcurrentClients int `json:"concurrent_clients" msgpack:"concurrent_clients"`
 
-		AutoSharded bool `json:"autosharded"`
-		ShardCount  int  `json:"shard_count"`
+		AutoSharded bool `json:"autosharded" msgpack:"autosharded"`
+		ShardCount  int  `json:"shard_count" msgpack:"shard_count"`
 		// Useful when testing and you want to force a shardCount. This simply does not round it up.
-		Enforce bool `json:"enforce"`
+		Enforce bool `json:"enforce" msgpack:"enforce"`
 
-		ClusterCount int `json:"cluster_count"`
-		ClusterID    int `json:"cluster_id"`
-	} `json:"sharding"`
+		ClusterCount int `json:"cluster_count" msgpack:"cluster_count"`
+		ClusterID    int `json:"cluster_id" msgpack:"cluster_id"`
+	} `json:"sharding" msgpack:"sharding"`
 }
 
 // Manager represents a bot instance

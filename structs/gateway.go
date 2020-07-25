@@ -9,19 +9,19 @@ import (
 
 // Gateway represents a GET /gateway response
 type Gateway struct {
-	URL string `json:"url"`
+	URL string `json:"url" msgpack:"url"`
 }
 
 // GatewayBot represents a GET /gateway/bot response
 type GatewayBot struct {
-	URL               string `json:"url"`
-	Shards            int    `json:"shards"`
+	URL               string `json:"url" msgpack:"url"`
+	Shards            int    `json:"shards" msgpack:"shards"`
 	SessionStartLimit struct {
-		Total          int `json:"total"`
-		Remaining      int `json:"remaining"`
-		ResetAfter     int `json:"reset_after"`
-		MaxConcurrency int `json:"max_concurrency"`
-	} `json:"session_start_limit"`
+		Total          int `json:"total" msgpack:"total"`
+		Remaining      int `json:"remaining" msgpack:"remaining"`
+		ResetAfter     int `json:"reset_after" msgpack:"reset_after"`
+		MaxConcurrency int `json:"max_concurrency" msgpack:"max_concurrency"`
+	} `json:"session_start_limit" msgpack:"session_start_limit"`
 }
 
 // GatewayOp represents a packets operation
@@ -80,50 +80,50 @@ const (
 
 // ReceivedPayload is the base of a JSON packet received from discord
 type ReceivedPayload struct {
-	Op       GatewayOp       `json:"op"`
-	Data     json.RawMessage `json:"d,omitempty"`
-	Sequence int64           `json:"s,omitempty"`
-	Type     string          `json:"t,omitempty"`
+	Op       GatewayOp       `json:"op" msgpack:"op"`
+	Data     json.RawMessage `json:"d,omitempty" msgpack:"d,omitempty"`
+	Sequence int64           `json:"s,omitempty" msgpack:"s,omitempty"`
+	Type     string          `json:"t,omitempty" msgpack:"t,omitempty"`
 }
 
 // SentPayload is the base of a JSON packet we sent to discord
 type SentPayload struct {
-	Op   int         `json:"op"`
-	Data interface{} `json:"d"`
+	Op   int         `json:"op" msgpack:"op"`
+	Data interface{} `json:"d" msgpack:"d"`
 }
 
 // Identify represents an identify packet
 type Identify struct {
-	Token              string              `json:"token"`
-	Properties         *IdentifyProperties `json:"properties"`
-	Compress           bool                `json:"compress,omitempty"`
-	LargeThreshold     int                 `json:"large_threshold,omitempty"`
-	Shard              [2]int              `json:"shard,omitempty"`
-	Presence           *UpdateStatus       `json:"presence,omitempty"`
-	GuildSubscriptions bool                `json:"guild_subscriptions,omitempty"`
-	Intents            int                 `json:"intents,omitempty"`
+	Token              string              `json:"token" msgpack:"token"`
+	Properties         *IdentifyProperties `json:"properties" msgpack:"properties"`
+	Compress           bool                `json:"compress,omitempty" msgpack:"compress,omitempty"`
+	LargeThreshold     int                 `json:"large_threshold,omitempty" msgpack:"large_threshold,omitempty"`
+	Shard              [2]int              `json:"shard,omitempty" msgpack:"shard,omitempty"`
+	Presence           *UpdateStatus       `json:"presence,omitempty" msgpack:"presence,omitempty"`
+	GuildSubscriptions bool                `json:"guild_subscriptions,omitempty" msgpack:"guild_subscriptions,omitempty"`
+	Intents            int                 `json:"intents,omitempty" msgpack:"intents,omitempty"`
 }
 
 // IdentifyProperties is the properties sent in the identify packet
 type IdentifyProperties struct {
-	OS      string `json:"$os"`
-	Browser string `json:"$browser"`
-	Device  string `json:"$device"`
+	OS      string `json:"$os" msgpack:"$os"`
+	Browser string `json:"$browser" msgpack:"$browser"`
+	Device  string `json:"$device" msgpack:"$device"`
 }
 
 // RequestGuildMembers represents a request guild members packet
 type RequestGuildMembers struct {
-	GuildID []int64 `json:"guild_id"`
-	Query   string  `json:"query"`
-	Limit   int     `json:"limit"`
+	GuildID []int64 `json:"guild_id" msgpack:"guild_id"`
+	Query   string  `json:"query" msgpack:"query"`
+	Limit   int     `json:"limit" msgpack:"limit"`
 }
 
 // UpdateVoiceState represents an update voice state packet
 type UpdateVoiceState struct {
-	GuildID   snowflake.ID `json:"guild_id"`
-	ChannelID snowflake.ID `json:"channel_id"`
-	SelfMute  bool         `json:"self_mute"`
-	SelfDeaf  bool         `json:"self_deaf"`
+	GuildID   snowflake.ID `json:"guild_id" msgpack:"guild_id"`
+	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
+	SelfMute  bool         `json:"self_mute" msgpack:"self_mute"`
+	SelfDeaf  bool         `json:"self_deaf" msgpack:"self_deaf"`
 }
 
 // Available statuses
@@ -137,28 +137,28 @@ const (
 
 // UpdateStatus represents an update status packet
 type UpdateStatus struct {
-	Since  int       `json:"since,omitempty"`
-	Game   *Activity `json:"game,omitempty"`
-	Status string    `json:"status"`
-	AFK    bool      `json:"afk"`
+	Since  int       `json:"since,omitempty" msgpack:"since,omitempty"`
+	Game   *Activity `json:"game,omitempty" msgpack:"game,omitempty"`
+	Status string    `json:"status" msgpack:"status"`
+	AFK    bool      `json:"afk" msgpack:"afk"`
 }
 
 // Hello represents a hello packet
 type Hello struct {
-	HeartbeatInterval time.Duration `json:"heartbeat_interval"`
+	HeartbeatInterval time.Duration `json:"heartbeat_interval" msgpack:"heartbeat_interval"`
 }
 
 // Ready represents a ready packet
 type Ready struct {
-	Version   int      `json:"v"`
-	User      *User    `json:"user"`
-	Guilds    []*Guild `json:"guilds"`
-	SessionID string   `json:"session_id"`
+	Version   int      `json:"v" msgpack:"v"`
+	User      *User    `json:"user" msgpack:"user"`
+	Guilds    []*Guild `json:"guilds" msgpack:"guilds"`
+	SessionID string   `json:"session_id" msgpack:"session_id"`
 }
 
 // Resume represents a resume packet
 type Resume struct {
-	Token     string `json:"token"`
-	SessionID string `json:"session_id"`
-	Sequence  int64  `json:"seq"`
+	Token     string `json:"token" msgpack:"token"`
+	SessionID string `json:"session_id" msgpack:"session_id"`
+	Sequence  int64  `json:"seq" msgpack:"seq"`
 }
