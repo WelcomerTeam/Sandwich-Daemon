@@ -180,20 +180,57 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 	// 	end
 	// end
 
-	println(len(packet.Members), packet.GuildID)
+	members := make([]interface{}, 0, len(packet.Members))
+	for _, member := range packet.Members {
+		if ma, err := msgpack.Marshal(member); err == nil {
+			members = append(members, ma)
+		}
+	}
+
 	err = mg.RedisClient.Eval(
 		mg.ctx,
 		`
-		local guildID = KEYS[1]
-		local storeMutuals = KEYS[2] == true
-		local cacheUsers = KEYS[3] == true
-		`, // TODO
+		local redisPrefix = KEYS[1]
+		local guildID = KEYS[2]
+		local storeMutuals = KEYS[3] == true
+		local cacheUsers = KEYS[4] == true
+
+		local member
+		local user
+
+		local call = redis.call
+
+		redis.log(3, "Received " .. #ARGV .. " member(s) in GuildMembersChunk")
+
+		for i,k in pairs(ARGV) do
+				member = cmsgpack.unpack(k)
+
+				-- We do not want the user object stored in the member
+				local user = member['user']
+				member['user'] = nil
+				member['id'] = user['id']
+
+				redis.log(3, user['id'])
+
+				if cacheUsers then
+						redis.call("HSET", redisPrefix .. ":user", user['ID'], cmsgpack.pack(user))
+				end
+
+				call("HSET", redisPrefix .. ":guild:" .. guildID .. ":members", user['ID'], cmsgpack.pack(member))
+
+				if storeMutuals then
+						call("SADD", redisPrefix .. ":mutual:" .. user['ID'], guildID)
+				end
+
+		end
+		`,
 		[]string{
+			mg.Configuration.Caching.RedisPrefix,
 			packet.GuildID.String(),
 			strconv.FormatBool(mg.Configuration.Caching.StoreMutuals),
 			strconv.FormatBool(mg.Configuration.Caching.CacheUsers),
 		},
-		packet.Members,
+		members,
 	).Err()
 
 	return

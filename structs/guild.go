@@ -1,6 +1,9 @@
 package structs
 
-import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+import (
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+	"github.com/vmihailenco/msgpack"
+)
 
 // Guild represents a guild on Discord
 type Guild struct {
@@ -175,4 +178,14 @@ type GuildMember struct {
 	JoinedAt string         `json:"joined_at"`
 	Deaf     bool           `json:"deaf"`
 	Mute     bool           `json:"mute"`
+}
+
+// MarshalBinary converts the GuildMember into a format usable for redis
+func (gm GuildMember) MarshalBinary() ([]byte, error) {
+	return msgpack.Marshal(gm)
+}
+
+// UnmarshalBinary converts from the redis format into a GuildMember
+func (gm *GuildMember) UnmarshalBinary(data []byte) error {
+	return msgpack.Unmarshal(data, gm)
 }

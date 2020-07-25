@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -128,6 +129,7 @@ func (sh *Shard) Open() {
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Starting shard")
 
+	sh.ready = make(chan void)
 	sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	gatewayURL := sh.Manager.Gateway.URL
 
@@ -415,12 +417,6 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 		return
 
-	// case "GUILD_CREATE":
-	// 	guildCreatePayload := structs.GuildCreate{}
-	// 	if err = sh.decodeContent(&guildCreatePayload); err != nil {
-	// 		return
-	// 	}
-
 	default:
 		// sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
 	}
@@ -652,7 +648,7 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 		time.Minute,
 	)
 
-	sh.Logger.Trace().Msg(string(res))
+	sh.Logger.Trace().Msg(strings.ReplaceAll(string(res), sh.Manager.Configuration.Token, "..."))
 	err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
 	if err != nil {
 		return xerrors.Errorf("writeJSON write: %w", err)

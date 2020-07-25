@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats.go"
@@ -224,19 +225,19 @@ func (mg *Manager) Open() (err error) {
 	//
 	//
 
-	// err = mg.StateGuildMembersChunk(structs.GuildMembersChunk{
-	// 	GuildID: snowflake.ID(1),
-	// 	Members: []*structs.GuildMember{
-	// 		{
-	// 			Nick: "test",
-	// 			User: &structs.User{
-	// 				ID:       snowflake.ID(0),
-	// 				Username: "testAccount",
-	// 			},
-	// 		},
-	// 	},
-	// })
-	// mg.Logger.Fatal().Msgf("eval result %s", err.Error())
+	err = mg.StateGuildMembersChunk(structs.GuildMembersChunk{
+		GuildID: snowflake.ID(1),
+		Members: []*structs.GuildMember{
+			{
+				Nick: "test",
+				User: &structs.User{
+					ID:       snowflake.ID(0),
+					Username: "testAccount",
+				},
+			},
+		},
+	})
+	mg.Logger.Fatal().Msgf("eval result %s", err.Error())
 
 	//
 	//
