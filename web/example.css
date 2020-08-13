@@ -1,0 +1,6 @@
+.custom-control-label{
+    user-select: none;
+}
+.custom-control-input {
+    user-select: none;
+}

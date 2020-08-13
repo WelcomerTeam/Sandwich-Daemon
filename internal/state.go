@@ -207,19 +207,21 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 
 				-- We do not want the user object stored in the member
 				local user = member['user']
+				user['id'] = string.format("%.0f",user['id'])
+
 				member['user'] = nil
 				member['id'] = user['id']
 
-				redis.log(3, user['id'])
+				redis.log(3, user['id'], type(user['id']), )
 
 				if cacheUsers then
-						redis.call("HSET", redisPrefix .. ":user", user['ID'], cmsgpack.pack(user))
+						redis.call("HSET", redisPrefix .. ":user", user['id'], cmsgpack.pack(user))
 				end
 
-				call("HSET", redisPrefix .. ":guild:" .. guildID .. ":members", user['ID'], cmsgpack.pack(member))
+				call("HSET", redisPrefix .. ":guild:" .. guildID .. ":members", user['id'], cmsgpack.pack(member))
 
 				if storeMutuals then
-						call("SADD", redisPrefix .. ":mutual:" .. user['ID'], guildID)
+						call("SADD", redisPrefix .. ":mutual:" .. user['id'], guildID)
 				end
 
 		end

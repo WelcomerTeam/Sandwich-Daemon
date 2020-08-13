@@ -62,7 +62,8 @@ type SandwichConfiguration struct {
 	} `json:"nats" yaml:"nats"`
 
 	HTTP struct {
-		Host string `json:"host" yaml:"host"`
+		Enabled bool   `json:"enabled" yaml:"enabled"`
+		Host    string `json:"host" yaml:"host"`
 	}
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
@@ -103,6 +104,8 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	if err != nil {
 		return nil, xerrors.Errorf("new sandwich: %w", err)
 	}
+
+	go sg.handleRequests()
 
 	var writers []io.Writer
 

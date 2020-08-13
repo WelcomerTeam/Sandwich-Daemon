@@ -93,6 +93,7 @@ type Node struct {
 
 // An ID is a custom type used for a snowflake ID.  This is used so we can
 // attach methods onto the ID.
+// type ID int64
 type ID int64
 
 // NewNode returns a new snowflake node that can be used to generate snowflake
@@ -346,11 +347,16 @@ func (f ID) MarshalJSON() ([]byte, error) {
 	buff = append(buff, '"')
 	buff = strconv.AppendInt(buff, int64(f), 10)
 	buff = append(buff, '"')
+
+	// println("<" + string(buff) + ">")
+
 	return buff, nil
 }
 
 // UnmarshalJSON converts a json byte array of a snowflake ID into an ID type.
 func (f *ID) UnmarshalJSON(b []byte) error {
+	// println("<" + string(b) + ">")
+
 	if string(b) == "null" {
 		*f = ID(0)
 		return nil
@@ -370,10 +376,11 @@ func (f *ID) UnmarshalJSON(b []byte) error {
 
 // MarshalBinary returns a json byte array string of the snowflake ID.
 func (f ID) MarshalBinary() ([]byte, error) {
-	return f.MarshalJSON()
+	return []byte(f.String()), nil
 }
 
 // UnmarshalBinary converts a json byte array of a snowflake ID into an ID type.
-func (f *ID) UnmarshalBinary(data []byte) error {
-	return f.UnmarshalJSON(data)
+func (f ID) UnmarshalBinary(data []byte) error {
+	f, err := ParseString(string(data))
+	return err
 }

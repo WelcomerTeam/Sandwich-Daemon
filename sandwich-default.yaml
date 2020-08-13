@@ -17,6 +17,7 @@ nats:
   channel: sandwich
   cluster: cluster
 http:
+  enabled: true
   host: 127.0.0.1:5469
 managers:
 - autostart: true

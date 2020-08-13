@@ -13,11 +13,11 @@ import (
 
 // ShardGroup groups a selection of shards
 type ShardGroup struct {
-	StatusMu sync.RWMutex
+	StatusMu sync.RWMutex `json:"-"`
 	Status   structs.ShardGroupStatus
 
-	Manager *Manager
-	Logger  zerolog.Logger
+	Manager *Manager       `json:"-"`
+	Logger  zerolog.Logger `json:"-"`
 
 	Events *int64
 
@@ -26,7 +26,7 @@ type ShardGroup struct {
 	Shards     map[int]*Shard
 
 	// WaitGroup for detecting when all shards are ready
-	Wait *sync.WaitGroup
+	Wait *sync.WaitGroup `json:"-"`
 
 	// Used for detecting errors during shard startup
 	err chan error

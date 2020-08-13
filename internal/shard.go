@@ -23,13 +23,13 @@ const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
 // Shard represents the shard object
 type Shard struct {
 	Status   structs.ShardStatus
-	StatusMu sync.RWMutex
+	StatusMu sync.RWMutex `json:"-"`
 
-	Logger zerolog.Logger
+	Logger zerolog.Logger `json:"-"`
 
 	ShardID    int
-	ShardGroup *ShardGroup
-	Manager    *Manager
+	ShardGroup *ShardGroup `json:"-"`
+	Manager    *Manager    `json:"-"`
 
 	User *structs.User
 	// TODO: Add deque that can allow for an event queue (maybe)
@@ -37,15 +37,15 @@ type Shard struct {
 	ctx    context.Context
 	cancel func()
 
-	LastHeartbeatMu   sync.RWMutex
+	LastHeartbeatMu   sync.RWMutex `json:"-"`
 	LastHeartbeatAck  time.Time
 	LastHeartbeatSent time.Time
 
-	Heartbeater          *time.Ticker
+	Heartbeater          *time.Ticker `json:"-"`
 	HeartbeatInterval    time.Duration
 	MaxHeartbeatFailures time.Duration
 
-	Unavailable map[snowflake.ID]bool
+	Unavailable map[snowflake.ID]bool `json:"-"`
 
 	wsConn  *websocket.Conn
 	wsMutex sync.Mutex

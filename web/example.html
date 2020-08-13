@@ -1,0 +1,569 @@
+<html>
+
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue"></script> -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <link rel="stylesheet" href="./example.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css"
+        integrity="sha384-r4NyP46KrjDleawBgD5tp8Y7UzmLA05oM1iAEQ17CSuDqnUK2+k9luXQOfXJCJ4I" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/js/bootstrap.min.js"
+        integrity="sha384-oesi62hOLfzrys4LxRF63OJCXdXDipiYWBnvTl9Y9/TRlw5xlKIEHpNyvvDShgf/"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-light bg-light">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Sandwich Daemon</span>
+        </div>
+    </nav>
+
+    <div class="container-sm p-3">
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a class="nav-link active" id="v-pills-analytics-tab" data-toggle="pill" href="#v-pills-analytics"
+                    role="tab" aria-controls="v-pills-analytics" aria-selected="true">Analytics</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="v-pills-managers-tab" data-toggle="pill" href="#v-pills-managers" role="tab"
+                    aria-controls="v-pills-managers" aria-selected="false">Managers</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="v-pills-daemon-settings-tab" data-toggle="pill" href="#v-pills-daemon-settings"
+                    role="tab" aria-controls="v-pills-daemon-settings" aria-selected="false">Daemon Settings</a>
+            </li>
+        </ul>
+
+        <div class="tab-content p-3" id="v-pills-tabContent">
+            <div class="tab-pane fade show active" id="v-pills-analytics" role="tabpanel"
+                aria-labelledby="v-pills-analytics-tab">
+            </div>
+
+            <div class="tab-pane fade" id="v-pills-managers" role="tabpanel" aria-labelledby="v-pills-managers-tab">
+                <div class="accordion py-2" id="managerAccordian">
+                    <div class="card">
+                        <div class="card-header" id="managerAccordianHeading">
+                            <h2 class="mb-0">
+                                <button class="btn btn-link btn-block text-left text-decoration-none" type="button"
+                                    data-toggle="collapse" data-target="#managerAccordianCollapse" aria-expanded="false"
+                                    aria-controls="managerAccordianCollapse">
+                                    <span class="badge bg-success">Online</span>
+                                    <!-- <span class="badge badge-warning">Stopped</span>
+                                    <span class="badge badge-danger">Error</span>
+                                    <span class="badge badge-dark">AutoStart Disabled</span> -->
+                                    Welcomer Beta
+                                </button>
+                            </h2>
+                        </div>
+                        <div id="managerAccordianCollapse" class="collapse" aria-labelledby="managerAccordianHeading"
+                            data-parent="#managerAccordian">
+                            <div class="card-body">
+
+                                <form>
+                                    <ul class="nav nav-tabs" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <a class="nav-link active" id="status-tab" data-toggle="tab" href="#status"
+                                                role="tab" aria-controls="status" aria-selected="true">Status</a>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <a class="nav-link" id="shardgroups-tab" data-toggle="tab"
+                                                href="#shardgroups" role="tab" aria-controls="shardgroups"
+                                                aria-selected="false">ShardGroups</a>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <a class="nav-link" id="settings-tab" data-toggle="tab" href="#settings"
+                                                role="tab" aria-controls="settings" aria-selected="false">Settings</a>
+                                        </li>
+                                    </ul>
+                                    <div class="tab-content">
+                                        <div class="tab-pane fade show active" id="status" role="tabpanel"
+                                            aria-labelledby="status-tab">
+                                            a
+                                        </div>
+                                        <div class="tab-pane fade" id="shardgroups" role="tabpanel"
+                                            aria-labelledby="shardgroups-tab">
+                                            b
+                                        </div>
+                                        <div class="tab-pane fade" id="settings" role="tabpanel"
+                                            aria-labelledby="settings-tab">
+                                            <form>
+                                                <ul class="nav nav-tabs pt-2" role="tablist">
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link active" id="managerGeneral-tab"
+                                                            data-toggle="tab" href="#managerGeneral" role="tab"
+                                                            aria-controls="managerGeneral"
+                                                            aria-selected="true">General</a>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link" id="managerBot-tab" data-toggle="tab"
+                                                            href="#managerBot" role="tab" aria-controls="managerBot"
+                                                            aria-selected="true">Bot</a>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link" id="managerCaching-tab" data-toggle="tab"
+                                                            href="#managerCaching" role="tab"
+                                                            aria-controls="managerCaching"
+                                                            aria-selected="false">Caching</a>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link" id="managerEvents-tab" data-toggle="tab"
+                                                            href="#managerEvents" role="tab"
+                                                            aria-controls="managerEvents"
+                                                            aria-selected="false">Events</a>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link" id="managerMessaging-tab" data-toggle="tab"
+                                                            href="#managerMessaging" role="tab"
+                                                            aria-controls="managerMessaging"
+                                                            aria-selected="false">Messaging</a>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link" id="managerSharding-tab" data-toggle="tab"
+                                                            href="#managerSharding" role="tab"
+                                                            aria-controls="managerSharding"
+                                                            aria-selected="false">Sharding</a>
+                                                    </li>
+                                                </ul>
+                                                <div class="tab-content">
+
+                                                    <div class="tab-pane fade show active" id="managerGeneral"
+                                                        role="tabpanel" aria-labelledby="managerGeneral-tab">
+                                                        <div class="p-4">
+                                                            <div class="pb-4">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        id="managerAutoStart">
+                                                                    <label class="form-check-label"
+                                                                        for="managerAutoStart">AutoStart</label>
+                                                                </div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        id="managerPersist">
+                                                                    <label class="form-check-label"
+                                                                        for="managerPersist">Persist</label>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="mb-3">
+                                                                <label for="managerIdentifier"
+                                                                    class="col-sm-12 form-label">Identifier</label>
+                                                                <input type="text" class="form-control"
+                                                                    id="managerIdentifier">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label for="managerDisplayName"
+                                                                    class="col-sm-12 form-label">Display Name</label>
+                                                                <input type="text" class="form-control"
+                                                                    id="managerDisplayName">
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label for="managerToken"
+                                                                    class="col-sm-12 form-label">Token</label>
+                                                                <div class="col-sm-7 input-group">
+                                                                    <input type="password" class="form-control"
+                                                                        id="managerToken">
+                                                                    <button class="btn btn-outline-dark"
+                                                                        type="button">Copy Token</button>
+                                                                </div>
+                                                            </div>
+                                                            <button type="submit" class="btn btn-dark">Save
+                                                                Changes</button>
+                                                        </div>
+                                                    </div>
+
+
+                                                    <div class="tab-pane fade" id="managerBot" role="tabpanel"
+                                                        aria-labelledby="managerBot-tab">
+                                                        <div class="p-4">
+                                                            <div class="pb-4">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        id="managerBotCompression">
+                                                                    <label class="form-check-label"
+                                                                        for="managerBotCompression">Compression</label>
+                                                                </div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        id="managerBotGuildSubscriptions">
+                                                                    <label class="form-check-label"
+                                                                        for="managerBotGuildSubscriptions">Guild
+                                                                        Subscriptions</label>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="mb-3">
+                                                                <label for="managerBotLargeThreshold"
+                                                                    class="col-sm-12 form-label">Large
+                                                                    Threshold</label>
+                                                                <input type="number" class="form-control"
+                                                                    id="managerBotLargeThreshold">
+                                                            </div>
+                                                            <div class="mb-3 pb-4">
+                                                                <label for="managerBotMaxHeartbeatFailures"
+                                                                    class="col-sm-12 form-label">Max Heartbeat
+                                                                    Failures</label>
+                                                                <input type="number" class="form-control"
+                                                                    id="managerBotMaxHeartbeatFailures">
+                                                            </div>
+
+                                                            <div class="mb-3 row pb-4">
+                                                                <label class="col-sm-3 col-form-label">Default
+                                                                    Presence</label>
+                                                                <div class="col-sm-9">
+                                                                    <div class="mb-3">
+                                                                        <label for="managerBotPresenceStatus"
+                                                                            class="col-sm-12 form-label">Status</label>
+                                                                        <select class="form-select"
+                                                                            id="managerBotPresenceStatus">
+                                                                            <option></option>
+                                                                            <option>online</option>
+                                                                            <option>dnd</option>
+                                                                            <option>idle</option>
+                                                                            <option>invisible</option>
+                                                                            <option>offline</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="managerBotPresenceName"
+                                                                            class="col-sm-12 form-label">Name</label>
+                                                                        <input type="text" class="form-control"
+                                                                            id="managerBotPresenceName">
+                                                                    </div>
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox"
+                                                                            id="managerBotPresenceAFK">
+                                                                        <label class="form-check-label"
+                                                                            for="managerBotPresenceAFK">AFK</label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+
+                                                            <div class="mb-3 row pb-4">
+                                                                <label for="managerBotIntents"
+                                                                    class="col-sm-3 form-label">Intents</label>
+                                                                <div class="col-sm-9">
+                                                                    <input type="number" class="form-control"
+                                                                        id="managerBotIntents">
+                                                                    <div class="form-row py-2">
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-0" shift="0">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-0">GUILDS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-1" shift="1">
+                                                                            <label
+                                                                                class="form-check-label font-weight-bold"
+                                                                                for="managerBotIntentBox-1">GUILD_MEMBERS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-2" shift="2">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-2">GUILD_BANS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-3" shift="3">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-3">GUILD_EMOJIS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-4" shift="4">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-4">GUILD_INTEGRATIONS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-5" shift="5">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-5">GUILD_WEBHOOKS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-6" shift="6">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-6">GUILD_INVITES</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-7" shift="7">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-7">GUILD_VOICE_STATES</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-8" shift="8">
+                                                                            <label
+                                                                                class="form-check-label font-weight-bold"
+                                                                                for="managerBotIntentBox-8">GUILD_PRESENCES</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-9" shift="9">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-9">GUILD_MESSAGES</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-10" shift="10">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-10">GUILD_MESSAGE_REACTIONS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-11" shift="11">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-11">GUILD_MESSAGE_TYPING</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-12" shift="12">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-12">DIRECT_MESSAGES</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-13" shift="13">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-13">DIRECT_MESSAGE_REACTIONS</label>
+                                                                        </div>
+                                                                        <div
+                                                                            class="form-check form-check-inline col-sm-8 col-md-5">
+                                                                            <input class="form-check-input"
+                                                                                type="checkbox"
+                                                                                id="managerBotIntentBox-14" shift="14">
+                                                                            <label class="form-check-label"
+                                                                                for="managerBotIntentBox-14">DIRECT_MESSAGE_TYPING</label>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade" id="managerCaching" role="tabpanel"
+                                                        aria-labelledby="managerCaching-tab">
+                                                        <div class="p-4">
+                                                            <div class="pb-4">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        id="managerBotCachingCacheUsers">
+                                                                    <label class="form-check-label"
+                                                                        for="loggingEncodeAsJson">Cache Users</label>
+                                                                </div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        id="loggingEncodeAsJson">
+                                                                    <label class="form-check-label"
+                                                                        for="loggingEncodeAsJson">Encode As
+                                                                        JSON</label>
+                                                                </div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        id="loggingEncodeAsJson">
+                                                                    <label class="form-check-label"
+                                                                        for="loggingEncodeAsJson">Encode As
+                                                                        JSON</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade" id="managerEvents" role="tabpanel"
+                                                        aria-labelledby="managerEvents-tab">
+                                                        <div class="p-4">
+                                                            b
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade" id="managerMessaging" role="tabpanel"
+                                                        aria-labelledby="managerMessaging-tab">
+                                                        <div class="p-4">
+                                                            c
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade" id="managerSharding" role="tabpanel"
+                                                        aria-labelledby="managerSharding-tab">
+                                                        <div class="p-4">
+                                                            d
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                        </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="v-pills-daemon-settings" role="tabpanel"
+            aria-labelledby="v-pills-daemon-settings-tab">
+            <form>
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="logging-tab" data-toggle="tab" href="#logging" role="tab"
+                            aria-controls="logging" aria-selected="true">Logging</a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="redis-tab" data-toggle="tab" href="#redis" role="tab"
+                            aria-controls="redis" aria-selected="false">Redis</a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="nats-tab" data-toggle="tab" href="#nats" role="tab" aria-controls="nats"
+                            aria-selected="false">NATS</a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="http-tab" data-toggle="tab" href="#http" role="tab" aria-controls="http"
+                            aria-selected="false">HTTP</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="logging" role="tabpanel" aria-labelledby="logging-tab">
+                        <div class="p-4">
+                            <div class="pb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="loggingConsoleLogging">
+                                    <label class="form-check-label" for="loggingConsoleLogging">Console
+                                        Logging</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="loggingFileLogging">
+                                    <label class="form-check-label" for="loggingFileLogging">File
+                                        Logging</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="loggingEncodeAsJson">
+                                    <label class="form-check-label" for="loggingEncodeAsJson">Encode As
+                                        JSON</label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="loggingDirectory" class="col-sm-12 form-label">Directory</label>
+                                <input type="text" class="form-control" id="loggingDirectory">
+                            </div>
+                            <div class="mb-3">
+                                <label for="loggingFilename" class="col-sm-12 form-label">Filename</label>
+
+                                <input type="text" class="form-control" id="loggingFilename">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="loggingMaxSize" class="col-sm-12 form-label">Max Size</label>
+                                <input type="number" class="form-control" id="loggingMaxSize" min=0>
+                            </div>
+                            <div class="mb-3">
+                                <label for="loggingMaxBackups" class="col-sm-12 form-label">Max
+                                    Backups</label>
+                                <input type="number" class="form-control" id="loggingMaxBackups" min=0>
+                            </div>
+                            <div class="mb-3">
+                                <label for="loggingMaxAge" class="col-sm-12 form-label">Max Age</label>
+                                <input type="number" class="form-control" id="loggingMaxAge" min=0>
+                            </div>
+                            <button type="submit" class="btn btn-dark">Save Changes</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="redis" role="tabpanel" aria-labelledby="redis-tab">
+                        <div class="p-4">
+                            <div class="pb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="redisUniqueClients">
+                                    <label class="form-check-label" for="redisUniqueClients">Unique
+                                        Clients</label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="redisAddress" class="col-sm-12 form-label">Address</label>
+                                <input type="text" class="form-control" id="redisAddress">
+                            </div>
+                            <div class="mb-3">
+                                <label for="redisPassword" class="col-sm-12 form-label">Password</label>
+
+                                <input type="password" class="form-control" id="redisPassword">
+                            </div>
+                            <div class="mb-3">
+                                <label for="redisDB" class="col-sm-12 form-label">Database</label>
+                                <input type="number" class="form-control" id="redisDB">
+                            </div>
+                            <button type="submit" class="btn btn-dark">Save Changes</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="nats" role="tabpanel" aria-labelledby="nats-tab">
+                        <div class="p-4">
+                            <div class="mb-3">
+                                <label for="natsAddress" class="col-sm-12 form-label">Address</label>
+                                <input type="text" class="form-control" id="natsAddress">
+                            </div>
+                            <div class="mb-3">
+                                <label for="natsChannel" class="col-sm-12 form-label">Channel</label>
+                                <input type="text" class="form-control" id="natsChannel">
+                            </div>
+                            <div class="mb-3">
+                                <label for="natsCluster" class="col-sm-12 form-label">Cluster</label>
+                                <input type="text" class="form-control" id="natsCluster">
+                            </div>
+                            <button type="submit" class="btn btn-dark">Save Changes</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="http" role="tabpanel" aria-labelledby="http-tab">
+                        <div class="p-4">
+                            <div class="pb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="httpEnabled">
+                                    <label class="form-check-label" for="httpEnabled">Enabled</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="httpHost" class="col-sm-12 form-label">Host</label>
+                                <input type="number" class="form-control" id="httpHost">
+                            </div>
+                            <button type="submit" class="btn btn-dark">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+</body>
+
+</html>

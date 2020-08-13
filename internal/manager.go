@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats.go"
@@ -100,18 +99,18 @@ type Manager struct {
 	ctx    context.Context
 	cancel func()
 
-	Sandwich *Sandwich
-	Logger   zerolog.Logger
+	Sandwich *Sandwich      `json:"-"`
+	Logger   zerolog.Logger `json:"-"`
 
 	Configuration *ManagerConfiguration
-	Buckets       *bucketstore.BucketStore
+	Buckets       *bucketstore.BucketStore `json:"-"`
 
-	RedisClient *redis.Client
-	NatsClient  *nats.Conn
-	StanClient  stan.Conn
+	RedisClient *redis.Client `json:"-"`
+	NatsClient  *nats.Conn    `json:"-"`
+	StanClient  stan.Conn     `json:"-"`
 
-	Client  *Client
-	Gateway structs.GatewayBot
+	Client  *Client            `json:"-"`
+	Gateway structs.GatewayBot `json:"-"`
 
 	pp sync.Pool
 
@@ -123,12 +122,12 @@ type Manager struct {
 	// until it has removed the old shardgroup to reduce likelyhood of duplicate messages.
 	// These messages will just be completely ignored as if it was in the EventBlacklist
 	ShardGroups       map[int32]*ShardGroup
-	ShardGroupMu      sync.Mutex
-	ShardGroupIter    *int32
-	ShardGroupCounter sync.WaitGroup
+	ShardGroupMu      sync.Mutex     `json:"-"`
+	ShardGroupIter    *int32         `json:"-"`
+	ShardGroupCounter sync.WaitGroup `json:"-"`
 
-	EventBlacklist   map[string]void
-	ProduceBlacklist map[string]void
+	EventBlacklist   map[string]void `json:"-"`
+	ProduceBlacklist map[string]void `json:"-"`
 }
 
 // NewManager creates a new manager
@@ -220,28 +219,6 @@ func (mg *Manager) Open() (err error) {
 	if err != nil {
 		return xerrors.Errorf("manager open verify redis: %w", err)
 	}
-
-	//
-	//
-	//
-
-	err = mg.StateGuildMembersChunk(structs.GuildMembersChunk{
-		GuildID: snowflake.ID(1),
-		Members: []*structs.GuildMember{
-			{
-				Nick: "test",
-				User: &structs.User{
-					ID:       snowflake.ID(0),
-					Username: "testAccount",
-				},
-			},
-		},
-	})
-	mg.Logger.Fatal().Msgf("eval result %s", err.Error())
-
-	//
-	//
-	//
 
 	mg.NatsClient, err = nats.Connect(mg.Sandwich.Configuration.NATS.Address)
 	if err != nil {

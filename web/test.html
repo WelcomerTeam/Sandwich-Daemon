@@ -1,0 +1,240 @@
+<html>
+
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue"></script> -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <link rel="stylesheet" href="./example.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css"
+        integrity="sha384-r4NyP46KrjDleawBgD5tp8Y7UzmLA05oM1iAEQ17CSuDqnUK2+k9luXQOfXJCJ4I" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/js/bootstrap.min.js"
+        integrity="sha384-oesi62hOLfzrys4LxRF63OJCXdXDipiYWBnvTl9Y9/TRlw5xlKIEHpNyvvDShgf/"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div class="app p-5">
+        <span>{{form}}</span>
+
+        <br><br><br><br>
+        <form method="post">
+            <div class="pb-4">
+                <form-input v-model="form.checkbox" :type=`checkbox` :id=`test` :label=`checkbox`></form-input>
+            </div>
+            <form-input v-model="form.text" :type=`text` :id=`text` :label=`text`></form-input>
+            <form-input v-model="form.password" :type=`password` :id=`pass` :label=`password`></form-input>
+            <form-input v-model="form.intent" :type=`intent` :id=`intent` :label=`intents`></form-input>
+            <form-input v-model="form.presence" :type=`presence` :id=`pres` :label=`presence`></form-input>
+            <form-submit label="Save Changes"></form-submit>
+        </form>
+    </div>
+</body>
+
+<script>
+    Vue.component("form-input", {
+        props: ['type', 'id', 'label', 'values', 'value'],
+        template: `
+        <div class="form-check" v-if="type == 'checkbox'">
+            <input class="form-check-input" type="checkbox" :id="id" :checked="value" v-on:input="updateValue($event.target.checked)">
+            <label class="form-check-label" :for="id">{{ label }}</label>
+        </div>
+        <div class="mb-3" v-else-if="type == 'text'">
+            <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+            <input type="text" class="form-control" :id="id" :value="value" v-on:input="updateValue($event.target.value)">
+        </div>
+        <div class="mb-3" v-else-if="type == 'password'">
+            <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+            <div class="input-group">
+                <input type="password" class="form-control" :id="id" autocomplete :value="value" v-on:input="updateValue($event.target.value)">
+                <button class="btn btn-outline-dark" type="button">Copy Token</button>
+            </div>
+        </div>
+        <div class="mb-3" v-else-if="type == 'select'">
+            <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+            <select class="form-select" :id="id" v-on:input="updateValue($event.target.value)">
+                <option v-for="item in values" selected="item == value">{{ item }}</option>
+            </select>
+        </div>
+        <div class="mb-3 row pb-4" v-else-if="type == 'intent'">
+            <label for="managerBotIntents" class="col-sm-3 form-label">{{ label }}</label>
+            <div class="col-sm-9">
+                <input type="number" class="form-control" min=0 :value="value" @input="(v) => {updateValue(v.target.value); fromIntents(v.target.value)}">
+                <div class="form-row py-2">
+                    <div class="form-check form-check-inline col-sm-8 col-md-5" v-for="(intent, index) in this.intents">
+                        <input class="form-check-input" type="checkbox" v-bind:value="index" v-bind:id="'managerBotIntentBox'+index" v-model="selectedIntent" @change="calculateIntent()">
+                        <label class="form-check-label" v-bind:for="'managerBotIntentBox'+index">{{intent}}</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3 row pb-4" v-else-if="type == 'presence'">
+            <label class="col-sm-3 col-form-label">{{ label }}</label>
+            <div class="col-sm-9">
+                <div class="mb-3">
+                    <label :for="id + 'status'" class="col-sm-12 form-label">Status</label>
+                    <select class="form-select" :id="id + 'status'" :value="value.status" @input="(v) => {value.status = v.target.value}">
+                        <option v-for="item in ['','online','dnd','idle','invisible','offline']" :key="item" :disabled="!item" :selected="item == value">{{ item }}</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label :for="id + 'name'" class="col-sm-12 form-label">Name</label>
+                    <input type="text" class="form-control" :id="id + 'name'" :value="value.name" @input="(v) => {value.name = v.target.value}">
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" :id="id + 'afk'" :checked="value.afk" @input="(v) => {value.afk = v.target.checked}"">
+                    <label class="form-check-label" :for="id + 'afk'">AFK</label>
+                </div>
+            </div>
+        </div>
+        <span class="badge bg-warning text-dark" v-else>Invalid type "{{ type }}" for "{{ id }}"</span>
+        `,
+        data: function () {
+            return {
+                "intents": [
+                    "GUILDS",
+                    "GUILD_MEMBERS",
+                    "GUILD_BANS",
+                    "GUILD_INTEGRATIONS",
+                    "GUILD_EMOJIS",
+                    "GUILD_WEBHOOKS",
+                    "GUILD_INVITES",
+                    "GUILD_VOICE_STATES",
+                    "GUILD_PRESENCES",
+                    "GUILD_MESSAGES",
+                    "GUILD_MESSAGE_REACTRIONS",
+                    "GUILD_MESSAGE_TYPING",
+                    "DIRECT_MESSAGES",
+                    "DIRECT_MESSAGE_REACTIONS",
+                    "DIRECT_MESSAGE_TYPING",
+                ],
+                "selectedIntent": []
+            }
+        },
+        mounted: function () {
+            if (this.type == "intent") {
+                this.fromIntents(this.value);
+            }
+        },
+        methods: {
+            updateValue: function (value) {
+                this.$emit('input', value)
+            },
+            calculateIntent() {
+                this.intentValue = 0
+                this.selectedIntent.forEach(a => { this.intentValue += (1 << a); })
+                this.updateValue(this.intentValue)
+            },
+            fromIntents(val) {
+                var _binary = Number(val).toString(2).split("").reverse()
+                var _newIntent = [];
+                _binary.forEach((value, index) => {
+                    if (value === "1" && this.selectedIntent.indexOf(value) === -1) {
+                        _newIntent.push(index)
+                    };
+                });
+                this.selectedIntent = _newIntent;
+            },
+            updateValue: function (value) {
+                this.$emit('input', value)
+            }
+        },
+    })
+
+
+
+    Vue.component("form-submit", {
+        props: {
+            label: {
+                default: "Save Changes",
+            }
+        },
+        template: `<button type="submit" class="btn btn-dark">{{ label }}</button>`,
+    })
+
+    Vue.component("intent-calculator", {
+        props: ['value'],
+        template: `
+            <div class="class">
+                <input type="number" class="form-control" :value="value" @change="(v) => {fromIntents(v.target.value);}">
+                <div class="form-row py-2">
+                    <div class="form-check form-check-inline col-sm-8 col-md-5" v-for="(intent, index) in this.intents">
+                        <input class="form-check-input" type="checkbox" v-bind:value="index" v-bind:id="'managerBotIntentBox'+index" v-model="selectedIntent" @input="calculateIntent()">
+                        <label class="form-check-label" v-bind:for="'managerBotIntentBox'+index">{{intent}}</label>
+                    </div>
+                </div>
+            </div>`,
+        data: function () {
+            return {
+                selectedIntent: [],
+                intents: [
+                    "GUILDS",
+                    "GUILD_MEMBERS",
+                    "GUILD_BANS",
+                    "GUILD_INTEGRATIONS",
+                    "GUILD_EMOJIS",
+                    "GUILD_WEBHOOKS",
+                    "GUILD_INVITES",
+                    "GUILD_VOICE_STATES",
+                    "GUILD_PRESENCES",
+                    "GUILD_MESSAGES",
+                    "GUILD_MESSAGE_REACTRIONS",
+                    "GUILD_MESSAGE_TYPING",
+                    "DIRECT_MESSAGES",
+                    "DIRECT_MESSAGE_REACTIONS",
+                    "DIRECT_MESSAGE_TYPING",
+                ],
+            }
+        },
+        methods: {
+            calculateIntent() {
+                var intentValue = 0
+                this.selectedIntent.forEach(a => { intentValue += (1 << a); })
+                this.updateValue(intentValue)
+            },
+            fromIntents(val) {
+                var _binary = Number(val).toString(2).split("").reverse()
+                var _newIntent = [];
+                _binary.forEach((value, index) => {
+                    if (value === "1" && this.selectedIntent.indexOf(value) === -1) {
+                        _newIntent.push(index)
+                    };
+                });
+                this.selectedIntent = _newIntent;
+            },
+            updateValue: function (value) {
+                this.$emit('input', value)
+            }
+        },
+        mounted: function () {
+            console.log(this.value);
+            this.fromIntents(this.value)
+        }
+    });
+
+    var v = new Vue({
+        el: ".app",
+        data: {
+            form: {
+                "a": "B"
+            },
+            _form: {
+                "text": "Hello",
+                "password": "Pass",
+                "checkbox": true,
+                "presence": {
+                    "name": "hi",
+                    "afk": true,
+                    "status": "offline",
+                },
+                "intent": "1000",
+
+            },
+        },
+    });
+</script>
+
+</html>
