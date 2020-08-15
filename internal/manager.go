@@ -102,7 +102,7 @@ type Manager struct {
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
 
-	Configuration *ManagerConfiguration
+	Configuration *ManagerConfiguration    `json:"configuration"`
 	Buckets       *bucketstore.BucketStore `json:"-"`
 
 	RedisClient *redis.Client `json:"-"`
@@ -121,10 +121,10 @@ type Manager struct {
 	// has finished ready, the other shard group will stop. 176 will not relay messages
 	// until it has removed the old shardgroup to reduce likelyhood of duplicate messages.
 	// These messages will just be completely ignored as if it was in the EventBlacklist
-	ShardGroups       map[int32]*ShardGroup
-	ShardGroupMu      sync.Mutex     `json:"-"`
-	ShardGroupIter    *int32         `json:"-"`
-	ShardGroupCounter sync.WaitGroup `json:"-"`
+	ShardGroups       map[int32]*ShardGroup `json:"shard_groups"`
+	ShardGroupMu      sync.Mutex            `json:"-"`
+	ShardGroupIter    *int32                `json:"-"`
+	ShardGroupCounter sync.WaitGroup        `json:"-"`
 
 	EventBlacklist   map[string]void `json:"-"`
 	ProduceBlacklist map[string]void `json:"-"`

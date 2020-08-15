@@ -13,17 +13,17 @@ import (
 
 // ShardGroup groups a selection of shards
 type ShardGroup struct {
-	StatusMu sync.RWMutex `json:"-"`
-	Status   structs.ShardGroupStatus
+	StatusMu sync.RWMutex             `json:"-"`
+	Status   structs.ShardGroupStatus `json:"status"`
 
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
 
-	Events *int64
+	Events *int64 `json:"-"`
 
-	ShardCount int
-	ShardIDs   []int
-	Shards     map[int]*Shard
+	ShardCount int            `json:"shard_count"`
+	ShardIDs   []int          `json:"shard_ids"`
+	Shards     map[int]*Shard `json:"shards"`
 
 	// WaitGroup for detecting when all shards are ready
 	Wait *sync.WaitGroup `json:"-"`
@@ -70,16 +70,12 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		for {
 			<-t.C
 			count := int64(0)
-			execution := int64(0)
 			for _, shard := range sg.Shards {
 				count += atomic.SwapInt64(shard.events, 0)
-				execution += atomic.SwapInt64(shard.executionTime, 0)
 			}
 			totalCount += count
 			since := time.Now().UTC().Sub(start)
-			exec := ((float64(execution) / float64(len(sg.Shards)*1000000000)) * 100)
-			sg.Logger.Debug().Msgf("%d events/s | %d total | %d avg/second | %s elapsed | %f%% execution",
-				count, totalCount, int(float64(totalCount)/since.Seconds()), since, exec)
+			sg.Logger.Debug().Str("Elapsed", since.String()).Int64("Per", count).Int64("Total", totalCount).Int("Avg", int(float64(totalCount)/since.Seconds())).Send()
 		}
 	}()
 

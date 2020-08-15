@@ -22,28 +22,28 @@ const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
 
 // Shard represents the shard object
 type Shard struct {
-	Status   structs.ShardStatus
-	StatusMu sync.RWMutex `json:"-"`
+	Status   structs.ShardStatus `json:"status"`
+	StatusMu sync.RWMutex        `json:"-"`
 
 	Logger zerolog.Logger `json:"-"`
 
-	ShardID    int
+	ShardID    int         `json:"shard_id"`
 	ShardGroup *ShardGroup `json:"-"`
 	Manager    *Manager    `json:"-"`
 
-	User *structs.User
+	User *structs.User `json:"user"`
 	// TODO: Add deque that can allow for an event queue (maybe)
 
 	ctx    context.Context
 	cancel func()
 
 	LastHeartbeatMu   sync.RWMutex `json:"-"`
-	LastHeartbeatAck  time.Time
-	LastHeartbeatSent time.Time
+	LastHeartbeatAck  time.Time    `json:"last_heartbeat_ack"`
+	LastHeartbeatSent time.Time    `json:"last_heartbeat_sent"`
 
-	Heartbeater          *time.Ticker `json:"-"`
-	HeartbeatInterval    time.Duration
-	MaxHeartbeatFailures time.Duration
+	Heartbeater          *time.Ticker  `json:"-"`
+	HeartbeatInterval    time.Duration `json:"heartbeat_interval"`
+	MaxHeartbeatFailures time.Duration `json:"max_heartbeat_failures"`
 
 	Unavailable map[snowflake.ID]bool `json:"-"`
 
@@ -56,8 +56,7 @@ type Shard struct {
 	msg structs.ReceivedPayload
 	buf []byte
 
-	events        *int64
-	executionTime *int64
+	events *int64
 
 	seq       *int64
 	sessionID string
@@ -96,8 +95,7 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		msg: structs.ReceivedPayload{},
 		buf: make([]byte, 0),
 
-		events:        new(int64),
-		executionTime: new(int64),
+		events: new(int64),
 
 		seq:       new(int64),
 		sessionID: "",
@@ -471,8 +469,6 @@ func (sh *Shard) Listen() (err error) {
 			wsConn = sh.wsConn
 		}
 
-		start := time.Now().UTC()
-
 		sh.OnEvent(sh.msg)
 
 		// In the event we have reconnected, the wsConn could have changed,
@@ -481,8 +477,6 @@ func (sh *Shard) Listen() (err error) {
 			sh.Logger.Debug().Msg("New wsConn was assigned to shard")
 			wsConn = sh.wsConn
 		}
-
-		atomic.AddInt64(sh.executionTime, time.Now().UTC().Sub(start).Nanoseconds())
 	}
 	return
 }
