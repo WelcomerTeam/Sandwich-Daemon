@@ -2,6 +2,9 @@ package gateway
 
 import (
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/valyala/fasthttp"
 )
@@ -26,47 +29,51 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 			ctx.Response.StatusCode())
 	}()
 
-	switch string(ctx.Request.URI().Path()) {
-	case "/":
-		b, _ := ioutil.ReadFile("web/spa.html")
-		ctx.Response.Header.Set("content-type", "text/html;charset=UTF-8")
-		ctx.Write(b)
+	path := string(ctx.Request.URI().Path())
+	if strings.HasPrefix(path, "/static") {
+		_, filename := filepath.Split(path)
+		root, _ := os.Getwd()
+		filepath := filepath.Join(root, "web/static", filename)
 
-		// ctx.SendFile("web/spa.html")
-		ctx.SetStatusCode(200)
-	case "/style.css":
-		b, _ := ioutil.ReadFile("web/style.css")
-		ctx.Response.Header.Set("content-type", "text/css;charset=UTF-8")
-		ctx.Write(b)
-
-		// ctx.SendFile("web/style.css")
-		ctx.SetStatusCode(200)
-	case "/script.js":
-		b, _ := ioutil.ReadFile("web/script.js")
-		ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
-		ctx.Write(b)
-
-		// ctx.SendFile("web/script.js")
-		ctx.SetStatusCode(200)
-
-	case "/api/configuration.json":
-		if sg.Configuration.HTTP.Enabled {
-			res, err = json.Marshal(RestResponse{true, sg.Managers, nil})
+		if _, err := os.Stat(filepath); !os.IsNotExist(err) {
+			ctx.SendFile(filepath)
 		} else {
-			res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+			ctx.SetStatusCode(404)
 		}
+	} else {
+		switch path {
+		case "/":
+			b, _ := ioutil.ReadFile("web/spa.html")
+			ctx.Response.Header.Set("content-type", "text/html;charset=UTF-8")
+			ctx.Write(b)
 
-		if err == nil {
-			ctx.Write(res)
-			ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			// ctx.SendFile("web/spa.html")
 			ctx.SetStatusCode(200)
+
+		case "/api/configuration":
+			if sg.Configuration.HTTP.Enabled {
+				res, err = json.Marshal(RestResponse{true, sg.Managers, nil})
+			} else {
+				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+			}
+
+			if err == nil {
+				ctx.Write(res)
+				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			}
+
+		default:
+			ctx.SetStatusCode(404)
 		}
-	default:
-		ctx.SetStatusCode(404)
 	}
 
 	if err != nil {
 		sg.Logger.Warn().Err(err).Msg("Failed to process request")
+
+		if res, err = json.Marshal(RestResponse{false, nil, err}); err == nil {
+			ctx.Write(res)
+			ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+		}
 		ctx.SetStatusCode(500)
 	}
 

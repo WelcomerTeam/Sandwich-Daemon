@@ -442,15 +442,10 @@ func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err 
 // Listen to gateway and process accordingly
 func (sh *Shard) Listen() (err error) {
 	wsConn := sh.wsConn
-	evnts := int64(0)
-	t := time.NewTicker(1 * time.Second)
 	for {
 		select {
 		case <-sh.ctx.Done():
 			return
-		case <-t.C:
-			atomic.AddInt64(sh.ShardGroup.Events, evnts)
-			evnts = 0
 		default:
 		}
 

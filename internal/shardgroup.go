@@ -2,8 +2,6 @@ package gateway
 
 import (
 	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
@@ -18,8 +16,6 @@ type ShardGroup struct {
 
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
-
-	Events *int64 `json:"-"`
 
 	ShardCount int            `json:"shard_count"`
 	ShardIDs   []int          `json:"shard_ids"`
@@ -43,8 +39,6 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 		Manager: mg,
 		Logger:  mg.Logger,
 
-		Events: new(int64),
-
 		Shards: make(map[int]*Shard),
 		Wait:   &sync.WaitGroup{},
 		err:    make(chan error),
@@ -60,24 +54,6 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 	sg.ShardIDs = ShardIDs
 
 	ready = make(chan bool, 1)
-
-	// TEMP
-	// Maybe make this more fleshed out and push to a central event stats thing?
-	go func() {
-		start := time.Now().UTC()
-		t := time.NewTicker(1 * time.Second)
-		totalCount := int64(0)
-		for {
-			<-t.C
-			count := int64(0)
-			for _, shard := range sg.Shards {
-				count += atomic.SwapInt64(shard.events, 0)
-			}
-			totalCount += count
-			since := time.Now().UTC().Sub(start)
-			sg.Logger.Debug().Str("Elapsed", since.String()).Int64("Per", count).Int64("Total", totalCount).Int("Avg", int(float64(totalCount)/since.Seconds())).Send()
-		}
-	}()
 
 	sg.Logger.Info().Msgf("Starting ShardGroup with %d shards", len(sg.ShardIDs))
 

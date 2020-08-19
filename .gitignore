@@ -17,3 +17,5 @@
 # No token for you B)
 sandwich.yaml
 sandwich
+
+web/static/*.fasthttp.gz

@@ -8,7 +8,9 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/accumulator"
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/go-redis/redis/v8"
@@ -23,7 +25,7 @@ type void struct{}
 
 // ManagerConfiguration represents the configuration for the manager
 type ManagerConfiguration struct {
-	AutoStart bool `json:"autostart" msgpack:"autostart"` // Boolean to stat the Manager when the bot starts
+	AutoStart bool `json:"autostart" msgpack:"autostart"` // Boolean to statt the Manager when the daemon starts
 	Persist   bool `json:"persist" msgpack:"persist"`     // Boolean to dictate if configuration should be saved
 
 	Identifier  string `json:"identifier" msgpack:"identifier"`
@@ -98,6 +100,8 @@ type ManagerConfiguration struct {
 type Manager struct {
 	ctx    context.Context
 	cancel func()
+
+	Analytics *accumulator.Accumulator
 
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
@@ -214,6 +218,12 @@ func (mg *Manager) Open() (err error) {
 	} else {
 		mg.RedisClient = mg.Sandwich.RedisClient
 	}
+
+	mg.Analytics = accumulator.NewAccumulator(
+		mg.ctx,
+		60, // 15 minutes of analytics
+		time.Second*15,
+	)
 
 	err = mg.RedisClient.Ping(mg.ctx).Err()
 	if err != nil {

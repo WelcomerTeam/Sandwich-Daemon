@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
@@ -71,18 +72,20 @@ type SandwichConfiguration struct {
 
 // Sandwich represents the global application state
 type Sandwich struct {
-	Logger zerolog.Logger
+	Logger zerolog.Logger `json:"-"`
 
-	Configuration *SandwichConfiguration
-	Managers      map[string]*Manager
+	Start time.Time `json:"uptime"`
+
+	Configuration *SandwichConfiguration `json:"configuration"`
+	Managers      map[string]*Manager    `json:"managers"`
 
 	// Buckets will be shared between all Managers
-	Buckets *bucketstore.BucketStore
+	Buckets *bucketstore.BucketStore `json:"-"`
 
 	// Used for connection sharing
-	RedisClient *redis.Client
-	NatsClient  *nats.Conn
-	StanClient  stan.Conn
+	RedisClient *redis.Client `json:"-"`
+	NatsClient  *nats.Conn    `json:"-"`
+	StanClient  stan.Conn     `json:"-"`
 }
 
 // NewSandwich creates the application state and initializes it
@@ -235,6 +238,7 @@ func (sg *Sandwich) Open() (err error) {
 	//     *--__ *-----** ___--*       3
 	//          **-____-**
 
+	sg.Start = time.Now().UTC()
 	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n     _--*         *--__         Sandwich Daemon %s\n _-**                  **-_\n|_*--_                _-* _|    HTTP: %s\n| *-_ *---_     _----* _-* |    Managers: %d\n *-_ *--__ *****  __---* _*\n     *--__ *-----** ___--*      %s\n         **-____-**\n",
 		VERSION, sg.Configuration.HTTP.Host, len(sg.Configuration.Managers), "┬─┬ ノ( ゜-゜ノ)")
 
@@ -263,14 +267,84 @@ func (sg *Sandwich) Open() (err error) {
 		}
 
 		sg.Managers[managerConfiguration.Identifier] = manager
-		go func() {
-			err := manager.Open()
-			if err != nil {
-				manager.Logger.Error().Err(err).Msg("Failed to start up manager")
-			}
-		}()
+
+		if manager.Configuration.AutoStart {
+			go func() {
+				err := manager.Open()
+				if err != nil {
+					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+				}
+			}()
+		}
 	}
-	// Create Managers / Start them up
+
+	go func() {
+		t := time.NewTicker(time.Second * 1)
+
+		totalEvents := int64(0)
+
+		// Store samples for 15 minute
+		MaxSamples := 60 * 15
+		samples := make([]int64, 0, MaxSamples)
+
+		for {
+			<-t.C
+
+			eventCount := int64(0)
+			managerCount := int64(0)
+			for _, mg := range sg.Managers {
+				managerCount = 0
+				for _, sg := range mg.ShardGroups {
+					for _, sh := range sg.Shards {
+						managerCount += atomic.SwapInt64(sh.events, 0)
+					}
+				}
+				eventCount += managerCount
+
+				if mg.Analytics != nil {
+					mg.Analytics.IncrementBy(managerCount)
+					// We do not make an accumulator task so we manually ask to run the accumulator
+					go mg.Analytics.RunOnce()
+				}
+			}
+			totalEvents += eventCount
+
+			samples = append(samples, eventCount)
+			if len(samples) > MaxSamples {
+				samples = samples[1:MaxSamples]
+			}
+
+			uptime := time.Now().UTC().Sub(sg.Start).Round(time.Second)
+
+			// Get LastMinute Average
+			// Get TotalAverage
+
+			index := len(samples) - 60
+			if index < 0 {
+				index = 0
+			}
+			minuteEvents := int64(0)
+			for _, val := range samples[index:] {
+				minuteEvents += val
+			}
+
+			index = len(samples) - 900
+			if index < 0 {
+				index = 0
+			}
+			quarterEvents := int64(0)
+			for _, val := range samples[index:] {
+				quarterEvents += val
+			}
+
+			totalAverage := int64(float64(totalEvents) / uptime.Seconds())
+			minuteAverage := int64(float64(minuteEvents) / 60)
+			quarterAverage := int64(float64(quarterEvents) / 900)
+
+			sg.Logger.Debug().Str("Elapsed", uptime.String()).Msgf("% 3d/s | AVG:% 3d | 1M:% 3d | 15M:% 3d", eventCount, totalAverage, minuteAverage, quarterAverage)
+
+		}
+	}()
 
 	return
 }
