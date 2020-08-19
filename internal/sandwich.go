@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/accumulator"
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats.go"
@@ -33,6 +31,12 @@ const ErrOnConfigurationFailure = true
 // ConfigurationPath is the path to the file the configration will be located
 // at.
 const ConfigurationPath = "sandwich.yaml"
+
+// Interval between each analytic sample
+const Interval = time.Second * 5
+
+// Samples to hold. 5 seconds and 720 samples is 1 hour
+const Samples = 720
 
 // SandwichConfiguration represents the configuration of the program
 type SandwichConfiguration struct {
@@ -281,54 +285,40 @@ func (sg *Sandwich) Open() (err error) {
 	}
 
 	go func() {
+		var events int64
+		var managerEvents int64
 		t := time.NewTicker(time.Second * 1)
-		e := time.NewTicker(time.Second * 15)
-
-		totalEvents := int64(0)
-		eventAccumulator := accumulator.NewAccumulator(
-			context.Background(),
-			900,
-			time.Second,
-		)
-
+		events = int64(0)
 		for {
-			select {
-			case <-t.C:
-				eventCount := int64(0)
-				managerCount := int64(0)
-				for _, mg := range sg.Managers {
-					managerCount = 0
-					for _, sg := range mg.ShardGroups {
-						for _, sh := range sg.Shards {
-							managerCount += atomic.SwapInt64(sh.events, 0)
-						}
-					}
-					eventCount += managerCount
-					if mg.Analytics != nil {
-						mg.Analytics.IncrementBy(managerCount)
+			<-t.C
+			events = 0
+			for _, mg := range sg.Managers {
+				managerEvents = 0
+				for _, sg := range mg.ShardGroups {
+					for _, sh := range sg.Shards {
+						managerEvents += atomic.SwapInt64(sh.events, 0)
 					}
 				}
-				totalEvents += eventCount
-
-				eventAccumulator.IncrementBy(eventCount)
-				eventAccumulator.Run()
-
-				uptime := time.Now().UTC().Sub(sg.Start).Round(time.Second)
-
-				totalAverage := int64(float64(totalEvents) / uptime.Seconds())
-				minuteAverage := eventAccumulator.GetLastSamples(60).Avg()
-				quarterAverage := eventAccumulator.GetLastSamples(900).Avg()
-
-				sg.Logger.Debug().Str("Elapsed", uptime.String()).Msgf("% 3d/s | AVG:% 3d | 1M:% 3d | 15M:% 3d", eventCount, totalAverage, minuteAverage, quarterAverage)
-
-			case <-e.C:
-				now := time.Now().UTC()
-				for _, mg := range sg.Managers {
-					if mg.Analytics != nil {
-						go mg.Analytics.RunOnce(now)
-					}
+				if mg.Analytics != nil {
+					mg.Analytics.IncrementBy(managerEvents)
 				}
+				events += managerEvents
+			}
+			now := time.Now().UTC()
+			uptime := now.Sub(sg.Start).Round(time.Second)
+			sg.Logger.Debug().Str("Elapsed", uptime.String()).Msgf("%d/s", events)
+		}
+	}()
 
+	go func() {
+		e := time.NewTicker(Interval)
+		for {
+			<-e.C
+			now := time.Now().UTC()
+			for _, mg := range sg.Managers {
+				if mg.Analytics != nil {
+					go mg.Analytics.RunOnce(now)
+				}
 			}
 		}
 	}()

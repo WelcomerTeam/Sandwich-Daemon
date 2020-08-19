@@ -12,16 +12,16 @@ import (
 )
 
 var colours = [][]string{
-	{"1BBC9B", "16A086"},
-	{"2DCC70", "27AE61"},
-	{"3598DB", "2A80B9"},
-	{"9B58B5", "8F44AD"},
-	{"34495E", "2D3E50"},
-	{"F1C40F", "F39C11"},
-	{"E77E23", "D25400"},
-	{"E84C3D", "C1392B"},
-	{"ECF0F1", "BEC3C7"},
-	{"95A5A5", "7E8C8D"},
+	{"#1BBC9B", "#16A086"},
+	{"#2DCC70", "#27AE61"},
+	{"#3598DB", "#2A80B9"},
+	{"#9B58B5", "#8F44AD"},
+	{"#34495E", "#2D3E50"},
+	{"#F1C40F", "#F39C11"},
+	{"#E77E23", "#D25400"},
+	{"#E84C3D", "#C1392B"},
+	{"#ECF0F1", "#BEC3C7"},
+	{"#95A5A5", "#7E8C8D"},
 }
 
 // RestResponse is the response when returning rest requests
@@ -118,12 +118,14 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 func (sg *Sandwich) ConstructAnalytics() LineChart {
 	labels := make(map[time.Time]map[string]int64)
 	for _, mg := range sg.Managers {
-		for _, sample := range mg.Analytics.Samples {
-			if _, ok := labels[sample.StoredAt]; !ok {
-				labels[sample.StoredAt] = make(map[string]int64)
-			}
+		if mg.Analytics != nil {
+			for _, sample := range mg.Analytics.Samples {
+				if _, ok := labels[sample.StoredAt]; !ok {
+					labels[sample.StoredAt] = make(map[string]int64)
+				}
 
-			labels[sample.StoredAt][mg.Configuration.Identifier] = sample.Value
+				labels[sample.StoredAt][mg.Configuration.Identifier] = sample.Value
+			}
 		}
 	}
 
@@ -150,9 +152,15 @@ func (sg *Sandwich) ConstructAnalytics() LineChart {
 	}
 
 	datasets := make([]Dataset, 0, len(sg.Managers))
-	i := 0
-	for _, mg := range sg.Managers {
-		i++
+
+	mankeys := make([]string, 0, len(sg.Managers))
+	for key := range sg.Managers {
+		mankeys = append(mankeys, key)
+	}
+	sort.Strings(mankeys)
+
+	for i, ident := range mankeys {
+		mg := sg.Managers[ident]
 		data := make([]interface{}, 0, len(_keys))
 		for _, time := range keys {
 			if val, ok := labels[time][mg.Configuration.Identifier]; ok {
@@ -162,7 +170,7 @@ func (sg *Sandwich) ConstructAnalytics() LineChart {
 			}
 		}
 
-		colour := colours[i]
+		colour := colours[i%len(colours)]
 		datasets = append(datasets, Dataset{
 			Label:            mg.Configuration.Identifier,
 			BackgroundColour: colour[0],

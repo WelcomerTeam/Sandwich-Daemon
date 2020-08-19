@@ -33,6 +33,9 @@ vue = new Vue({
             data: {},
             analytics: {},
             loadingAnalytics: true,
+
+            statusShard: ["Idle", "Waiting", "Connecting", "Connected", "Ready", "Reconnecting", "Closed"],
+            statusGroup: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
         }
     },
     mounted() {

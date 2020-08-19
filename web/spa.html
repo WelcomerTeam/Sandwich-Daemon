@@ -52,7 +52,16 @@
                 <line-chart :data="analytics" :height="100"></line-chart>
             </div>
 
-
+            <div v-for="manager in this.data">
+                Manager {{ manager.configuration.identifier }}
+                <div v-for="shardgroup in manager.shard_groups">
+                    ShardGroup {{ statusGroup[shardgroup.status] }}
+                    <div v-for="shard in shardgroup.shards">
+                        Shard {{ shard.shard_id }}: {{ statusShard[shard.status] }}
+                    </div>
+                </div>
+                <br>
+            </div>
 
         </div>
     </div>
