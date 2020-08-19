@@ -10,7 +10,7 @@ Vue.component("line-chart", {
     props: ['data', 'options'],
     mounted() {
         this.renderChart(this.data, this.options)
-    }
+    },
 })
 
 // {
@@ -31,10 +31,13 @@ vue = new Vue({
             loading: true,
             error: false,
             data: {},
+            analytics: {},
+            loadingAnalytics: true,
         }
     },
     mounted() {
-        this.fetchConfiguration()
+        this.fetchConfiguration();
+        this.fetchAnalytics();
     },
     methods: {
         fetchConfiguration() {
@@ -43,6 +46,13 @@ vue = new Vue({
                 .then(result => { this.data = result.data.response; this.error = !result.data.success })
                 .catch(error => console.log(error))
                 .finally(() => this.loading = false)
+        },
+        fetchAnalytics() {
+            axios
+                .get('/api/analytics')
+                .then(result => { this.analytics = result.data.response; this.error = this.error | !result.data.success })
+                .catch(error => console.log(error))
+                .finally(() => this.loadingAnalytics = false)
         }
     }
 })

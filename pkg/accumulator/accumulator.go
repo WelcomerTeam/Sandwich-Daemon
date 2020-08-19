@@ -11,6 +11,7 @@ type Accumulator struct {
 	ctx context.Context
 
 	sync.RWMutex
+	Label   string // used to identify the owner of an accumulator
 	Samples []*Sample
 	acc     int64
 
@@ -41,6 +42,11 @@ func (ac *Accumulator) IncrementBy(acc int64) {
 	ac.acc += acc
 }
 
+// GetAllSamples returns all samples from the accumulator
+func (ac *Accumulator) GetAllSamples() *SampleGroup {
+	return &SampleGroup{ac.Label, ac.Samples}
+}
+
 // GetLastSamples returns the last N samples from the accumulator
 func (ac *Accumulator) GetLastSamples(n int) *SampleGroup {
 	index := len(ac.Samples) - n
@@ -50,7 +56,7 @@ func (ac *Accumulator) GetLastSamples(n int) *SampleGroup {
 
 	ac.RLock()
 	defer ac.RUnlock()
-	return &SampleGroup{ac.Samples[index:]}
+	return &SampleGroup{ac.Label, ac.Samples[index:]}
 }
 
 // GetSamplesSince returns the last N samples from the accumulator in the specified time
@@ -59,14 +65,15 @@ func (ac *Accumulator) GetSamplesSince(t time.Time) *SampleGroup {
 	defer ac.RUnlock()
 	for index := range ac.Samples {
 		if ac.Samples[len(ac.Samples)-index].StoredAt.After(t) {
-			return &SampleGroup{ac.Samples[index:]}
+			return &SampleGroup{ac.Label, ac.Samples[index:]}
 		}
 	}
-	return &SampleGroup{ac.Samples}
+	return &SampleGroup{ac.Label, ac.Samples}
 }
 
 // SampleGroup holds a group of samples
 type SampleGroup struct {
+	Label   string
 	Samples []*Sample
 }
 
@@ -88,18 +95,18 @@ func (sg *SampleGroup) Avg() float64 {
 func (sg *SampleGroup) Since(t time.Time) *SampleGroup {
 	for index := range sg.Samples {
 		if sg.Samples[len(sg.Samples)-index].StoredAt.After(t) {
-			return &SampleGroup{sg.Samples[index:]}
+			return &SampleGroup{"", sg.Samples[index:]}
 		}
 	}
-	return &SampleGroup{sg.Samples}
+	return &SampleGroup{"", sg.Samples}
 }
 
 // RunOnce allows you to manually call the accumulator task in the event you already have a task running every interval
-func (ac *Accumulator) RunOnce() {
+func (ac *Accumulator) RunOnce(t time.Time) {
 	ac.Lock()
 	ac.Samples = append(ac.Samples, &Sample{
 		ac.acc,
-		time.Now().UTC(),
+		t,
 	})
 
 	// Reset accumulator
@@ -122,7 +129,7 @@ func (ac *Accumulator) Run() {
 		case <-t.C:
 		}
 
-		ac.RunOnce()
+		ac.RunOnce(time.Now().UTC())
 	}
 }
 

@@ -4,10 +4,25 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/valyala/fasthttp"
 )
+
+var colours = [][]string{
+	{"1BBC9B", "16A086"},
+	{"2DCC70", "27AE61"},
+	{"3598DB", "2A80B9"},
+	{"9B58B5", "8F44AD"},
+	{"34495E", "2D3E50"},
+	{"F1C40F", "F39C11"},
+	{"E77E23", "D25400"},
+	{"E84C3D", "C1392B"},
+	{"ECF0F1", "BEC3C7"},
+	{"95A5A5", "7E8C8D"},
+}
 
 // RestResponse is the response when returning rest requests
 type RestResponse struct {
@@ -61,7 +76,17 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 			}
+		case "/api/analytics":
+			if sg.Configuration.HTTP.Enabled {
+				res, err = json.Marshal(RestResponse{true, sg.ConstructAnalytics(), nil})
+			} else {
+				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+			}
 
+			if err == nil {
+				ctx.Write(res)
+				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			}
 		default:
 			ctx.SetStatusCode(404)
 		}
@@ -89,6 +114,66 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 }
 
+// ConstructAnalytics returns a LineChart struct based off of manager analytics
+func (sg *Sandwich) ConstructAnalytics() LineChart {
+	labels := make(map[time.Time]map[string]int64)
+	for _, mg := range sg.Managers {
+		for _, sample := range mg.Analytics.Samples {
+			if _, ok := labels[sample.StoredAt]; !ok {
+				labels[sample.StoredAt] = make(map[string]int64)
+			}
+
+			labels[sample.StoredAt][mg.Configuration.Identifier] = sample.Value
+		}
+	}
+
+	keys := make([]time.Time, 0, len(labels))
+	for key := range labels {
+		keys = append(keys, key)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].Before(keys[j])
+	})
+
+	// Get last 15 minutes only
+	index := len(keys) - 60
+	if index < 0 {
+		index = 0
+	}
+
+	keys = keys[index:]
+
+	_keys := make([]string, 0, len(keys))
+	for _, key := range keys {
+		_keys = append(_keys, key.Format(time.Stamp))
+	}
+
+	datasets := make([]Dataset, 0, len(sg.Managers))
+	i := 0
+	for _, mg := range sg.Managers {
+		i++
+		data := make([]interface{}, 0, len(_keys))
+		for _, time := range keys {
+			if val, ok := labels[time][mg.Configuration.Identifier]; ok {
+				data = append(data, val)
+			} else {
+				data = append(data, nil)
+			}
+		}
+
+		colour := colours[i]
+		datasets = append(datasets, Dataset{
+			Label:            mg.Configuration.Identifier,
+			BackgroundColour: colour[0],
+			BorderColour:     colour[1],
+			Data:             data,
+		})
+	}
+
+	return LineChart{_keys, datasets}
+}
+
 func (sg *Sandwich) handleRequests() {
 	// if !sg.Configuration.HTTP.Enabled {
 	// 	return
@@ -99,4 +184,18 @@ func (sg *Sandwich) handleRequests() {
 		err := fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
 		sg.Logger.Error().Err(err).Msg("Error occured whilst running fasthttp")
 	}
+}
+
+// LineChart is a struct to store LineChart data easier
+type LineChart struct {
+	Labels   []string  `json:"labels"`
+	Datasets []Dataset `json:"datasets"`
+}
+
+// Dataset is a struct to store data for a Chart
+type Dataset struct {
+	Label            string        `json:"label"`
+	BackgroundColour string        `json:"backgroundColor,omitempty"`
+	BorderColour     string        `json:"borderColor,omitempty"`
+	Data             []interface{} `json:"data"`
 }
