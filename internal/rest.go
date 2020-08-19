@@ -148,7 +148,7 @@ func (sg *Sandwich) ConstructAnalytics() LineChart {
 
 	_keys := make([]string, 0, len(keys))
 	for _, key := range keys {
-		_keys = append(_keys, key.Format(time.Stamp))
+		_keys = append(_keys, key.Round(time.Second*5).Format(time.Stamp))
 	}
 
 	datasets := make([]Dataset, 0, len(sg.Managers))
@@ -172,7 +172,7 @@ func (sg *Sandwich) ConstructAnalytics() LineChart {
 
 		colour := colours[i%len(colours)]
 		datasets = append(datasets, Dataset{
-			Label:            mg.Configuration.Identifier,
+			Label:            mg.Configuration.DisplayName,
 			BackgroundColour: colour[0],
 			BorderColour:     colour[1],
 			Data:             data,

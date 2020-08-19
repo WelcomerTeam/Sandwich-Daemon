@@ -101,7 +101,7 @@ type Manager struct {
 	ctx    context.Context
 	cancel func()
 
-	Analytics *accumulator.Accumulator
+	Analytics *accumulator.Accumulator `json:"-"`
 
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
