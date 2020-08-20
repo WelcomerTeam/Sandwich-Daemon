@@ -1,0 +1,2 @@
+*.js linguist-detectable=false
+*.map linguist-detectable=false

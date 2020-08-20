@@ -48,11 +48,11 @@ func (c *Client) FetchJSON(method string, url string, body io.Reader, structure 
 	}
 
 	res, err := c.HandleRequest(req, false)
-	defer res.Body.Close()
 	if err != nil {
 		return
 	}
 
+	defer res.Body.Close()
 	err = json.NewDecoder(res.Body).Decode(structure)
 	if err != nil {
 		return err

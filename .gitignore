@@ -19,3 +19,4 @@ sandwich.yaml
 sandwich
 
 web/static/*.fasthttp.gz
+logs
