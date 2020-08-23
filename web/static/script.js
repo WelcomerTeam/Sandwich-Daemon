@@ -9,20 +9,28 @@ Vue.component("line-chart", {
     mixins: [VueChartJs.mixins.reactiveData],
     props: ['data', 'options'],
     mounted() {
-        this.renderChart(this.data, this.options)
+        this.renderChart(this.data, {
+            scales: {
+                xAxes: [{
+                    type: "time",
+                }]
+            }
+        })
     },
 })
 
-// {
-//     labels: [1, 2, 3, 4, 5, 6, 7, 8, 9,],
-//     datasets: [
-//         {
-//             label: 'Data One',
-//             backgroundColor: '#435325',
-//             data: [getRandomInt(), getRandomInt(), getRandomInt(), getRandomInt(),],
-//         }
-//     ]
-// }, { responsive: true }
+Vue.component("card-display", {
+    props: ['title', 'value', 'bg'],
+    template: `
+        <div class="col justify-content-center d-flex">
+            <div :class="bg+' card text-white m-1'" style="width: 18rem;">
+                <div class="card-header">{{ title }} </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ value }}</h5>
+                </div>
+            </div>
+        </div>`,
+})
 
 vue = new Vue({
     el: '#app',
@@ -31,7 +39,14 @@ vue = new Vue({
             loading: true,
             error: false,
             data: {},
-            analytics: {},
+            analytics: {
+                chart: {},
+                uptime: "...",
+                visible: "...",
+                events: "...",
+                online: "...",
+                colour: "bg-success",
+            },
             loadingAnalytics: true,
 
             statusShard: ["Idle", "Waiting", "Connecting", "Connected", "Ready", "Reconnecting", "Closed"],
@@ -53,7 +68,30 @@ vue = new Vue({
         fetchAnalytics() {
             axios
                 .get('/api/analytics')
-                .then(result => { this.analytics = result.data.response; this.error = this.error | !result.data.success })
+                .then(result => {
+                    this.analytics = result.data.response;
+
+                    let up = 0
+                    let total = 0
+                    let guilds = 0
+                    this.analytics.colour = "bg-success";
+                    for (let index in this.analytics.clusters) {
+                        cluster = this.analytics.clusters[index]
+                        guilds += cluster.guilds
+                        for (let shard in cluster.status) {
+                            if (cluster.status[shard] >= 5) {
+                                this.analytics.colour = "bg-alert";
+                            } else {
+                                up++
+                            }
+                            total++
+                        }
+                    }
+                    this.analytics.visible = guilds
+                    this.analytics.online = up + "/" + total
+
+                    this.error = this.error | !result.data.success;
+                })
                 .catch(error => console.log(error))
                 .finally(() => this.loadingAnalytics = false)
         }

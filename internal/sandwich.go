@@ -85,6 +85,8 @@ type Sandwich struct {
 	Configuration *SandwichConfiguration `json:"configuration"`
 	Managers      map[string]*Manager    `json:"managers"`
 
+	TotalEvents *int64
+
 	// Buckets will be shared between all Managers
 	Buckets *bucketstore.BucketStore `json:"-"`
 
@@ -101,6 +103,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		Logger:        zerolog.New(logger).With().Timestamp().Logger(),
 		Configuration: &SandwichConfiguration{},
 		Managers:      make(map[string]*Manager),
+		TotalEvents:   new(int64),
 		Buckets:       bucketstore.NewBucketStore(),
 	}
 
@@ -304,6 +307,7 @@ func (sg *Sandwich) Open() (err error) {
 				}
 				events += managerEvents
 			}
+			atomic.AddInt64(sg.TotalEvents, events)
 			now := time.Now().UTC()
 			uptime := now.Sub(sg.Start).Round(time.Second)
 			sg.Logger.Debug().Str("Elapsed", uptime.String()).Msgf("%d/s", events)

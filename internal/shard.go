@@ -234,22 +234,6 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
 		sh.Reconnect(4000)
 
-		// if !resumable || (sh.sessionID == "" || atomic.LoadInt64(sh.seq) == 0) {
-		// 	err = sh.Identify()
-		// 	if err != nil {
-		// 		sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
-		// 		sh.Reconnect(websocket.StatusNormalClosure)
-		// 		return
-		// 	}
-		// } else {
-		// 	err = sh.Resume()
-		// 	if err != nil {
-		// 		sh.Logger.Error().Err(err).Msg("Failed to send identify in response to gateway, reconnecting...")
-		// 		sh.Reconnect(websocket.StatusNormalClosure)
-		// 		return
-		// 	}
-		// }
-
 	case structs.GatewayOpHello:
 		sh.Logger.Warn().Msg("Received HELLO whilst listening. This should not occur.")
 		return

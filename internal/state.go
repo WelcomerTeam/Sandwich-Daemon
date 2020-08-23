@@ -167,19 +167,6 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 		return
 	}
 
-	// STORE_MUTUALS = KEYS[1]
-	// GUILD_ID = KEYS[2]
-	// if STORE_MUTUALS do
-	// 	for i,k in pairs(ARGV) do
-	// 		redis.call("HSET", "welcomer:guild:<>:members", GUILD_ID, k.ID, k)
-	//      redis.call("SADD", "welcomer:mutual:<>", k.ID, GUILD_ID)
-	// 	end
-	// else
-	// 	for i,k in pairs(ARGV) do
-	// 		redis.call("HSET", "welcomer:guild:<>:members", k.ID, k)
-	// 	end
-	// end
-
 	members := make([]interface{}, 0, len(packet.Members))
 	for _, member := range packet.Members {
 		if ma, err := msgpack.Marshal(member); err == nil {

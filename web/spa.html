@@ -17,7 +17,7 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-light bg-light">
+    <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
             <span class="navbar-brand mb-0 h1">Sandwich Daemon</span>
         </div>
@@ -43,20 +43,28 @@
             <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
                 <li class="nav-item" role="presentation">
                     <a class="nav-link active" id="pills-home-tab" data-toggle="pill" href="#pills-home" role="tab"
-                        aria-controls="pills-home" aria-selected="true">Home</a>
+                        aria-controls="pills-home" aria-selected="true">Analytics</a>
                 </li>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="pills-profile-tab" data-toggle="pill" href="#pills-profile" role="tab"
-                        aria-controls="pills-profile" aria-selected="false">Profile</a>
+                        aria-controls="pills-profile" aria-selected="false">Clusters</a>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="pills-contact-tab" data-toggle="pill" href="#pills-contact" role="tab"
-                        aria-controls="pills-contact" aria-selected="false">Contact</a>
+                    <a class="nav-link" id="pills-contact-tab bg-dark" data-toggle="pill" href="#pills-contact"
+                        role="tab" aria-controls="pills-contact" aria-selected="false">Daemon Settings</a>
                 </li>
             </ul>
             <div class="tab-content" id="pills-tabContent">
                 <div class="tab-pane fade show active" id="pills-home" role="tabpanel" aria-labelledby="pills-home-tab">
-                    <div v-if="this.loadingAnalytics">
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
+                        <card-display :title="'Guilds'" :value="analytics.visible" :bg=`bg-dark`>
+                        </card-display>
+                        <card-display :title="'Online'" :value="analytics.online" :bg="analytics.colour"></card-display>
+                        <card-display :title="'Uptime'" :value="analytics.uptime" :bg=`bg-dark`></card-display>
+                        <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
+                        </card-display>
+                    </div>
+                    <div v-if=" this.loadingAnalytics">
                         <div class="d-flex justify-content-center">
                             <div class="spinner-border text-dark" role="status">
                                 <span class="sr-only">Loading...</span>
@@ -64,7 +72,7 @@
                         </div>
                     </div>
                     <div v-else>
-                        <line-chart :data="analytics" :height="150"></line-chart>
+                        <line-chart :data="analytics.chart" :height="150"></line-chart>
                     </div>
                 </div>
                 <div class="tab-pane fade" id="pills-profile" role="tabpanel" aria-labelledby="pills-profile-tab">b
@@ -76,6 +84,7 @@
     </div>
 </body>
 
+<script src="/static/moment.min.js"></script>
 <script src="/static/chart.min.js"></script>
 <script src="/static/vue-chartjs.min.js"></script>
 <script src="/static/script.js"></script>
