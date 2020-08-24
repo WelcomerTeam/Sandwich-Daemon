@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -88,7 +89,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						statuses[i] = sg.Status
 					}
 
-					guildCount, err := mg.RedisClient.HLen(mg.ctx, mg.CreateKey("guilds")).Result()
+					guildCount, err := sg.RedisClient.HLen(context.Background(), mg.CreateKey("guilds")).Result()
 					if err != nil {
 						mg.Logger.Error().Err(err).Msg("Failed to retrieve Hashset Length")
 					}
@@ -145,74 +146,6 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 }
 
-// // ConstructAnalytics returns a LineChart struct based off of manager analytics
-// func (sg *Sandwich) ConstructAnalytics() LineChart {
-// 	labels := make(map[time.Time]map[string]int64)
-// 	for _, mg := range sg.Managers {
-// 		if mg.Analytics != nil {
-// 			for _, sample := range mg.Analytics.Samples {
-// 				if _, ok := labels[sample.StoredAt]; !ok {
-// 					labels[sample.StoredAt] = make(map[string]int64)
-// 				}
-
-// 				labels[sample.StoredAt][mg.Configuration.Identifier] = sample.Value
-// 			}
-// 		}
-// 	}
-
-// 	keys := make([]time.Time, 0, len(labels))
-// 	for key := range labels {
-// 		keys = append(keys, key)
-// 	}
-
-// 	sort.Slice(keys, func(i, j int) bool {
-// 		return keys[i].Before(keys[j])
-// 	})
-
-// 	// Get last 15 minutes only
-// 	index := len(keys) - 60
-// 	if index < 0 {
-// 		index = 0
-// 	}
-
-// 	keys = keys[index:]
-
-// 	_keys := make([]string, 0, len(keys))
-// 	for _, key := range keys {
-// 		_keys = append(_keys, key.Round(time.Second*5).Format(time.Stamp))
-// 	}
-
-// 	datasets := make([]Dataset, 0, len(sg.Managers))
-
-// 	mankeys := make([]string, 0, len(sg.Managers))
-// 	for key := range sg.Managers {
-// 		mankeys = append(mankeys, key)
-// 	}
-// 	sort.Strings(mankeys)
-
-// 	for i, ident := range mankeys {
-// 		mg := sg.Managers[ident]
-// 		data := make([]interface{}, 0, len(_keys))
-// 		for _, time := range keys {
-// 			if val, ok := labels[time][mg.Configuration.Identifier]; ok {
-// 				data = append(data, val)
-// 			} else {
-// 				data = append(data, nil)
-// 			}
-// 		}
-
-// 		colour := colours[i%len(colours)]
-// 		datasets = append(datasets, Dataset{
-// 			Label:            mg.Configuration.DisplayName,
-// 			BackgroundColour: colour[0],
-// 			BorderColour:     colour[1],
-// 			Data:             data,
-// 		})
-// 	}
-
-// 	return LineChart{_keys, datasets}
-// }
-
 // ConstructAnalytics returns a LineChart struct based off of manager analytics
 func (sg *Sandwich) ConstructAnalytics() LineChart {
 	datasets := make([]Dataset, 0, len(sg.Managers))
@@ -223,21 +156,12 @@ func (sg *Sandwich) ConstructAnalytics() LineChart {
 	}
 	sort.Strings(mankeys)
 
-	// labels := make(map[time.Time]map[string]int64)
-	// for _, mg := range sg.Managers {
-	// 	if mg.Analytics != nil {
-	// 		for _, sample := range mg.Analytics.Samples {
-	// 			if _, ok := labels[sample.StoredAt]; !ok {
-	// 				labels[sample.StoredAt] = make(map[string]int64)
-	// 			}
-
-	// 			labels[sample.StoredAt][mg.Configuration.Identifier] = sample.Value
-	// 		}
-	// 	}
-	// }
-
 	for i, ident := range mankeys {
 		mg := sg.Managers[ident]
+		if mg.Analytics == nil {
+			continue
+		}
+
 		data := make([]interface{}, 0, len(mg.Analytics.Samples))
 
 		for _, sample := range mg.Analytics.Samples {

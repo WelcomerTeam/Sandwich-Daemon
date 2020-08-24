@@ -46,12 +46,12 @@
                         aria-controls="pills-home" aria-selected="true">Analytics</a>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="pills-profile-tab" data-toggle="pill" href="#pills-profile" role="tab"
-                        aria-controls="pills-profile" aria-selected="false">Clusters</a>
+                    <a class="nav-link" id="pills-clusters-tab" data-toggle="pill" href="#pills-clusters" role="tab"
+                        aria-controls="pills-clusters" aria-selected="false">Clusters</a>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="pills-contact-tab bg-dark" data-toggle="pill" href="#pills-contact"
-                        role="tab" aria-controls="pills-contact" aria-selected="false">Daemon Settings</a>
+                    <a class="nav-link" id="pills-settings-tab bg-dark" data-toggle="pill" href="#pills-settings"
+                        role="tab" aria-controls="pills-settings" aria-selected="false">Daemon Settings</a>
                 </li>
             </ul>
             <div class="tab-content" id="pills-tabContent">
@@ -64,6 +64,7 @@
                         <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
                         </card-display>
                     </div>
+
                     <div v-if=" this.loadingAnalytics">
                         <div class="d-flex justify-content-center">
                             <div class="spinner-border text-dark" role="status">
@@ -71,13 +72,17 @@
                             </div>
                         </div>
                     </div>
-                    <div v-else class="my-5">
-                        <line-chart :data="analytics.chart" :height="150"></line-chart>
+                    <div v-else class="m-5">
+                        <line-chart :chart-data="analytics.chart" :height="150"
+                            :options="{scales: {xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                        </line-chart>
                     </div>
                 </div>
-                <div class="tab-pane fade" id="pills-profile" role="tabpanel" aria-labelledby="pills-profile-tab">b
+                <div class="tab-pane fade" id="pills-clusters" role="tabpanel" aria-labelledby="pills-clusters-tab">
+                    <cluster-list :clusters="this.fromClusters(data)"></cluster-list>
                 </div>
-                <div class="tab-pane fade" id="pills-contact" role="tabpanel" aria-labelledby="pills-contact-tab">c
+                <div class="tab-pane fade" id="pills-settings" role="tabpanel" aria-labelledby="pills-settings-tab">
+                    settings
                 </div>
             </div>
         </div>

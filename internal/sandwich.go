@@ -251,19 +251,14 @@ func (sg *Sandwich) Open() (err error) {
 	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n     _--*         *--__         Sandwich Daemon %s\n _-**                  **-_\n|_*--_                _-* _|    HTTP: %s\n| *-_ *---_     _----* _-* |    Managers: %d\n *-_ *--__ *****  __---* _*\n     *--__ *-----** ___--*      %s\n         **-____-**\n",
 		VERSION, sg.Configuration.HTTP.Host, len(sg.Configuration.Managers), "┬─┬ ノ( ゜-゜ノ)")
 
-	// If we are not using unique clients, then we should create the shared connection now
-	if !sg.Configuration.Redis.UniqueClients {
-		sg.RedisClient = redis.NewClient(&redis.Options{
-			Addr:     sg.Configuration.Redis.Address,
-			Password: sg.Configuration.Redis.Password,
-			DB:       sg.Configuration.Redis.DB,
-		})
-		sg.Logger.Info().Msg("Created standalone redis client")
-	}
+	sg.RedisClient = redis.NewClient(&redis.Options{
+		Addr:     sg.Configuration.Redis.Address,
+		Password: sg.Configuration.Redis.Password,
+		DB:       sg.Configuration.Redis.DB,
+	})
+	sg.Logger.Info().Msg("Created standalone redis client")
 
 	for _, managerConfiguration := range sg.Configuration.Managers {
-		// a, _ := json.Marshal(managerConfiguration)
-		// println(string(a))
 
 		manager, err := sg.NewManager(managerConfiguration)
 		if err != nil {

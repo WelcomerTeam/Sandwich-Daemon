@@ -252,15 +252,11 @@ func (mg *Manager) Open() (err error) {
 		mg.ProduceBlacklist[value] = void{}
 	}
 
-	sg := mg.NewShardGroup()
-	iter := atomic.AddInt32(mg.ShardGroupIter, 1)
-	mg.ShardGroups[iter] = sg
-
 	mg.Gateway, err = mg.GetGateway()
 	if err != nil {
 		return xerrors.Errorf("manager open get gateway: %w", err)
 	}
-	sg.Logger.Info().Int("sessions", mg.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
+	mg.Logger.Info().Int("sessions", mg.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
 
 	var shardCount int
 	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2 && !mg.Configuration.Sharding.Enforce) {
@@ -278,13 +274,38 @@ func (mg *Manager) Open() (err error) {
 		return xerrors.Errorf("manager open", ErrSessionLimitExhausted)
 	}
 
-	ready, err := sg.Open(mg.GenerateShardIDs(shardCount), shardCount)
+	ready, err := mg.Scale(mg.GenerateShardIDs(shardCount), shardCount)
 	if err != nil {
 		return
 	}
 
 	// Wait for all shards in ShardGroup to be ready
 	<-ready
+
+	return
+}
+
+// Scale creates a new ShardGroup and removes old ones once it has finished
+func (mg *Manager) Scale(shardIDs []int, shardCount int) (ready chan bool, err error) {
+	for _, _sg := range mg.ShardGroups {
+		_sg.SetStatus(structs.ShardGroupReplaced)
+	}
+
+	sg := mg.NewShardGroup()
+	iter := atomic.AddInt32(mg.ShardGroupIter, 1) - 1
+	mg.ShardGroups[iter] = sg
+
+	ready, err = sg.Open(mg.GenerateShardIDs(shardCount), shardCount)
+
+	for index, _sg := range mg.ShardGroups {
+		if index != iter {
+			_sg.floodgate.UnSet()
+			mg.Logger.Debug().Int32("index", index).Msg("Killed ShardGroup")
+			_sg.Close()
+		}
+	}
+
+	sg.floodgate.Set()
 
 	return
 }

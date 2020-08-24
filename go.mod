@@ -10,6 +10,7 @@ require (
 	github.com/nats-io/nats.go v1.10.0
 	github.com/nats-io/stan.go v0.7.0
 	github.com/rs/zerolog v1.19.0
+	github.com/tevino/abool v1.2.0
 	github.com/valyala/fasthttp v1.15.1
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381

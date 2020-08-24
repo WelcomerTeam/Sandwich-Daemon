@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
+	"github.com/tevino/abool"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 )
@@ -28,6 +29,8 @@ type ShardGroup struct {
 	err chan error
 	// Used to close active goroutines
 	close chan void
+
+	floodgate *abool.AtomicBool
 }
 
 // NewShardGroup creates a new shardgroup
@@ -43,6 +46,8 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 		Wait:   &sync.WaitGroup{},
 		err:    make(chan error),
 		close:  make(chan void),
+
+		floodgate: abool.New(),
 	}
 }
 
@@ -65,6 +70,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
 			sg.Close()
+			sg.SetStatus(structs.ShardGroupError)
 			err = xerrors.Errorf("ShardGroup open: %w", err)
 			return
 		}

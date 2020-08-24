@@ -20,10 +20,11 @@ type ShardGroupStatus int32
 // Status Codes for ShardGroups
 const (
 	ShardGroupIdle       ShardGroupStatus = iota // Represents a ShardGroup that has been created but not opened yet
-	ShardGroupStarting                           // Represent a ShardGroup that is still starting up clients
-	ShardGroupConnecting                         // Represents a ShardGroup waiting for shard to be ready
+	ShardGroupStarting                           // Represent a ShardGroup that is still starting up clients (connecting to gateway)
+	ShardGroupConnecting                         // Represents a ShardGroup that has successfully connected to gateway and is waiting for chunking to finish
 	ShardGroupReady                              // Represent a ShardGroup that has all its shards ready
 	ShardGroupReplaced                           // Represent a ShardGroup that is going to be replaced soon by a new ShardGroup
 	ShardGroupClosing                            // Represent a ShardGroup in the process of closing
 	ShardGroupClosed                             // Represent a closed ShardGroup
+	ShardGroupError                              // Represents a closed ShardGroup that closed unexpectedly due to an error
 )
