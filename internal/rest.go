@@ -12,6 +12,7 @@ import (
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/valyala/fasthttp"
+	"golang.org/x/xerrors"
 )
 
 var colours = [][]string{
@@ -79,10 +80,29 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 			}
+		case "/api/rpc":
+			rpcMessage := RPCRequest{}
+			err = json.Unmarshal(ctx.PostBody(), rpcMessage)
+
+			if err == nil {
+				sg.Logger.Debug().Str("method", rpcMessage.Method).Interface("params", rpcMessage.Params).Str("id", rpcMessage.ID).Msg("Received RPC request")
+				if sg.Configuration.HTTP.Enabled {
+
+				} else {
+					res, err = json.Marshal(RPCResponse{nil, xerrors.New("HTTP Interface is not enabled"), rpcMessage.ID})
+				}
+			} else {
+				sg.Logger.Error().Err(err).Msg("Failed to unmarshal RPC request")
+				res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid RPC Payload"), ""})
+			}
+
+			ctx.Write(res)
+			ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 		case "/api/analytics":
 			if sg.Configuration.HTTP.Enabled {
 
 				clusters := make([]ClusterInformation, 0, len(sg.Managers))
+				guilds := make(map[string]int64)
 				for _, mg := range sg.Managers {
 					statuses := make(map[int32]structs.ShardGroupStatus)
 					for i, sg := range mg.ShardGroups {
@@ -90,6 +110,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 					}
 
 					guildCount, err := sg.RedisClient.HLen(context.Background(), mg.CreateKey("guilds")).Result()
+					guilds[mg.Configuration.Caching.RedisPrefix] = guildCount
 					if err != nil {
 						mg.Logger.Error().Err(err).Msg("Failed to retrieve Hashset Length")
 					}
@@ -103,8 +124,14 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				}
 
 				now := time.Now()
+				guildCount := int64(0)
+				for _, count := range guilds {
+					guildCount += count
+				}
+
 				response := AnalyticResponse{
 					Graph:    sg.ConstructAnalytics(),
+					Guilds:   guildCount,
 					Uptime:   now.Sub(sg.Start).Round(time.Second).String(),
 					Events:   atomic.LoadInt64(sg.TotalEvents),
 					Clusters: clusters,
@@ -194,9 +221,24 @@ func (sg *Sandwich) handleRequests() {
 	}
 }
 
+// RPCRequest is the structure the client sends when an JSON-RPC call is made
+type RPCRequest struct {
+	Method string      `json:"method"`
+	Params interface{} `json:"params"`
+	ID     string      `json:"id"`
+}
+
+// RPCResponse is the structure the server sends to respond to a JSON-RPC request
+type RPCResponse struct {
+	Result interface{} `json:"result"`
+	Error  error       `json:"error"`
+	ID     string      `json:"id"`
+}
+
 // AnalyticResponse is the analytic response when you request the analytics
 type AnalyticResponse struct {
 	Graph    LineChart            `json:"chart"`
+	Guilds   int64                `json:"guilds"`
 	Uptime   string               `json:"uptime"`
 	Events   int64                `json:"events"`
 	Clusters []ClusterInformation `json:"clusters"`

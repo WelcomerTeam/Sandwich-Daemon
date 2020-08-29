@@ -27,84 +27,6 @@ Vue.component("card-display", {
     `,
 })
 
-Vue.component("cluster-list", {
-    props: ['clusters'],
-    template: `
-    <div>
-        <div v-for="cluster in clusters">
-            <div class="accordion my-4" :id="'cluster-' + cluster.configuration.identifier">
-                <div class="card">
-                    <div class="card-header" :id="'header-cluster-' + cluster.configuration.identifier">
-                        <h2 class="mb-0">
-                            <button class="btn btn-link btn-block text-left text-decoration-none text-dark"
-                                type="button" data-toggle="collapse"
-                                :data-target="'#collapse-cluster-' + cluster.configuration.identifier"
-                                aria-expanded="true"
-                                :aria-controls="'collapse-cluster-' + cluster.configuration.identifier">
-                                <span v-if="cluster.status == 0"
-                                    class="badge bg-dark">{{ statusShard[cluster.status] }}</span>
-                                <span v-else-if="cluster.status == 1"
-                                    class="badge bg-info">{{ statusShard[cluster.status] }}</span>
-                                <span v-else-if="cluster.status == 2"
-                                    class="badge bg-info">{{ statusShard[cluster.status] }}</span>
-                                <span v-else-if="cluster.status == 4"
-                                    class="badge bg-warn">{{ statusShard[cluster.status] }}</span>
-                                <span v-else-if="cluster.status == 5"
-                                    class="badge bg-warn">{{ statusShard[cluster.status] }}</span>
-                                <span v-else-if="cluster.status == 6"
-                                    class="badge bg-dark">{{ statusShard[cluster.status] }}</span>
-                                <span v-else-if="cluster.status == 7"
-                                    class="badge bg-danger">{{ statusShard[cluster.status] }}</span>
-                                <span v-else class="badge bg-success">{{ statusShard[cluster.status] }}</span>
-                                <span>{{ cluster.configuration.display_name }}</span>
-                            </button>
-                        </h2>
-                    </div>
-
-                    <div :id="'collapse-cluster-' + cluster.configuration.identifier" class="collapse"
-                        :aria-labelledby="'header-cluster-' + cluster.configuration.identifier"
-                        :data-parent="'#cluster-' + cluster.configuration.identifier">
-                        <div class="card-body">
-                            <ul class="nav nav-tabs" id="pills-tab" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link active" :id="'cluster-' + cluster.configuration.identifier + 'pills-status-tab'" data-toggle="pill" :href="'#cluster-' + cluster.configuration.identifier + 'pills-status'" role="tab"
-                                        :aria-controls="'cluster-' + cluster.configuration.identifier + 'pills-status'" aria-selected="true">Status</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" :id="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab bg-dark'" data-toggle="pill" :href="'#cluster-' + cluster.configuration.identifier + 'pills-settings'"
-                                        role="tab" :aria-controls="'cluster-' + cluster.configuration.identifier + 'pills-settings'" aria-selected="false">Settings</a>
-                                </li>
-                            </ul>
-                            <div class="tab-content">
-                                <div class="tab-pane fade p-4 active show" :id="'cluster-' + cluster.configuration.identifier + 'pills-status'" role="tabpanel" :aria-labelledby="'cluster-' + cluster.configuration.identifier + 'pills-status-tab'">
-                                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
-                                        <card-display :title="'Shard Groups'" :value="Object.keys(cluster.shardgroups).length" :bg="'bg-dark'"></card-display>
-                                        <card-display :title="'Average Latency'" :value="Object.values(cluster.shardgroups).reduce((a, shardgroup) => Object.values(shardgroup.shards).reduce((a,shard) => a + (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent)), a), 0) + ' ms'" :bg="'bg-dark'"></card-display>
-                                    </div>
-
-
-                                </div>
-                                <div class="tab-pane fade p-4" :id="'cluster-' + cluster.configuration.identifier + 'pills-settings'" role="tabpanel" :aria-labelledby="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab'">
-                                    settings
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    `,
-    data() {
-        return {
-            status: -1,
-            shardgroups: {},
-            statusShard: ["Idle", "Waiting", "Connecting", "Connected", "Ready", "Reconnecting", "Closed", "Error"],
-            statusGroup: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
-        }
-    },
-})
-
 vue = new Vue({
     el: '#app',
     data() {
@@ -123,7 +45,16 @@ vue = new Vue({
             loadingAnalytics: true,
 
             statusShard: ["Idle", "Waiting", "Connecting", "Connected", "Ready", "Reconnecting", "Closed", "Error"],
+            colourShard: ["dark", "info", "info", "success", "success", "warn", "dark", "danger"],
+
             statusGroup: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
+
+            colourCluster: ["dark", "info", "info", "success", "warn", "warn", "dark", "danger"],
+        }
+    },
+    filters: {
+        pretty: function (value) {
+            return JSON.stringify(value, null, 2);
         }
     },
     mounted() {
@@ -136,6 +67,18 @@ vue = new Vue({
         })
     },
     methods: {
+        sendRPC(method, params, id) {
+            axios
+                .post('/api/rpc', {
+                    'method': method,
+                    'params': params,
+                    'id': id,
+                })
+                .then(result => {
+                    return result
+                })
+                .catch(err => console.log(error))
+        },
         fetchConfiguration() {
             axios
                 .get('/api/configuration')
@@ -197,6 +140,24 @@ vue = new Vue({
                 }
             })
             return _clusters
+        },
+        calculateAverage(cluster) {
+            totalShards = 0;
+            totalLatency = 0;
+
+            shardgroups = Object.values(cluster.shardgroups)
+            for (sgindex in shardgroups) {
+                shardgroup = shardgroups[sgindex]
+                if (shardgroup.status < 6) {
+                    shards = Object.values(shardgroup.shards)
+                    for (shindex in shards) {
+                        shard = shards[shindex]
+                        totalLatency = totalLatency + (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent))
+                        totalShards = totalShards + 1
+                    }
+                }
+            }
+            return (totalLatency / totalShards) || '-'
         }
     }
 })

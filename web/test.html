@@ -159,7 +159,7 @@
         props: ['value'],
         template: `
             <div class="class">
-                <input type="number" class="form-control" :value="value" @change="(v) => {fromIntents(v.target.value);}">
+                <input type="number" class="form-control" :max="32767" :min="0" :value="value" @change="(v) => {fromIntents(v.target.value);}">
                 <div class="form-row py-2">
                     <div class="form-check form-check-inline col-sm-8 col-md-5" v-for="(intent, index) in this.intents">
                         <input class="form-check-input" type="checkbox" v-bind:value="index" v-bind:id="'managerBotIntentBox'+index" v-model="selectedIntent" @input="calculateIntent()">

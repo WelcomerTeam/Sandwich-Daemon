@@ -14,6 +14,7 @@ import (
 type ShardGroup struct {
 	StatusMu sync.RWMutex             `json:"-"`
 	Status   structs.ShardGroupStatus `json:"status"`
+	Error    error                    `json:"error"`
 
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
@@ -38,6 +39,7 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 	return &ShardGroup{
 		Status:   structs.ShardGroupIdle,
 		StatusMu: sync.RWMutex{},
+		Error:    nil,
 
 		Manager: mg,
 		Logger:  mg.Logger,
@@ -72,6 +74,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 			sg.Close()
 			sg.SetStatus(structs.ShardGroupError)
 			err = xerrors.Errorf("ShardGroup open: %w", err)
+			sg.Error = err
 			return
 		}
 

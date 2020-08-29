@@ -22,7 +22,6 @@
             <span class="navbar-brand mb-0 h1">Sandwich Daemon</span>
         </div>
     </nav>
-
     <div class="container-sm p-3" id="app">
         <div v-if="this.loading">
             <div class="d-flex justify-content-center">
@@ -39,7 +38,6 @@
             </div>
         </div>
         <div v-else>
-
             <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
                 <li class="nav-item" role="presentation">
                     <a class="nav-link active" id="pills-home-tab" data-toggle="pill" href="#pills-home" role="tab"
@@ -57,14 +55,13 @@
             <div class="tab-content" id="pills-tabContent">
                 <div class="tab-pane fade show active" id="pills-home" role="tabpanel" aria-labelledby="pills-home-tab">
                     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
-                        <card-display :title="'Guilds'" :value="analytics.visible" :bg=`bg-dark`>
+                        <card-display :title="'Guilds'" :value="analytics.guilds" :bg=`bg-dark`>
                         </card-display>
                         <card-display :title="'Online'" :value="analytics.online" :bg="analytics.colour"></card-display>
                         <card-display :title="'Uptime'" :value="analytics.uptime" :bg=`bg-dark`></card-display>
                         <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
                         </card-display>
                     </div>
-
                     <div v-if=" this.loadingAnalytics">
                         <div class="d-flex justify-content-center">
                             <div class="spinner-border text-dark" role="status">
@@ -79,7 +76,111 @@
                     </div>
                 </div>
                 <div class="tab-pane fade" id="pills-clusters" role="tabpanel" aria-labelledby="pills-clusters-tab">
-                    <cluster-list :clusters="this.fromClusters(data)"></cluster-list>
+                    <div v-for="cluster in this.fromClusters(data)">
+                        <div class="accordion my-4" :id="'cluster-' + cluster.configuration.identifier">
+                            <div class="card">
+                                <div class="card-header" :id="'header-cluster-' + cluster.configuration.identifier">
+                                    <h2 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left text-decoration-none text-dark"
+                                            type="button" data-toggle="collapse"
+                                            :data-target="'#collapse-cluster-' + cluster.configuration.identifier"
+                                            aria-expanded="true"
+                                            :aria-controls="'collapse-cluster-' + cluster.configuration.identifier">
+                                            <span
+                                                :class="'badge bg-' + colourCluster[cluster.status] || 'default'">{{ statusShard[cluster.status] }}</span>
+                                            <span>{{ cluster.configuration.display_name }}</span>
+                                        </button>
+                                    </h2>
+                                </div>
+                                <div :id="'collapse-cluster-' + cluster.configuration.identifier" class="collapse"
+                                    :aria-labelledby="'header-cluster-' + cluster.configuration.identifier"
+                                    :data-parent="'#cluster-' + cluster.configuration.identifier">
+                                    <div class="card-body">
+                                        <ul class="nav nav-tabs" id="pills-tab" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <a class="nav-link active"
+                                                    :id="'cluster-' + cluster.configuration.identifier + 'pills-status-tab'"
+                                                    data-toggle="pill"
+                                                    :href="'#cluster-' + cluster.configuration.identifier + 'pills-status'"
+                                                    role="tab"
+                                                    :aria-controls="'cluster-' + cluster.configuration.identifier + 'pills-status'"
+                                                    aria-selected="true">Status</a>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <a class="nav-link"
+                                                    :id="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab bg-dark'"
+                                                    data-toggle="pill"
+                                                    :href="'#cluster-' + cluster.configuration.identifier + 'pills-settings'"
+                                                    role="tab"
+                                                    :aria-controls="'cluster-' + cluster.configuration.identifier + 'pills-settings'"
+                                                    aria-selected="false">Settings</a>
+                                            </li>
+                                        </ul>
+                                        <div class="tab-content">
+                                            <div class="tab-pane fade p-4 active show"
+                                                :id="'cluster-' + cluster.configuration.identifier + 'pills-status'"
+                                                role="tabpanel"
+                                                :aria-labelledby="'cluster-' + cluster.configuration.identifier + 'pills-status-tab'">
+                                                <div
+                                                    class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center pb-5">
+                                                    <card-display :title="'Shard Groups'"
+                                                        :value="Object.keys(cluster.shardgroups).length"
+                                                        :bg="'bg-dark'"></card-display>
+                                                    <card-display :title="'Average Latency'"
+                                                        :value="calculateAverage(cluster) + ' ms'" :bg="'bg-dark'">
+                                                    </card-display>
+                                                </div>
+                                                Start
+                                                Stop
+                                                New ShardGroup
+                                                    - Shard Count
+                                                        - auto
+                                                        - custom
+                                                    - Shard IDs
+                                                        - all
+                                                        - range X to X
+
+
+                                                <div v-for="(shardgroup,index) in cluster.shardgroups">
+                                                    <div>
+                                                        <h4>
+                                                            <span
+                                                                :class="'badge bg-' + colourCluster[shardgroup.status] || 'default'">{{ statusShard[cluster.status] }}</span>
+                                                            ShardGroup {{ index }}
+                                                        </h4>
+                                                    </div>
+                                                    <table class="table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col">Shard</th>
+                                                                <th scope="col">Status</th>
+                                                                <th scope="col">RTT Latency</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr :class="'table-' + colourShard[shard.status] || 'default'"
+                                                                v-for="(shard) in shardgroup.shards">
+                                                                <th scope="row">{{ shard.shard_id }}</th>
+                                                                <td>{{ statusShard[shard.status] }}</td>
+                                                                <td>{{ new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent) }}ms
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane fade p-4"
+                                                :id="'cluster-' + cluster.configuration.identifier + 'pills-settings'"
+                                                role="tabpanel"
+                                                :aria-labelledby="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab'">
+                                                settings
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="tab-pane fade" id="pills-settings" role="tabpanel" aria-labelledby="pills-settings-tab">
                     settings
