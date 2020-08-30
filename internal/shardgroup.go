@@ -55,6 +55,11 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 
 // Open starts up the shardgroup
 func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
+
+	for _, _sg := range sg.Manager.ShardGroups {
+		_sg.SetStatus(structs.ShardGroupReplaced)
+	}
+
 	sg.SetStatus(structs.ShardGroupStarting)
 
 	sg.ShardCount = ShardCount
@@ -91,6 +96,16 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		}
 		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
 		sg.SetStatus(structs.ShardGroupReady)
+
+		for index, _sg := range sg.Manager.ShardGroups {
+			if _sg != sg {
+				_sg.floodgate.UnSet()
+				sg.Manager.Logger.Debug().Int32("index", index).Msg("Killed ShardGroup")
+				_sg.Close()
+			}
+		}
+
+		sg.floodgate.Set()
 		close(ready)
 	}(sg)
 

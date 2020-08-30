@@ -258,7 +258,24 @@ func (mg *Manager) Open() (err error) {
 	}
 	mg.Logger.Info().Int("sessions", mg.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
 
-	var shardCount int
+	shardCount := mg.GatherShardCount()
+	if shardCount >= mg.Gateway.SessionStartLimit.Remaining {
+		return xerrors.Errorf("manager open", ErrSessionLimitExhausted)
+	}
+
+	ready, err := mg.Scale(mg.GenerateShardIDs(shardCount), shardCount, true)
+	if err != nil {
+		return
+	}
+
+	// Wait for all shards in ShardGroup to be ready
+	<-ready
+
+	return
+}
+
+// GatherShardCount returns the expected shardcount using the gateay object stored
+func (mg *Manager) GatherShardCount() (shardCount int) {
 	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2 && !mg.Configuration.Sharding.Enforce) {
 		shardCount = mg.Gateway.Shards
 	} else {
@@ -270,42 +287,18 @@ func (mg *Manager) Open() (err error) {
 		shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
 	}
 
-	if shardCount >= mg.Gateway.SessionStartLimit.Remaining {
-		return xerrors.Errorf("manager open", ErrSessionLimitExhausted)
-	}
-
-	ready, err := mg.Scale(mg.GenerateShardIDs(shardCount), shardCount)
-	if err != nil {
-		return
-	}
-
-	// Wait for all shards in ShardGroup to be ready
-	<-ready
-
 	return
 }
 
 // Scale creates a new ShardGroup and removes old ones once it has finished
-func (mg *Manager) Scale(shardIDs []int, shardCount int) (ready chan bool, err error) {
-	for _, _sg := range mg.ShardGroups {
-		_sg.SetStatus(structs.ShardGroupReplaced)
-	}
-
+func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan bool, err error) {
 	sg := mg.NewShardGroup()
 	iter := atomic.AddInt32(mg.ShardGroupIter, 1) - 1
 	mg.ShardGroups[iter] = sg
 
-	ready, err = sg.Open(mg.GenerateShardIDs(shardCount), shardCount)
-
-	for index, _sg := range mg.ShardGroups {
-		if index != iter {
-			_sg.floodgate.UnSet()
-			mg.Logger.Debug().Int32("index", index).Msg("Killed ShardGroup")
-			_sg.Close()
-		}
+	if start {
+		ready, err = sg.Open(shardIDs, shardCount)
 	}
-
-	sg.floodgate.Set()
 
 	return
 }

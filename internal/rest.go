@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
 )
@@ -82,12 +84,75 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 			}
 		case "/api/rpc":
 			rpcMessage := RPCRequest{}
-			err = json.Unmarshal(ctx.PostBody(), rpcMessage)
+			err = json.Unmarshal(ctx.PostBody(), &rpcMessage)
 
 			if err == nil {
-				sg.Logger.Debug().Str("method", rpcMessage.Method).Interface("params", rpcMessage.Params).Str("id", rpcMessage.ID).Msg("Received RPC request")
+				sg.Logger.Debug().Str("method", rpcMessage.Method).Str("params", string(rpcMessage.Params)).Str("id", rpcMessage.ID).Msg("Received RPC request")
 				if sg.Configuration.HTTP.Enabled {
 
+					switch rpcMessage.Method {
+					case "shardgroup:create":
+						shardGroupCreateEvent := struct {
+							AutoIDs          bool   `json:"autoIDs"`
+							AutoShard        bool   `json:"autoShard"`
+							Cluster          string `json:"cluster"`
+							ShardCount       int    `json:"shardCount"`
+							RawShardIDs      string `json:"shardIDs"`
+							ShardIDs         []int  `json:"FinalShardIDs"`
+							StartImmediately bool   `json:"startImmediately"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &shardGroupCreateEvent)
+
+						// Check if cluster exists
+						if mg, ok := sg.Managers[shardGroupCreateEvent.Cluster]; ok {
+							// Auto Shards
+							if shardGroupCreateEvent.AutoShard {
+								gw, err := mg.GetGateway()
+								if err != nil {
+									mg.Logger.Warn().Err(err).Msg("Received error retrieving gateway object. Using old response.")
+								} else {
+									// We will only overwrite the gateway if it does not error as we
+									// will just recycle the old response.
+									mg.Gateway = gw
+								}
+								shardGroupCreateEvent.ShardCount = mg.GatherShardCount()
+							}
+							if shardGroupCreateEvent.ShardCount < 1 {
+								sg.Logger.Debug().Msg("Set ShardCount to 1 as it was less than 1")
+								shardGroupCreateEvent.ShardCount = 1
+							}
+
+							if shardGroupCreateEvent.AutoIDs {
+								shardGroupCreateEvent.ShardIDs = mg.GenerateShardIDs(shardGroupCreateEvent.ShardCount)
+							} else {
+								shardGroupCreateEvent.ShardIDs = returnRange(shardGroupCreateEvent.RawShardIDs, shardGroupCreateEvent.ShardCount)
+							}
+
+							sg.Logger.Debug().Msgf("Created ShardIDs: %v", shardGroupCreateEvent.ShardIDs)
+
+							if len(shardGroupCreateEvent.ShardIDs) == 0 {
+								sg.Logger.Debug().Msg("Set ShardIDs to [0] as it was empty")
+								shardGroupCreateEvent.ShardIDs = []int{0}
+							}
+
+							if len(shardGroupCreateEvent.ShardIDs) > shardGroupCreateEvent.ShardCount {
+								sg.Logger.Warn().Msgf("Length of ShardIDs is larger than the ShardCount %d > %d", len(shardGroupCreateEvent.ShardIDs), shardGroupCreateEvent.ShardCount)
+								// TODO: We should handle this properly but it will error out when it starts up anyway
+							}
+
+							if len(shardGroupCreateEvent.ShardIDs) < mg.Gateway.SessionStartLimit.Remaining {
+								mg.Scale(shardGroupCreateEvent.ShardIDs, shardGroupCreateEvent.ShardCount, false)
+								res, err = json.Marshal(RPCResponse{shardGroupCreateEvent, nil, rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Not enough sessions to start %d shards. %d remain", len(shardGroupCreateEvent.ShardIDs), mg.Gateway.SessionStartLimit.Remaining), rpcMessage.ID})
+							}
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided"), rpcMessage.ID})
+						}
+					default:
+						res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unknown event: %s", rpcMessage.Method), rpcMessage.ID})
+					}
 				} else {
 					res, err = json.Marshal(RPCResponse{nil, xerrors.New("HTTP Interface is not enabled"), rpcMessage.ID})
 				}
@@ -221,11 +286,28 @@ func (sg *Sandwich) handleRequests() {
 	}
 }
 
+// Converts a string like 0-4,6-7 to [0,1,2,3,4,6,7]
+func returnRange(_range string, max int) (result []int) {
+	for _, split := range strings.Split(_range, ",") {
+		ranges := strings.Split(split, "-")
+		if low, err := strconv.Atoi(ranges[0]); err == nil {
+			if hi, err := strconv.Atoi(ranges[len(ranges)-1]); err == nil {
+				for i := low; i < hi+1; i++ {
+					if 0 < i && i < max {
+						result = append(result, i)
+					}
+				}
+			}
+		}
+	}
+	return result
+}
+
 // RPCRequest is the structure the client sends when an JSON-RPC call is made
 type RPCRequest struct {
-	Method string      `json:"method"`
-	Params interface{} `json:"params"`
-	ID     string      `json:"id"`
+	Method string              `json:"method"`
+	Params jsoniter.RawMessage `json:"params"`
+	ID     string              `json:"id"`
 }
 
 // RPCResponse is the structure the server sends to respond to a JSON-RPC request

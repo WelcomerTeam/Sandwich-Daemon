@@ -23,6 +23,51 @@
         </div>
     </nav>
     <div class="container-sm p-3" id="app">
+
+        <!-- Create ShardGroup Modal -->
+        <div class="modal fade" id="shardGroupModal" tabindex="-1" aria-labelledby="shardGroupModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="shardGroupModalLabel">New ShardGroup for
+                            {{ clusterConfiguration.cluster }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="col-sm-12 form-label">Shard Count</label>
+                            <input class="form-check-input" type="checkbox" v-model="clusterConfiguration.autoShard">
+                            <label class="form-check-label mb-2">Auto Determine</label>
+                            <input type="number" class="form-control" v-model="clusterConfiguration.shardCount"
+                                :disabled="clusterConfiguration.autoShard">
+                        </div>
+                        <div class="mb-3">
+                            <label class="col-sm-12 form-label">Shard IDs</label>
+                            <input class="form-check-input" type="checkbox" v-model="clusterConfiguration.autoIDs">
+                            <label class="form-check-label mb-2">Auto Determine</label>
+                            <input type="text" class="form-control" v-model="clusterConfiguration.shardIDs"
+                                :disabled="clusterConfiguration.autoIDs" placeholder="from-to,from-to,from-to">
+                        </div>
+                        <div class="form-check mt-5">
+                            <input class="form-check-input" type="checkbox"
+                                v-model="clusterConfiguration.startImmediately">
+                            <label class="form-check-label">Start ShardGroup Immediately</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" v-on:click="createShardGroup()">Create
+                            ShardGroup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- App -->
+
         <div v-if="this.loading">
             <div class="d-flex justify-content-center">
                 <div class="spinner-border text-dark" role="status">
@@ -108,7 +153,7 @@
                                             </li>
                                             <li class="nav-item" role="presentation">
                                                 <a class="nav-link"
-                                                    :id="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab bg-dark'"
+                                                    :id="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab'"
                                                     data-toggle="pill"
                                                     :href="'#cluster-' + cluster.configuration.identifier + 'pills-settings'"
                                                     role="tab"
@@ -130,24 +175,21 @@
                                                         :value="calculateAverage(cluster) + ' ms'" :bg="'bg-dark'">
                                                     </card-display>
                                                 </div>
+
+                                                <button type="button" class="btn btn-dark"
+                                                    v-on:click="newShardGroup(cluster.configuration.identifier)">
+                                                    Create ShardGroup
+                                                </button>
                                                 Start
                                                 Stop
-                                                New ShardGroup
-                                                    - Shard Count
-                                                        - auto
-                                                        - custom
-                                                    - Shard IDs
-                                                        - all
-                                                        - range X to X
-
 
                                                 <div v-for="(shardgroup,index) in cluster.shardgroups">
-                                                    <div>
-                                                        <h4>
+                                                    <div class="mt-4">
+                                                        <h5>
                                                             <span
                                                                 :class="'badge bg-' + colourCluster[shardgroup.status] || 'default'">{{ statusShard[cluster.status] }}</span>
                                                             ShardGroup {{ index }}
-                                                        </h4>
+                                                        </h5>
                                                     </div>
                                                     <table class="table">
                                                         <thead>
