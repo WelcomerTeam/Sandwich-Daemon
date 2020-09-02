@@ -116,7 +116,8 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 									// will just recycle the old response.
 									mg.Gateway = gw
 								}
-								shardGroupCreateEvent.ShardCount = mg.GatherShardCount()
+								// shardGroupCreateEvent.ShardCount = mg.GatherShardCount()
+								shardGroupCreateEvent.ShardCount = mg.Gateway.Shards
 							}
 							if shardGroupCreateEvent.ShardCount < 1 {
 								sg.Logger.Debug().Msg("Set ShardCount to 1 as it was less than 1")
@@ -142,23 +143,23 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							}
 
 							if len(shardGroupCreateEvent.ShardIDs) < mg.Gateway.SessionStartLimit.Remaining {
-								mg.Scale(shardGroupCreateEvent.ShardIDs, shardGroupCreateEvent.ShardCount, false)
-								res, err = json.Marshal(RPCResponse{shardGroupCreateEvent, nil, rpcMessage.ID})
+								mg.Scale(shardGroupCreateEvent.ShardIDs, shardGroupCreateEvent.ShardCount, true)
+								res, err = json.Marshal(RPCResponse{shardGroupCreateEvent, "", rpcMessage.ID})
 							} else {
-								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Not enough sessions to start %d shards. %d remain", len(shardGroupCreateEvent.ShardIDs), mg.Gateway.SessionStartLimit.Remaining), rpcMessage.ID})
+								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Not enough sessions to start %d shards. %d remain", len(shardGroupCreateEvent.ShardIDs), mg.Gateway.SessionStartLimit.Remaining).Error(), rpcMessage.ID})
 							}
 						} else {
-							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided"), rpcMessage.ID})
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
 					default:
-						res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unknown event: %s", rpcMessage.Method), rpcMessage.ID})
+						res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unknown event: %s", rpcMessage.Method).Error(), rpcMessage.ID})
 					}
 				} else {
-					res, err = json.Marshal(RPCResponse{nil, xerrors.New("HTTP Interface is not enabled"), rpcMessage.ID})
+					res, err = json.Marshal(RPCResponse{nil, xerrors.New("HTTP Interface is not enabled").Error(), rpcMessage.ID})
 				}
 			} else {
 				sg.Logger.Error().Err(err).Msg("Failed to unmarshal RPC request")
-				res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid RPC Payload"), ""})
+				res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid RPC Payload").Error(), ""})
 			}
 
 			ctx.Write(res)
@@ -313,7 +314,7 @@ type RPCRequest struct {
 // RPCResponse is the structure the server sends to respond to a JSON-RPC request
 type RPCResponse struct {
 	Result interface{} `json:"result"`
-	Error  error       `json:"error"`
+	Error  string      `json:"error"`
 	ID     string      `json:"id"`
 }
 

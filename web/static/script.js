@@ -13,6 +13,39 @@ Vue.component("line-chart", {
     },
 })
 
+Vue.component("status-graph", {
+    props: ['value', 'colours'],
+    template: `
+    <div class="progress">
+        <div v-for="(value, index) in this.keys" :class="'progress-bar bg-' + colours[index]" role="progressbar" :style="'width: ' + (value/total)*100 + '%'" :aria-valuenow="(value/total)*100" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+    `,
+    data() {
+        return {
+            keys: {},
+            total: 0,
+        }
+    },
+    mounted() {
+        this.loadValues()
+    },
+    methods: {
+        loadValues() {
+            shards = Object.values(this.value.shards)
+            for (shindex in shards) {
+                shard = shards[shindex]
+                if (shard.status in this.keys) {
+                    this.keys[shard.status]++
+                } else {
+                    this.keys[shard.status] = 1
+                }
+                this.total++
+            }
+            this.$forceUpdate()
+        }
+    }
+})
+
 Vue.component("card-display", {
     props: ['title', 'value', 'bg'],
     template: `
@@ -175,10 +208,11 @@ vue = new Vue({
                 startImmediately: true,
             },
 
-            statusShard: ["Idle", "Waiting", "Connecting", "Connected", "Ready", "Reconnecting", "Closed", "Error"],
-            colourShard: ["dark", "info", "info", "success", "success", "warn", "dark", "danger"],
+            statusShard: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
+            colourShard: ["dark", "info", "info", "success", "info", "warn", "secondary"],
 
-            statusGroup: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
+            statusGroup: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed", "Error"],
+            colourGroup: ["dark", "info", "info", "success", "info", "warn", "dark", "danger"],
 
             colourCluster: ["dark", "info", "info", "success", "warn", "warn", "dark", "danger"],
         }
@@ -257,7 +291,7 @@ vue = new Vue({
                         shardgroups = Object.values(cluster.status)
                         for (sgindex in shardgroups) {
                             shardgroupstatus = shardgroups[sgindex]
-                            if (1 < shardgroupstatus && shardgroupstatus < 6) {
+                            if (2 < shardgroupstatus && shardgroupstatus < 4) {
                                 up++
                             }
                             total++
@@ -288,6 +322,7 @@ vue = new Vue({
                 _clusters[key] = {
                     configuration: value.configuration,
                     shardgroups: value.shard_groups,
+                    gateway: value.gateway,
                     status: status,
                 }
             })
@@ -309,7 +344,7 @@ vue = new Vue({
                     }
                 }
             }
-            return (totalLatency / totalShards) || '-'
+            return Math.round(totalLatency / totalShards) || '-'
         }
     }
 })

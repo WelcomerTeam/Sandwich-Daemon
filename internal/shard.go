@@ -684,4 +684,5 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 		sh.cancel()
 	}
 	sh.CloseWS(code)
+	sh.SetStatus(structs.ShardClosed)
 }

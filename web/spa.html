@@ -51,11 +51,11 @@
                             <input type="text" class="form-control" v-model="clusterConfiguration.shardIDs"
                                 :disabled="clusterConfiguration.autoIDs" placeholder="from-to,from-to,from-to">
                         </div>
-                        <div class="form-check mt-5">
+                        <!-- <div class="form-check mt-5">
                             <input class="form-check-input" type="checkbox"
                                 v-model="clusterConfiguration.startImmediately">
                             <label class="form-check-label">Start ShardGroup Immediately</label>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -132,7 +132,7 @@
                                             aria-expanded="true"
                                             :aria-controls="'collapse-cluster-' + cluster.configuration.identifier">
                                             <span
-                                                :class="'badge bg-' + colourCluster[cluster.status] || 'default'">{{ statusShard[cluster.status] }}</span>
+                                                :class="'badge bg-' + colourCluster[cluster.status] || 'default'">{{ statusGroup[cluster.status] }}</span>
                                             <span>{{ cluster.configuration.display_name }}</span>
                                         </button>
                                     </h2>
@@ -166,15 +166,27 @@
                                                 :id="'cluster-' + cluster.configuration.identifier + 'pills-status'"
                                                 role="tabpanel"
                                                 :aria-labelledby="'cluster-' + cluster.configuration.identifier + 'pills-status-tab'">
-                                                <div
-                                                    class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center pb-5">
-                                                    <card-display :title="'Shard Groups'"
-                                                        :value="Object.keys(cluster.shardgroups).length"
-                                                        :bg="'bg-dark'"></card-display>
-                                                    <card-display :title="'Average Latency'"
-                                                        :value="calculateAverage(cluster) + ' ms'" :bg="'bg-dark'">
-                                                    </card-display>
-                                                </div>
+                                                <ul class="list-group mb-4">
+                                                    <li
+                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Shard Groups
+                                                        <span
+                                                            class="badge bg-dark rounded-pill">{{ Object.keys(cluster.shardgroups).length }}</span>
+                                                    </li>
+                                                    <li
+                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Average Latency
+                                                        <span
+                                                            class="badge bg-dark rounded-pill">{{ calculateAverage(cluster) + ' ms' }}</span>
+                                                    </li>
+                                                    <li
+                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Sessions
+                                                        <span
+                                                            class="badge bg-dark rounded-pill">{{ cluster.gateway.session_start_limit.remaining }}/{{ cluster.gateway.session_start_limit.total }}
+                                                            ({{ cluster.gateway.session_start_limit.max_concurrency }})</span>
+                                                    </li>
+                                                </ul>
 
                                                 <button type="button" class="btn btn-dark"
                                                     v-on:click="newShardGroup(cluster.configuration.identifier)">
@@ -183,27 +195,52 @@
                                                 Start
                                                 Stop
 
-                                                <div v-for="(shardgroup,index) in cluster.shardgroups">
-                                                    <div class="mt-4">
+                                                <div v-for="(shardgroup,index) in cluster.shardgroups"
+                                                    class="border border-bottom bg-light rounded-lg p-3 my-2">
+                                                    <div class="mb-3">
                                                         <h5>
                                                             <span
-                                                                :class="'badge bg-' + colourCluster[shardgroup.status] || 'default'">{{ statusShard[cluster.status] }}</span>
+                                                                :class="'badge rounded-pill bg-' + colourGroup[shardgroup.status] || 'default'">{{ statusGroup[shardgroup.status] }}</span>
                                                             ShardGroup {{ index }}
                                                         </h5>
                                                     </div>
-                                                    <table class="table">
+
+                                                    <ul class="list-group mb-4">
+                                                        <li
+                                                            class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Status
+                                                            <status-graph :value="shardgroup" :colours="colourShard"
+                                                                style="width: 50%">
+                                                            </status-graph>
+                                                        </li>
+                                                        <li
+                                                            class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Shards
+                                                            <span
+                                                                class="badge bg-dark rounded-pill">{{ shardgroup.shard_count }}</span>
+                                                        </li>
+                                                    </ul>
+
+                                                    <div v-if="shardgroup.error">
+                                                        <div class="p-3 mb-2 bg-danger text-white">
+                                                            {{ shardgroup.error }}</div>
+                                                    </div>
+
+                                                    <table class="table table-borderless">
                                                         <thead>
-                                                            <tr>
+                                                            <tr class="table-dark">
                                                                 <th scope="col">Shard</th>
                                                                 <th scope="col">Status</th>
                                                                 <th scope="col">RTT Latency</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <tr :class="'table-' + colourShard[shard.status] || 'default'"
+                                                            <tr class="table-default"
                                                                 v-for="(shard) in shardgroup.shards">
                                                                 <th scope="row">{{ shard.shard_id }}</th>
-                                                                <td>{{ statusShard[shard.status] }}</td>
+                                                                <td><span
+                                                                        :class="'badge bg-' + colourShard[shard.status]">{{ statusShard[shard.status] }}</span>
+                                                                </td>
                                                                 <td>{{ new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent) }}ms
                                                                 </td>
                                                             </tr>

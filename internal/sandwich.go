@@ -272,12 +272,31 @@ func (sg *Sandwich) Open() (err error) {
 
 		sg.Managers[managerConfiguration.Identifier] = manager
 
+		err = manager.Open()
+
 		if manager.Configuration.AutoStart {
 			go func() {
-				err := manager.Open()
+				manager.Gateway, err = manager.GetGateway()
 				if err != nil {
 					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+					return
 				}
+				manager.Logger.Info().Int("sessions", manager.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
+
+				shardCount := manager.GatherShardCount()
+				if shardCount >= manager.Gateway.SessionStartLimit.Remaining {
+					manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
+					return
+				}
+
+				ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
+				if err != nil {
+					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+					return
+				}
+
+				// Wait for all shards in ShardGroup to be ready
+				<-ready
 			}()
 		}
 	}

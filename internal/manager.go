@@ -114,7 +114,7 @@ type Manager struct {
 	StanClient  stan.Conn     `json:"-"`
 
 	Client  *Client            `json:"-"`
-	Gateway structs.GatewayBot `json:"-"`
+	Gateway structs.GatewayBot `json:"gateway"`
 
 	pp sync.Pool
 
@@ -244,32 +244,19 @@ func (mg *Manager) Open() (err error) {
 		return xerrors.Errorf("manager open stan connect: %w", err)
 	}
 
-	for _, value := range mg.Configuration.Events.EventBlacklist {
-		mg.EventBlacklist[value] = void{}
+	if len(mg.EventBlacklist) == 0 {
+		for _, value := range mg.Configuration.Events.EventBlacklist {
+			mg.EventBlacklist[value] = void{}
+		}
 	}
 
-	for _, value := range mg.Configuration.Events.ProduceBlacklist {
-		mg.ProduceBlacklist[value] = void{}
+	if len(mg.ProduceBlacklist) == 0 {
+		for _, value := range mg.Configuration.Events.ProduceBlacklist {
+			mg.ProduceBlacklist[value] = void{}
+		}
 	}
 
 	mg.Gateway, err = mg.GetGateway()
-	if err != nil {
-		return xerrors.Errorf("manager open get gateway: %w", err)
-	}
-	mg.Logger.Info().Int("sessions", mg.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
-
-	shardCount := mg.GatherShardCount()
-	if shardCount >= mg.Gateway.SessionStartLimit.Remaining {
-		return xerrors.Errorf("manager open", ErrSessionLimitExhausted)
-	}
-
-	ready, err := mg.Scale(mg.GenerateShardIDs(shardCount), shardCount, true)
-	if err != nil {
-		return
-	}
-
-	// Wait for all shards in ShardGroup to be ready
-	<-ready
 
 	return
 }
@@ -310,7 +297,7 @@ func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
 
 	packet.Data = Data
 	packet.From = mg.Configuration.Identifier
-	packet.From = Type
+	packet.Type = Type
 
 	data, err := msgpack.Marshal(packet)
 	if err != nil {

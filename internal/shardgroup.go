@@ -14,7 +14,7 @@ import (
 type ShardGroup struct {
 	StatusMu sync.RWMutex             `json:"-"`
 	Status   structs.ShardGroupStatus `json:"status"`
-	Error    error                    `json:"error"`
+	Error    string                   `json:"error"`
 
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
@@ -39,7 +39,7 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 	return &ShardGroup{
 		Status:   structs.ShardGroupIdle,
 		StatusMu: sync.RWMutex{},
-		Error:    nil,
+		Error:    "",
 
 		Manager: mg,
 		Logger:  mg.Logger,
@@ -57,7 +57,10 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
 
 	for _, _sg := range sg.Manager.ShardGroups {
-		_sg.SetStatus(structs.ShardGroupReplaced)
+		// We preferably do not want to mark a errored shardgroup as replaced as it overwrites how it is displayed.
+		if _sg.Status != structs.ShardGroupError {
+			_sg.SetStatus(structs.ShardGroupReplaced)
+		}
 	}
 
 	sg.SetStatus(structs.ShardGroupStarting)
@@ -72,14 +75,19 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 	for _, shardID := range sg.ShardIDs {
 		shard := sg.NewShard(shardID)
 		sg.Shards[shardID] = shard
+	}
 
+	for _, shard := range sg.Shards {
 		err = shard.Connect()
 		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
+			sg.Error = err.Error()
 			sg.Close()
 			sg.SetStatus(structs.ShardGroupError)
+			for _, shard := range sg.Shards {
+				shard.SetStatus(structs.ShardClosed)
+			}
 			err = xerrors.Errorf("ShardGroup open: %w", err)
-			sg.Error = err
 			return
 		}
 
