@@ -26,11 +26,18 @@ Vue.component("status-graph", {
             total: 0,
         }
     },
+    watch: {
+        value: function () {
+            this.loadValues()
+        }
+    },
     mounted() {
         this.loadValues()
     },
     methods: {
         loadValues() {
+            this.keys = {}
+            this.total = 0
             shards = Object.values(this.value.shards)
             for (shindex in shards) {
                 shard = shards[shindex]

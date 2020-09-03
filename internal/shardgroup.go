@@ -17,6 +17,8 @@ type ShardGroup struct {
 	Status   structs.ShardGroupStatus `json:"status"`
 	Error    string                   `json:"error"`
 
+	WaitingFor int `json:"waiting_for"`
+
 	ID int32 `json:"id"` // track of shardgroups
 
 	Manager *Manager       `json:"-"`
@@ -117,8 +119,10 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 	sg.SetStatus(structs.ShardGroupConnecting)
 
 	go func(sg *ShardGroup) {
-		for _, shard := range sg.Shards {
+		for _, shardID := range sg.ShardIDs {
+			shard := sg.Shards[shardID]
 			sg.Logger.Debug().Msgf("Waiting for shard %d to be ready", shard.ShardID)
+			sg.WaitingFor = shardID
 			shard.WaitForReady()
 		}
 		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
