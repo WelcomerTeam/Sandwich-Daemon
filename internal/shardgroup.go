@@ -83,7 +83,8 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		sg.Shards[shardID] = shard
 	}
 
-	for _, shard := range sg.Shards {
+	for _, shardID := range sg.ShardIDs {
+		shard := sg.Shards[shardID]
 		err = shard.Connect()
 		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
