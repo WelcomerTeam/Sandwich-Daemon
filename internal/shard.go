@@ -47,6 +47,8 @@ type Shard struct {
 
 	Unavailable map[snowflake.ID]bool `json:"-"`
 
+	Retries *int32 `json:"retries"` // When erroring, how many times to retry connecting until shardgroup is stopped
+
 	wsConn  *websocket.Conn
 	wsMutex sync.Mutex
 
@@ -86,6 +88,8 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		LastHeartbeatAck:  time.Now().UTC(),
 		LastHeartbeatSent: time.Now().UTC(),
 
+		Retries: new(int32),
+
 		rp: sync.Pool{
 			New: func() interface{} { return new(structs.SentPayload) },
 		},
@@ -103,6 +107,7 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		ready: make(chan void),
 		errs:  make(chan error),
 	}
+	atomic.StoreInt32(sh.Retries, sg.Manager.Configuration.Bot.Retries)
 	return sh
 }
 
@@ -207,6 +212,7 @@ func (sh *Shard) Connect() (err error) {
 
 	go sh.Heartbeat()
 	sh.SetStatus(structs.ShardConnected)
+	atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
 	return
 }
 

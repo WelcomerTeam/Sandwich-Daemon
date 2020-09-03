@@ -35,6 +35,7 @@ managers:
     intents: 0
     largethreshold: 250
     maxheartbeatfailures: 5
+    retries: 2
   caching:
     redisprefix: welcomer
     cachemembers: false

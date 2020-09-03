@@ -40,6 +40,7 @@ type ManagerConfiguration struct {
 		Intents              int                   `json:"intents" msgpack:"intents"`
 		LargeThreshold       int                   `json:"large_threshold" msgpack:"large_threshold"`
 		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures" msgpack:"max_heartbeat_failures"`
+		Retries              int32                 `json:"retries" msgpack:"retries"`
 	} `json:"bot" msgpack:"bot"`
 
 	Caching struct {
@@ -179,6 +180,9 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 
 	if mg.Configuration.Bot.MaxHeartbeatFailures < 1 {
 		mg.Configuration.Bot.MaxHeartbeatFailures = 1
+	}
+	if mg.Configuration.Bot.Retries < 1 {
+		mg.Configuration.Bot.Retries = 1
 	}
 
 	if mg.Configuration.Caching.RedisPrefix == "" {

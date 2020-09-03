@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
@@ -85,17 +86,28 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 
 	for _, shardID := range sg.ShardIDs {
 		shard := sg.Shards[shardID]
-		err = shard.Connect()
-		if err != nil && !xerrors.Is(err, context.Canceled) {
-			sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
-			sg.Error = err.Error()
-			sg.Close()
-			sg.SetStatus(structs.ShardGroupError)
-			for _, shard := range sg.Shards {
-				shard.SetStatus(structs.ShardClosed)
+		for {
+			err = shard.Connect()
+			if err != nil && !xerrors.Is(err, context.Canceled) {
+				retries := atomic.LoadInt32(shard.Retries)
+				if retries > 0 {
+					sg.Logger.Error().Err(err).Int32("retries", retries).Msg("Failed to connect shard. Retrying...")
+				} else {
+					sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
+					sg.Error = err.Error()
+					sg.Close()
+					sg.SetStatus(structs.ShardGroupError)
+					for _, shard := range sg.Shards {
+						shard.SetStatus(structs.ShardClosed)
+					}
+					err = xerrors.Errorf("ShardGroup open: %w", err)
+					return
+				}
+				atomic.AddInt32(shard.Retries, -1)
+				sg.Logger.Debug().Msgf("Shardgroup retires is now %d", atomic.LoadInt32(shard.Retries))
+			} else {
+				break
 			}
-			err = xerrors.Errorf("ShardGroup open: %w", err)
-			return
 		}
 
 		go shard.Open()
