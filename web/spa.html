@@ -225,7 +225,7 @@
                                                 </button>
 
                                                 <div v-for="(shardgroup,index) in cluster.shardgroups"
-                                                    class="border border-bottom bg-light rounded-lg p-3 my-2">
+                                                    class="border border-bottom bg-light rounded-lg p-3 my-4">
                                                     <div class="mb-3">
                                                         <h5>
                                                             <span
@@ -238,13 +238,12 @@
                                                                 Stop ShardGroup
                                                             </button>
                                                         </div>
-                                                        <div v-if="shardgroup.status == 6">
+                                                        <div v-if="shardgroup.status >= 6">
                                                             <button type="button" class="btn btn-dark"
                                                                 v-on:click="deleteShardGroup(cluster.configuration.identifier, shardgroup.id)">
                                                                 Delete ShardGroup
                                                             </button>
                                                         </div>
-
                                                     </div>
 
                                                     <div v-if="shardgroup.status != 6">
