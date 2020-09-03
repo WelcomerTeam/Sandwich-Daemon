@@ -134,10 +134,12 @@ func (sh *Shard) Connect() (err error) {
 
 	sh.ready = make(chan void)
 	sh.ctx, sh.cancel = context.WithCancel(context.Background())
+	sh.Manager.GatewayMu.RLock()
 	gatewayURL := sh.Manager.Gateway.URL
 
 	sh.SetStatus(structs.ShardWaiting)
 	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
+	sh.Manager.GatewayMu.RUnlock()
 	if err != nil {
 		return
 	}
@@ -556,6 +558,10 @@ func (sh *Shard) Resume() (err error) {
 // Identify sends the identify packet to gateway
 func (sh *Shard) Identify() (err error) {
 	sh.Logger.Debug().Msg("Sending identify")
+
+	sh.Manager.GatewayMu.Lock()
+	sh.Manager.Gateway.Shards--
+	sh.Manager.GatewayMu.Unlock()
 
 	return sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
 		Token: sh.Manager.Configuration.Token,

@@ -269,9 +269,25 @@ vue = new Vue({
         stopShardGroup() {
             config = Object.assign({}, this.stopShardGroupDialogueData)
             this.sendRPC("shardgroup:stop", config)
-            setTimeout(() => this.fetchClustersData(), 5000)
+            setTimeout(() => this.fetchClustersData(), 1000)
 
             this.stopShardGroupDialogueModal.hide()
+        },
+        deleteShardGroup(cluster, shardgroup) {
+            config = {
+                cluster: cluster,
+                shardgroup: shardgroup,
+            }
+            this.sendRPC("shardgroup:delete", config)
+            setTimeout(() => this.fetchClustersData(), 1000)
+        },
+
+        refreshGateway(cluster) {
+            config = {
+                cluster: cluster,
+            }
+            this.sendRPC("manager:refresh_gateway", config)
+            setTimeout(() => this.fetchClustersData(), 1000)
         },
 
         createShardGroupDialogue(cluster) {
@@ -289,21 +305,22 @@ vue = new Vue({
         createShardGroup() {
             config = Object.assign({}, this.createShardGroupDialogueData)
             this.sendRPC("shardgroup:create", config)
-            setTimeout(() => this.fetchClustersData(), 5000)
+            setTimeout(() => this.fetchClustersData(), 1000)
 
             this.createShardGroupDialogueModal.hide()
         },
 
         fetchClustersData() {
             axios
-                .get('/api/cluster')
+                .get('/api/configuration')
                 .then(result => {
                     clusters = Object.keys(result.data.response)
                     for (mgindex in clusters) {
                         cluster_key = clusters[mgindex]
                         cluster = result.data.response[cluster_key]
                         if (cluster_key in this.data) {
-                            this.data[cluster_key].shard_groups = cluster
+                            this.data[cluster_key].shard_groups = cluster.shard_groups
+                            this.data[cluster_key].gateway = cluster.gateway
                         }
                     }
                 })

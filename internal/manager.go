@@ -114,8 +114,10 @@ type Manager struct {
 	NatsClient  *nats.Conn    `json:"-"`
 	StanClient  stan.Conn     `json:"-"`
 
-	Client  *Client            `json:"-"`
-	Gateway structs.GatewayBot `json:"gateway"`
+	Client *Client `json:"-"`
+
+	GatewayMu sync.RWMutex       `json:"-"`
+	Gateway   structs.GatewayBot `json:"gateway"`
 
 	pp sync.Pool
 
@@ -147,8 +149,10 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		Configuration: configuration,
 		Buckets:       bucketstore.NewBucketStore(),
 
-		Client:  NewClient(configuration.Token),
-		Gateway: structs.GatewayBot{},
+		Client: NewClient(configuration.Token),
+
+		GatewayMu: sync.RWMutex{},
+		Gateway:   structs.GatewayBot{},
 
 		pp: sync.Pool{
 			New: func() interface{} { return new(structs.PublishEvent) },
@@ -267,6 +271,7 @@ func (mg *Manager) Open() (err error) {
 
 // GatherShardCount returns the expected shardcount using the gateay object stored
 func (mg *Manager) GatherShardCount() (shardCount int) {
+	mg.GatewayMu.RLock()
 	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2 && !mg.Configuration.Sharding.Enforce) {
 		shardCount = mg.Gateway.Shards
 	} else {
@@ -277,6 +282,7 @@ func (mg *Manager) GatherShardCount() (shardCount int) {
 		// We will round up the shard count depending on the concurrent clients specified
 		shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
 	}
+	mg.GatewayMu.RUnlock()
 
 	return
 }

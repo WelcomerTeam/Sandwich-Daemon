@@ -281,13 +281,17 @@ func (sg *Sandwich) Open() (err error) {
 					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
 					return
 				}
+
+				manager.GatewayMu.RLock()
 				manager.Logger.Info().Int("sessions", manager.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
 
 				shardCount := manager.GatherShardCount()
 				if shardCount >= manager.Gateway.SessionStartLimit.Remaining {
 					manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
+					manager.GatewayMu.RUnlock()
 					return
 				}
+				manager.GatewayMu.RUnlock()
 
 				ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
 				if err != nil {

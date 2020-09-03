@@ -219,6 +219,10 @@
                                                     v-on:click="createShardGroupDialogue(cluster.configuration.identifier)">
                                                     Scale Cluster
                                                 </button>
+                                                <button type="button" class="btn btn-info"
+                                                    v-on:click="refreshGateway(cluster.configuration.identifier)">
+                                                    Refresh Gateway
+                                                </button>
 
                                                 <div v-for="(shardgroup,index) in cluster.shardgroups"
                                                     class="border border-bottom bg-light rounded-lg p-3 my-2">
@@ -229,11 +233,18 @@
                                                             ShardGroup {{ shardgroup.id }}
                                                         </h5>
                                                         <div v-if="shardgroup.status != 6">
-                                                            <button type="button" class="btn btn-danger "
+                                                            <button type="button" class="btn btn-danger"
                                                                 v-on:click="stopShardGroupDialogue(cluster.configuration.identifier, shardgroup.id)">
                                                                 Stop ShardGroup
                                                             </button>
                                                         </div>
+                                                        <div v-if="shardgroup.status == 6">
+                                                            <button type="button" class="btn btn-dark"
+                                                                v-on:click="deleteShardGroup(cluster.configuration.identifier, shardgroup.id)">
+                                                                Delete ShardGroup
+                                                            </button>
+                                                        </div>
+
                                                     </div>
 
                                                     <div v-if="shardgroup.status != 6">

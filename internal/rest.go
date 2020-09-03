@@ -174,6 +174,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						if mg, ok := sg.Managers[shardGroupCreateEvent.Cluster]; ok {
 							// Auto Shards
 							if shardGroupCreateEvent.AutoShard {
+								mg.GatewayMu.Lock()
 								gw, err := mg.GetGateway()
 								if err != nil {
 									mg.Logger.Warn().Err(err).Msg("Received error retrieving gateway object. Using old response.")
@@ -184,6 +185,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 								}
 								// shardGroupCreateEvent.ShardCount = mg.GatherShardCount()
 								shardGroupCreateEvent.ShardCount = mg.Gateway.Shards
+								mg.GatewayMu.Unlock()
 							}
 							if shardGroupCreateEvent.ShardCount < 1 {
 								sg.Logger.Debug().Msg("Set ShardCount to 1 as it was less than 1")
@@ -208,12 +210,14 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 								// TODO: We should handle this properly but it will error out when it starts up anyway
 							}
 
+							mg.GatewayMu.RLock()
 							if len(shardGroupCreateEvent.ShardIDs) < mg.Gateway.SessionStartLimit.Remaining {
 								mg.Scale(shardGroupCreateEvent.ShardIDs, shardGroupCreateEvent.ShardCount, true)
 								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
 							} else {
 								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Not enough sessions to start %d shards. %d remain", len(shardGroupCreateEvent.ShardIDs), mg.Gateway.SessionStartLimit.Remaining).Error(), rpcMessage.ID})
 							}
+							mg.GatewayMu.RUnlock()
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
@@ -231,6 +235,52 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							if sg, ok := mg.ShardGroups[shardGroupStopEvent.ShardGroup]; ok {
 								sg.Close()
 								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid ShardGroup provided").Error(), rpcMessage.ID})
+							}
+							mg.ShardGroupMu.Unlock()
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
+						}
+					case "manager:refresh_gateway":
+						manageRefreshGatewayEvent := struct {
+							Cluster string `json:"cluster"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &manageRefreshGatewayEvent)
+
+						// Check if cluster exists
+						if mg, ok := sg.Managers[manageRefreshGatewayEvent.Cluster]; ok {
+							gw, err := mg.GetGateway()
+							if err == nil {
+								mg.GatewayMu.Lock()
+								mg.Gateway = gw
+								mg.GatewayMu.Unlock()
+								res, err = json.Marshal(RPCResponse{gw, "", rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+							}
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
+						}
+					case "shardgroup:delete":
+						shardGroupStopEvent := struct {
+							Cluster    string `json:"cluster"`
+							ShardGroup int32  `json:"shardgroup"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &shardGroupStopEvent)
+
+						// Check if cluster exists
+						if mg, ok := sg.Managers[shardGroupStopEvent.Cluster]; ok {
+							mg.ShardGroupMu.Lock()
+							if sg, ok := mg.ShardGroups[shardGroupStopEvent.ShardGroup]; ok {
+								if sg.Status == structs.ShardGroupClosed {
+									delete(mg.ShardGroups, shardGroupStopEvent.ShardGroup)
+									res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+								} else {
+									res, err = json.Marshal(RPCResponse{nil, "ShardGroup has not closed", rpcMessage.ID})
+								}
 							} else {
 								res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid ShardGroup provided").Error(), rpcMessage.ID})
 							}
