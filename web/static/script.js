@@ -375,9 +375,27 @@ vue = new Vue({
                     shards = Object.values(shardgroup.shards)
                     for (shindex in shards) {
                         shard = shards[shindex]
-                        totalLatency = totalLatency + (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent))
-                        totalShards = totalShards + 1
+                        latency = (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent))
+                        if (latency != 0) {
+                            totalLatency += latency
+                            totalShards += 1
+                        }
                     }
+                }
+            }
+            return Math.round(totalLatency / totalShards) || '-'
+        },
+        calculateAverageShardGroup(shardgroup) {
+            totalShards = 0;
+            totalLatency = 0;
+
+            shards = Object.values(shardgroup.shards)
+            for (shindex in shards) {
+                shard = shards[shindex]
+                latency = (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent))
+                if (latency != 0) {
+                    totalLatency += latency
+                    totalShards += 1
                 }
             }
             return Math.round(totalLatency / totalShards) || '-'
