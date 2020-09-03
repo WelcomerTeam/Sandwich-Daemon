@@ -16,6 +16,8 @@ type ShardGroup struct {
 	Status   structs.ShardGroupStatus `json:"status"`
 	Error    string                   `json:"error"`
 
+	ID int32 `json:"id"` // track of shardgroups
+
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
 
@@ -35,11 +37,13 @@ type ShardGroup struct {
 }
 
 // NewShardGroup creates a new shardgroup
-func (mg *Manager) NewShardGroup() *ShardGroup {
+func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 	return &ShardGroup{
 		Status:   structs.ShardGroupIdle,
 		StatusMu: sync.RWMutex{},
 		Error:    "",
+
+		ID: id,
 
 		Manager: mg,
 		Logger:  mg.Logger,
@@ -56,12 +60,14 @@ func (mg *Manager) NewShardGroup() *ShardGroup {
 // Open starts up the shardgroup
 func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
 
+	sg.Manager.ShardGroupMu.Lock()
 	for _, _sg := range sg.Manager.ShardGroups {
 		// We preferably do not want to mark a errored shardgroup as replaced as it overwrites how it is displayed.
 		if _sg.Status != structs.ShardGroupError {
 			_sg.SetStatus(structs.ShardGroupReplaced)
 		}
 	}
+	sg.Manager.ShardGroupMu.Unlock()
 
 	sg.SetStatus(structs.ShardGroupStarting)
 
@@ -105,6 +111,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
 		sg.SetStatus(structs.ShardGroupReady)
 
+		sg.Manager.ShardGroupMu.Lock()
 		for index, _sg := range sg.Manager.ShardGroups {
 			if _sg != sg {
 				_sg.floodgate.UnSet()
@@ -112,6 +119,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 				_sg.Close()
 			}
 		}
+		sg.Manager.ShardGroupMu.Unlock()
 
 		sg.floodgate.Set()
 		close(ready)

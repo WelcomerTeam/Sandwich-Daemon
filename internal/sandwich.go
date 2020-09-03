@@ -311,11 +311,15 @@ func (sg *Sandwich) Open() (err error) {
 			events = 0
 			for _, mg := range sg.Managers {
 				managerEvents = 0
+
+				mg.ShardGroupMu.Lock()
 				for _, sg := range mg.ShardGroups {
 					for _, sh := range sg.Shards {
 						managerEvents += atomic.SwapInt64(sh.events, 0)
 					}
 				}
+				mg.ShardGroupMu.Unlock()
+
 				if mg.Analytics != nil {
 					mg.Analytics.IncrementBy(managerEvents)
 				}

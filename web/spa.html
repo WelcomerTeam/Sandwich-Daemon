@@ -25,13 +25,13 @@
     <div class="container-sm p-3" id="app">
 
         <!-- Create ShardGroup Modal -->
-        <div class="modal fade" id="shardGroupModal" tabindex="-1" aria-labelledby="shardGroupModalLabel"
-            aria-hidden="true">
+        <div class="modal fade" id="createShardGroupDialogue" tabindex="-1"
+            aria-labelledby="createShardGroupDialogueLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="shardGroupModalLabel">New ShardGroup for
-                            {{ clusterConfiguration.cluster }}</h5>
+                        <h5 class="modal-title" id="createShardGroupDialogueLabel">New ShardGroup for
+                            {{ createShardGroupDialogueData.cluster }}</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -39,27 +39,54 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="col-sm-12 form-label">Shard Count</label>
-                            <input class="form-check-input" type="checkbox" v-model="clusterConfiguration.autoShard">
+                            <input class="form-check-input" type="checkbox"
+                                v-model="createShardGroupDialogueData.autoShard">
                             <label class="form-check-label mb-2">Auto Determine</label>
-                            <input type="number" class="form-control" v-model="clusterConfiguration.shardCount"
-                                :disabled="clusterConfiguration.autoShard">
+                            <input type="number" class="form-control" v-model="createShardGroupDialogueData.shardCount"
+                                :disabled="createShardGroupDialogueData.autoShard">
                         </div>
                         <div class="mb-3">
                             <label class="col-sm-12 form-label">Shard IDs</label>
-                            <input class="form-check-input" type="checkbox" v-model="clusterConfiguration.autoIDs">
+                            <input class="form-check-input" type="checkbox"
+                                v-model="createShardGroupDialogueData.autoIDs">
                             <label class="form-check-label mb-2">Auto Determine</label>
-                            <input type="text" class="form-control" v-model="clusterConfiguration.shardIDs"
-                                :disabled="clusterConfiguration.autoIDs" placeholder="from-to,from-to,from-to">
+                            <input type="text" class="form-control" v-model="createShardGroupDialogueData.shardIDs"
+                                :disabled="createShardGroupDialogueData.autoIDs" placeholder="from-to,from-to,from-to">
                         </div>
                         <!-- <div class="form-check mt-5">
                             <input class="form-check-input" type="checkbox"
-                                v-model="clusterConfiguration.startImmediately">
+                                v-model="createShardGroupDialogueData.startImmediately">
                             <label class="form-check-label">Start ShardGroup Immediately</label>
                         </div> -->
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" v-on:click="createShardGroup()">Create
+                        <button type="button" class="btn btn-success" v-on:click="createShardGroup()">Create
+                            ShardGroup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="stopShardGroupDialogue" tabindex="-1" aria-labelledby="stopShardGroupDialogueLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="stopShardGroupDialogueLabel">Stop ShardGroup
+                            {{ stopShardGroupDialogueData.shardgroup }} for
+                            {{ stopShardGroupDialogueData.cluster }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <span>Are you sure? It would be a pain if you accidentally kill the wrong ShardGroup
+                            :&lt;</span>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-danger" v-on:click="stopShardGroup()">Stop
                             ShardGroup</button>
                     </div>
                 </div>
@@ -189,11 +216,9 @@
                                                 </ul>
 
                                                 <button type="button" class="btn btn-dark"
-                                                    v-on:click="newShardGroup(cluster.configuration.identifier)">
-                                                    Create ShardGroup
+                                                    v-on:click="createShardGroupDialogue(cluster.configuration.identifier)">
+                                                    Scale Cluster
                                                 </button>
-                                                Start
-                                                Stop
 
                                                 <div v-for="(shardgroup,index) in cluster.shardgroups"
                                                     class="border border-bottom bg-light rounded-lg p-3 my-2">
@@ -201,51 +226,59 @@
                                                         <h5>
                                                             <span
                                                                 :class="'badge rounded-pill bg-' + colourGroup[shardgroup.status] || 'default'">{{ statusGroup[shardgroup.status] }}</span>
-                                                            ShardGroup {{ index }}
+                                                            ShardGroup {{ shardgroup.id }}
                                                         </h5>
+                                                        <div v-if="shardgroup.status != 6">
+                                                            <button type="button" class="btn btn-danger "
+                                                                v-on:click="stopShardGroupDialogue(cluster.configuration.identifier, shardgroup.id)">
+                                                                Stop ShardGroup
+                                                            </button>
+                                                        </div>
                                                     </div>
 
-                                                    <ul class="list-group mb-4">
-                                                        <li
-                                                            class="list-group-item d-flex justify-content-between align-items-center">
-                                                            Status
-                                                            <status-graph :value="shardgroup" :colours="colourShard"
-                                                                style="width: 50%">
-                                                            </status-graph>
-                                                        </li>
-                                                        <li
-                                                            class="list-group-item d-flex justify-content-between align-items-center">
-                                                            Shards
-                                                            <span
-                                                                class="badge bg-dark rounded-pill">{{ shardgroup.shard_count }}</span>
-                                                        </li>
-                                                    </ul>
+                                                    <div v-if="shardgroup.status != 6">
+                                                        <ul class="list-group mb-4">
+                                                            <li
+                                                                class="list-group-item d-flex justify-content-between align-items-center">
+                                                                Status
+                                                                <status-graph :value="shardgroup" :colours="colourShard"
+                                                                    style="width: 50%">
+                                                                </status-graph>
+                                                            </li>
+                                                            <li
+                                                                class="list-group-item d-flex justify-content-between align-items-center">
+                                                                Shards
+                                                                <span
+                                                                    class="badge bg-dark rounded-pill">{{ shardgroup.shard_count }}</span>
+                                                            </li>
+                                                        </ul>
 
-                                                    <div v-if="shardgroup.error">
-                                                        <div class="p-3 mb-2 bg-danger text-white">
-                                                            {{ shardgroup.error }}</div>
+                                                        <div v-if="shardgroup.error">
+                                                            <div class="p-3 mb-2 bg-danger text-white">
+                                                                {{ shardgroup.error }}</div>
+                                                        </div>
+
+                                                        <table class="table table-borderless">
+                                                            <thead>
+                                                                <tr class="table-dark">
+                                                                    <th scope="col">Shard</th>
+                                                                    <th scope="col">Status</th>
+                                                                    <th scope="col">RTT Latency</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr class="table-default"
+                                                                    v-for="(shard) in shardgroup.shards">
+                                                                    <th scope="row">{{ shard.shard_id }}</th>
+                                                                    <td><span
+                                                                            :class="'badge bg-' + colourShard[shard.status]">{{ statusShard[shard.status] }}</span>
+                                                                    </td>
+                                                                    <td>{{ new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent) }}ms
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
                                                     </div>
-
-                                                    <table class="table table-borderless">
-                                                        <thead>
-                                                            <tr class="table-dark">
-                                                                <th scope="col">Shard</th>
-                                                                <th scope="col">Status</th>
-                                                                <th scope="col">RTT Latency</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr class="table-default"
-                                                                v-for="(shard) in shardgroup.shards">
-                                                                <th scope="row">{{ shard.shard_id }}</th>
-                                                                <td><span
-                                                                        :class="'badge bg-' + colourShard[shard.status]">{{ statusShard[shard.status] }}</span>
-                                                                </td>
-                                                                <td>{{ new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent) }}ms
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
                                                 </div>
                                             </div>
                                             <div class="tab-pane fade p-4"

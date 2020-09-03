@@ -199,13 +199,18 @@ vue = new Vue({
             },
             loadingAnalytics: true,
 
-            clusterConfiguration: {
+            createShardGroupDialogueData: {
                 cluster: "",
                 autoShard: true,
                 shardCount: 1,
                 autoIDs: true,
                 shardIDs: "",
                 startImmediately: true,
+            },
+
+            stopShardGroupDialogueData: {
+                cluster: "",
+                shardgroup: 0,
             },
 
             statusShard: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
@@ -228,6 +233,7 @@ vue = new Vue({
         this.$nextTick(function () {
             window.setInterval(() => {
                 this.fetchAnalytics();
+                this.fetchClustersData();
             }, 15000);
         })
     },
@@ -245,27 +251,57 @@ vue = new Vue({
                 .catch(err => console.log(error))
         },
 
-        newShardGroup(cluster) {
-            this.clusterConfiguration.cluster = cluster
+        stopShardGroupDialogue(cluster, shardgroup) {
+            this.stopShardGroupDialogueModal = new bootstrap.Modal(document.getElementById("stopShardGroupDialogue"), {})
 
-            this.clusterConfiguration.autoShard = true
-            this.clusterConfiguration.shardCount = 1
-            this.clusterConfiguration.autoIDs = true
-            this.clusterConfiguration.shardIDs = ""
-            this.clusterConfiguration.startImmediately = true
+            this.stopShardGroupDialogueData.cluster = cluster
+            this.stopShardGroupDialogueData.shardgroup = shardgroup
 
-            const modal = new bootstrap.Modal(document.getElementById("shardGroupModal"), {})
-            modal.show()
+            this.stopShardGroupDialogueModal.show()
+        },
+        stopShardGroup() {
+            config = Object.assign({}, this.stopShardGroupDialogueData)
+            this.sendRPC("shardgroup:stop", config)
+            setTimeout(() => this.fetchClustersData(), 5000)
+
+            this.stopShardGroupDialogueModal.hide()
+        },
+
+        createShardGroupDialogue(cluster) {
+            this.createShardGroupDialogueModal = new bootstrap.Modal(document.getElementById("createShardGroupDialogue"), {})
+
+            this.createShardGroupDialogueData.cluster = cluster
+            this.createShardGroupDialogueData.autoShard = true
+            this.createShardGroupDialogueData.shardCount = 1
+            this.createShardGroupDialogueData.autoIDs = true
+            this.createShardGroupDialogueData.shardIDs = ""
+            this.createShardGroupDialogueData.startImmediately = true
+
+            this.createShardGroupDialogueModal.show()
         },
         createShardGroup() {
-            const modal = new bootstrap.Modal(document.getElementById("shardGroupModal"), {})
+            config = Object.assign({}, this.createShardGroupDialogueData)
+            this.sendRPC("shardgroup:create", config)
+            setTimeout(() => this.fetchClustersData(), 5000)
 
-            config = Object.assign({}, this.clusterConfiguration)
-            console.log(this.sendRPC("shardgroup:create", config))
-
-            modal.hide()
+            this.createShardGroupDialogueModal.hide()
         },
 
+        fetchClustersData() {
+            axios
+                .get('/api/cluster')
+                .then(result => {
+                    clusters = Object.keys(result.data.response)
+                    for (mgindex in clusters) {
+                        cluster_key = clusters[mgindex]
+                        cluster = result.data.response[cluster_key]
+                        if (cluster_key in this.data) {
+                            this.data[cluster_key].shard_groups = cluster
+                        }
+                    }
+                })
+                .catch(error => console.log(error))
+        },
         fetchConfiguration() {
             axios
                 .get('/api/configuration')

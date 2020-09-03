@@ -82,6 +82,72 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 			}
+		case "/api/cluster":
+			if sg.Configuration.HTTP.Enabled {
+				clusterData := make(map[string]map[int32]*ShardGroup)
+				for key, mg := range sg.Managers {
+					clusterData[key] = mg.ShardGroups
+				}
+				res, err = json.Marshal(RestResponse{true, clusterData, nil})
+			} else {
+				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+			}
+
+			if err == nil {
+				ctx.Write(res)
+				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			}
+		case "/api/analytics":
+			if sg.Configuration.HTTP.Enabled {
+
+				clusters := make([]ClusterInformation, 0, len(sg.Managers))
+				guilds := make(map[string]int64)
+				for _, mg := range sg.Managers {
+					statuses := make(map[int32]structs.ShardGroupStatus)
+
+					mg.ShardGroupMu.Lock()
+					for i, sg := range mg.ShardGroups {
+						statuses[i] = sg.Status
+					}
+					mg.ShardGroupMu.Unlock()
+
+					guildCount, err := sg.RedisClient.HLen(context.Background(), mg.CreateKey("guilds")).Result()
+					guilds[mg.Configuration.Caching.RedisPrefix] = guildCount
+					if err != nil {
+						mg.Logger.Error().Err(err).Msg("Failed to retrieve Hashset Length")
+					}
+
+					clusters = append(clusters, ClusterInformation{
+						Name:      mg.Configuration.DisplayName,
+						Guilds:    guildCount,
+						Status:    statuses,
+						AutoStart: mg.Configuration.AutoStart,
+					})
+				}
+
+				now := time.Now()
+				guildCount := int64(0)
+				for _, count := range guilds {
+					guildCount += count
+				}
+
+				response := AnalyticResponse{
+					Graph:    sg.ConstructAnalytics(),
+					Guilds:   guildCount,
+					Uptime:   now.Sub(sg.Start).Round(time.Second).String(),
+					Events:   atomic.LoadInt64(sg.TotalEvents),
+					Clusters: clusters,
+				}
+
+				res, err = json.Marshal(RestResponse{true, response, nil})
+			} else {
+				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+			}
+
+			if err == nil {
+				ctx.Write(res)
+				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			}
 		case "/api/rpc":
 			rpcMessage := RPCRequest{}
 			err = json.Unmarshal(ctx.PostBody(), &rpcMessage)
@@ -144,10 +210,31 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 							if len(shardGroupCreateEvent.ShardIDs) < mg.Gateway.SessionStartLimit.Remaining {
 								mg.Scale(shardGroupCreateEvent.ShardIDs, shardGroupCreateEvent.ShardCount, true)
-								res, err = json.Marshal(RPCResponse{shardGroupCreateEvent, "", rpcMessage.ID})
+								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
 							} else {
 								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Not enough sessions to start %d shards. %d remain", len(shardGroupCreateEvent.ShardIDs), mg.Gateway.SessionStartLimit.Remaining).Error(), rpcMessage.ID})
 							}
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
+						}
+					case "shardgroup:stop":
+						shardGroupStopEvent := struct {
+							Cluster    string `json:"cluster"`
+							ShardGroup int32  `json:"shardgroup"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &shardGroupStopEvent)
+
+						// Check if cluster exists
+						if mg, ok := sg.Managers[shardGroupStopEvent.Cluster]; ok {
+							mg.ShardGroupMu.Lock()
+							if sg, ok := mg.ShardGroups[shardGroupStopEvent.ShardGroup]; ok {
+								sg.Close()
+								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid ShardGroup provided").Error(), rpcMessage.ID})
+							}
+							mg.ShardGroupMu.Unlock()
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
@@ -164,54 +251,6 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 			ctx.Write(res)
 			ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
-		case "/api/analytics":
-			if sg.Configuration.HTTP.Enabled {
-
-				clusters := make([]ClusterInformation, 0, len(sg.Managers))
-				guilds := make(map[string]int64)
-				for _, mg := range sg.Managers {
-					statuses := make(map[int32]structs.ShardGroupStatus)
-					for i, sg := range mg.ShardGroups {
-						statuses[i] = sg.Status
-					}
-
-					guildCount, err := sg.RedisClient.HLen(context.Background(), mg.CreateKey("guilds")).Result()
-					guilds[mg.Configuration.Caching.RedisPrefix] = guildCount
-					if err != nil {
-						mg.Logger.Error().Err(err).Msg("Failed to retrieve Hashset Length")
-					}
-
-					clusters = append(clusters, ClusterInformation{
-						Name:      mg.Configuration.DisplayName,
-						Guilds:    guildCount,
-						Status:    statuses,
-						AutoStart: mg.Configuration.AutoStart,
-					})
-				}
-
-				now := time.Now()
-				guildCount := int64(0)
-				for _, count := range guilds {
-					guildCount += count
-				}
-
-				response := AnalyticResponse{
-					Graph:    sg.ConstructAnalytics(),
-					Guilds:   guildCount,
-					Uptime:   now.Sub(sg.Start).Round(time.Second).String(),
-					Events:   atomic.LoadInt64(sg.TotalEvents),
-					Clusters: clusters,
-				}
-
-				res, err = json.Marshal(RestResponse{true, response, nil})
-			} else {
-				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
-			}
-
-			if err == nil {
-				ctx.Write(res)
-				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
-			}
 		default:
 			ctx.SetStatusCode(404)
 		}

@@ -279,9 +279,11 @@ func (mg *Manager) GatherShardCount() (shardCount int) {
 
 // Scale creates a new ShardGroup and removes old ones once it has finished
 func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan bool, err error) {
-	sg := mg.NewShardGroup()
 	iter := atomic.AddInt32(mg.ShardGroupIter, 1) - 1
+	sg := mg.NewShardGroup(iter)
+	mg.ShardGroupMu.Lock()
 	mg.ShardGroups[iter] = sg
+	mg.ShardGroupMu.Unlock()
 
 	if start {
 		ready, err = sg.Open(shardIDs, shardCount)
@@ -328,9 +330,11 @@ func (mg *Manager) GenerateShardIDs(shardCount int) (shardIDs []int) {
 func (mg *Manager) Close() {
 	mg.Logger.Info().Msg("Closing down manager")
 
+	mg.ShardGroupMu.Lock()
 	for _, shardGroup := range mg.ShardGroups {
 		shardGroup.Close()
 	}
+	mg.ShardGroupMu.Unlock()
 
 	// cancel is not defined when a manager does not autostart
 	if mg.cancel != nil {
