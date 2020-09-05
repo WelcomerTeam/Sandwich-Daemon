@@ -164,7 +164,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							Cluster          string `json:"cluster"`
 							ShardCount       int    `json:"shardCount"`
 							RawShardIDs      string `json:"shardIDs"`
-							ShardIDs         []int  `json:"FinalShardIDs"`
+							ShardIDs         []int  `json:"finalShardIDs"`
 							StartImmediately bool   `json:"startImmediately"`
 						}{}
 
@@ -210,14 +210,12 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 								// TODO: We should handle this properly but it will error out when it starts up anyway
 							}
 
-							mg.GatewayMu.RLock()
 							if len(shardGroupCreateEvent.ShardIDs) < mg.Gateway.SessionStartLimit.Remaining {
 								mg.Scale(shardGroupCreateEvent.ShardIDs, shardGroupCreateEvent.ShardCount, true)
 								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
 							} else {
 								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Not enough sessions to start %d shards. %d remain", len(shardGroupCreateEvent.ShardIDs), mg.Gateway.SessionStartLimit.Remaining).Error(), rpcMessage.ID})
 							}
-							mg.GatewayMu.RUnlock()
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
@@ -383,7 +381,7 @@ func returnRange(_range string, max int) (result []int) {
 		if low, err := strconv.Atoi(ranges[0]); err == nil {
 			if hi, err := strconv.Atoi(ranges[len(ranges)-1]); err == nil {
 				for i := low; i < hi+1; i++ {
-					if 0 < i && i < max {
+					if 0 <= i && i < max {
 						result = append(result, i)
 					}
 				}

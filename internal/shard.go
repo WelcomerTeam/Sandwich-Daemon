@@ -136,18 +136,18 @@ func (sh *Shard) Connect() (err error) {
 
 	sh.ready = make(chan void)
 	sh.ctx, sh.cancel = context.WithCancel(context.Background())
+
 	sh.Manager.GatewayMu.RLock()
 	gatewayURL := sh.Manager.Gateway.URL
-
 	sh.SetStatus(structs.ShardWaiting)
 	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
 	sh.Manager.GatewayMu.RUnlock()
+
 	if err != nil {
 		return
 	}
 
 	sh.SetStatus(structs.ShardConnecting)
-	sh.Logger.Debug().Str("gurl", gatewayURL).Msg("Connecting to gateway")
 
 	// TODO: Add Concurrent Client Support
 	// This will limit the ammount of shards that can be connecting simultaneously

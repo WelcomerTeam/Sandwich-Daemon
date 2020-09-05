@@ -304,6 +304,7 @@ vue = new Vue({
         },
         createShardGroup() {
             config = Object.assign({}, this.createShardGroupDialogueData)
+            config.shardCount = Number(config.shardCount)
             this.sendRPC("shardgroup:create", config)
             setTimeout(() => this.fetchClustersData(), 1000)
 
