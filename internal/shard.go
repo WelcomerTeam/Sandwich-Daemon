@@ -47,7 +47,8 @@ type Shard struct {
 
 	Unavailable map[snowflake.ID]bool `json:"-"`
 
-	Retries *int32 `json:"retries"` // When erroring, how many times to retry connecting until shardgroup is stopped
+	Start   time.Time `json:"start"`
+	Retries *int32    `json:"retries"` // When erroring, how many times to retry connecting until shardgroup is stopped
 
 	wsConn  *websocket.Conn
 	wsMutex sync.Mutex
@@ -88,6 +89,7 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		LastHeartbeatAck:  time.Now().UTC(),
 		LastHeartbeatSent: time.Now().UTC(),
 
+		Start:   time.Now().UTC(),
 		Retries: new(int32),
 
 		rp: sync.Pool{
@@ -304,6 +306,9 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			sh.Unavailable[guild.ID] = guild.Unavailable
 		}
 
+		guildCreateEvents := 0
+		// guildChunkEvents := 0
+
 		// I really wanted to just use a context here but it kept cancelling the main
 		// context even if i made a completely new one. Hmu if you know a solution.
 		wait := time.Now().UTC().Add(2 * time.Second)
@@ -354,6 +359,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			}
 
 			if sh.msg.Type == "GUILD_CREATE" {
+				guildCreateEvents++
 				guildPayload := structs.GuildCreate{}
 				if err = sh.decodeContent(&guildPayload); err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
@@ -372,7 +378,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		close(sh.ready)
 		sh.SetStatus(structs.ShardReady)
 
-		sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
+		sh.Logger.Debug().Int("events", len(events)).Int("guildEvents", guildCreateEvents).Msg("Dispatching preemtive events")
 		for _, event := range events {
 			sh.Logger.Debug().Str("type", event.Type).Send()
 			if err = sh.OnDispatch(event); err != nil {
