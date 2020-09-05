@@ -321,7 +321,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 			if err != nil || timedout {
 				if xerrors.Is(err, context.Canceled) || timedout {
-					sh.Logger.Debug().Msg("Shard has finished lazy loading")
+					sh.Logger.Debug().Int("guildEvents", guildCreateEvents).Msg("Shard has finished lazy loading")
 					err = nil
 				} else {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
@@ -378,7 +378,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		close(sh.ready)
 		sh.SetStatus(structs.ShardReady)
 
-		sh.Logger.Debug().Int("events", len(events)).Int("guildEvents", guildCreateEvents).Msg("Dispatching preemtive events")
+		sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
 		for _, event := range events {
 			sh.Logger.Debug().Str("type", event.Type).Send()
 			if err = sh.OnDispatch(event); err != nil {
