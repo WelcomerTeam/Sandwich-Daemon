@@ -316,12 +316,16 @@ func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
 		return xerrors.Errorf("publishEvent marshal: %w", err)
 	}
 
-	err = mg.StanClient.Publish(
-		mg.Configuration.Messaging.ChannelName,
-		data,
-	)
-	if err != nil {
-		return xerrors.Errorf("publishEvent publish: %w", err)
+	if mg.StanClient != nil {
+		err = mg.StanClient.Publish(
+			mg.Configuration.Messaging.ChannelName,
+			data,
+		)
+		if err != nil {
+			return xerrors.Errorf("publishEvent publish: %w", err)
+		}
+	} else {
+		return xerrors.New("publishEvent publish: No active stanClient")
 	}
 
 	return

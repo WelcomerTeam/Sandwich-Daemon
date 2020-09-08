@@ -599,14 +599,17 @@ func (sh *Shard) PublishEvent(Type string, Data interface{}) (err error) {
 		return xerrors.Errorf("publishEvent marshal: %w", err)
 	}
 
-	err = sh.Manager.StanClient.Publish(
-		sh.Manager.Configuration.Messaging.ChannelName,
-		data,
-	)
-	if err != nil {
-		return xerrors.Errorf("publishEvent publish: %w", err)
+	if sh.Manager.StanClient != nil {
+		err = sh.Manager.StanClient.Publish(
+			sh.Manager.Configuration.Messaging.ChannelName,
+			data,
+		)
+		if err != nil {
+			return xerrors.Errorf("publishEvent publish: %w", err)
+		}
+	} else {
+		return xerrors.New("publishEvent publish: No active stanClient")
 	}
-
 	return
 }
 

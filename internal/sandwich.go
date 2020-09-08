@@ -241,10 +241,10 @@ func (sg *Sandwich) Open() (err error) {
 	//          _-**--__
 	//      _--*         *--__         Sandwich Daemon 0
 	//  _-**                  **-_
-	// |_*--_                _-* _|	   HTTP: 1
+	// |_*--_                _-* _|	   HTTP: 127.0.0.1:1234
 	// | *-_ *---_     _----* _-* |    Managers: 2
 	//  *-_ *--__ *****  __---* _*
-	//     *--__ *-----** ___--*       3
+	//     *--__ *-----** ___--*       placeholder
 	//          **-____-**
 
 	sg.Start = time.Now().UTC()
@@ -273,35 +273,38 @@ func (sg *Sandwich) Open() (err error) {
 		sg.Managers[managerConfiguration.Identifier] = manager
 
 		err = manager.Open()
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to start up manager")
+		} else {
+			if manager.Configuration.AutoStart {
+				go func() {
+					manager.Gateway, err = manager.GetGateway()
+					if err != nil {
+						manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+						return
+					}
 
-		if manager.Configuration.AutoStart {
-			go func() {
-				manager.Gateway, err = manager.GetGateway()
-				if err != nil {
-					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
-					return
-				}
+					manager.GatewayMu.RLock()
+					manager.Logger.Info().Int("sessions", manager.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
 
-				manager.GatewayMu.RLock()
-				manager.Logger.Info().Int("sessions", manager.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
-
-				shardCount := manager.GatherShardCount()
-				if shardCount >= manager.Gateway.SessionStartLimit.Remaining {
-					manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
+					shardCount := manager.GatherShardCount()
+					if shardCount >= manager.Gateway.SessionStartLimit.Remaining {
+						manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
+						manager.GatewayMu.RUnlock()
+						return
+					}
 					manager.GatewayMu.RUnlock()
-					return
-				}
-				manager.GatewayMu.RUnlock()
 
-				ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
-				if err != nil {
-					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
-					return
-				}
+					ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
+					if err != nil {
+						manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+						return
+					}
 
-				// Wait for all shards in ShardGroup to be ready
-				<-ready
-			}()
+					// Wait for all shards in ShardGroup to be ready
+					<-ready
+				}()
+			}
 		}
 	}
 

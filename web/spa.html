@@ -311,7 +311,60 @@
                     </div>
                 </div>
                 <div class="tab-pane fade" id="pills-settings" role="tabpanel" aria-labelledby="pills-settings-tab">
-                    settings
+                    <form>
+                        <ul class="nav nav-tabs" id="tabpanel" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link active" id="logging-tab" data-toggle="tab"
+                                    href="#daemonSettings-logging" role="tab" aria-selected="true">Logging</a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="redis-tab" data-toggle="tab" href="#daemonSettings-redis"
+                                    role="tab" aria-selected="false">Redis</a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="nats-tab" data-toggle="tab" href="#daemonSettings-nats"
+                                    role="tab" aria-selected="false">NATs</a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="http-tab" data-toggle="tab" href="#daemonSettings-http"
+                                    role="tab" aria-selected="false">HTTP</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="pills-daemonSettings">
+                            <div class="tab-pane fade show active" id="daemonSettings-logging" role="tabpanel"
+                                aria-labelledby="logging-tab">Logging</div>
+                            <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
+                                aria-labelledby="redis-tab">Redis</div>
+                            <div class="tab-pane fade" id="daemonSettings-nats" role="tabpanel"
+                                aria-labelledby="nats-tab">NATs</div>
+                            <div class="tab-pane fade" id="daemonSettings-http" role="tabpanel"
+                                aria-labelledby="http-tab">HTTP</div>
+                        </div>
+                    </form>
+
+                    <pre>
+                    Logging
+                    \ ConsoleLogging
+                    \ FileLogging
+                    \ EncodeJSON
+                    \ Directory
+                    \ Filename
+                    \ MaxSize
+                    \ MaxBackups
+                    \ MaxAge
+                    Redis
+                    \ Address
+                    \ Password
+                    \ DB
+                    \ UniqueClients
+                    NATS
+                    \ Address
+                    \ Channel
+                    \ Cluster
+                    HTTP
+                    \ Enabled
+                    \ Host
+                    </pre>
                 </div>
             </div>
         </div>
