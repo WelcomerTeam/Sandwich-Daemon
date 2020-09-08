@@ -1,4 +1,5 @@
-# Sandwich-Daemon
+
+![Sandwich Daemon](https://raw.githubusercontent.com/TheRockettek/Sandwich-Daemon/master/web/static/daemon-icon.svg)
 Sandwich Daemon allows you to manage multiple bots within a single application. Easily create new bots and scale up already running bots with rolling restarts, multithreaded and microserviced with a hint of web dashboard for easy customization.
 
 # How To Get Started
