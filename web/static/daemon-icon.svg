@@ -1,145 +1,35 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
-<svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="150"
-   height="60"
-   viewBox="0 0 39.687499 15.875"
-   version="1.1"
-   id="svg8"
-   inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
-   sodipodi:docname="daemon-icon.svg">
-  <defs
-     id="defs2" />
-  <sodipodi:namedview
-     id="base"
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1.0"
-     inkscape:pageopacity="0.0"
-     inkscape:pageshadow="2"
-     inkscape:zoom="3.959798"
-     inkscape:cx="79.516024"
-     inkscape:cy="26.062234"
-     inkscape:document-units="mm"
-     inkscape:current-layer="g927"
-     showgrid="false"
-     units="px"
-     inkscape:window-width="1920"
-     inkscape:window-height="1017"
-     inkscape:window-x="-8"
-     inkscape:window-y="-8"
-     inkscape:window-maximized="1" />
-  <metadata
-     id="metadata5">
-    <rdf:RDF>
-      <cc:Work
-         rdf:about="">
-        <dc:format>image/svg+xml</dc:format>
-        <dc:type
-           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
-      </cc:Work>
-    </rdf:RDF>
-  </metadata>
-  <g
-     inkscape:label="Layer 1"
-     inkscape:groupmode="layer"
-     id="layer1"
-     transform="translate(0,-281.12498)">
-    <g
-       id="g921"
-       transform="matrix(0.81417814,0,0,0.81417814,-12.219496,168.15703)">
-      <g
-         id="g945"
-         transform="translate(-0.32497036,-2.180838e-6)">
-        <g
-           id="g876"
-           transform="matrix(0.53426194,0,0,0.53426194,17.32836,138.63017)">
-          <path
-             id="path841"
-             d="M 35,20.516 1,20 1.017,22.625 c 0.017,0.593 0.355,1.188 1.08,1.632 l 6.907,4.228 6.908,4.227 c 1.526,0.935 4.145,0.848 5.525,0 1.383,-0.845 0.692,-1.267 2.073,-2.114 1.381,-0.844 2.071,-0.422 3.454,-1.266 1.383,-0.848 6.909,-4.227 6.909,-4.227 0.761,-0.466 1.141,-1.077 1.143,-1.689 z"
-             inkscape:connector-curvature="0"
-             style="fill:#f4900c" />
-          <path
-             id="path843"
-             d="m 33.873,18.721 c 0,0 -30.394,-1.69 -31.776,-0.845 -1.382,0.845 -1.526,2.447 0,3.382 l 6.907,4.228 6.908,4.228 c 1.526,0.935 4.145,0.848 5.525,0 1.383,-0.845 0.692,-1.267 2.073,-2.114 1.381,-0.844 2.071,-0.422 3.454,-1.266 1.383,-0.848 6.908,-4.228 6.908,-4.228 1.526,-0.935 1.527,-2.451 10e-4,-3.385 z"
-             inkscape:connector-curvature="0"
-             style="fill:#ffac33" />
-          <path
-             id="path845"
-             d="m 10.222,24.642 7.071,4.228 c 0,0 1.414,0.844 2.828,0 1.197,-0.717 2.121,-2.114 2.121,-2.114 z"
-             inkscape:connector-curvature="0"
-             style="fill:#ffd983" />
-          <path
-             id="path847"
-             d="M 33.739,18.565 C 31.798,15.976 7.045,14.153 3.162,17.798 c -0.784,0.737 -2.265,2.22 -0.688,4.439 0.688,1.162 2.116,1.919 2.306,1.56 0.443,-0.842 1.327,-1.578 2.653,-1.507 -0.075,0.178 0.641,3.207 0.56,3.275 -0.925,0.786 0.997,3.518 3.249,2.063 0.561,1.108 3.956,3.843 6.299,0.102 0.466,0.844 5.36,2.128 6.719,-1.766 -0.011,0.067 -0.008,0.124 -0.026,0.196 -0.089,0.35 0.722,0.653 1.548,0.363 1.389,-0.486 3.395,-1.693 3.75,-3.018 0.991,-0.173 1.734,0.102 2.306,0.858 0.283,0.374 1.254,0.464 1.669,-0.025 0.732,-0.859 1.933,-3.503 0.232,-5.773 z"
-             inkscape:connector-curvature="0"
-             style="fill:#77b255" />
-          <path
-             id="path849"
-             d="M 31,25.041 C 31,25.57 30.104,26 29,26 H 7 C 5.896,26 5,25.57 5,25.041 V 18.49 h 26 z"
-             inkscape:connector-curvature="0"
-             style="fill:#ffcc4d" />
-          <path
-             id="path851"
-             d="m 33.311,19.987 c 0,2.768 -4.586,5.013 -10.242,5.013 -5.658,0 -10.243,-2.245 -10.243,-5.013 0,-2.769 4.585,-5.013 10.243,-5.013 5.656,0 10.242,2.245 10.242,5.013 z"
-             inkscape:connector-curvature="0"
-             style="fill:#be1931" />
-          <path
-             id="path853"
-             d="M 35,14.516 1,14 v 2.625 h 0.017 c 0.017,0.593 0.355,1.188 1.08,1.632 l 6.907,4.228 6.908,4.227 c 1.526,0.935 4.145,0.848 5.525,0 1.383,-0.845 0.692,-1.267 2.073,-2.114 1.381,-0.844 2.071,-0.422 3.454,-1.266 1.383,-0.848 6.909,-4.227 6.909,-4.227 0.761,-0.466 1.141,-1.077 1.143,-1.689 v -0.005 z"
-             inkscape:connector-curvature="0"
-             style="fill:#f4900c" />
-          <path
-             id="path855"
-             d="M 33.873,12.721 20.058,4.267 c -1.526,-0.934 -4,-0.934 -5.527,0 L 7.623,8.495 C 6.242,9.34 6.932,9.763 5.551,10.608 4.17,11.453 3.479,11.03 2.097,11.876 c -1.382,0.845 -1.526,2.447 0,3.382 l 13.815,8.455 c 1.526,0.935 4.145,0.848 5.525,0 1.383,-0.845 0.692,-1.267 2.073,-2.114 1.381,-0.844 2.071,-0.422 3.454,-1.266 1.383,-0.848 6.908,-4.228 6.908,-4.228 1.526,-0.934 1.527,-2.45 10e-4,-3.384 z"
-             inkscape:connector-curvature="0"
-             style="fill:#ffac33" />
-          <path
-             id="path857"
-             d="M 32.85,13.568 18.707,5.113 c 0,0 -1.507,-0.791 -2.829,0 L 8.916,9.275 C 7.719,9.99 7.883,10.738 6.686,11.453 5.49,12.169 4.347,12.006 3.15,12.721 c -1.414,0.847 0,1.693 0,1.693 l 14.142,8.455 c 0,0 1.414,0.844 2.828,0 1.197,-0.717 0.926,-1.397 2.121,-2.114 1.197,-0.717 2.447,-0.619 3.644,-1.334 1.197,-0.714 6.963,-4.163 6.963,-4.163 0,0 1.323,-0.901 0.002,-1.69 z"
-             inkscape:connector-curvature="0"
-             style="fill:#ffd983" />
-        </g>
-        <g
-           id="g904"
-           transform="translate(0,-3.8868775)">
-          <g
-             transform="matrix(0.71227633,0,0,0.71227633,11.342416,43.613841)"
-             id="g927">
-            <text
-               xml:space="preserve"
-               style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.60470963px;line-height:1.25;font-family:UniSansBold;-inkscape-font-specification:'UniSansBold, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.21511669"
-               x="36.395222"
-               y="152.49603"
-               id="text880"><tspan
-                 sodipodi:role="line"
-                 id="tspan878"
-                 x="36.395222"
-                 y="152.49603"
-                 style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.60470963px;font-family:UniSansBold;-inkscape-font-specification:'UniSansBold, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke-width:0.21511669">Sandwich</tspan></text>
-            <text
-               xml:space="preserve"
-               style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:7.68310261px;line-height:1.25;font-family:UniSansBold;-inkscape-font-specification:'UniSansBold, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#4c4c4c;fill-opacity:1;stroke:none;stroke-width:0.19207337"
-               x="36.142593"
-               y="159.10646"
-               id="text880-8"><tspan
-                 sodipodi:role="line"
-                 id="tspan878-2"
-                 x="36.142593"
-                 y="159.10646"
-                 style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:7.68310261px;font-family:UniSansBold;-inkscape-font-specification:'UniSansBold, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#4c4c4c;fill-opacity:1;stroke-width:0.19207337">Daemon</tspan></text>
-          </g>
-        </g>
-      </g>
-    </g>
-  </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300" height="120" version="1.1" viewBox="0 0 79.375 31.75" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+<metadata>
+<rdf:RDF>
+<cc:Work rdf:about="">
+<dc:format>image/svg+xml</dc:format>
+<dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+<dc:title/>
+</cc:Work>
+</rdf:RDF>
+</metadata>
+<g transform="translate(0 -265.25)">
+<g transform="matrix(.81418 0 0 .81418 -12.219 168.16)">
+<g transform="translate(-.32497 -2.1808e-6)">
+<g transform="matrix(1.0685 0 0 1.0685 19.323 119.01)">
+<path d="m35 20.516-34-0.516 0.017 2.625c0.017 0.593 0.355 1.188 1.08 1.632l6.907 4.228 6.908 4.227c1.526 0.935 4.145 0.848 5.525 0 1.383-0.845 0.692-1.267 2.073-2.114 1.381-0.844 2.071-0.422 3.454-1.266 1.383-0.848 6.909-4.227 6.909-4.227 0.761-0.466 1.141-1.077 1.143-1.689z" fill="#f4900c"/>
+<path d="m33.873 18.721s-30.394-1.69-31.776-0.845-1.526 2.447 0 3.382l6.907 4.228 6.908 4.228c1.526 0.935 4.145 0.848 5.525 0 1.383-0.845 0.692-1.267 2.073-2.114 1.381-0.844 2.071-0.422 3.454-1.266 1.383-0.848 6.908-4.228 6.908-4.228 1.526-0.935 1.527-2.451 1e-3 -3.385z" fill="#ffac33"/>
+<path d="m10.222 24.642 7.071 4.228s1.414 0.844 2.828 0c1.197-0.717 2.121-2.114 2.121-2.114z" fill="#ffd983"/>
+<path d="m33.739 18.565c-1.941-2.589-26.694-4.412-30.577-0.767-0.784 0.737-2.265 2.22-0.688 4.439 0.688 1.162 2.116 1.919 2.306 1.56 0.443-0.842 1.327-1.578 2.653-1.507-0.075 0.178 0.641 3.207 0.56 3.275-0.925 0.786 0.997 3.518 3.249 2.063 0.561 1.108 3.956 3.843 6.299 0.102 0.466 0.844 5.36 2.128 6.719-1.766-0.011 0.067-8e-3 0.124-0.026 0.196-0.089 0.35 0.722 0.653 1.548 0.363 1.389-0.486 3.395-1.693 3.75-3.018 0.991-0.173 1.734 0.102 2.306 0.858 0.283 0.374 1.254 0.464 1.669-0.025 0.732-0.859 1.933-3.503 0.232-5.773z" fill="#77b255"/>
+<path d="m31 25.041c0 0.529-0.896 0.959-2 0.959h-22c-1.104 0-2-0.43-2-0.959v-6.551h26z" fill="#ffcc4d"/>
+<path d="m33.311 19.987c0 2.768-4.586 5.013-10.242 5.013-5.658 0-10.243-2.245-10.243-5.013 0-2.769 4.585-5.013 10.243-5.013 5.656 0 10.242 2.245 10.242 5.013z" fill="#be1931"/>
+<path d="m35 14.516-34-0.516v2.625h0.017c0.017 0.593 0.355 1.188 1.08 1.632l6.907 4.228 6.908 4.227c1.526 0.935 4.145 0.848 5.525 0 1.383-0.845 0.692-1.267 2.073-2.114 1.381-0.844 2.071-0.422 3.454-1.266 1.383-0.848 6.909-4.227 6.909-4.227 0.761-0.466 1.141-1.077 1.143-1.689v-5e-3z" fill="#f4900c"/>
+<path d="m33.873 12.721-13.815-8.454c-1.526-0.934-4-0.934-5.527 0l-6.908 4.228c-1.381 0.845-0.691 1.268-2.072 2.113s-2.072 0.422-3.454 1.268c-1.382 0.845-1.526 2.447 0 3.382l13.815 8.455c1.526 0.935 4.145 0.848 5.525 0 1.383-0.845 0.692-1.267 2.073-2.114 1.381-0.844 2.071-0.422 3.454-1.266 1.383-0.848 6.908-4.228 6.908-4.228 1.526-0.934 1.527-2.45 1e-3 -3.384z" fill="#ffac33"/>
+<path d="m32.85 13.568-14.143-8.455s-1.507-0.791-2.829 0l-6.962 4.162c-1.197 0.715-1.033 1.463-2.23 2.178-1.196 0.716-2.339 0.553-3.536 1.268-1.414 0.847 0 1.693 0 1.693l14.142 8.455s1.414 0.844 2.828 0c1.197-0.717 0.926-1.397 2.121-2.114 1.197-0.717 2.447-0.619 3.644-1.334 1.197-0.714 6.963-4.163 6.963-4.163s1.323-0.901 2e-3 -1.69z" fill="#ffd983"/>
+</g>
+<g transform="matrix(2 0 0 2 -15.334 -166.03)">
+<g transform="matrix(.71228 0 0 .71228 11.342 43.614)" font-family="UniSansBold" letter-spacing="0px" word-spacing="0px">
+<text x="36.395222" y="152.49603" fill="#000000" font-size="8.6047px" stroke-width=".21512" style="font-feature-settings:normal;font-variant-caps:normal;font-variant-ligatures:normal;font-variant-numeric:normal;line-height:1.25" xml:space="preserve"><tspan x="36.395222" y="152.49603" fill="#000000" font-family="UniSansBold" font-size="8.6047px" stroke-width=".21512" style="font-feature-settings:normal;font-variant-caps:normal;font-variant-ligatures:normal;font-variant-numeric:normal">Sandwich</tspan></text>
+<text x="36.142593" y="159.10646" fill="#4c4c4c" font-size="7.6831px" stroke-width=".19207" style="font-feature-settings:normal;font-variant-caps:normal;font-variant-ligatures:normal;font-variant-numeric:normal;line-height:1.25" xml:space="preserve"><tspan x="36.142593" y="159.10646" fill="#4c4c4c" font-family="UniSansBold" font-size="7.6831px" stroke-width=".19207" style="font-feature-settings:normal;font-variant-caps:normal;font-variant-ligatures:normal;font-variant-numeric:normal">Daemon</tspan></text>
+</g>
+</g>
+</g>
+</g>
+</g>
 </svg>
