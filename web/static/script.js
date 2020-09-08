@@ -195,7 +195,7 @@ vue = new Vue({
         return {
             loading: true,
             error: false,
-            data: {},
+            daemon: {},
             analytics: {
                 chart: {},
                 uptime: "...",
@@ -315,13 +315,13 @@ vue = new Vue({
             axios
                 .get('/api/configuration')
                 .then(result => {
-                    clusters = Object.keys(result.data.response)
+                    clusters = Object.keys(result.data.response.managers)
                     for (mgindex in clusters) {
                         cluster_key = clusters[mgindex]
-                        cluster = result.data.response[cluster_key]
-                        if (cluster_key in this.data) {
-                            this.data[cluster_key].shard_groups = cluster.shard_groups
-                            this.data[cluster_key].gateway = cluster.gateway
+                        cluster = result.data.response.managers[cluster_key]
+                        if (cluster_key in this.daemon.managers) {
+                            this.daemon.managers[cluster_key].shard_groups = cluster.shard_groups
+                            this.daemon.managers[cluster_key].gateway = cluster.gateway
                         }
                     }
                 })
@@ -330,7 +330,7 @@ vue = new Vue({
         fetchConfiguration() {
             axios
                 .get('/api/configuration')
-                .then(result => { this.data = result.data.response; this.error = !result.data.success })
+                .then(result => { this.daemon = result.data.response; this.error = !result.data.success })
                 .catch(error => console.log(error))
                 .finally(() => this.loading = false)
         },

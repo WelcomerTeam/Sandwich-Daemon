@@ -73,7 +73,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 		case "/api/configuration":
 			if sg.Configuration.HTTP.Enabled {
-				res, err = json.Marshal(RestResponse{true, sg.Managers, nil})
+				res, err = json.Marshal(RestResponse{true, sg, nil})
 			} else {
 				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
 			}
