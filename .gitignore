@@ -20,3 +20,5 @@ sandwich
 
 web/static/*.fasthttp.gz
 logs
+
+addMsgpack.py
