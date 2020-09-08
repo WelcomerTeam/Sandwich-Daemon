@@ -17,6 +17,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+var httpInterfaceNotEnabled = "The REST HTTP Interface is not enabled. Set http.enabled to true in sandwich.yml"
+
 var colours = [][]string{
 	{"rgba(149, 165, 165, 0.5)", "#7E8C8D"},
 	{"rgba(236, 240, 241, 0.5)", "#BEC3C7"},
@@ -75,7 +77,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 			if sg.Configuration.HTTP.Enabled {
 				res, err = json.Marshal(RestResponse{true, sg, nil})
 			} else {
-				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+				res, err = json.Marshal(RestResponse{false, httpInterfaceNotEnabled, nil})
 			}
 
 			if err == nil {
@@ -90,7 +92,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				}
 				res, err = json.Marshal(RestResponse{true, clusterData, nil})
 			} else {
-				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+				res, err = json.Marshal(RestResponse{false, httpInterfaceNotEnabled, nil})
 			}
 
 			if err == nil {
@@ -141,7 +143,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 				res, err = json.Marshal(RestResponse{true, response, nil})
 			} else {
-				res, err = json.Marshal(RestResponse{false, "HTTP Interface is not enabled", nil})
+				res, err = json.Marshal(RestResponse{false, httpInterfaceNotEnabled, nil})
 			}
 
 			if err == nil {
@@ -290,7 +292,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unknown event: %s", rpcMessage.Method).Error(), rpcMessage.ID})
 					}
 				} else {
-					res, err = json.Marshal(RPCResponse{nil, xerrors.New("HTTP Interface is not enabled").Error(), rpcMessage.ID})
+					res, err = json.Marshal(RPCResponse{nil, xerrors.New(httpInterfaceNotEnabled).Error(), rpcMessage.ID})
 				}
 			} else {
 				sg.Logger.Error().Err(err).Msg("Failed to unmarshal RPC request")
