@@ -41,16 +41,16 @@ const Samples = 720
 // SandwichConfiguration represents the configuration of the program
 type SandwichConfiguration struct {
 	Logging struct {
-		ConsoleLoggingEnabled bool `json:"consolelogging" yaml:"consolelogging"`
-		FileLoggingEnabled    bool `json:"filelogging" yaml:"filelogging"`
+		ConsoleLoggingEnabled bool `json:"console_logging" yaml:"console_logging"`
+		FileLoggingEnabled    bool `json:"file_logging" yaml:"file_logging"`
 
-		EncodeAsJSON bool `json:"encodeasjson" yaml:"encodeasjson"` // Make the framework log as json
+		EncodeAsJSON bool `json:"encode_as_json" yaml:"encode_as_json"` // Make the framework log as json
 
-		Directory  string `json:"directory" yaml:"directory"`   // Directory to log into
-		Filename   string `json:"filename" yaml:"filename"`     // Name of logfile
-		MaxSize    int    `json:"maxsize" yaml:"maxsize"`       /// Size in MB before a new file
-		MaxBackups int    `json:"maxbackups" yaml:"maxbackups"` // Number of files to keep
-		MaxAge     int    `json:"maxage" yaml:"maxage"`         // Number of days to keep a logfile
+		Directory  string `json:"directory" yaml:"directory"`     // Directory to log into
+		Filename   string `json:"filename" yaml:"filename"`       // Name of logfile
+		MaxSize    int    `json:"max_size" yaml:"max_size"`       /// Size in MB before a new file
+		MaxBackups int    `json:"max_backups" yaml:"max_backups"` // Number of files to keep
+		MaxAge     int    `json:"max_age" yaml:"max_age"`         // Number of days to keep a logfile
 	} `json:"logging" yaml:"logging"`
 
 	Redis struct {

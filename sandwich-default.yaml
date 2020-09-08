@@ -1,12 +1,12 @@
 logging:
-  consolelogging: true
-  filelogging: true
-  encodeasjson: false
+  console_logging: true
+  file_logging: true
+  encode_as_json: false
   directory: logs
   filename: sandwich
-  maxsize: 1024
-  maxbackups: 16
-  maxage: 14
+  max_size: 1024
+  max_backups: 16
+  max_age: 14
 redis:
   address: 127.0.0.1:6379
   password: ""
@@ -20,43 +20,43 @@ http:
   enabled: true
   host: 127.0.0.1:5469
 managers:
-- autostart: true
+- auto_start: true
   persist: true
   identifier: welcomerBeta
-  displayname: Welcomer Beta
+  display_name: Welcomer Beta
   token: '[TOKEN]'
   bot:
     compression: true
-    defaultpresence:
+    default_presence:
       name: Default presence test
       type: 0
       application_id: 0
-    guildsubscriptions: false
+    guild_subscriptions: false
     intents: 0
-    largethreshold: 250
-    maxheartbeatfailures: 5
+    large_threshold: 250
+    max_heartbeat_failures: 5
     retries: 2
   caching:
-    redisprefix: welcomer
-    cachemembers: false
-    requestmembers: false
-    requestchunksize: 1
-    ignorebots: true
-    storemutuals: true
+    redis_prefix: welcomer
+    cache_members: false
+    request_members: false
+    request_chunk_size: 1
+    ignore_bots: true
+    store_mutuals: true
   events:
-    eventblacklist: []
-    produceblacklist: []
-    ignorebots: true
-    checkprefixes: true
-    allowmentionprefix: true
+    event_blacklist: []
+    produce_blacklist: []
+    ignore_bots: true
+    check_prefixes: true
+    allow_mention_prefix: true
   messaging:
-    clientname: welcomer
-    channelname: sandwich
-    userandomsuffix: true
+    client_name: welcomer
+    channel_name: sandwich
+    use_random_suffix: true
   sharding:
-    concurrentclients: 5
-    autosharded: true
-    shardcount: 2
+    concurrent_clients: 5
+    auto_sharded: true
+    shard_count: 2
     enforce: false
-    clustercount: 1
-    clusterid: 0
+    cluster_count: 1
+    cluster_id: 0

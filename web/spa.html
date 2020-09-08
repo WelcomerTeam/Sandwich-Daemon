@@ -378,11 +378,21 @@
                                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                             </div>
                             <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
-                                aria-labelledby="redis-tab">Redis</div>
+                                aria-labelledby="redis-tab">
+                                <!-- Redis -->
+
+                                <div class="pb-4">
+                                    <form-input v-model="daemon.configuration.redis.uniqueclients"></form-input>
+                                </div>
+                            </div>
                             <div class="tab-pane fade" id="daemonSettings-nats" role="tabpanel"
-                                aria-labelledby="nats-tab">NATs</div>
+                                aria-labelledby="nats-tab">
+                                <!-- NATs -->
+                            </div>
                             <div class="tab-pane fade" id="daemonSettings-http" role="tabpanel"
-                                aria-labelledby="http-tab">HTTP</div>
+                                aria-labelledby="http-tab">
+                                <!-- HTTP -->
+                            </div>
                         </div>
                     </form>
 

@@ -25,59 +25,59 @@ type void struct{}
 
 // ManagerConfiguration represents the configuration for the manager
 type ManagerConfiguration struct {
-	AutoStart bool `json:"autostart" msgpack:"autostart"` // Boolean to statt the Manager when the daemon starts
-	Persist   bool `json:"persist" msgpack:"persist"`     // Boolean to dictate if configuration should be saved
+	AutoStart bool `json:"auto_start" yaml:"auto_start" msgpack:"auto_start"` // Boolean to statt the Manager when the daemon starts
+	Persist   bool `json:"persist" msgpack:"persist"`                         // Boolean to dictate if configuration should be saved
 
 	Identifier  string `json:"identifier" msgpack:"identifier"`
-	DisplayName string `json:"display_name" msgpack:"display_name"`
+	DisplayName string `json:"display_name" yaml:"display_name" msgpack:"display_name"`
 	Token       string `json:"token" msgpack:"token"`
 
 	// Bot specific configuration
 	Bot struct {
 		Compression          bool                  `json:"compression" msgpack:"compression"`
-		DefaultPresence      *structs.UpdateStatus `json:"presence" msgpack:"presence"`
-		GuildSubscriptions   bool                  `json:"guild_subscriptions" msgpack:"guild_subscriptions"`
+		DefaultPresence      *structs.UpdateStatus `json:"presence" yaml:"presence" msgpack:"presence"`
+		GuildSubscriptions   bool                  `json:"guild_subscriptions" yaml:"guild_subscriptions" msgpack:"guild_subscriptions"`
 		Intents              int                   `json:"intents" msgpack:"intents"`
-		LargeThreshold       int                   `json:"large_threshold" msgpack:"large_threshold"`
-		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures" msgpack:"max_heartbeat_failures"`
+		LargeThreshold       int                   `json:"large_threshold" yaml:"large_threshold" msgpack:"large_threshold"`
+		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures" yaml:"max_heartbeat_failures" msgpack:"max_heartbeat_failures"`
 		Retries              int32                 `json:"retries" msgpack:"retries"`
 	} `json:"bot" msgpack:"bot"`
 
 	Caching struct {
-		RedisPrefix string `json:"redis_prefix" msgpack:"redis_prefix"`
+		RedisPrefix string `json:"redis_prefix" yaml:"redis_prefix" msgpack:"redis_prefix"`
 
-		CacheUsers       bool `json:"cache_users" msgpack:"cache_users"`
-		CacheMembers     bool `json:"cache_members" msgpack:"cache_members"`
-		RequestMembers   bool `json:"request_members" msgpack:"request_members"`
-		RequestChunkSize int  `json:"request_chunk_size" msgpack:"request_chunk_size"`
-		StoreMutuals     bool `json:"store_mutuals" msgpack:"store_mutuals"`
+		CacheUsers       bool `json:"cache_users" yaml:"cache_users" msgpack:"cache_users"`
+		CacheMembers     bool `json:"cache_members" yaml:"cache_members" msgpack:"cache_members"`
+		RequestMembers   bool `json:"request_members" yaml:"request_members" msgpack:"request_members"`
+		RequestChunkSize int  `json:"request_chunk_size" yaml:"request_chunk_size" msgpack:"request_chunk_size"`
+		StoreMutuals     bool `json:"store_mutuals" yaml:"store_mutuals" msgpack:"store_mutuals"`
 	} `json:"caching" msgpack:"caching"`
 
 	Events struct {
-		EventBlacklist   []string `json:"event_blacklist" msgpack:"event_blacklist"`     // Events completely ignored
-		ProduceBlacklist []string `json:"produce_blacklist" msgpack:"produce_blacklist"` // Events not sent to consumers
+		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist" msgpack:"event_blacklist"`       // Events completely ignored
+		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist" msgpack:"produce_blacklist"` // Events not sent to consumers
 
 		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
 		// a bot.
-		IgnoreBots bool `json:"ignore_bots" msgpack:"ignore_bots"`
+		IgnoreBots bool `json:"ignore_bots" yaml:"ignore_bots" msgpack:"ignore_bots"`
 		// CheckPrefixes will HGET {REDIS_PREFIX}:prefix with the key GUILDID after receiving
 		// a MESSAGE_CREATE and if it is not null and the message content does not start with
 		// the prefix, it will not send the message to consumers. Useful if you only want to
 		// receive commands.
-		CheckPrefixes bool `json:"check_prefixes" msgpack:"check_prefixes"`
+		CheckPrefixes bool `json:"check_prefixes" yaml:"check_prefixes" msgpack:"check_prefixes"`
 		// Also allows for a bot mention to be a prefix
-		AllowMentionPrefix bool `json:"allow_mention_prefix" msgpack:"allow_mention_prefix"`
+		AllowMentionPrefix bool `json:"allow_mention_prefix" yaml:"allow_mention_prefix" msgpack:"allow_mention_prefix"`
 	} `json:"events" msgpack:"events"`
 
 	// Messaging specific configuration
 	Messaging struct {
-		ClientName string `json:"client_name" msgpack:"client_name"`
+		ClientName string `json:"client_name" yaml:"client_name" msgpack:"client_name"`
 		// If empty, this will use SandwichConfiguration.NATS.Channel which all Managers
 		// should use by default.
-		ChannelName string `json:"channel_name" msgpack:"channel_name"`
+		ChannelName string `json:"channel_name" yaml:"channel_name" msgpack:"channel_name"`
 		// UseRandomSuffix will append numbers to the end of the client name in order to
 		// reduce likelyhood of clashing cluster IDs.
-		UseRandomSuffix bool `json:"use_random_suffix" msgpack:"use_random_suffix"`
+		UseRandomSuffix bool `json:"use_random_suffix" yaml:"use_random_suffix" msgpack:"use_random_suffix"`
 	} `json:"messaging" msgpack:"messaging"`
 
 	// Sharding specific configuration
@@ -85,15 +85,15 @@ type ManagerConfiguration struct {
 		// ConcurrentClients dictates the ammount of clients that can simultaneously
 		// connect. Disabled if set to 0. If enabled, when sessions start and hit this
 		// limit, they will have to wait until a session has finished lazy loading guilds.
-		ConcurrentClients int `json:"concurrent_clients" msgpack:"concurrent_clients"`
+		ConcurrentClients int `json:"concurrent_clients" yaml:"concurrent_clients" msgpack:"concurrent_clients"`
 
-		AutoSharded bool `json:"autosharded" msgpack:"autosharded"`
-		ShardCount  int  `json:"shard_count" msgpack:"shard_count"`
+		AutoSharded bool `json:"auto_sharded" yaml:"auto_sharded" msgpack:"auto_sharded"`
+		ShardCount  int  `json:"shard_count" yaml:"shard_count" msgpack:"shard_count"`
 		// Useful when testing and you want to force a shardCount. This simply does not round it up.
 		Enforce bool `json:"enforce" msgpack:"enforce"`
 
-		ClusterCount int `json:"cluster_count" msgpack:"cluster_count"`
-		ClusterID    int `json:"cluster_id" msgpack:"cluster_id"`
+		ClusterCount int `json:"cluster_count" yaml:"cluster_count" msgpack:"cluster_count"`
+		ClusterID    int `json:"cluster_id" yaml:"cluster_id" msgpack:"cluster_id"`
 	} `json:"sharding" msgpack:"sharding"`
 }
 
