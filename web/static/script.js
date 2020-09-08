@@ -73,7 +73,12 @@ Vue.component("form-submit", {
             default: "Save Changes",
         }
     },
-    template: `<button type="submit" class="btn btn-dark">{{ label }}</button>`,
+    template: `<button type="submit" class="btn btn-dark" @click="onClick">{{ label }}</button>`,
+    methods: {
+        onClick() {
+            this.$emit('click');
+        }
+    }
 })
 
 Vue.component("form-input", {
@@ -257,6 +262,11 @@ vue = new Vue({
                 })
                 .catch(err => console.log(error))
         },
+
+        saveDaemonSettings() {
+            this.sendRPC("daemon:update_settings", this.daemon.configuration)
+        },
+
 
         stopShardGroupDialogue(cluster, shardgroup) {
             this.stopShardGroupDialogueModal = new bootstrap.Modal(document.getElementById("stopShardGroupDialogue"), {})

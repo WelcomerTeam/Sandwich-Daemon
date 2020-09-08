@@ -71,7 +71,7 @@ type SandwichConfiguration struct {
 	HTTP struct {
 		Enabled bool   `json:"enabled" yaml:"enabled"`
 		Host    string `json:"host" yaml:"host"`
-	}
+	} `json:"http" yaml:"http"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
 }
