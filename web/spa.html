@@ -19,7 +19,8 @@
 <body>
     <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Sandwich Daemon</a>
+            <a class="navbar-brand">Sandwich
+                Daemon</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
                 aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -349,12 +350,12 @@
                                 aria-labelledby="logging-tab">
 
                                 <div class="pb-4">
-                                    <form-input v-model="daemon.configuration.logging.consolelogging" :type=`checkbox`
+                                    <form-input v-model="daemon.configuration.logging.console_logging" :type=`checkbox`
                                         :id=`loggingConsoleLogging` :label="'Console Logging'"></form-input>
-                                    <form-input v-model="daemon.configuration.logging.filelogging" :type=`checkbox`
+                                    <form-input v-model="daemon.configuration.logging.file_logging" :type=`checkbox`
                                         :id=`loggingFileLogging` :label="'File Logging'">
                                     </form-input>
-                                    <form-input v-model="daemon.configuration.logging.encodeasjson" :type=`checkbox`
+                                    <form-input v-model="daemon.configuration.logging.encode_as_json" :type=`checkbox`
                                         :id=`loggingEncodeAsJson` :label="'Encode as JSON'">
                                     </form-input>
                                 </div>
@@ -365,13 +366,13 @@
                                 <form-input v-model="daemon.configuration.logging.filename" :type=`text`
                                     :id=`loggingFilename` :label="'Filename'">
                                 </form-input>
-                                <form-input v-model="daemon.configuration.logging.maxsize" :type=`number`
+                                <form-input v-model="daemon.configuration.logging.max_size" :type=`number`
                                     :id=`loggingMaxSize` :label="'Max Size'">
                                 </form-input>
-                                <form-input v-model="daemon.configuration.logging.maxbackups" :type=`number`
+                                <form-input v-model="daemon.configuration.logging.max_backups" :type=`number`
                                     :id=`loggingMaxBackups` :label="'Max Backups'">
                                 </form-input>
-                                <form-input v-model="daemon.configuration.logging.maxage" :type=`number`
+                                <form-input v-model="daemon.configuration.logging.max_age" :type=`number`
                                     :id=`loggingMaxAge` :label="'Max Age'">
                                 </form-input>
 
