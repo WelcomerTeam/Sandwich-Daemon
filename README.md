@@ -30,9 +30,9 @@ Sandwich Daemon was made to allow for a single process to interact with the gate
 - [x] Abilty to make the gateway automatically check for prefixes and ignore bots
 - [x] Auto Sharding
 - [x] Clustering Daemon among multiple machines
-- [x] Custom Tailored Events to allow for easier programming (including before and after in UPDATE events, invited_by in MEMBER_JOIN may be comming soon)
-- [ ] Auto Shard Scaling (comming soon)
-- [ ] Ability to use your own messaging service such as Kafka (Utilises NATS/STAN for Only-Once messaging) (Kafka Exactly-Once support may be comming soon)
+- [x] Custom Tailored Events to allow for easier programming (including before and after in UPDATE events, invited_by in MEMBER_JOIN may be coming soon)
+- [ ] Auto Shard Scaling (coming soon)
+- [ ] Ability to use your own messaging service such as Kafka (Utilises NATS/STAN for Only-Once messaging) (Kafka Exactly-Once support may be coming soon)
 - [ ] Selfbot support (no. Why do you need this for selfbots anyway?)
 
 ### Contact Me
