@@ -89,7 +89,7 @@ Vue.component("form-input", {
     </div>
     <div class="mb-3" v-else-if="type == 'number'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
-        <input type="number" class="form-control" :id="id" :value="value" v-on:input="updateValue($event.target.value)">
+        <input type="number" class="form-control" :id="id" :value="value" v-on:input="updateValue(Number($event.target.value))">
     </div>
     <div class="mb-3" v-else-if="type == 'password'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>

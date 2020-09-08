@@ -342,12 +342,42 @@
                                     role="tab" aria-selected="false">HTTP</a>
                             </li>
                         </ul>
-                        <div class="tab-content" id="pills-daemonSettings">
+                        <div class="tab-content p-5" id="pills-daemonSettings">
                             <div class="tab-pane fade show active" id="daemonSettings-logging" role="tabpanel"
                                 aria-labelledby="logging-tab">
 
+                                <div class="pb-4">
+                                    <form-input v-model="daemon.configuration.logging.consolelogging" :type=`checkbox`
+                                        :id=`loggingConsoleLogging` :label="'Console Logging'"></form-input>
+                                    <form-input v-model="daemon.configuration.logging.filelogging" :type=`checkbox`
+                                        :id=`loggingFileLogging` :label="'File Logging'">
+                                    </form-input>
+                                    <form-input v-model="daemon.configuration.logging.encodeasjson" :type=`checkbox`
+                                        :id=`loggingEncodeAsJson` :label="'Encode as JSON'">
+                                    </form-input>
+                                </div>
+
+                                <form-input v-model="daemon.configuration.logging.directory" :type=`text`
+                                    :id=`loggingDirectory` :label="'Directory'">
+                                </form-input>
+                                <form-input v-model="daemon.configuration.logging.filename" :type=`text`
+                                    :id=`loggingFilename` :label="'Filename'">
+                                </form-input>
+                                <form-input v-model="daemon.configuration.logging.maxsize" :type=`number`
+                                    :id=`loggingMaxSize` :label="'Max Size'">
+                                </form-input>
+                                <form-input v-model="daemon.configuration.logging.maxbackups" :type=`number`
+                                    :id=`loggingMaxBackups` :label="'Max Backups'">
+                                </form-input>
+                                <form-input v-model="daemon.configuration.logging.maxage" :type=`number`
+                                    :id=`loggingMaxAge` :label="'Max Age'">
+                                </form-input>
+
+                                <form-submit></form-submit>
 
 
+                                <!-- <form-input v-model="daemon.configuration." :type=`checkbox` :id=`` :label="''">
+                                </form-input> -->
                             </div>
                             <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
                                 aria-labelledby="redis-tab">Redis</div>
@@ -357,6 +387,10 @@
                                 aria-labelledby="http-tab">HTTP</div>
                         </div>
                     </form>
+
+                    <pre>
+                        {{ daemon.configuration }}
+                    </pre>
 
                     <pre>
                     Logging
