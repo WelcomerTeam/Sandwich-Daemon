@@ -288,6 +288,27 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
+					case "daemon:update_settings":
+						daemonUpdateSettingsEvent := SandwichConfiguration{}
+
+						json.Unmarshal(rpcMessage.Params, &daemonUpdateSettingsEvent)
+
+						configuration, err := sg.LoadConfiguration(ConfigurationPath)
+						if err == nil {
+							daemonUpdateSettingsEvent.Managers = configuration.Managers
+							if err = sg.SaveConfiguration(&daemonUpdateSettingsEvent, ConfigurationPath); err == nil {
+								daemonUpdateSettingsEvent.Managers = sg.Configuration.Managers
+								sg.ConfigurationMu.Lock()
+								sg.Configuration = &daemonUpdateSettingsEvent
+								sg.ConfigurationMu.Unlock()
+
+								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unable to save configuration: %w", err).Error(), rpcMessage.ID})
+							}
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unable to load configuration: %w", err).Error(), rpcMessage.ID})
+						}
 					default:
 						res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unknown event: %s", rpcMessage.Method).Error(), rpcMessage.ID})
 					}

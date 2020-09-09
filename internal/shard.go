@@ -328,6 +328,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 					break
 				}
 
+				sh.Manager.Sandwich.ConfigurationMu.RLock()
 				if sh.Manager.Configuration.Caching.RequestMembers {
 					var chunk []int64
 					chunkSize := sh.Manager.Configuration.Caching.RequestChunkSize
@@ -354,6 +355,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 						}
 					}
 				}
+				sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
 				break
 			}
@@ -497,7 +499,9 @@ func (sh *Shard) Heartbeat() {
 				if err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
 				} else {
+					sh.Manager.Sandwich.ConfigurationMu.RLock()
 					sh.Logger.Warn().Err(err).Msgf("Gateway failed to ACK and has passed MaxHeartbeatFailures of %d. Reconnecting", sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+					sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 				}
 
 				sh.Reconnect(websocket.StatusNormalClosure)
@@ -554,11 +558,16 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 func (sh *Shard) Resume() (err error) {
 	sh.Logger.Debug().Msg("Sending resume")
 
-	return sh.SendEvent(structs.GatewayOpResume, structs.Resume{
+	sh.Manager.Sandwich.ConfigurationMu.RLock()
+	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
+
+	err = sh.SendEvent(structs.GatewayOpResume, structs.Resume{
 		Token:     sh.Manager.Configuration.Token,
 		SessionID: sh.sessionID,
 		Sequence:  atomic.LoadInt64(sh.seq),
 	})
+
+	return
 }
 
 // Identify sends the identify packet to gateway
@@ -569,7 +578,10 @@ func (sh *Shard) Identify() (err error) {
 	sh.Manager.Gateway.Shards--
 	sh.Manager.GatewayMu.Unlock()
 
-	return sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
+	sh.Manager.Sandwich.ConfigurationMu.RLock()
+	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
+
+	err = sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
 		Token: sh.Manager.Configuration.Token,
 		Properties: &structs.IdentifyProperties{
 			OS:      runtime.GOOS,
@@ -583,6 +595,8 @@ func (sh *Shard) Identify() (err error) {
 		GuildSubscriptions: sh.Manager.Configuration.Bot.GuildSubscriptions,
 		Intents:            sh.Manager.Configuration.Bot.Intents,
 	})
+
+	return
 }
 
 // PublishEvent sends an event to consaumers
@@ -590,9 +604,12 @@ func (sh *Shard) PublishEvent(Type string, Data interface{}) (err error) {
 	packet := sh.pp.Get().(*structs.PublishEvent)
 	defer sh.pp.Put(packet)
 
+	sh.Manager.Sandwich.ConfigurationMu.RLock()
+	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
+
 	packet.Data = Data
 	packet.From = sh.Manager.Configuration.Identifier
-	packet.From = Type
+	packet.Type = Type
 
 	data, err := msgpack.Marshal(packet)
 	if err != nil {
@@ -642,7 +659,10 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 		time.Minute,
 	)
 
+	sh.Manager.Sandwich.ConfigurationMu.RLock()
 	sh.Logger.Trace().Msg(strings.ReplaceAll(string(res), sh.Manager.Configuration.Token, "..."))
+	sh.Manager.Sandwich.ConfigurationMu.RUnlock()
+
 	err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
 	if err != nil {
 		return xerrors.Errorf("writeJSON write: %w", err)

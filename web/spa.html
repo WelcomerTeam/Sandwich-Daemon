@@ -344,6 +344,10 @@
                                 <a class="nav-link" id="http-tab" data-toggle="tab" href="#daemonSettings-http"
                                     role="tab" aria-selected="false">HTTP</a>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="raw-tab" data-toggle="tab" href="#daemonSettings-raw" role="tab"
+                                    aria-selected="false">RAW (Read Only)</a>
+                            </li>
                         </ul>
                         <div class="tab-content p-5" id="pills-daemonSettings">
                             <div class="tab-pane fade show active" id="daemonSettings-logging" role="tabpanel"
@@ -394,43 +398,32 @@
                             <div class="tab-pane fade" id="daemonSettings-nats" role="tabpanel"
                                 aria-labelledby="nats-tab">
                                 <!-- NATs -->
+                                <form-input v-model="daemon.configuration.nats.address" :type=`text` :id=`natsAddress`
+                                    :label="'Address'"></form-input>
+                                <form-input v-model="daemon.configuration.nats.channel" :type=`text` :id=`natsChannel`
+                                    :label="'Channel'"></form-input>
+                                <form-input v-model="daemon.configuration.nats.cluster" :type=`text` :id=`natsCluster`
+                                    :label="'Cluster'"></form-input>
+                                <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                             </div>
                             <div class="tab-pane fade" id="daemonSettings-http" role="tabpanel"
                                 aria-labelledby="http-tab">
                                 <!-- HTTP -->
+                                <div class="pb-4">
+                                    <form-input v-model="daemon.configuration.http.enabled" :type=`checkbox`
+                                        :id=`httpEnabled` :label="'Enabled'"></form-input>
+                                </div>
+                                <form-input v-model="daemon.configuration.http.host" :type=`text` :id=`httpHost`
+                                    :label="'Host'"></form-input>
+                                <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                            </div>
+                            <div class="tab-pane fade" id="daemonSettings-raw" role="tabpanel"
+                                aria-labelledby="raw-tab">
+                                <!-- RAW -->
+                                <pre>{{ daemon.configuration }}</pre>
                             </div>
                         </div>
                     </form>
-
-                    <!-- <form-input v-model="daemon.configuration." :type=`checkbox` :id=`` :label="''">
-                    </form-input> -->
-                    <pre>
-                        {{ daemon.configuration }}
-                    </pre>
-
-                    <pre>
-                    Logging
-                    \ ConsoleLogging
-                    \ FileLogging
-                    \ EncodeJSON
-                    \ Directory
-                    \ Filename
-                    \ MaxSize
-                    \ MaxBackups
-                    \ MaxAge
-                    Redis
-                    \ Address
-                    \ Password
-                    \ DB
-                    \ UniqueClients
-                    NATS
-                    \ Address
-                    \ Channel
-                    \ Cluster
-                    HTTP
-                    \ Enabled
-                    \ Host
-                    </pre>
                 </div>
             </div>
         </div>

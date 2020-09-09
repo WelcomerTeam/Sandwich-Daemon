@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -82,8 +83,9 @@ type Sandwich struct {
 
 	Start time.Time `json:"uptime"`
 
-	Configuration *SandwichConfiguration `json:"configuration"`
-	Managers      map[string]*Manager    `json:"managers"`
+	ConfigurationMu sync.RWMutex
+	Configuration   *SandwichConfiguration `json:"configuration"`
+	Managers        map[string]*Manager    `json:"managers"`
 
 	TotalEvents *int64
 
@@ -100,27 +102,26 @@ type Sandwich struct {
 func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 
 	sg = &Sandwich{
-		Logger:        zerolog.New(logger).With().Timestamp().Logger(),
-		Configuration: &SandwichConfiguration{},
-		Managers:      make(map[string]*Manager),
-		TotalEvents:   new(int64),
-		Buckets:       bucketstore.NewBucketStore(),
+		Logger:          zerolog.New(logger).With().Timestamp().Logger(),
+		ConfigurationMu: sync.RWMutex{},
+		Configuration:   &SandwichConfiguration{},
+		Managers:        make(map[string]*Manager),
+		TotalEvents:     new(int64),
+		Buckets:         bucketstore.NewBucketStore(),
 	}
 
-	err = sg.LoadConfiguration(ConfigurationPath)
+	configuration, err := sg.LoadConfiguration(ConfigurationPath)
 	if err != nil {
 		return nil, xerrors.Errorf("new sandwich: %w", err)
 	}
-
-	err = sg.NormalizeConfiguration()
-	if err != nil {
-		return nil, xerrors.Errorf("new sandwich: %w", err)
-	}
+	sg.ConfigurationMu.Lock()
+	sg.Configuration = configuration
+	sg.ConfigurationMu.Unlock()
 
 	go sg.handleRequests()
 
 	var writers []io.Writer
-
+	sg.ConfigurationMu.RLock()
 	if sg.Configuration.Logging.ConsoleLoggingEnabled {
 		writers = append(writers, logger)
 	}
@@ -145,6 +146,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 			}
 		}
 	}
+	sg.ConfigurationMu.RUnlock()
 
 	mw := io.MultiWriter(writers...)
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
@@ -154,7 +156,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 }
 
 // LoadConfiguration loads the sandwich configuration
-func (sg *Sandwich) LoadConfiguration(path string) (err error) {
+func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfiguration, err error) {
 	sg.Logger.Debug().Msg("Loading configuration")
 	defer func() {
 		if err == nil {
@@ -165,23 +167,24 @@ func (sg *Sandwich) LoadConfiguration(path string) (err error) {
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
 		if ErrOnConfigurationFailure {
-			return xerrors.Errorf("load configuration readfile: %w", err)
+			return configuration, xerrors.Errorf("load configuration readfile: %w", err)
 		}
 		sg.Logger.Warn().Msg("Failed to read configuration but ErrOnConfigurationFailure is disabled")
 	}
 
-	err = yaml.Unmarshal(file, sg.Configuration)
+	configuration = &SandwichConfiguration{}
+	err = yaml.Unmarshal(file, &configuration)
 	if err != nil {
 		if ErrOnConfigurationFailure {
-			return xerrors.Errorf("load configuration unmarshal: %w", err)
+			return configuration, xerrors.Errorf("load configuration unmarshal: %w", err)
 		}
 		sg.Logger.Warn().Msg("Failed to unmarshal configuration but ErrOnConfigurationFailure is disabled")
 	}
 
-	err = sg.NormalizeConfiguration()
+	err = sg.NormalizeConfiguration(configuration)
 	if err != nil {
 		if ErrOnConfigurationFailure {
-			return xerrors.Errorf("load configuration normalize: %w", err)
+			return configuration, xerrors.Errorf("load configuration normalize: %w", err)
 		}
 		sg.Logger.Warn().Msg("Failed to normalize configuration but ErrOnConfigurationFailure is disabled")
 	}
@@ -190,7 +193,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (err error) {
 }
 
 // SaveConfiguration saves the sandwich configuration
-func (sg *Sandwich) SaveConfiguration(path string) (err error) {
+func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path string) (err error) {
 	sg.Logger.Debug().Msg("Saving configuration")
 	defer func() {
 		if err == nil {
@@ -198,7 +201,7 @@ func (sg *Sandwich) SaveConfiguration(path string) (err error) {
 		}
 	}()
 
-	data, err := yaml.Marshal(sg.Configuration)
+	data, err := yaml.Marshal(configuration)
 	if err != nil {
 		return xerrors.Errorf("save configuration marshal: %w", err)
 	}
@@ -212,23 +215,28 @@ func (sg *Sandwich) SaveConfiguration(path string) (err error) {
 }
 
 // NormalizeConfiguration fills in any defaults within the configuration
-func (sg *Sandwich) NormalizeConfiguration() (err error) {
+func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration) (err error) {
 	// We will trim the password just incase
-	sg.Configuration.Redis.Password = strings.TrimSpace(sg.Configuration.Redis.Password)
+	sg.ConfigurationMu.Lock()
+	configuration.Redis.Password = strings.TrimSpace(sg.Configuration.Redis.Password)
+	sg.ConfigurationMu.Unlock()
 
-	if sg.Configuration.Redis.Address == "" {
-		return xerrors.Errorf("Configurating missing Redis Address. Try 127.0.0.1:6379")
+	sg.ConfigurationMu.RLock()
+	defer sg.ConfigurationMu.RUnlock()
+
+	if configuration.Redis.Address == "" {
+		return xerrors.Errorf("Configuration missing Redis Address. Try 127.0.0.1:6379")
 	}
-	if sg.Configuration.NATS.Address == "" {
+	if configuration.NATS.Address == "" {
 		return xerrors.New("Configuration missing NATS address. Try 127.0.0.1:4222")
 	}
-	if sg.Configuration.NATS.Channel == "" {
+	if configuration.NATS.Channel == "" {
 		return xerrors.Errorf("Configuration missing NATS channel. Try sandwich")
 	}
-	if sg.Configuration.NATS.Cluster == "" {
+	if configuration.NATS.Cluster == "" {
 		return xerrors.Errorf("Configuration missing NATS cluster. Try cluster")
 	}
-	if sg.Configuration.HTTP.Host == "" {
+	if configuration.HTTP.Host == "" {
 		return xerrors.Errorf("Configuration missing HTTP host. Try 127.0.0.1:5469")
 	}
 
@@ -246,6 +254,9 @@ func (sg *Sandwich) Open() (err error) {
 	//  *-_ *--__ *****  __---* _*
 	//     *--__ *-----** ___--*       placeholder
 	//          **-____-**
+
+	sg.ConfigurationMu.RLock()
+	defer sg.ConfigurationMu.RUnlock()
 
 	sg.Start = time.Now().UTC()
 	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n     _--*         *--__         Sandwich Daemon %s\n _-**                  **-_\n|_*--_                _-* _|    HTTP: %s\n| *-_ *---_     _----* _-* |    Managers: %d\n *-_ *--__ *****  __---* _*\n     *--__ *-----** ___--*      %s\n         **-____-**\n",

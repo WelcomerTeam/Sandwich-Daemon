@@ -107,8 +107,9 @@ type Manager struct {
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
 
-	Configuration *ManagerConfiguration    `json:"configuration"`
-	Buckets       *bucketstore.BucketStore `json:"-"`
+	ConfigurationMu sync.RWMutex
+	Configuration   *ManagerConfiguration    `json:"configuration"`
+	Buckets         *bucketstore.BucketStore `json:"-"`
 
 	RedisClient *redis.Client `json:"-"`
 	NatsClient  *nats.Conn    `json:"-"`
@@ -146,8 +147,9 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		Sandwich: s,
 		Logger:   logger,
 
-		Configuration: configuration,
-		Buckets:       bucketstore.NewBucketStore(),
+		ConfigurationMu: sync.RWMutex{},
+		Configuration:   configuration,
+		Buckets:         bucketstore.NewBucketStore(),
 
 		Client: NewClient(configuration.Token),
 
@@ -177,6 +179,11 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 
 // NormalizeConfiguration fills in any defaults within the configuration
 func (mg *Manager) NormalizeConfiguration() (err error) {
+	mg.ConfigurationMu.RLock()
+	defer mg.ConfigurationMu.RUnlock()
+	mg.Sandwich.ConfigurationMu.RLock()
+	defer mg.Sandwich.ConfigurationMu.RUnlock()
+
 	if mg.Configuration.Token == "" {
 		return xerrors.New("Manager configuration missing token")
 	}
@@ -216,6 +223,11 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 func (mg *Manager) Open() (err error) {
 	mg.Logger.Info().Msg("Starting up manager")
 	mg.ctx, mg.cancel = context.WithCancel(context.Background())
+
+	mg.Sandwich.ConfigurationMu.RLock()
+	defer mg.Sandwich.ConfigurationMu.RUnlock()
+	mg.ConfigurationMu.RLock()
+	defer mg.ConfigurationMu.RUnlock()
 
 	if mg.Sandwich.Configuration.Redis.UniqueClients {
 		mg.RedisClient = redis.NewClient(&redis.Options{
@@ -271,7 +283,13 @@ func (mg *Manager) Open() (err error) {
 
 // GatherShardCount returns the expected shardcount using the gateay object stored
 func (mg *Manager) GatherShardCount() (shardCount int) {
+	mg.Sandwich.ConfigurationMu.RLock()
+	defer mg.Sandwich.ConfigurationMu.RUnlock()
+	mg.ConfigurationMu.RLock()
+	defer mg.ConfigurationMu.RUnlock()
 	mg.GatewayMu.RLock()
+	defer mg.GatewayMu.RUnlock()
+
 	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2 && !mg.Configuration.Sharding.Enforce) {
 		shardCount = mg.Gateway.Shards
 	} else {
@@ -282,8 +300,6 @@ func (mg *Manager) GatherShardCount() (shardCount int) {
 		// We will round up the shard count depending on the concurrent clients specified
 		shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
 	}
-	mg.GatewayMu.RUnlock()
-
 	return
 }
 
@@ -306,6 +322,9 @@ func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan
 func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
 	packet := mg.pp.Get().(*structs.PublishEvent)
 	defer mg.pp.Put(packet)
+
+	mg.ConfigurationMu.RLock()
+	defer mg.ConfigurationMu.RUnlock()
 
 	packet.Data = Data
 	packet.From = mg.Configuration.Identifier
@@ -333,6 +352,8 @@ func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
 
 // GenerateShardIDs returns a slice of shard ids the bot will use and accounts for clusters
 func (mg *Manager) GenerateShardIDs(shardCount int) (shardIDs []int) {
+	mg.ConfigurationMu.RLock()
+	defer mg.ConfigurationMu.RUnlock()
 	deployedShards := shardCount / mg.Configuration.Sharding.ClusterCount
 	for i := (deployedShards * mg.Configuration.Sharding.ClusterID); i < (deployedShards * (mg.Configuration.Sharding.ClusterID + 1)); i++ {
 		shardIDs = append(shardIDs, i)
