@@ -100,7 +100,7 @@ Vue.component("form-input", {
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
         <div class="input-group">
             <input type="password" class="form-control" :id="id" autocomplete :value="value" v-on:input="updateValue($event.target.value)">
-            <button class="btn btn-outline-dark" type="button" v-on:click="copyFromID(id)">Copy</button>
+            <button class="btn btn-outline-dark" type="button" v-on:click="copyFormInputPassword()">Copy</button>
         </div>
     </div>
     <div class="mb-3" v-else-if="type == 'select'">
@@ -170,14 +170,15 @@ Vue.component("form-input", {
         }
     },
     methods: {
-        copyFromID: function (id) {
-            var value = document.getElementById(id).value;
+        copyFormInputPassword: function () {
             var elem = document.createElement("textarea")
-            elem.value = value;
+            elem.value = this.$el.lastChild.firstChild.value;
             elem.type = "hidden";
             document.body.append(elem);
+
             elem.select();
             elem.setSelectionRange(0, 99999);
+
             document.execCommand("copy");
             elem.parentElement.removeChild(elem);
         },
