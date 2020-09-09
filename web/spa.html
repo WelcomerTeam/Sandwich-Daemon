@@ -348,7 +348,7 @@
                         <div class="tab-content p-5" id="pills-daemonSettings">
                             <div class="tab-pane fade show active" id="daemonSettings-logging" role="tabpanel"
                                 aria-labelledby="logging-tab">
-
+                                <!-- Logging -->
                                 <div class="pb-4">
                                     <form-input v-model="daemon.configuration.logging.console_logging" :type=`checkbox`
                                         :id=`loggingConsoleLogging` :label="'Console Logging'"></form-input>
@@ -359,7 +359,6 @@
                                         :id=`loggingEncodeAsJson` :label="'Encode as JSON'">
                                     </form-input>
                                 </div>
-
                                 <form-input v-model="daemon.configuration.logging.directory" :type=`text`
                                     :id=`loggingDirectory` :label="'Directory'">
                                 </form-input>
@@ -375,16 +374,22 @@
                                 <form-input v-model="daemon.configuration.logging.max_age" :type=`number`
                                     :id=`loggingMaxAge` :label="'Max Age'">
                                 </form-input>
-
                                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                             </div>
                             <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
                                 aria-labelledby="redis-tab">
                                 <!-- Redis -->
-
                                 <div class="pb-4">
-                                    <form-input v-model="daemon.configuration.redis.uniqueclients"></form-input>
+                                    <form-input v-model="daemon.configuration.redis.unique_clients" :type=`checkbox`
+                                        :id=`redisUniqueClients` :label="'Unique Clients'"></form-input>
                                 </div>
+                                <form-input v-model="daemon.configuration.redis.address" :type=`text` :id=`redisAddress`
+                                    :label="'Address'"></form-input>
+                                <form-input v-model="daemon.configuration.redis.password" :type=`password`
+                                    :id=`redisPassword` :label="'Password'"></form-input>
+                                <form-input v-model="daemon.configuration.redis.database" :type=`number` :id=`redisDB`
+                                    :label="'Database'"></form-input>
+                                <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                             </div>
                             <div class="tab-pane fade" id="daemonSettings-nats" role="tabpanel"
                                 aria-labelledby="nats-tab">
