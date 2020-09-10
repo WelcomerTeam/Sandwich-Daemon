@@ -184,28 +184,28 @@
                                         <ul class="nav nav-tabs" id="pills-tab" role="tablist">
                                             <li class="nav-item" role="presentation">
                                                 <a class="nav-link active"
-                                                    :id="'cluster-' + cluster.configuration.identifier + 'pills-status-tab'"
+                                                    :id="'cluster-' + cluster.configuration.identifier + '-pills-status-tab'"
                                                     data-toggle="pill"
-                                                    :href="'#cluster-' + cluster.configuration.identifier + 'pills-status'"
+                                                    :href="'#cluster-' + cluster.configuration.identifier + '-pills-status'"
                                                     role="tab"
-                                                    :aria-controls="'cluster-' + cluster.configuration.identifier + 'pills-status'"
+                                                    :aria-controls="'cluster-' + cluster.configuration.identifier + '-pills-status'"
                                                     aria-selected="true">Status</a>
                                             </li>
                                             <li class="nav-item" role="presentation">
                                                 <a class="nav-link"
-                                                    :id="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab'"
+                                                    :id="'cluster-' + cluster.configuration.identifier + '-pills-settings-tab'"
                                                     data-toggle="pill"
-                                                    :href="'#cluster-' + cluster.configuration.identifier + 'pills-settings'"
+                                                    :href="'#cluster-' + cluster.configuration.identifier + '-pills-settings'"
                                                     role="tab"
-                                                    :aria-controls="'cluster-' + cluster.configuration.identifier + 'pills-settings'"
+                                                    :aria-controls="'cluster-' + cluster.configuration.identifier + '-pills-settings'"
                                                     aria-selected="false">Settings</a>
                                             </li>
                                         </ul>
                                         <div class="tab-content">
                                             <div class="tab-pane fade p-4 active show"
-                                                :id="'cluster-' + cluster.configuration.identifier + 'pills-status'"
+                                                :id="'cluster-' + cluster.configuration.identifier + '-pills-status'"
                                                 role="tabpanel"
-                                                :aria-labelledby="'cluster-' + cluster.configuration.identifier + 'pills-status-tab'">
+                                                :aria-labelledby="'cluster-' + cluster.configuration.identifier + '-pills-status-tab'">
                                                 <ul class="list-group mb-4">
                                                     <li
                                                         class="list-group-item d-flex justify-content-between align-items-center">
@@ -312,11 +312,118 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="tab-pane fade p-4"
-                                                :id="'cluster-' + cluster.configuration.identifier + 'pills-settings'"
+                                            <div class="tab-pane fade"
+                                                :id="'cluster-' + cluster.configuration.identifier + '-pills-settings'"
                                                 role="tabpanel"
-                                                :aria-labelledby="'cluster-' + cluster.configuration.identifier + 'pills-settings-tab'">
-                                                settings
+                                                :aria-labelledby="'cluster-' + cluster.configuration.identifier + '-pills-settings-tab'">
+                                                <form @submit.prevent>
+                                                    <ul class="nav nav-tabs" id="tabpanel" role="tablist">
+                                                        <li class="nav-item" role="presentation">
+                                                            <a class="nav-link active" id="general-tab"
+                                                                data-toggle="tab"
+                                                                :href="'#cluster-' + cluster.configuration.identifier + '-Settings-general'"
+                                                                role="tab" aria-selected="true">General</a>
+                                                        </li>
+                                                        <li class="nav-item" role="presentation">
+                                                            <a class="nav-link" id="bot-tab" data-toggle="tab"
+                                                                :href="'#cluster-' + cluster.configuration.identifier + '-Settings-bot'"
+                                                                role="tab" aria-selected="true">Bot</a>
+                                                        </li>
+                                                        <li class="nav-item" role="presentation">
+                                                            <a class="nav-link" id="caching-tab" data-toggle="tab"
+                                                                :href="'#cluster-' + cluster.configuration.identifier + '-Settings-caching'"
+                                                                role="tab" aria-selected="true">Caching</a>
+                                                        </li>
+                                                        <li class="nav-item" role="presentation">
+                                                            <a class="nav-link" id="events-tab" data-toggle="tab"
+                                                                :href="'#cluster-' + cluster.configuration.identifier + '-Settings-events'"
+                                                                role="tab" aria-selected="true">Events</a>
+                                                        </li>
+                                                        <li class="nav-item" role="presentation">
+                                                            <a class="nav-link" id="messaging-tab" data-toggle="tab"
+                                                                :href="'#cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
+                                                                role="tab" aria-selected="true">Messaging</a>
+                                                        </li>
+                                                        <li class="nav-item" role="presentation">
+                                                            <a class="nav-link" id="sharding-tab" data-toggle="tab"
+                                                                :href="'#cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
+                                                                role="tab" aria-selected="true">Sharding</a>
+                                                        </li>
+                                                        <li class="nav-item" role="presentation">
+                                                            <a class="nav-link" id="raw-tab" data-toggle="tab"
+                                                                :href="'#cluster-' + cluster.configuration.identifier + '-Settings-raw'"
+                                                                role="tab" aria-selected="true">RAW (Read Only)</a>
+                                                        </li>
+                                                    </ul>
+                                                    <!-- <form-input v-model="cluster.configuration.identifier" :type=`text`
+                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-identifier'"
+                                                        :label="'Identifer'"></form-input> -->
+
+                                                    <div class="tab-content p-5" id="pills-clusterSettings">
+                                                        <div class="tab-pane fade show active"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-Settings-general'"
+                                                            role="tabpanel" aria-labelledby="general-tab">
+                                                            <!-- General -->
+                                                            <div class="pb-4">
+                                                                <form-input v-model="cluster.configuration.auto_start"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-autostart'"
+                                                                    :label="'Auto Start'"></form-input>
+                                                                <form-input v-model="cluster.configuration.persist"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-persist'"
+                                                                    :label="'Persist'"></form-input>
+                                                                <p>When enabled, changes to Manager will be saved for
+                                                                    future use. If disabled, the configuration will be
+                                                                    discarded when the bot is next started.</p>
+                                                            </div>
+                                                            <form-input v-model="cluster.configuration.identifier"
+                                                                :type=`text`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-identifier'"
+                                                                :label="'Identifier'" :disabled="true"></form-input>
+                                                            <form-input v-model="cluster.configuration.display_name"
+                                                                :type=`text`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-display_name'"
+                                                                :label="'Display Name'"></form-input>
+                                                            <form-input v-model="cluster.configuration.token"
+                                                                :type=`password`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-token'"
+                                                                :label="'Token'"></form-input>
+                                                            <form-submit v-on:click="saveClusterSettings(cluster)">
+                                                            </form-submit>
+                                                        </div>
+                                                        <div class="tab-pane fade"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-Settings-bot'"
+                                                            role="tabpanel" aria-labelledby="bot-tab">
+                                                            <!-- Bot -->
+                                                        </div>
+                                                        <div class="tab-pane fade"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-Settings-caching'"
+                                                            role="tabpanel" aria-labelledby="caching-tab">
+                                                            <!-- Caching-->
+                                                        </div>
+                                                        <div class="tab-pane fade"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-Settings-events'"
+                                                            role="tabpanel" aria-labelledby="events-tab">
+                                                            <!-- Events -->
+                                                        </div>
+                                                        <div class="tab-pane fade"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
+                                                            role="tabpanel" aria-labelledby="messaging-tab">
+                                                            <!-- Messaging -->
+                                                        </div>
+                                                        <div class="tab-pane fade"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
+                                                            role="tabpanel" aria-labelledby="sharding-tab">
+                                                            <!-- Sharding -->
+                                                        </div>
+                                                        <div class="tab-pane fade"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-Settings-raw'"
+                                                            role="tabpanel" aria-labelledby="raw-tab">
+                                                            <pre>{{ cluster }}</pre>
+                                                        </div>
+                                                    </div>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
