@@ -327,32 +327,32 @@
                                                         <li class="nav-item" role="presentation">
                                                             <a class="nav-link" id="bot-tab" data-toggle="tab"
                                                                 :href="'#cluster-' + cluster.configuration.identifier + '-Settings-bot'"
-                                                                role="tab" aria-selected="true">Bot</a>
+                                                                role="tab" aria-selected="false">Bot</a>
                                                         </li>
                                                         <li class="nav-item" role="presentation">
                                                             <a class="nav-link" id="caching-tab" data-toggle="tab"
                                                                 :href="'#cluster-' + cluster.configuration.identifier + '-Settings-caching'"
-                                                                role="tab" aria-selected="true">Caching</a>
+                                                                role="tab" aria-selected="false">Caching</a>
                                                         </li>
                                                         <li class="nav-item" role="presentation">
                                                             <a class="nav-link" id="events-tab" data-toggle="tab"
                                                                 :href="'#cluster-' + cluster.configuration.identifier + '-Settings-events'"
-                                                                role="tab" aria-selected="true">Events</a>
+                                                                role="tab" aria-selected="false">Events</a>
                                                         </li>
                                                         <li class="nav-item" role="presentation">
                                                             <a class="nav-link" id="messaging-tab" data-toggle="tab"
                                                                 :href="'#cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
-                                                                role="tab" aria-selected="true">Messaging</a>
+                                                                role="tab" aria-selected="false">Messaging</a>
                                                         </li>
                                                         <li class="nav-item" role="presentation">
                                                             <a class="nav-link" id="sharding-tab" data-toggle="tab"
                                                                 :href="'#cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
-                                                                role="tab" aria-selected="true">Sharding</a>
+                                                                role="tab" aria-selected="false">Sharding</a>
                                                         </li>
                                                         <li class="nav-item" role="presentation">
                                                             <a class="nav-link" id="raw-tab" data-toggle="tab"
                                                                 :href="'#cluster-' + cluster.configuration.identifier + '-Settings-raw'"
-                                                                role="tab" aria-selected="true">RAW (Read Only)</a>
+                                                                role="tab" aria-selected="false">RAW (Read Only)</a>
                                                         </li>
                                                     </ul>
                                                     <!-- <form-input v-model="cluster.configuration.identifier" :type=`text`
@@ -422,11 +422,6 @@
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.large_threshold'"
                                                                 :label="'Large Threshold'"></form-input>
                                                             <form-input
-                                                                v-model="cluster.configuration.bot.large_threshold"
-                                                                :type=`number`
-                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.large_threshold'"
-                                                                :label="'Large Threshold'"></form-input>
-                                                            <form-input
                                                                 v-model="cluster.configuration.bot.max_heartbeat_failures"
                                                                 :type=`number`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.max_heartbeat_failures'"
@@ -434,7 +429,7 @@
                                                             <form-input v-model="cluster.configuration.bot.retries"
                                                                 :type=`number`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.retries'"
-                                                                :label="'Retires'"></form-input>
+                                                                :label="'Retries'"></form-input>
                                                             <form-submit v-on:click="saveClusterSettings(cluster)">
                                                             </form-submit>
                                                         </div>
@@ -475,22 +470,55 @@
                                                                 :label="'Request Chunk Size'"></form-input>
                                                             <form-submit v-on:click="saveClusterSettings(cluster)">
                                                             </form-submit>
-
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-events'"
                                                             role="tabpanel" aria-labelledby="events-tab">
                                                             <!-- Events -->
+                                                            <div class="pb-4">
+                                                                <form-input
+                                                                    v-model="cluster.configuration.events.ignore_bots"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-events.ignore_bots'"
+                                                                    :label="'Ignore Bots'"></form-input>
+                                                                <p class="text-muted">When enabled, consumers will not
+                                                                    receive MESSAGE_CREATE events if the author is a bot
+                                                                </p>
+                                                                <form-input
+                                                                    v-model="cluster.configuration.events.check_prefixes"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-events.check_prefixes'"
+                                                                    :label="'Check Prefixes'"></form-input>
+                                                                <p class="text-muted">When enabled, consumers will
+                                                                    receive only MESSAGE_CREATE events that start with a
+                                                                    defined prefix. The prefix is determined from a HGET
+                                                                    to {REDIS_PREFIX}:prefix with the guild id as a key.
+                                                                </p>
+                                                                <form-input
+                                                                    v-model="cluster.configuration.events.allow_mention_prefix"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-events.allow_mention_prefix'"
+                                                                    :label="'Allow Mention Prefix'"></form-input>
+                                                            </div>
+                                                            <form-input
+                                                                v-model="cluster.configuration.events.event_blacklist"
+                                                                :type=`list`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-events.event_blacklist'"
+                                                                :label="'Event Blacklist'"></form-input>
+                                                            <form-submit v-on:click="saveClusterSettings(cluster)">
+                                                            </form-submit>
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
                                                             role="tabpanel" aria-labelledby="messaging-tab">
                                                             <!-- Messaging -->
+                                                            b
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
                                                             role="tabpanel" aria-labelledby="sharding-tab">
                                                             <!-- Sharding -->
+                                                            a
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-raw'"

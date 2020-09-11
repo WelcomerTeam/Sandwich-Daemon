@@ -85,37 +85,41 @@ Vue.component("form-input", {
     props: ['type', 'id', 'label', 'values', 'value', 'disabled'],
     template: `
     <div class="form-check" v-if="type == 'checkbox'">
-        <input class="form-check-input" type="checkbox" :id="id" :checked="value" v-on:input="updateValue($event.target.checked)" :disabled="disabled">
+        <input class="form-check-input" type="checkbox" :id="id" :checked="value" v-on:change="updateValue($event.target.checked)" :disabled="disabled">
         <label class="form-check-label" :for="id">{{ label }}</label>
     </div>
     <div class="mb-3" v-else-if="type == 'text'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
-        <input type="text" class="form-control" :id="id" :value="value" v-on:input="updateValue($event.target.value)" :disabled="disabled">
+        <input type="text" class="form-control" :id="id" :value="value" v-on:change="updateValue($event.target.value)" :disabled="disabled">
+    </div>
+    <div class="mb-3" v-else-if="type == 'list'">
+        <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+        <input type="text" class="form-control" :id="id" :value="value" v-on:change="updateValue(Array.from(new Set($event.target.value.split(','))))    " :disabled="disabled">
     </div>
     <div class="mb-3" v-else-if="type == 'number'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
-        <input type="number" class="form-control" :id="id" :value="value" v-on:input="updateValue(Number($event.target.value))" :disabled="disabled">
+        <input type="number" class="form-control" :id="id" :value="value" v-on:change="updateValue(Number($event.target.value))" :disabled="disabled">
     </div>
     <div class="mb-3" v-else-if="type == 'password'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
         <div class="input-group">
-            <input type="password" class="form-control" :id="id" autocomplete :value="value" v-on:input="updateValue($event.target.value)" :disabled="disabled">
+            <input type="password" class="form-control" :id="id" autocomplete :value="value" v-on:change="updateValue($event.target.value)" :disabled="disabled">
             <button class="btn btn-outline-dark" type="button" v-on:click="copyFormInputPassword()">Copy</button>
         </div>
     </div>
     <div class="mb-3" v-else-if="type == 'select'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
-        <select class="form-select" :id="id" v-on:input="updateValue($event.target.value)" :disabled="disabled">
+        <select class="form-select" :id="id" v-on:change="updateValue($event.target.value)" :disabled="disabled">
             <option v-for="item in values" selected="item == value">{{ item }}</option>
         </select>
     </div>
     <div class="mb-3 row pb-4" v-else-if="type == 'intent'">
         <label for="managerBotIntents" class="col-sm-3 form-label">{{ label }}</label>
         <div class="col-sm-9">
-            <input type="number" class="form-control" min=0 :value="value" @input="(v) => {updateValue(v.target.value); fromIntents(v.target.value)}" :disabled="disabled">
+            <input type="number" class="form-control" min=0 max=32767 :value="value" @change="(v) => {v.target.value = v.target.value & 32767; updateValue(Number(v.target.value)); fromIntents(v.target.value)}" @input="(v) => {updateValue(Number(v.target.value)); fromIntents(v.target.value)}" :disabled="disabled">
             <div class="form-row py-2">
                 <div class="form-check form-check-inline col-sm-8 col-md-5" v-for="(intent, index) in this.intents">
-                    <input class="form-check-input" type="checkbox" v-bind:value="index" v-bind:id="'managerBotIntentBox'+index" v-model="selectedIntent" @change="calculateIntent()">
+                    <input class="form-check-input" type="checkbox" v-bind:value="index" v-bind:id="id+index" v-model="selectedIntent" @change="calculateIntent()">
                     <label class="form-check-label" v-bind:for="'managerBotIntentBox'+index">{{intent}}</label>
                 </div>
             </div>
@@ -188,7 +192,7 @@ Vue.component("form-input", {
         calculateIntent() {
             this.intentValue = 0
             this.selectedIntent.forEach(a => { this.intentValue += (1 << a); })
-            this.updateValue(this.intentValue)
+            this.updateValue(Number(this.intentValue))
         },
         fromIntents(val) {
             var _binary = Number(val).toString(2).split("").reverse()
