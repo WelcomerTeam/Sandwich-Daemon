@@ -82,15 +82,8 @@ type ManagerConfiguration struct {
 
 	// Sharding specific configuration
 	Sharding struct {
-		// ConcurrentClients dictates the ammount of clients that can simultaneously
-		// connect. Disabled if set to 0. If enabled, when sessions start and hit this
-		// limit, they will have to wait until a session has finished lazy loading guilds.
-		ConcurrentClients int `json:"concurrent_clients" yaml:"concurrent_clients" msgpack:"concurrent_clients"`
-
 		AutoSharded bool `json:"auto_sharded" yaml:"auto_sharded" msgpack:"auto_sharded"`
 		ShardCount  int  `json:"shard_count" yaml:"shard_count" msgpack:"shard_count"`
-		// Useful when testing and you want to force a shardCount. This simply does not round it up.
-		Enforce bool `json:"enforce" msgpack:"enforce"`
 
 		ClusterCount int `json:"cluster_count" yaml:"cluster_count" msgpack:"cluster_count"`
 		ClusterID    int `json:"cluster_id" yaml:"cluster_id" msgpack:"cluster_id"`
@@ -209,9 +202,6 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 		mg.Configuration.Messaging.ChannelName = mg.Sandwich.Configuration.NATS.Channel
 		mg.Logger.Info().Msg("Using global messaging channel")
 	}
-	if mg.Configuration.Messaging.UseRandomSuffix {
-		mg.Configuration.Messaging.ClientName += "-" + strconv.Itoa(rand.Intn(9999))
-	}
 	if mg.Configuration.Caching.RequestChunkSize <= 0 {
 		mg.Configuration.Caching.RequestChunkSize = 1
 	}
@@ -255,9 +245,16 @@ func (mg *Manager) Open() (err error) {
 		return xerrors.Errorf("manager open nats connect: %w", err)
 	}
 
+	var clientName string
+	if mg.Configuration.Messaging.UseRandomSuffix {
+		clientName = mg.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(9999))
+	} else {
+		clientName = mg.Configuration.Messaging.ClientName
+	}
+
 	mg.StanClient, err = stan.Connect(
 		mg.Sandwich.Configuration.NATS.Cluster,
-		mg.Configuration.Messaging.ClientName,
+		clientName,
 		stan.NatsConn(mg.NatsClient),
 	)
 	if err != nil {
@@ -290,16 +287,13 @@ func (mg *Manager) GatherShardCount() (shardCount int) {
 	mg.GatewayMu.RLock()
 	defer mg.GatewayMu.RUnlock()
 
-	if mg.Configuration.Sharding.AutoSharded || (mg.Configuration.Sharding.ShardCount < mg.Gateway.Shards/2 && !mg.Configuration.Sharding.Enforce) {
+	if mg.Configuration.Sharding.AutoSharded {
 		shardCount = mg.Gateway.Shards
 	} else {
 		shardCount = mg.Configuration.Sharding.ShardCount
 	}
 
-	if !mg.Configuration.Sharding.Enforce {
-		// We will round up the shard count depending on the concurrent clients specified
-		shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
-	}
+	shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
 	return
 }
 

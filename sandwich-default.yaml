@@ -54,9 +54,7 @@ managers:
     channel_name: sandwich
     use_random_suffix: true
   sharding:
-    concurrent_clients: 5
     auto_sharded: true
     shard_count: 2
-    enforce: false
     cluster_count: 1
     cluster_id: 0

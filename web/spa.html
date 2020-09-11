@@ -563,7 +563,37 @@
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
                                                             role="tabpanel" aria-labelledby="messaging-tab">
                                                             <!-- Messaging -->
-                                                            b
+                                                            <div class="pb-4">
+                                                                <form-input
+                                                                    v-model="cluster.configuration.messaging.use_random_suffix"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.use_random_suffix'"
+                                                                    :label="'Use Random Suffix'"></form-input>
+                                                                <p class="text-muted">When enabled, the client name will
+                                                                    have a random suffix added. Useful if you have
+                                                                    multiple managers using the same client name.</p>
+                                                            </div>
+                                                            <form-input
+                                                                v-model="cluster.configuration.messaging.client_name"
+                                                                :type=`text`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.client_name'"
+                                                                :label="'Client Name'"></form-input>
+                                                            <p class="text-muted">Name of the client the manager uses.
+                                                                <b>Client names must be unique.</b> If you are using
+                                                                multiple managers with the same client name, it is
+                                                                recommended you use seperate client names or enable
+                                                                random suffix.</p>
+                                                            <form-input
+                                                                v-model="cluster.configuration.messaging.channel_name"
+                                                                :type=`text`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.channel_name'"
+                                                                :label="'Channel Name'"></form-input>
+                                                            <p class="text-muted">Custom definition of the channel the
+                                                                manager will use. If empty, it will use the
+                                                                configuration in daemon.nats.channel which managers
+                                                                should use by default.</p>
+                                                            <form-submit v-on:click="saveClusterSettings(cluster)">
+                                                            </form-submit>
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
