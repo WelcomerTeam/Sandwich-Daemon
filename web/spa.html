@@ -130,7 +130,7 @@
                 </li>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="pills-clusters-tab" data-toggle="pill" href="#pills-clusters" role="tab"
-                        aria-controls="pills-clusters" aria-selected="false">Clusters</a>
+                        aria-controls="pills-clusters" aria-selected="false">Managers</a>
                 </li>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="pills-settings-tab bg-dark" data-toggle="pill" href="#pills-settings"
@@ -373,9 +373,9 @@
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-persist'"
                                                                     :label="'Persist'"></form-input>
-                                                                <p>When enabled, changes to Manager will be saved for
-                                                                    future use. If disabled, the configuration will be
-                                                                    discarded when the bot is next started.</p>
+                                                                <p class="text-muted">When persist is enabled, changes
+                                                                    to Manager will be saved else the configuration will
+                                                                    be discarded when the daemon is next started.</p>
                                                             </div>
                                                             <form-input v-model="cluster.configuration.identifier"
                                                                 :type=`text`

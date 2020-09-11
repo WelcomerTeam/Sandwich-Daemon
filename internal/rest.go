@@ -242,27 +242,6 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
-					case "manager:refresh_gateway":
-						manageRefreshGatewayEvent := struct {
-							Cluster string `json:"cluster"`
-						}{}
-
-						json.Unmarshal(rpcMessage.Params, &manageRefreshGatewayEvent)
-
-						// Check if cluster exists
-						if mg, ok := sg.Managers[manageRefreshGatewayEvent.Cluster]; ok {
-							gw, err := mg.GetGateway()
-							if err == nil {
-								mg.GatewayMu.Lock()
-								mg.Gateway = gw
-								mg.GatewayMu.Unlock()
-								res, err = json.Marshal(RPCResponse{gw, "", rpcMessage.ID})
-							} else {
-								res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
-							}
-						} else {
-							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
-						}
 					case "shardgroup:delete":
 						shardGroupStopEvent := struct {
 							Cluster    string `json:"cluster"`
@@ -285,6 +264,27 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 								res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid ShardGroup provided").Error(), rpcMessage.ID})
 							}
 							mg.ShardGroupMu.Unlock()
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
+						}
+					case "manager:refresh_gateway":
+						manageRefreshGatewayEvent := struct {
+							Cluster string `json:"cluster"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &manageRefreshGatewayEvent)
+
+						// Check if cluster exists
+						if mg, ok := sg.Managers[manageRefreshGatewayEvent.Cluster]; ok {
+							gw, err := mg.GetGateway()
+							if err == nil {
+								mg.GatewayMu.Lock()
+								mg.Gateway = gw
+								mg.GatewayMu.Unlock()
+								res, err = json.Marshal(RPCResponse{gw, "", rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+							}
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
