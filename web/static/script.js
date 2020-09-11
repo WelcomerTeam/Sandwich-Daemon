@@ -94,7 +94,7 @@ Vue.component("form-input", {
     </div>
     <div class="mb-3" v-else-if="type == 'list'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
-        <input type="text" class="form-control" :id="id" :value="value" v-on:change="updateValue(Array.from(new Set($event.target.value.split(','))))    " :disabled="disabled">
+        <input type="text" class="form-control" :id="id" :value="value" placeholder="A,B,C" v-on:change="updateValue(Array.from(new Set($event.target.value.split(','))))    " :disabled="disabled">
     </div>
     <div class="mb-3" v-else-if="type == 'number'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>

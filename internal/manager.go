@@ -107,7 +107,7 @@ type Manager struct {
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
 
-	ConfigurationMu sync.RWMutex
+	ConfigurationMu sync.RWMutex             `json:"-"`
 	Configuration   *ManagerConfiguration    `json:"configuration"`
 	Buckets         *bucketstore.BucketStore `json:"-"`
 

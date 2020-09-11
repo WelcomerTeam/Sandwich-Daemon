@@ -369,11 +369,13 @@
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-autostart'"
                                                                     :label="'Auto Start'"></form-input>
+                                                                <p class="text-muted">When enabled, the Manager will
+                                                                    start up a shardgroup automatically.</p>
                                                                 <form-input v-model="cluster.configuration.persist"
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-persist'"
                                                                     :label="'Persist'"></form-input>
-                                                                <p class="text-muted">When persist is enabled, changes
+                                                                <p class="text-muted">When enabled, changes
                                                                     to Manager will be saved else the configuration will
                                                                     be discarded when the daemon is next started.</p>
                                                             </div>
@@ -381,6 +383,10 @@
                                                                 :type=`text`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-identifier'"
                                                                 :label="'Identifier'" :disabled="true"></form-input>
+                                                            <p class="text-muted"><b>You cannot modify the identifier as
+                                                                    that can possibly break many things.</b> The name
+                                                                the manager is internally referenced by. NATs packets
+                                                                will also include this identifier in its messages.</p>
                                                             <form-input v-model="cluster.configuration.display_name"
                                                                 :type=`text`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-display_name'"
@@ -402,11 +408,17 @@
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.compression'"
                                                                     :label="'Compression'"></form-input>
+                                                                <p class="text-muted">Enabled zstd compression on the
+                                                                    gateway websocket. Recommended.</p>
                                                                 <form-input
                                                                     v-model="cluster.configuration.bot.guild_subscriptions"
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.guild_subscriptions'"
                                                                     :label="'Guild Subscriptions'"></form-input>
+                                                                <p class="text-muted"><b>Not recommended, use
+                                                                        intents.</b>Events such as PRESENCE_UPDATE,
+                                                                    TYPING, GUILD_MEMBER_JOIN etc. are not sent to the
+                                                                    bot.</p>
                                                             </div>
                                                             <form-input v-model="cluster.configuration.bot.presence"
                                                                 :type=`presence`
@@ -426,10 +438,16 @@
                                                                 :type=`number`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.max_heartbeat_failures'"
                                                                 :label="'Max Heartbeat Failures'"></form-input>
+                                                            <p class="text-muted">Amount of heartbeat durations until
+                                                                the bot forcibly reconnects. 5 is recommended.</p>
                                                             <form-input v-model="cluster.configuration.bot.retries"
                                                                 :type=`number`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.retries'"
                                                                 :label="'Retries'"></form-input>
+                                                            <p class="text-muted">Amount of reconnets to attempt before
+                                                                giving up. Recommended to be more than 1 in the event it
+                                                                fails when starting up a ShardGroup causing all other
+                                                                shards to die.</p>
                                                             <form-submit v-on:click="saveClusterSettings(cluster)">
                                                             </form-submit>
                                                         </div>
@@ -442,32 +460,51 @@
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_users'"
                                                                     :label="'Cache Users'"></form-input>
+                                                                <p class="text-muted">If enabled, users will be cached
+                                                                    on redis.</p>
                                                                 <form-input
                                                                     v-model="cluster.configuration.caching.cache_members"
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_members'"
                                                                     :label="'Cache Members'"></form-input>
+                                                                <p class="text-muted">If enabled, members will be cached
+                                                                    on redis.</p>
                                                                 <form-input
                                                                     v-model="cluster.configuration.caching.request_members"
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_members'"
                                                                     :label="'Request Members'"></form-input>
+                                                                <p class="text-muted"><b>Due to the new intent changes,
+                                                                        enabling this on larger bots is not
+                                                                        recommended.</b> If enabled, guild members will
+                                                                    be requested when lazy loading.</p>
                                                                 <form-input
                                                                     v-model="cluster.configuration.caching.store_mutuals"
                                                                     :type=`checkbox`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.store_mutuals'"
                                                                     :label="'Store Mutuals'"></form-input>
+                                                                <p class="text-muted">If enabled, guild ids a member is
+                                                                    on is stored on redis.</p>
                                                             </div>
                                                             <form-input
                                                                 v-model="cluster.configuration.caching.redis_prefix"
                                                                 :type=`text`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.redis_prefix'"
                                                                 :label="'Redis Prefix'"></form-input>
+                                                            <p class="text-muted">String all redis requests will be
+                                                                prepended with {PREFIX}:{KEY}. Useful when wanting to
+                                                                seperate managers from each other. Having multiple
+                                                                managers with the same key can cause destruction.</p>
                                                             <form-input
                                                                 v-model="cluster.configuration.caching.request_chunk_size"
                                                                 :type=`number`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_chunk_size'"
                                                                 :label="'Request Chunk Size'"></form-input>
+                                                            <p class="text-muted">Number of guilds to request in a
+                                                                REQUEST_GUILD_MEMBERS request. With the new changes,
+                                                                this should be set to 1. Sending more than 1 when it
+                                                                limits to 1 will not fail but will only sent the members
+                                                                of the first ID specified.</p>
                                                             <form-submit v-on:click="saveClusterSettings(cluster)">
                                                             </form-submit>
                                                         </div>
@@ -505,6 +542,20 @@
                                                                 :type=`list`
                                                                 :id="'clusterConfig-' + cluster.configuration.identifier + '-events.event_blacklist'"
                                                                 :label="'Event Blacklist'"></form-input>
+                                                            <p class="text-muted">Events in event blacklist are
+                                                                completely ignored by Sandwich Daemon. It is recommended
+                                                                you instead use Intents to stop events as it still has
+                                                                to process the events.</p>
+                                                            <form-input
+                                                                v-model="cluster.configuration.events.produce_blacklist"
+                                                                :type=`list`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-events.produce_blacklist'"
+                                                                :label="'Produce Blacklist'"></form-input>
+                                                            <p class="text-muted">Events in produce blacklist are
+                                                                processed (cached etc.) however are not relayed to
+                                                                consumers. Useful for reducing events that the
+                                                                consumers unnecessarily need but you still need for
+                                                                cache purposes.</p>
                                                             <form-submit v-on:click="saveClusterSettings(cluster)">
                                                             </form-submit>
                                                         </div>
@@ -566,12 +617,16 @@
                                 <div class="pb-4">
                                     <form-input v-model="daemon.configuration.logging.console_logging" :type=`checkbox`
                                         :id=`loggingConsoleLogging` :label="'Console Logging'"></form-input>
+                                    <p class="text-muted">If enabled, logs will be shown in console.</p>
                                     <form-input v-model="daemon.configuration.logging.file_logging" :type=`checkbox`
                                         :id=`loggingFileLogging` :label="'File Logging'">
                                     </form-input>
+                                    <p class="text-muted">If enabled, logs will be saved to a file.</p>
                                     <form-input v-model="daemon.configuration.logging.encode_as_json" :type=`checkbox`
                                         :id=`loggingEncodeAsJson` :label="'Encode as JSON'">
                                     </form-input>
+                                    <p class="text-muted">If enabled, text will be encoded as json instead of human
+                                        readable.</p>
                                 </div>
                                 <form-input v-model="daemon.configuration.logging.directory" :type=`text`
                                     :id=`loggingDirectory` :label="'Directory'">
@@ -582,21 +637,30 @@
                                 <form-input v-model="daemon.configuration.logging.max_size" :type=`number`
                                     :id=`loggingMaxSize` :label="'Max Size'">
                                 </form-input>
+                                <p class="text-muted"><b>Stored in Megabytes.</b> Max size each log can be before a new
+                                    file is made. 0 is unlimited.</p>
                                 <form-input v-model="daemon.configuration.logging.max_backups" :type=`number`
                                     :id=`loggingMaxBackups` :label="'Max Backups'">
                                 </form-input>
+                                <p class="text-muted">Max number of log files before old ones are deleted.</p>
                                 <form-input v-model="daemon.configuration.logging.max_age" :type=`number`
                                     :id=`loggingMaxAge` :label="'Max Age'">
                                 </form-input>
+                                <p class="text-muted">Number of days that a log file can exist before it is removed.</p>
                                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                             </div>
                             <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
                                 aria-labelledby="redis-tab">
                                 <!-- Redis -->
+                                <p class="text-muted">Redis is the driver that handles caching of objects within
+                                    Sandwich Daemon. This allows for multiple programs to share and interact with the
+                                    same cache without passing on the objects in messages or using RPC.</p>
                                 <div class="pb-4">
                                     <form-input v-model="daemon.configuration.redis.unique_clients" :type=`checkbox`
                                         :id=`redisUniqueClients` :label="'Unique Clients'"></form-input>
                                 </div>
+                                <p class="text-muted">If enabled, each Manager will have their own redis connection else
+                                    they will share the same connection.</p>
                                 <form-input v-model="daemon.configuration.redis.address" :type=`text` :id=`redisAddress`
                                     :label="'Address'"></form-input>
                                 <form-input v-model="daemon.configuration.redis.password" :type=`password`
@@ -608,6 +672,9 @@
                             <div class="tab-pane fade" id="daemonSettings-nats" role="tabpanel"
                                 aria-labelledby="nats-tab">
                                 <!-- NATs -->
+                                <p class="text-muted">NATs is the driver that allows for consumers to process the
+                                    messages that are sent by the Daemon. This ensures that the consumers receive their
+                                    messages and they only receive it once.</p>
                                 <form-input v-model="daemon.configuration.nats.address" :type=`text` :id=`natsAddress`
                                     :label="'Address'"></form-input>
                                 <form-input v-model="daemon.configuration.nats.channel" :type=`text` :id=`natsChannel`
@@ -622,9 +689,15 @@
                                 <div class="pb-4">
                                     <form-input v-model="daemon.configuration.http.enabled" :type=`checkbox`
                                         :id=`httpEnabled` :label="'Enabled'"></form-input>
+                                    <p class="text-muted">Disabling HTTP will still show the web interface however will
+                                        shown an error.</p>
                                 </div>
                                 <form-input v-model="daemon.configuration.http.host" :type=`text` :id=`httpHost`
                                     :label="'Host'"></form-input>
+                                <p class="text-muted"><b>It is recommended you keep this on localhost or 127.0.0.1 as
+                                        Sandwich Daemon does not require a username or password to interact with the
+                                        dashboard.</b> Entering 0.0.0.0 or the devices IP will make it public, use a
+                                    public IP at your own risk.</p>
                                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                             </div>
                             <div class="tab-pane fade" id="daemonSettings-raw" role="tabpanel"
