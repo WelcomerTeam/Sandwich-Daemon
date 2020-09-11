@@ -247,7 +247,7 @@
                                                             ShardGroup {{ shardgroup.id }}
                                                         </h5>
                                                         <div v-if="shardgroup.status != 6">
-                                                            <button type="button" class="btn btn-danger"
+                                                            <button type="button" class="btn btn-dark"
                                                                 v-on:click="stopShardGroupDialogue(cluster.configuration.identifier, shardgroup.id)">
                                                                 Stop ShardGroup
                                                             </button>
@@ -416,7 +416,7 @@
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.guild_subscriptions'"
                                                                     :label="'Guild Subscriptions'"></form-input>
                                                                 <p class="text-muted"><b>Not recommended, use
-                                                                        intents.</b>Events such as PRESENCE_UPDATE,
+                                                                        intents.</b> Events such as PRESENCE_UPDATE,
                                                                     TYPING, GUILD_MEMBER_JOIN etc. are not sent to the
                                                                     bot.</p>
                                                             </div>

@@ -262,7 +262,7 @@ vue = new Vue({
             window.setInterval(() => {
                 this.fetchAnalytics();
                 this.fetchClustersData();
-            }, 15000);
+            }, 5000);
         })
     },
     methods: {
