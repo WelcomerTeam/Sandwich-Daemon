@@ -599,7 +599,47 @@
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
                                                             role="tabpanel" aria-labelledby="sharding-tab">
                                                             <!-- Sharding -->
-                                                            a
+                                                            <div class="pb-4">
+                                                                <form-input
+                                                                    v-model="cluster.configuration.sharding.auto_sharded"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.auto_sharded'"
+                                                                    :label="'AutoSharded'"></form-input>
+                                                                <p class="text-muted">If enabled, will set the shard
+                                                                    count to what is recommended on the gateway</p>
+                                                            </div>
+                                                            <form-input
+                                                                v-model="cluster.configuration.sharding.shard_count"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.shard_count'"
+                                                                :label="'Shard Count'"></form-input>
+                                                            <p class="text-muted">Shard Count to launch shardgroups
+                                                                with. Be aware this has no security and if it has not
+                                                                supplied enough shards, it will error. It is recommended
+                                                                you use autosharded, enabling autosharded will overwrite
+                                                                this value.
+                                                            </p>
+                                                            <form-input
+                                                                v-model="cluster.configuration.sharding.cluster_count"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.cluster_count'"
+                                                                :label="'Cluster Count'"></form-input>
+                                                            <p class="text-muted"><b>Use if you have multiple daemons
+                                                                    running. This must be the same number on all
+                                                                    daemons and starts from 0.</b> Total number of
+                                                                clusters running.</p>
+                                                            <form-input
+                                                                v-model="cluster.configuration.sharding.cluster_id"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.cluster_id'"
+                                                                :label="'Cluster ID'"></form-input>
+                                                            <p class="text-muted"><b>Use if you have multiple daemons
+                                                                    running. This must be a different number on all
+                                                                    daemons.</b> Cluster ID of current daemon. With only
+                                                                1 cluster, this ID must be 0 similarly to how shard
+                                                                count and shard ID works.</p>
+                                                            <form-submit v-on:click="saveClusterSettings(cluster)">
+                                                            </form-submit>
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-raw'"
