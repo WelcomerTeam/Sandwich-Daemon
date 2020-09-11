@@ -231,7 +231,7 @@
 
                                                 <button type="button" class="btn btn-dark"
                                                     v-on:click="createShardGroupDialogue(cluster.configuration.identifier)">
-                                                    Scale Cluster
+                                                    Scale Manager
                                                 </button>
                                                 <button type="button" class="btn btn-info"
                                                     v-on:click="refreshGateway(cluster.configuration.identifier)">
@@ -396,11 +396,86 @@
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-bot'"
                                                             role="tabpanel" aria-labelledby="bot-tab">
                                                             <!-- Bot -->
+                                                            <div class="pb-4">
+                                                                <form-input
+                                                                    v-model="cluster.configuration.bot.compression"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.compression'"
+                                                                    :label="'Compression'"></form-input>
+                                                                <form-input
+                                                                    v-model="cluster.configuration.bot.guild_subscriptions"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.guild_subscriptions'"
+                                                                    :label="'Guild Subscriptions'"></form-input>
+                                                            </div>
+                                                            <form-input v-model="cluster.configuration.bot.presence"
+                                                                :type=`presence`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.presence'"
+                                                                :label="'Presence'"></form-input>
+                                                            <form-input v-model="cluster.configuration.bot.intents"
+                                                                :type=`intent`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.intents'"
+                                                                :label="'Intents'"></form-input>
+                                                            <form-input
+                                                                v-model="cluster.configuration.bot.large_threshold"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.large_threshold'"
+                                                                :label="'Large Threshold'"></form-input>
+                                                            <form-input
+                                                                v-model="cluster.configuration.bot.large_threshold"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.large_threshold'"
+                                                                :label="'Large Threshold'"></form-input>
+                                                            <form-input
+                                                                v-model="cluster.configuration.bot.max_heartbeat_failures"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.max_heartbeat_failures'"
+                                                                :label="'Max Heartbeat Failures'"></form-input>
+                                                            <form-input v-model="cluster.configuration.bot.retries"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.retries'"
+                                                                :label="'Retires'"></form-input>
+                                                            <form-submit v-on:click="saveClusterSettings(cluster)">
+                                                            </form-submit>
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-caching'"
                                                             role="tabpanel" aria-labelledby="caching-tab">
-                                                            <!-- Caching-->
+                                                            <div class="pb-4">
+                                                                <form-input
+                                                                    v-model="cluster.configuration.caching.cache_users"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_users'"
+                                                                    :label="'Cache Users'"></form-input>
+                                                                <form-input
+                                                                    v-model="cluster.configuration.caching.cache_members"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_members'"
+                                                                    :label="'Cache Members'"></form-input>
+                                                                <form-input
+                                                                    v-model="cluster.configuration.caching.request_members"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_members'"
+                                                                    :label="'Request Members'"></form-input>
+                                                                <form-input
+                                                                    v-model="cluster.configuration.caching.store_mutuals"
+                                                                    :type=`checkbox`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.store_mutuals'"
+                                                                    :label="'Store Mutuals'"></form-input>
+                                                            </div>
+                                                            <form-input
+                                                                v-model="cluster.configuration.caching.redis_prefix"
+                                                                :type=`text`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.redis_prefix'"
+                                                                :label="'Redis Prefix'"></form-input>
+                                                            <form-input
+                                                                v-model="cluster.configuration.caching.request_chunk_size"
+                                                                :type=`number`
+                                                                :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_chunk_size'"
+                                                                :label="'Request Chunk Size'"></form-input>
+                                                            <form-submit v-on:click="saveClusterSettings(cluster)">
+                                                            </form-submit>
+
                                                         </div>
                                                         <div class="tab-pane fade"
                                                             :id="'cluster-' + cluster.configuration.identifier + '-Settings-events'"
