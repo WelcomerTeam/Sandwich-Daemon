@@ -3,6 +3,7 @@ package gateway
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
@@ -16,6 +17,8 @@ type ShardGroup struct {
 	StatusMu sync.RWMutex             `json:"-"`
 	Status   structs.ShardGroupStatus `json:"status"`
 	Error    string                   `json:"error"`
+
+	Start time.Time `json:"uptime"`
 
 	WaitingFor int `json:"waiting_for"`
 
@@ -62,6 +65,7 @@ func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 
 // Open starts up the shardgroup
 func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
+	sg.Start = time.Now().UTC()
 
 	sg.Manager.ShardGroupMu.Lock()
 	for _, _sg := range sg.Manager.ShardGroups {

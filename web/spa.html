@@ -412,6 +412,12 @@
                                                                 </li>
                                                                 <li
                                                                     class="list-group-item d-flex justify-content-between align-items-center">
+                                                                    Uptime
+                                                                    <span
+                                                                        class="badge bg-dark rounded-pill">{{ since(shardgroup.uptime) }}</span>
+                                                                </li>
+                                                                <li
+                                                                    class="list-group-item d-flex justify-content-between align-items-center">
                                                                     Shards
                                                                     <span
                                                                         class="badge bg-dark rounded-pill">{{ Object.keys(shardgroup.shard_ids).length }}/{{ shardgroup.shard_count }}</span>

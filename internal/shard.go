@@ -135,6 +135,10 @@ func (sh *Shard) Open() {
 // Connect connects to the gateway such as identifying however does not listen to new messages
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Starting shard")
+	sh.SetStatus(structs.ShardWaiting)
+
+	sh.Manager.Buckets.CreateBucket(fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount), 120, time.Minute)
+	sh.Manager.Sandwich.Buckets.CreateBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
 
 	// When an error occurs and we have to reconnect, we make a ready channel by default
 	// which seems to cause a problem with WaitForReady. To circumvent this, we will
@@ -149,15 +153,11 @@ func (sh *Shard) Connect() (err error) {
 
 	sh.Manager.GatewayMu.RLock()
 	gatewayURL := sh.Manager.Gateway.URL
-	sh.SetStatus(structs.ShardWaiting)
-	err = sh.Manager.Sandwich.Buckets.CreateWaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
 	sh.Manager.GatewayMu.RUnlock()
 
 	if err != nil {
 		return
 	}
-
-	sh.SetStatus(structs.ShardConnecting)
 
 	// TODO: Add Concurrent Client Support
 	// This will limit the ammount of shards that can be connecting simultaneously
@@ -219,12 +219,13 @@ func (sh *Shard) Connect() (err error) {
 		return
 	}
 
+	go sh.Heartbeat()
+
 	err = sh.OnEvent(sh.msg)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Error whilst handling event")
 	}
 
-	go sh.Heartbeat()
 	sh.SetStatus(structs.ShardConnected)
 	atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
 	return
@@ -232,6 +233,26 @@ func (sh *Shard) Connect() (err error) {
 
 // OnEvent processes an event
 func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
+
+	// If enabled, events that are blocking will be shown.
+	if DEBUG {
+		fin := make(chan void)
+		go func() {
+			since := time.Now()
+			for {
+				time.Sleep(time.Second * 5)
+				select {
+				case <-fin:
+					return
+				default:
+					sh.Logger.Warn().Str("type", msg.Type).Msgf("Event %s blocking for %f seconds", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
+				}
+			}
+		}()
+		defer func() {
+			close(fin)
+		}()
+	}
 
 	switch msg.Op {
 
@@ -315,7 +336,6 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		for _, guild := range readyPayload.Guilds {
 			sh.Unavailable[guild.ID] = guild.Unavailable
 		}
-
 		guildCreateEvents := 0
 		// guildChunkEvents := 0
 
@@ -324,11 +344,9 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		wait := time.Now().UTC().Add(2 * time.Second)
 		for {
 			timedout := time.Now().UTC().Sub(wait) > (2 * time.Second)
-
 			if !timedout {
 				err = sh.readMessage(sh.ctx, sh.wsConn)
 			}
-
 			if err != nil || timedout {
 				if xerrors.Is(err, context.Canceled) || timedout {
 					sh.Logger.Debug().Int("guildEvents", guildCreateEvents).Msg("Shard has finished lazy loading")
@@ -337,7 +355,6 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
 					break
 				}
-
 				sh.Manager.Sandwich.ConfigurationMu.RLock()
 				if sh.Manager.Configuration.Caching.RequestMembers {
 					var chunk []int64
@@ -571,6 +588,12 @@ func (sh *Shard) Resume() (err error) {
 	sh.Manager.Sandwich.ConfigurationMu.RLock()
 	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
+	sh.Manager.ConfigurationMu.RLock()
+	sh.Manager.GatewayMu.RLock()
+	sh.Manager.Sandwich.Buckets.WaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency))
+	sh.Manager.GatewayMu.RUnlock()
+	sh.Manager.ConfigurationMu.RUnlock()
+
 	err = sh.SendEvent(structs.GatewayOpResume, structs.Resume{
 		Token:     sh.Manager.Configuration.Token,
 		SessionID: sh.sessionID,
@@ -587,6 +610,12 @@ func (sh *Shard) Identify() (err error) {
 	sh.Manager.GatewayMu.Lock()
 	sh.Manager.Gateway.Shards--
 	sh.Manager.GatewayMu.Unlock()
+
+	sh.Manager.ConfigurationMu.RLock()
+	sh.Manager.GatewayMu.RLock()
+	sh.Manager.Sandwich.Buckets.WaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency))
+	sh.Manager.GatewayMu.RUnlock()
+	sh.Manager.ConfigurationMu.RUnlock()
 
 	sh.Manager.Sandwich.ConfigurationMu.RLock()
 	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
@@ -663,10 +692,8 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 		return xerrors.Errorf("writeJSON marshal: %w", err)
 	}
 
-	sh.Manager.Buckets.CreateWaitForBucket(
+	sh.Manager.Buckets.WaitForBucket(
 		fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount),
-		120,
-		time.Minute,
 	)
 
 	sh.Manager.Sandwich.ConfigurationMu.RLock()

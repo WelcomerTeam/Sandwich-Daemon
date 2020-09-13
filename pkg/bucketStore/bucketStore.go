@@ -55,7 +55,12 @@ func (bs *BucketStore) CreateWaitForBucket(name string, limit int32, duration ti
 
 	if !exists {
 		bucket = bs.CreateBucket(name, limit, duration)
+
+		bs.BucketsMu.Lock()
+		bs.Buckets[name] = bucket
+		bs.BucketsMu.Unlock()
 	}
+
 	bucket.Lock()
 	return
 }

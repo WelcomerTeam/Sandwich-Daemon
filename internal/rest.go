@@ -138,7 +138,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				response := AnalyticResponse{
 					Graph:    sg.ConstructAnalytics(),
 					Guilds:   guildCount,
-					Uptime:   now.Sub(sg.Start).Round(time.Second).String(),
+					Uptime:   DurationTimestamp(now.Sub(sg.Start)),
 					Events:   atomic.LoadInt64(sg.TotalEvents),
 					Clusters: clusters,
 				}

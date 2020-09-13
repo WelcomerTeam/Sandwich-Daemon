@@ -542,6 +542,38 @@ vue = new Vue({
                 }
             }
             return Math.round(totalLatency / totalShards) || '-'
+        },
+
+        since(uptime) {
+            uptime = new Date(uptime)
+            difference = (new Date().getTime() - uptime) / 1000
+
+            output = ""
+            if (difference > 86400) {
+                var days = Math.trunc(difference / 86400);
+                if (days > 0) {
+                    output += days + "d"
+                }
+                var difference = difference % 86400;
+            }
+            if (difference > 3600) {
+                var hours = Math.trunc(difference / 3600);
+                if (hours > 0) {
+                    output += hours + "h"
+                }
+                var difference = difference % 3600;
+            }
+            if (difference > 60) {
+                var minutes = Math.trunc(difference / 60);
+                if (minutes > 0) {
+                    output += minutes + "m"
+                }
+                var seconds = Math.ceil(difference % 60);
+                if (seconds > 0) {
+                    output += seconds + "s"
+                }
+            }
+            return output
         }
     }
 })

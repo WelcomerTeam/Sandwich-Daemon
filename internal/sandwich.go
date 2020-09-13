@@ -24,6 +24,9 @@ import (
 // VERSION respects semantic versioning
 const VERSION = "0.1"
 
+// DEBUG will enable certain extra checks such as blocking events
+const DEBUG = true
+
 // ErrOnConfigurationFailure will return errors when loading configuration.
 // If this is false, these errors are supressed. There is no reason for this
 // to be false.
