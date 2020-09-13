@@ -268,17 +268,20 @@
                             <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
                             </card-display>
                         </div>
-                        <div v-if=" this.loadingAnalytics">
-                            <div class="d-flex justify-content-center">
-                                <div class="spinner-border text-dark" role="status">
-                                    <span class="sr-only">Loading...</span>
+                        <div class="m-5">
+                            <h3 class="text-center">Analytics</h3>
+                            <div v-if="this.loadingAnalytics">
+                                <div class="d-flex justify-content-center">
+                                    <div class="spinner-border text-dark" role="status">
+                                        <span class="sr-only">Loading...</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div v-else class="m-5">
-                            <line-chart :chart-data="analytics.chart" :height="150"
-                                :options="{scales: {xAxes:[{type:'time'}]}, animation:{duration:0}}">
-                            </line-chart>
+                            <div v-else>
+                                <line-chart :chart-data="analytics.chart" :height="150"
+                                    :options="{scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                </line-chart>
+                            </div>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="pills-clusters" role="tabpanel" aria-labelledby="pills-clusters-tab">

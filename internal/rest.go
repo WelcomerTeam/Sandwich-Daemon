@@ -343,6 +343,14 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							config.Messaging.ChannelName = managerCreateEvent.Channel
 							config.Bot.DefaultPresence = &structs.UpdateStatus{}
 
+							config.Messaging.UseRandomSuffix = true
+							config.Bot.Retries = 2
+							config.Bot.Intents = 32511
+							config.Bot.Compression = true
+							config.Bot.LargeThreshold = 250
+							config.Sharding.ShardCount = 1
+							config.Bot.MaxHeartbeatFailures = 5
+
 							sg.ConfigurationMu.Lock()
 							sg.Configuration.Managers = append(sg.Configuration.Managers, config)
 							sg.ConfigurationMu.Unlock()
@@ -363,7 +371,13 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 										mg.GatewayMu.Lock()
 										mg.Gateway = gw
 										mg.GatewayMu.Unlock()
-										res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+
+										err = mg.Open()
+										if err == nil {
+											res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+										} else {
+											res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+										}
 									} else {
 										res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
 									}
