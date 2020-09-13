@@ -66,6 +66,7 @@ type Shard struct {
 
 	// Channel that dictates if the shard has been made ready
 	ready chan void
+
 	// Channel to pipe errors
 	errs chan error
 }
@@ -106,8 +107,9 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		seq:       new(int64),
 		sessionID: "",
 
-		ready: make(chan void),
-		errs:  make(chan error),
+		ready: make(chan void, 1),
+
+		errs: make(chan error),
 	}
 	atomic.StoreInt32(sh.Retries, sg.Manager.Configuration.Bot.Retries)
 	return sh
@@ -134,7 +136,15 @@ func (sh *Shard) Open() {
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Starting shard")
 
-	sh.ready = make(chan void)
+	// When an error occurs and we have to reconnect, we make a ready channel by default
+	// which seems to cause a problem with WaitForReady. To circumvent this, we will
+	// make the ready only when the channel is closed however this may not be necessary
+	// as there is now a loop that fires every 10 seconds meaning it will be up to date reguardless
+
+	if sh.ready == nil {
+		sh.ready = make(chan void, 1)
+	}
+
 	sh.ctx, sh.cancel = context.WithCancel(context.Background())
 
 	sh.Manager.GatewayMu.RLock()
@@ -377,7 +387,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			}
 		}
 
-		close(sh.ready)
+		sh.ready <- void{}
 		sh.SetStatus(structs.ShardReady)
 
 		sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
@@ -673,11 +683,30 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 
 // WaitForReady waits until the shard is ready
 func (sh *Shard) WaitForReady() {
-	select {
-	case <-sh.ready:
-	case <-sh.ctx.Done():
+	since := time.Now().UTC()
+	t := time.NewTicker(time.Second * 10)
+
+	for {
+		select {
+		case <-sh.ready:
+			sh.Logger.Debug().Msg("Shard ready due to channel closure")
+			return
+		case <-sh.ctx.Done():
+			sh.Logger.Debug().Msg("Shard ready due to context done")
+			return
+		case <-t.C:
+			sh.StatusMu.RLock()
+			status := sh.Status
+			sh.StatusMu.RUnlock()
+
+			if status == structs.ShardConnected {
+				sh.Logger.Warn().Msg("Shard ready due to status change")
+				return
+			}
+
+			sh.Logger.Debug().Err(sh.ctx.Err()).Dur("since", time.Now().UTC().Sub(since).Round(time.Second)).Msg("Still waiting for shard to be ready")
+		}
 	}
-	return
 }
 
 // Reconnect attempts to reconnect to the gateway

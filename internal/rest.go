@@ -314,7 +314,16 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							mg.Configuration = &clusterUpdateSettings
 							mg.ConfigurationMu.Unlock()
 
-							res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+							sg.ConfigurationMu.RLock()
+							err = sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
+							sg.ConfigurationMu.RUnlock()
+
+							if err == nil {
+								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+							}
+
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
