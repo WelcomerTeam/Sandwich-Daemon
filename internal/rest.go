@@ -269,16 +269,16 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
-					case "cluster:update_settings":
-						clusterUpdateSettings := ManagerConfiguration{}
+					case "manager:update_settings":
+						managerUpdateSettings := ManagerConfiguration{}
 
-						json.Unmarshal(rpcMessage.Params, &clusterUpdateSettings)
+						json.Unmarshal(rpcMessage.Params, &managerUpdateSettings)
 
 						// Check if cluster exists
-						if mg, ok := sg.Managers[clusterUpdateSettings.Identifier]; ok {
+						if mg, ok := sg.Managers[managerUpdateSettings.Identifier]; ok {
 							mg.ConfigurationMu.Lock()
 
-							if clusterUpdateSettings.Messaging.UseRandomSuffix != mg.Configuration.Messaging.UseRandomSuffix {
+							if managerUpdateSettings.Messaging.UseRandomSuffix != mg.Configuration.Messaging.UseRandomSuffix {
 								var clientName string
 								if mg.Configuration.Messaging.UseRandomSuffix {
 									clientName = mg.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(9999))
@@ -297,21 +297,21 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 								}
 							}
 
-							if !reflect.DeepEqual(clusterUpdateSettings.Events.EventBlacklist, mg.Configuration.Events.EventBlacklist) {
+							if !reflect.DeepEqual(managerUpdateSettings.Events.EventBlacklist, mg.Configuration.Events.EventBlacklist) {
 								mg.EventBlacklist = make(map[string]void)
 								for _, value := range mg.Configuration.Events.EventBlacklist {
 									mg.EventBlacklist[value] = void{}
 								}
 							}
 
-							if !reflect.DeepEqual(clusterUpdateSettings.Events.ProduceBlacklist, mg.Configuration.Events.ProduceBlacklist) {
+							if !reflect.DeepEqual(managerUpdateSettings.Events.ProduceBlacklist, mg.Configuration.Events.ProduceBlacklist) {
 								mg.ProduceBlacklist = make(map[string]void)
 								for _, value := range mg.Configuration.Events.ProduceBlacklist {
 									mg.ProduceBlacklist[value] = void{}
 								}
 							}
 
-							mg.Configuration = &clusterUpdateSettings
+							mg.Configuration = &managerUpdateSettings
 							mg.ConfigurationMu.Unlock()
 
 							sg.ConfigurationMu.RLock()
@@ -323,7 +323,6 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							} else {
 								res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
 							}
-
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}

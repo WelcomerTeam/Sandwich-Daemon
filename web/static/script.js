@@ -314,7 +314,7 @@ vue = new Vue({
         },
 
         saveClusterSettings(cluster) {
-            this.sendRPC("cluster:update_settings", cluster.configuration)
+            this.sendRPC("manager:update_settings", cluster.configuration)
         },
 
         saveDaemonSettings() {
