@@ -608,7 +608,7 @@ func (sh *Shard) Identify() (err error) {
 	sh.Logger.Debug().Msg("Sending identify")
 
 	sh.Manager.GatewayMu.Lock()
-	sh.Manager.Gateway.Shards--
+	sh.Manager.Gateway.SessionStartLimit.Remaining--
 	sh.Manager.GatewayMu.Unlock()
 
 	sh.Manager.ConfigurationMu.RLock()
