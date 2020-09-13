@@ -436,6 +436,17 @@
                                                                     {{ shardgroup.error }}</div>
                                                             </div>
 
+                                                            <div
+                                                                v-if="shardgroup.status == 2 && (shardgroup.shard_count > cluster.gateway.shards * 4)">
+                                                                <div class="p-3 mb-2 bg-info text-white">You are
+                                                                    launching this shardgroup with an unnecessarily
+                                                                    large number of shards. This may cause the
+                                                                    shardgroup to take longer to become ready. It is
+                                                                    recommend you use a smaller number closer to the
+                                                                    recommended shard count of 1 shard per 1000 guilds
+                                                                    which is <b>{{ cluster.gateway.shards }}</b>.</div>
+                                                            </div>
+
                                                             <table class="table table-borderless">
                                                                 <thead>
                                                                     <tr class="table-dark">
