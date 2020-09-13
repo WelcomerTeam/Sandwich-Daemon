@@ -358,7 +358,15 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 									sg.Managers[config.Identifier] = mg
 									sg.ManagersMu.Unlock()
 
-									res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+									gw, err := mg.GetGateway()
+									if err == nil {
+										mg.GatewayMu.Lock()
+										mg.Gateway = gw
+										mg.GatewayMu.Unlock()
+										res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+									} else {
+										res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+									}
 								} else {
 									res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
 								}
@@ -422,7 +430,17 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 								mg, err = sg.NewManager(mg.Configuration)
 								if err == nil {
 									sg.Managers[managerRestartEvent.Cluster] = mg
-									res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+
+									gw, err := mg.GetGateway()
+									if err == nil {
+										mg.GatewayMu.Lock()
+										mg.Gateway = gw
+										mg.GatewayMu.Unlock()
+										res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+									} else {
+										mg.Error = err.Error()
+										res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+									}
 								} else {
 									res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
 								}
@@ -448,6 +466,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 								mg.GatewayMu.Unlock()
 								res, err = json.Marshal(RPCResponse{gw, "", rpcMessage.ID})
 							} else {
+								mg.Error = err.Error()
 								res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
 							}
 						} else {
