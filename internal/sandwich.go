@@ -317,9 +317,9 @@ func (sg *Sandwich) Open() (err error) {
 		}
 		sg.ManagersMu.RUnlock()
 
-		sg.ManagersMu.RLock()
+		sg.ManagersMu.Lock()
 		sg.Managers[managerConfiguration.Identifier] = manager
-		sg.ManagersMu.RUnlock()
+		sg.ManagersMu.Unlock()
 
 		err = manager.Open()
 		if err != nil {
