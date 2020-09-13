@@ -276,6 +276,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 						// Check if cluster exists
 						if mg, ok := sg.Managers[managerUpdateSettings.Identifier]; ok {
+							sg.ConfigurationMu.Lock()
 							mg.ConfigurationMu.Lock()
 
 							if managerUpdateSettings.Messaging.UseRandomSuffix != mg.Configuration.Messaging.UseRandomSuffix {
@@ -312,11 +313,20 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							}
 
 							mg.Configuration = &managerUpdateSettings
-							mg.ConfigurationMu.Unlock()
 
-							sg.ConfigurationMu.RLock()
+							managers := []*ManagerConfiguration{}
+							for _, manager := range sg.Configuration.Managers {
+								if manager.Identifier == mg.Configuration.Identifier {
+									managers = append(managers, mg.Configuration)
+								} else {
+									managers = append(managers, manager)
+								}
+							}
+							sg.Configuration.Managers = managers
+
 							err = sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
-							sg.ConfigurationMu.RUnlock()
+							mg.ConfigurationMu.Unlock()
+							sg.ConfigurationMu.Unlock()
 
 							if err == nil {
 								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
