@@ -82,7 +82,7 @@ Vue.component("form-submit", {
 })
 
 Vue.component("form-input", {
-    props: ['type', 'id', 'label', 'values', 'value', 'disabled'],
+    props: ['type', 'id', 'label', 'values', 'value', 'disabled', 'placeholder'],
     template: `
     <div class="form-check" v-if="type == 'checkbox'">
         <input class="form-check-input" type="checkbox" :id="id" :checked="value" v-on:change="updateValue($event.target.checked)" :disabled="disabled">
@@ -90,7 +90,7 @@ Vue.component("form-input", {
     </div>
     <div class="mb-3" v-else-if="type == 'text'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
-        <input type="text" class="form-control" :id="id" :value="value" v-on:change="updateValue($event.target.value)" :disabled="disabled">
+        <input type="text" class="form-control" :id="id" :value="value" v-on:change="updateValue($event.target.value)" :disabled="disabled" :placeholder="placeholder">
     </div>
     <div class="mb-3" v-else-if="type == 'list'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
@@ -98,12 +98,12 @@ Vue.component("form-input", {
     </div>
     <div class="mb-3" v-else-if="type == 'number'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
-        <input type="number" class="form-control" :id="id" :value="value" v-on:change="updateValue(Number($event.target.value))" :disabled="disabled">
+        <input type="number" class="form-control" :id="id" :value="value" v-on:change="updateValue(Number($event.target.value))" :disabled="disabled" :placeholder="placeholder">
     </div>
     <div class="mb-3" v-else-if="type == 'password'">
         <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
         <div class="input-group">
-            <input type="password" class="form-control" :id="id" autocomplete :value="value" v-on:change="updateValue($event.target.value)" :disabled="disabled">
+            <input type="password" class="form-control" :id="id" autocomplete :value="value" v-on:change="updateValue($event.target.value)" :disabled="disabled" :placeholder="placeholder">
             <button class="btn btn-outline-dark" type="button" v-on:click="copyFormInputPassword()">Copy</button>
         </div>
     </div>

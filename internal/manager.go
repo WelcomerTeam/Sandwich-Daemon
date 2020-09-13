@@ -67,6 +67,11 @@ type ManagerConfiguration struct {
 		CheckPrefixes bool `json:"check_prefixes" yaml:"check_prefixes" msgpack:"check_prefixes"`
 		// Also allows for a bot mention to be a prefix
 		AllowMentionPrefix bool `json:"allow_mention_prefix" yaml:"allow_mention_prefix" msgpack:"allow_mention_prefix"`
+
+		// FallbackPrefix is the default prefix along with mention prefix (if enabled) when no
+		// entry can be found in redis. If empty it will not treat any message as a prefix and
+		// will instead discard.
+		FallbackPrefix string `json:"fallback_prefix"`
 	} `json:"events" msgpack:"events"`
 
 	// Messaging specific configuration

@@ -49,6 +49,7 @@ managers:
     ignore_bots: true
     check_prefixes: true
     allow_mention_prefix: true
+    fallback_prefix: "!"
   messaging:
     client_name: welcomer
     channel_name: sandwich

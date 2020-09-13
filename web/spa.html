@@ -711,6 +711,20 @@
                                                                         :label="'Allow Mention Prefix'"></form-input>
                                                                 </div>
                                                                 <form-input
+                                                                    v-model="cluster.configuration.events.fallback_prefix"
+                                                                    :type=`text`
+                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-events.fallback_prefix'"
+                                                                    :label="'Fallback Prefix'"
+                                                                    :placeholder="'No prefix'"></form-input>
+                                                                </p class="text-muted">
+                                                                If the daemon is unable to fetch a custom prefix
+                                                                from redis, it will use the fallback prefix and
+                                                                mention prefix (if enabled). If fallback prefix is
+                                                                left empty, it will not allow any message to be used
+                                                                as a command.
+                                                                </p>
+
+                                                                <form-input
                                                                     v-model="cluster.configuration.events.event_blacklist"
                                                                     :type=`list`
                                                                     :id="'clusterConfig-' + cluster.configuration.identifier + '-events.event_blacklist'"
