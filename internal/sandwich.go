@@ -85,7 +85,9 @@ type Sandwich struct {
 
 	ConfigurationMu sync.RWMutex
 	Configuration   *SandwichConfiguration `json:"configuration"`
-	Managers        map[string]*Manager    `json:"managers"`
+
+	ManagersMu sync.RWMutex        `json:"-"`
+	Managers   map[string]*Manager `json:"managers"`
 
 	TotalEvents *int64
 
@@ -105,6 +107,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		Logger:          zerolog.New(logger).With().Timestamp().Logger(),
 		ConfigurationMu: sync.RWMutex{},
 		Configuration:   &SandwichConfiguration{},
+		ManagersMu:      sync.RWMutex{},
 		Managers:        make(map[string]*Manager),
 		TotalEvents:     new(int64),
 		Buckets:         bucketstore.NewBucketStore(),
@@ -201,6 +204,37 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		}
 	}()
 
+	// Load old configuration only if necessary
+	var config *SandwichConfiguration
+	oldmanagers := make(map[string]*ManagerConfiguration)
+
+	for _, manager := range configuration.Managers {
+		if !manager.Persist {
+			config, err = sg.LoadConfiguration(path)
+			if err != nil {
+				return err
+			}
+			for _, mg := range config.Managers {
+				oldmanagers[mg.Identifier] = mg
+			}
+		}
+	}
+
+	storedManagers := []*ManagerConfiguration{}
+	for _, manager := range configuration.Managers {
+		if !manager.Persist {
+			oldmanager, ok := oldmanagers[manager.Identifier]
+			// If we do not persist, reuse the old configuration. If it does not exist we do not need to store anything.
+			if ok {
+				manager = oldmanager
+			} else {
+				continue
+			}
+		}
+		storedManagers = append(storedManagers, manager)
+	}
+	configuration.Managers = storedManagers
+
 	data, err := yaml.Marshal(configuration)
 	if err != nil {
 		return xerrors.Errorf("save configuration marshal: %w", err)
@@ -276,15 +310,20 @@ func (sg *Sandwich) Open() (err error) {
 			sg.Logger.Error().Err(err).Msg("Could not create manager")
 			continue
 		}
+		sg.ManagersMu.RLock()
 		if _, ok := sg.Managers[managerConfiguration.Identifier]; ok {
 			sg.Logger.Warn().Str("identifer", managerConfiguration.Identifier).Msg("Found conflicting manager identifiers. Ignoring!")
 			continue
 		}
+		sg.ManagersMu.RUnlock()
 
+		sg.ManagersMu.RLock()
 		sg.Managers[managerConfiguration.Identifier] = manager
+		sg.ManagersMu.RUnlock()
 
 		err = manager.Open()
 		if err != nil {
+			manager.Error = err.Error()
 			sg.Logger.Error().Err(err).Msg("Failed to start up manager")
 		} else {
 			if manager.Configuration.AutoStart {
@@ -327,6 +366,7 @@ func (sg *Sandwich) Open() (err error) {
 		for {
 			<-t.C
 			events = 0
+			sg.ManagersMu.RLock()
 			for _, mg := range sg.Managers {
 				managerEvents = 0
 
@@ -343,6 +383,7 @@ func (sg *Sandwich) Open() (err error) {
 				}
 				events += managerEvents
 			}
+			sg.ManagersMu.RUnlock()
 			atomic.AddInt64(sg.TotalEvents, events)
 			now := time.Now().UTC()
 			uptime := now.Sub(sg.Start).Round(time.Second)
@@ -355,11 +396,13 @@ func (sg *Sandwich) Open() (err error) {
 		for {
 			<-e.C
 			now := time.Now().UTC()
+			sg.ManagersMu.RLock()
 			for _, mg := range sg.Managers {
 				if mg.Analytics != nil {
 					go mg.Analytics.RunOnce(now)
 				}
 			}
+			sg.ManagersMu.RUnlock()
 		}
 	}()
 
@@ -371,9 +414,11 @@ func (sg *Sandwich) Close() (err error) {
 	sg.Logger.Info().Msg("Closing sandwich")
 
 	// Close all managers
+	sg.ManagersMu.RLock()
 	for _, manager := range sg.Managers {
 		manager.Close()
 	}
+	sg.ManagersMu.RUnlock()
 
 	return
 }

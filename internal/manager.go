@@ -95,6 +95,8 @@ type Manager struct {
 	ctx    context.Context
 	cancel func()
 
+	Error string `json:"error"`
+
 	Analytics *accumulator.Accumulator `json:"-"`
 
 	Sandwich *Sandwich      `json:"-"`
@@ -140,6 +142,8 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		Sandwich: s,
 		Logger:   logger,
 
+		Error: "",
+
 		ConfigurationMu: sync.RWMutex{},
 		Configuration:   configuration,
 		Buckets:         bucketstore.NewBucketStore(),
@@ -164,6 +168,7 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 
 	err = mg.NormalizeConfiguration()
 	if err != nil {
+		mg.Error = err.Error()
 		return nil, xerrors.Errorf("new manager: %w", err)
 	}
 
@@ -187,6 +192,9 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 	}
 	if mg.Configuration.Bot.Retries < 1 {
 		mg.Configuration.Bot.Retries = 1
+	}
+	if mg.Configuration.Sharding.ClusterCount < 1 {
+		mg.Configuration.Sharding.ClusterCount = 1
 	}
 
 	if mg.Configuration.Caching.RedisPrefix == "" {

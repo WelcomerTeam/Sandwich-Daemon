@@ -106,7 +106,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 					return
 				}
 				atomic.AddInt32(shard.Retries, -1)
-				sg.Logger.Debug().Msgf("Shardgroup retires is now %d", atomic.LoadInt32(shard.Retries))
+				sg.Logger.Debug().Msgf("Shardgroup retries is now at %d", atomic.LoadInt32(shard.Retries))
 			} else {
 				break
 			}

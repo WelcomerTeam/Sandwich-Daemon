@@ -3,8 +3,10 @@ package gateway
 import (
 	"context"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/nats-io/stan.go"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
 )
@@ -70,7 +73,6 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 			ctx.Response.Header.Set("content-type", "text/html;charset=UTF-8")
 			ctx.Write(b)
 
-			// ctx.SendFile("web/spa.html")
 			ctx.SetStatusCode(200)
 
 		case "/api/configuration":
@@ -267,6 +269,169 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						} else {
 							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
 						}
+					case "cluster:update_settings":
+						clusterUpdateSettings := ManagerConfiguration{}
+
+						json.Unmarshal(rpcMessage.Params, &clusterUpdateSettings)
+
+						// Check if cluster exists
+						if mg, ok := sg.Managers[clusterUpdateSettings.Identifier]; ok {
+							mg.ConfigurationMu.Lock()
+
+							if clusterUpdateSettings.Messaging.UseRandomSuffix != mg.Configuration.Messaging.UseRandomSuffix {
+								var clientName string
+								if mg.Configuration.Messaging.UseRandomSuffix {
+									clientName = mg.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(9999))
+								} else {
+									clientName = mg.Configuration.Messaging.ClientName
+								}
+
+								stanClient, err := stan.Connect(
+									mg.Sandwich.Configuration.NATS.Cluster,
+									clientName,
+									stan.NatsConn(mg.NatsClient),
+								)
+
+								if err == nil {
+									mg.StanClient = stanClient
+								}
+							}
+
+							if !reflect.DeepEqual(clusterUpdateSettings.Events.EventBlacklist, mg.Configuration.Events.EventBlacklist) {
+								mg.EventBlacklist = make(map[string]void)
+								for _, value := range mg.Configuration.Events.EventBlacklist {
+									mg.EventBlacklist[value] = void{}
+								}
+							}
+
+							if !reflect.DeepEqual(clusterUpdateSettings.Events.ProduceBlacklist, mg.Configuration.Events.ProduceBlacklist) {
+								mg.ProduceBlacklist = make(map[string]void)
+								for _, value := range mg.Configuration.Events.ProduceBlacklist {
+									mg.ProduceBlacklist[value] = void{}
+								}
+							}
+
+							mg.Configuration = &clusterUpdateSettings
+							mg.ConfigurationMu.Unlock()
+
+							res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
+						}
+					case "manager:create":
+						managerCreateEvent := struct {
+							Persist    bool   `json:"persist"`
+							Identifier string `json:"identifier"`
+
+							Token   string `json:"token"`
+							Prefix  string `json:"prefix"`
+							Client  string `json:"client"`
+							Channel string `json:"channel"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &managerCreateEvent)
+
+						if _, ok := sg.Managers[managerCreateEvent.Identifier]; !ok {
+							config := &ManagerConfiguration{
+								Persist:     managerCreateEvent.Persist,
+								Identifier:  managerCreateEvent.Identifier,
+								DisplayName: managerCreateEvent.Identifier,
+								Token:       managerCreateEvent.Token,
+							}
+							config.Caching.RedisPrefix = managerCreateEvent.Prefix
+							config.Messaging.ClientName = managerCreateEvent.Client
+							config.Messaging.ChannelName = managerCreateEvent.Channel
+							config.Bot.DefaultPresence = &structs.UpdateStatus{}
+
+							sg.ConfigurationMu.Lock()
+							sg.Configuration.Managers = append(sg.Configuration.Managers, config)
+							sg.ConfigurationMu.Unlock()
+
+							sg.ConfigurationMu.RLock()
+							err = sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
+							sg.ConfigurationMu.RUnlock()
+
+							if err == nil {
+								mg, err := sg.NewManager(config)
+								if err == nil {
+									sg.ManagersMu.Lock()
+									sg.Managers[config.Identifier] = mg
+									sg.ManagersMu.Unlock()
+
+									res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+								} else {
+									res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+								}
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, xerrors.Errorf("Unable to save configuration: %w", err).Error(), rpcMessage.ID})
+							}
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Cluster with identifier already exists").Error(), rpcMessage.ID})
+						}
+
+					case "manager:delete":
+						managerDeleteEvent := struct {
+							Confirm string `json:"confirm"`
+							Cluster string `json:"cluster"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &managerDeleteEvent)
+
+						if mg, ok := sg.Managers[managerDeleteEvent.Cluster]; ok {
+							if managerDeleteEvent.Cluster == managerDeleteEvent.Confirm {
+								mg.Close()
+
+								sg.ManagersMu.Lock()
+								delete(sg.Managers, managerDeleteEvent.Cluster)
+								sg.ManagersMu.Unlock()
+
+								managers := []*ManagerConfiguration{}
+								sg.ConfigurationMu.Lock()
+								for _, manager := range sg.Configuration.Managers {
+									if manager.Identifier != managerDeleteEvent.Cluster {
+										managers = append(managers, manager)
+									}
+								}
+								sg.Configuration.Managers = managers
+								sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
+								sg.ConfigurationMu.Unlock()
+
+								res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, xerrors.New("Cluster and confirmation do not match").Error(), rpcMessage.ID})
+							}
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
+						}
+					case "manager:restart":
+						managerRestartEvent := struct {
+							Confirm string `json:"confirm"`
+							Cluster string `json:"cluster"`
+						}{}
+
+						json.Unmarshal(rpcMessage.Params, &managerRestartEvent)
+
+						if mg, ok := sg.Managers[managerRestartEvent.Cluster]; ok {
+							if managerRestartEvent.Cluster == managerRestartEvent.Confirm {
+								mg.Close()
+
+								sg.ManagersMu.Lock()
+								delete(sg.Managers, managerRestartEvent.Cluster)
+								sg.ManagersMu.Unlock()
+
+								mg, err = sg.NewManager(mg.Configuration)
+								if err == nil {
+									sg.Managers[managerRestartEvent.Cluster] = mg
+									res, err = json.Marshal(RPCResponse{true, "", rpcMessage.ID})
+								} else {
+									res, err = json.Marshal(RPCResponse{nil, err.Error(), rpcMessage.ID})
+								}
+							} else {
+								res, err = json.Marshal(RPCResponse{nil, xerrors.New("Cluster and confirmation do not match").Error(), rpcMessage.ID})
+							}
+						} else {
+							res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid Cluster provided").Error(), rpcMessage.ID})
+						}
 					case "manager:refresh_gateway":
 						manageRefreshGatewayEvent := struct {
 							Cluster string `json:"cluster"`
@@ -296,7 +461,10 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						configuration, err := sg.LoadConfiguration(ConfigurationPath)
 						if err == nil {
 							daemonUpdateSettingsEvent.Managers = configuration.Managers
-							if err = sg.SaveConfiguration(&daemonUpdateSettingsEvent, ConfigurationPath); err == nil {
+							sg.ConfigurationMu.RLock()
+							err = sg.SaveConfiguration(&daemonUpdateSettingsEvent, ConfigurationPath)
+							sg.ConfigurationMu.RUnlock()
+							if err == nil {
 								daemonUpdateSettingsEvent.Managers = sg.Configuration.Managers
 								sg.ConfigurationMu.Lock()
 								sg.Configuration = &daemonUpdateSettingsEvent

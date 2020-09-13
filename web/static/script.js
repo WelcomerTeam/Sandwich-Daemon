@@ -214,9 +214,14 @@ vue = new Vue({
     el: '#app',
     data() {
         return {
+            version: "...",
             loading: true,
             error: false,
             daemon: {},
+            toast: {
+                title: "",
+                body: "",
+            },
             analytics: {
                 chart: {},
                 uptime: "...",
@@ -235,10 +240,26 @@ vue = new Vue({
                 shardIDs: "",
                 startImmediately: true,
             },
-
             stopShardGroupDialogueData: {
                 cluster: "",
                 shardgroup: 0,
+            },
+
+            createManagerDialogueData: {
+                identifier: "",
+                persist: true,
+                token: "",
+                prefix: "",
+                client: "",
+                channel: "",
+            },
+            deleteManagerDialogueData: {
+                confirm: "",
+                cluster: "",
+            },
+            restartManagerDialogueData: {
+                confirm: "",
+                cluster: "",
             },
 
             statusShard: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
@@ -256,6 +277,7 @@ vue = new Vue({
         }
     },
     mounted() {
+        this.toastModal = new bootstrap.Toast(document.getElementById("toast"), { delay: 2000 })
         this.fetchConfiguration();
         this.fetchAnalytics();
         this.$nextTick(function () {
@@ -274,9 +296,21 @@ vue = new Vue({
                     'id': id,
                 })
                 .then(result => {
+                    err = result.data.error
+                    if (err != "") {
+                        this.showToast("Error executing " + method, err)
+                    } else {
+                        this.showToast(method, "Executed successfuly")
+                    }
                     return result
                 })
-                .catch(err => console.log(error))
+                .catch(error => { console.log(error); this.showToast("Exception sending RPC", error); })
+        },
+
+        showToast(title, body) {
+            this.toast.title = title
+            this.toast.body = body
+            this.toastModal.show()
         },
 
         saveClusterSettings(cluster) {
@@ -286,7 +320,6 @@ vue = new Vue({
         saveDaemonSettings() {
             this.sendRPC("daemon:update_settings", this.daemon.configuration)
         },
-
 
         stopShardGroupDialogue(cluster, shardgroup) {
             this.stopShardGroupDialogueModal = new bootstrap.Modal(document.getElementById("stopShardGroupDialogue"), {})
@@ -320,6 +353,56 @@ vue = new Vue({
             setTimeout(() => this.fetchClustersData(), 1000)
         },
 
+        createManagerDialogue() {
+            this.createManagerDialogueModal = new bootstrap.Modal(document.getElementById("createManagerDialogue"), {})
+            this.createManagerDialogueData.identifier = ""
+            this.createManagerDialogueData.persist = true
+            this.createManagerDialogueData.token = ""
+            this.createManagerDialogueData.prefix = ""
+            this.createManagerDialogueData.client = ""
+            this.createManagerDialogueData.channel = ""
+
+            this.createManagerDialogueModal.show()
+        },
+        createManager() {
+            this.sendRPC("manager:create", this.createManagerDialogueData)
+            setTimeout(() => this.fetchConfiguration(), 1000)
+
+            this.createManagerDialogueModal.hide()
+        },
+
+        deleteManagerDialogue(cluster) {
+            this.deleteManagerDialogueModal = new bootstrap.Modal(document.getElementById("deleteManagerDialogue"), {})
+            this.deleteManagerDialogueData = {
+                "confirm": "",
+                "cluster": cluster,
+            }
+
+            this.deleteManagerDialogueModal.show()
+        },
+        deleteManager() {
+            this.sendRPC("manager:delete", this.deleteManagerDialogueData)
+            setTimeout(() => this.fetchConfiguration(), 1000)
+
+            this.deleteManagerDialogueModal.hide()
+        },
+
+        restartManagerDialogue(cluster) {
+            this.restartManagerDialogueModal = new bootstrap.Modal(document.getElementById("restartManagerDialogue"), {})
+            this.restartManagerDialogueData = {
+                "confirm": "",
+                "cluster": cluster,
+            }
+
+            this.restartManagerDialogueModal.show()
+        },
+        restartManager() {
+            this.sendRPC("manager:restart", this.restartManagerDialogueData)
+            setTimeout(() => this.fetchConfiguration(), 1000)
+
+            this.restartManagerDialogueModal.hide()
+        },
+
         createShardGroupDialogue(cluster) {
             this.createShardGroupDialogueModal = new bootstrap.Modal(document.getElementById("createShardGroupDialogue"), {})
 
@@ -350,18 +433,19 @@ vue = new Vue({
                         cluster_key = clusters[mgindex]
                         cluster = result.data.response.managers[cluster_key]
                         if (cluster_key in this.daemon.managers) {
+                            this.daemon.managers[cluster_key].error = cluster.error
                             this.daemon.managers[cluster_key].shard_groups = cluster.shard_groups
                             this.daemon.managers[cluster_key].gateway = cluster.gateway
                         }
                     }
                 })
-                .catch(error => console.log(error))
+                .catch(error => { console.log(error); this.showToast("Exception fetching cluster data", error); })
         },
         fetchConfiguration() {
             axios
                 .get('/api/configuration')
                 .then(result => { this.daemon = result.data.response; this.error = !result.data.success })
-                .catch(error => console.log(error))
+                .catch(error => { console.log(error); this.showToast("Exception fetching configuration", error); })
                 .finally(() => this.loading = false)
         },
         fetchAnalytics() {
@@ -394,7 +478,7 @@ vue = new Vue({
 
                     this.error = this.error | !result.data.success;
                 })
-                .catch(error => console.log(error))
+                .catch(error => { console.log(error); this.showToast("Exception fetching analytics", error); })
                 .finally(() => this.loadingAnalytics = false)
         },
         fromClusters(clusters) {
@@ -409,12 +493,16 @@ vue = new Vue({
                 } else {
                     status = shardgroups.slice(-1)[0].status
                 }
+                if (value.error != "") {
+                    status = 7
+                }
 
                 _clusters[key] = {
                     configuration: value.configuration,
                     shardgroups: value.shard_groups,
                     gateway: value.gateway,
                     status: status,
+                    error: value.error,
                 }
             })
             return _clusters
