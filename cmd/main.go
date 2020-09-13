@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,11 +12,22 @@ import (
 )
 
 func main() {
-	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	var lFlag = flag.String("level", "info", "Log level to use (debug/info/warn/error/fatal/panic/no/disabled/trace)")
+	flag.Parse()
+
+	level, err := zerolog.ParseLevel(*lFlag)
+
 	logger := zerolog.ConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: time.Stamp,
 	}
+
+	log := zerolog.New(logger).With().Timestamp().Logger()
+	if level != zerolog.NoLevel {
+		log.Info().Str("logLevel", level.String()).Msg("Using logging")
+	}
+
+	zerolog.SetGlobalLevel(level)
 
 	sg, err := gateway.NewSandwich(logger)
 	if err != nil {
@@ -33,6 +45,6 @@ func main() {
 
 	err = sg.Close()
 	if err != nil {
-		println("Well, closing just errored but were literally about to close but heres the error:", err)
+		sg.Logger.Error().Err(err).Msg("Exception whilst closing sandwich")
 	}
 }

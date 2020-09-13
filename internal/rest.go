@@ -47,15 +47,19 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	var res []byte
 	var err error
 
-	defer func() {
-		sg.Logger.Info().Msgf("%s %s %s %d",
-			ctx.RemoteAddr(),
-			ctx.Request.Header.Method(),
-			ctx.Request.URI().Path(),
-			ctx.Response.StatusCode())
-	}()
-
 	path := string(ctx.Request.URI().Path())
+
+	// We will not log /api requests as they spam
+	if !strings.HasPrefix(path, "/api") {
+		defer func() {
+			sg.Logger.Info().Msgf("%s %s %s %d",
+				ctx.RemoteAddr(),
+				ctx.Request.Header.Method(),
+				ctx.Request.URI().Path(),
+				ctx.Response.StatusCode())
+		}()
+	}
+
 	if strings.HasPrefix(path, "/static") {
 		_, filename := filepath.Split(path)
 		root, _ := os.Getwd()
