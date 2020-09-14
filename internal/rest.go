@@ -111,6 +111,8 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				clusters := make([]ClusterInformation, 0, len(sg.Managers))
 				guilds := make(map[string]int64)
 				for _, mg := range sg.Managers {
+					mg.ConfigurationMu.RLock()
+
 					statuses := make(map[int32]structs.ShardGroupStatus)
 
 					mg.ShardGroupMu.Lock()
@@ -119,10 +121,16 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 					}
 					mg.ShardGroupMu.Unlock()
 
-					guildCount, err := sg.RedisClient.HLen(context.Background(), mg.CreateKey("guilds")).Result()
-					guilds[mg.Configuration.Caching.RedisPrefix] = guildCount
-					if err != nil {
-						mg.Logger.Error().Err(err).Msg("Failed to retrieve Hashset Length")
+					var guildCount int64
+
+					if guildCount, ok := guilds[mg.Configuration.Caching.RedisPrefix]; !ok {
+						guildCount, err = sg.RedisClient.HLen(context.Background(), mg.CreateKey("guilds")).Result()
+						guilds[mg.Configuration.Caching.RedisPrefix] = guildCount
+						if err != nil {
+							mg.Logger.Error().Err(err).Msg("Failed to retrieve Hashset Length")
+						}
+					} else {
+						sg.Logger.Debug().Msgf("Not retrieving guilds for %s as already retrieved", mg.Configuration.Caching.RedisPrefix)
 					}
 
 					clusters = append(clusters, ClusterInformation{
@@ -131,6 +139,8 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 						Status:    statuses,
 						AutoStart: mg.Configuration.AutoStart,
 					})
+
+					mg.ConfigurationMu.RUnlock()
 				}
 
 				now := time.Now()
