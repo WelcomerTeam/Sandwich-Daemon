@@ -244,12 +244,12 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 	go func() {
 		since := time.Now()
 		for {
-			time.Sleep(time.Second * 15)
+			time.Sleep(time.Second * 30)
 			select {
 			case <-fin:
 				return
 			default:
-				sh.Logger.Warn().Str("type", msg.Type).Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
+				sh.Logger.Warn().Str("type", msg.Type).Int("op", int(msg.Op)).Str("data", string(msg.Data)).Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
 			}
 		}
 	}()
@@ -516,7 +516,6 @@ func (sh *Shard) Listen() (err error) {
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection, reconnecting...")
 				err = sh.Reconnect(websocket.StatusNormalClosure)
 				if err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 					return err
 				}
 			}
@@ -786,6 +785,9 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 
 		retries := atomic.AddInt32(sh.Retries, -1)
 		if retries <= 0 {
+			sh.Logger.Warn().Msg("Ran out of retries whilst connecting. Attempting to reconnect client.")
+			sh.Close(code)
+			err = sh.Connect()
 			return err
 		}
 
