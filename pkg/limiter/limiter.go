@@ -53,6 +53,7 @@ func (c *ConcurrencyLimiter) InProgress() int32 {
 // has cleared
 type DurationLimiter interface {
 	Lock()
+	Reset()
 }
 
 // DefaultLimiter is the default limiter object
@@ -104,4 +105,10 @@ func (l *DefaultLimiter) Lock() {
 
 	atomic.AddInt32(l.available, -1)
 	return
+}
+
+// Reset resets the resetsAt
+func (l *DefaultLimiter) Reset() {
+	now := time.Now().UnixNano()
+	atomic.StoreInt64(l.resetsAt, now+atomic.LoadInt64(l.duration))
 }

@@ -428,6 +428,9 @@ vue = new Vue({
             axios
                 .get('/api/configuration')
                 .then(result => {
+                    if (result.data.success == false) { return }
+                    if (this.error) { document.location.reload() }
+
                     clusters = Object.keys(result.data.response.managers)
                     for (mgindex in clusters) {
                         cluster_key = clusters[mgindex]
@@ -452,6 +455,9 @@ vue = new Vue({
             axios
                 .get('/api/analytics')
                 .then(result => {
+                    if (result.data.success == false) { return }
+                    if (this.error) { document.location.reload() }
+
                     this.analytics = result.data.response;
 
                     let up = 0
@@ -519,7 +525,7 @@ vue = new Vue({
                     for (shindex in shards) {
                         shard = shards[shindex]
                         latency = (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent))
-                        if (latency != 0) {
+                        if (latency > 0) {
                             totalLatency += latency
                             totalShards += 1
                         }
@@ -536,7 +542,7 @@ vue = new Vue({
             for (shindex in shards) {
                 shard = shards[shindex]
                 latency = (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent))
-                if (latency != 0) {
+                if (latency > 0) {
                     totalLatency += latency
                     totalShards += 1
                 }

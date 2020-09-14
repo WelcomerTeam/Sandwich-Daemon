@@ -36,7 +36,7 @@
         </nav>
         <div class="container-sm p-3">
 
-            <div v-if="!this.loading">
+            <div v-if="!this.loading && !this.error">
                 <!-- Create ShardGroup Dialogue -->
                 <div class="modal fade" id="createShardGroupDialogue" tabindex="-1"
                     aria-labelledby="createShardGroupDialogueLabel" aria-hidden="true">

@@ -214,6 +214,11 @@ func (sh *Shard) Connect() (err error) {
 		}
 	}
 
+	sh.Manager.ConfigurationMu.RLock()
+	bucket := fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency)
+	sh.Manager.Buckets.ResetBucket(bucket)
+	sh.Manager.ConfigurationMu.RUnlock()
+
 	err = sh.readMessage(sh.ctx, sh.wsConn)
 	if err != nil {
 		return
@@ -227,32 +232,30 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	sh.SetStatus(structs.ShardConnected)
-	atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
+	// atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
 	return
 }
 
 // OnEvent processes an event
 func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 
-	// If enabled, events that are blocking will be shown.
-	if DEBUG {
-		fin := make(chan void)
-		go func() {
-			since := time.Now()
-			for {
-				time.Sleep(time.Second * 5)
-				select {
-				case <-fin:
-					return
-				default:
-					sh.Logger.Warn().Str("type", msg.Type).Msgf("Event %s blocking for %f seconds", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
-				}
+	// This goroutine shows events that are taking too long.
+	fin := make(chan void)
+	go func() {
+		since := time.Now()
+		for {
+			time.Sleep(time.Second * 15)
+			select {
+			case <-fin:
+				return
+			default:
+				sh.Logger.Warn().Str("type", msg.Type).Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
 			}
-		}()
-		defer func() {
-			close(fin)
-		}()
-	}
+		}
+	}()
+	defer func() {
+		close(fin)
+	}()
 
 	switch msg.Op {
 
@@ -261,7 +264,10 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
-			sh.Reconnect(websocket.StatusNormalClosure)
+			err = sh.Reconnect(websocket.StatusNormalClosure)
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+			}
 			return
 		}
 
@@ -273,7 +279,10 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		}
 
 		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
-		sh.Reconnect(4000)
+		err = sh.Reconnect(4000)
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+		}
 
 	case structs.GatewayOpHello:
 		sh.Logger.Warn().Msg("Received HELLO whilst listening. This should not occur.")
@@ -281,7 +290,10 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 
 	case structs.GatewayOpReconnect:
 		sh.Logger.Info().Msg("Reconnecting in response to gateway")
-		sh.Reconnect(4000)
+		err = sh.Reconnect(4000)
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+		}
 		return
 
 	case structs.GatewayOpDispatch:
@@ -337,10 +349,18 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			sh.Unavailable[guild.ID] = guild.Unavailable
 		}
 		guildCreateEvents := 0
-		// guildChunkEvents := 0
 
-		// I really wanted to just use a context here but it kept cancelling the main
-		// context even if i made a completely new one. Hmu if you know a solution.
+		// If true will only run events once finished loading.
+		// TODO: Add to sandwich configuration.
+		premtiveEvents := false
+
+		// I planned on using a context with timeout here to timeout reading messages however it seems the parent as also inheriting it.
+		// This means in its current configuration it may get stuck getting READY until it receives another event which should not be
+		// a problem on larger bots however it will be a problem when you excessively shard on smaller bots that may have a shard only receive
+		// a single event every few seconds, in which it will have to wait for to recognise it has passed the timeout limit. At the moment
+		// we just have a warning message if you excessively shard. This also does mean if your bot never receives any events it will never
+		// ready.
+
 		wait := time.Now().UTC().Add(2 * time.Second)
 		for {
 			timedout := time.Now().UTC().Sub(wait) > (2 * time.Second)
@@ -400,22 +420,30 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 				}
 				wait = time.Now().UTC().Add(2 * time.Second)
 			} else {
-				events = append(events, sh.msg)
+				if premtiveEvents {
+					events = append(events, sh.msg)
+				} else {
+					if err = sh.OnDispatch(sh.msg); err != nil {
+						sh.Logger.Error().Err(err).Msg("Failed dispatching event")
+					}
+				}
 			}
 		}
 
 		sh.ready <- void{}
 		sh.SetStatus(structs.ShardReady)
 
-		sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
-		for _, event := range events {
-			sh.Logger.Debug().Str("type", event.Type).Send()
-			if err = sh.OnDispatch(event); err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemtive events")
+		if premtiveEvents {
+			sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
+			for _, event := range events {
+				sh.Logger.Debug().Str("type", event.Type).Send()
+				if err = sh.OnDispatch(event); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemtive events")
+				}
 			}
+			sh.Logger.Debug().Msg("Finished dispatching events")
 		}
 
-		sh.Logger.Debug().Msg("Finished dispatching events")
 		return
 
 	case "GUILD_CREATE":
@@ -486,7 +514,11 @@ func (sh *Shard) Listen() (err error) {
 			if wsConn == sh.wsConn {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection, reconnecting...")
-				sh.Reconnect(websocket.StatusNormalClosure)
+				err = sh.Reconnect(websocket.StatusNormalClosure)
+				if err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+					return err
+				}
 			}
 			wsConn = sh.wsConn
 		}
@@ -531,7 +563,11 @@ func (sh *Shard) Heartbeat() {
 					sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 				}
 
-				sh.Reconnect(websocket.StatusNormalClosure)
+				err = sh.Reconnect(websocket.StatusNormalClosure)
+				if err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+				}
+
 				return
 			}
 		}
@@ -589,10 +625,7 @@ func (sh *Shard) Resume() (err error) {
 	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
 	sh.Manager.ConfigurationMu.RLock()
-	sh.Manager.GatewayMu.RLock()
-	sh.Manager.Sandwich.Buckets.WaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency))
-	sh.Manager.GatewayMu.RUnlock()
-	sh.Manager.ConfigurationMu.RUnlock()
+	defer sh.Manager.ConfigurationMu.RUnlock()
 
 	err = sh.SendEvent(structs.GatewayOpResume, structs.Resume{
 		Token:     sh.Manager.Configuration.Token,
@@ -612,13 +645,11 @@ func (sh *Shard) Identify() (err error) {
 	sh.Manager.GatewayMu.Unlock()
 
 	sh.Manager.ConfigurationMu.RLock()
+	defer sh.Manager.ConfigurationMu.RUnlock()
+
 	sh.Manager.GatewayMu.RLock()
 	sh.Manager.Sandwich.Buckets.WaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency))
 	sh.Manager.GatewayMu.RUnlock()
-	sh.Manager.ConfigurationMu.RUnlock()
-
-	sh.Manager.Sandwich.ConfigurationMu.RLock()
-	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
 	err = sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
 		Token: sh.Manager.Configuration.Token,
@@ -737,7 +768,7 @@ func (sh *Shard) WaitForReady() {
 }
 
 // Reconnect attempts to reconnect to the gateway
-func (sh *Shard) Reconnect(code websocket.StatusCode) {
+func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 	wait := time.Second
 
 	sh.Close(code)
@@ -748,8 +779,14 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) {
 
 		err := sh.Connect()
 		if err == nil {
+			atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
 			sh.Logger.Info().Msg("Successfuly reconnected to gateway")
-			return
+			return nil
+		}
+
+		retries := atomic.AddInt32(sh.Retries, -1)
+		if retries <= 0 {
+			return err
 		}
 
 		sh.Logger.Warn().Err(err).Dur("retry", wait).Msg("Failed to reconnect to gateway")

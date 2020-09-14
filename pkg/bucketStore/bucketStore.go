@@ -46,6 +46,20 @@ func (bs *BucketStore) WaitForBucket(name string) (err error) {
 	return
 }
 
+// ResetBucket resets the bucket
+func (bs *BucketStore) ResetBucket(name string) bool {
+	bs.BucketsMu.RLock()
+	bucket, exists := bs.Buckets[name]
+	bs.BucketsMu.RUnlock()
+
+	if !exists {
+		return false
+	}
+
+	bucket.Reset()
+	return true
+}
+
 // CreateWaitForBucket will create a bucket if it does not exist and then will wait
 // for it.
 func (bs *BucketStore) CreateWaitForBucket(name string, limit int32, duration time.Duration) (err error) {
