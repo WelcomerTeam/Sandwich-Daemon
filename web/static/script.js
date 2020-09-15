@@ -262,8 +262,8 @@ vue = new Vue({
                 cluster: "",
             },
 
-            statusShard: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed"],
-            colourShard: ["dark", "info", "info", "success", "info", "warn", "secondary"],
+            statusShard: ["Idle", "Waiting", "Connecting", "Connected", "Ready", "Reconnecting", "Closed"],
+            colourShard: ["dark", "info", "info", "info", "success", "warn", "secondary"],
 
             statusGroup: ["Idle", "Starting", "Connecting", "Ready", "Replaced", "Closing", "Closed", "Error"],
             colourGroup: ["dark", "info", "info", "success", "info", "warn", "dark", "danger"],

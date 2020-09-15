@@ -13,6 +13,7 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
 	"github.com/rs/zerolog"
+	"github.com/tevino/abool"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
@@ -37,9 +38,10 @@ type Shard struct {
 	ctx    context.Context
 	cancel func()
 
-	LastHeartbeatMu   sync.RWMutex `json:"-"`
-	LastHeartbeatAck  time.Time    `json:"last_heartbeat_ack"`
-	LastHeartbeatSent time.Time    `json:"last_heartbeat_sent"`
+	HeartbeatActive   *abool.AtomicBool `json:"-"`
+	LastHeartbeatMu   sync.RWMutex      `json:"-"`
+	LastHeartbeatAck  time.Time         `json:"last_heartbeat_ack"`
+	LastHeartbeatSent time.Time         `json:"last_heartbeat_sent"`
 
 	Heartbeater          *time.Ticker  `json:"-"`
 	HeartbeatInterval    time.Duration `json:"heartbeat_interval"`
@@ -86,6 +88,7 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 
 		ctx: context.Background(),
 
+		HeartbeatActive:   abool.New(),
 		LastHeartbeatMu:   sync.RWMutex{},
 		LastHeartbeatAck:  time.Now().UTC(),
 		LastHeartbeatSent: time.Now().UTC(),
@@ -162,10 +165,6 @@ func (sh *Shard) Connect() (err error) {
 	gatewayURL := sh.Manager.Gateway.URL
 	sh.Manager.GatewayMu.RUnlock()
 
-	if err != nil {
-		return
-	}
-
 	defer func() {
 		if err != nil && sh.wsConn != nil {
 			sh.CloseWS(websocket.StatusNormalClosure)
@@ -177,12 +176,15 @@ func (sh *Shard) Connect() (err error) {
 	// Currently just uses a mutex to allow for only one per maxconcurrency
 	sh.Logger.Trace().Msg("Waiting for identify mutex")
 	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Lock()
+
 	sh.Logger.Trace().Msg("Starting connecting")
+	sh.SetStatus(structs.ShardConnecting)
 
 	if sh.wsConn == nil {
 		var conn *websocket.Conn
 		conn, _, err = websocket.Dial(sh.ctx, gatewayURL, nil)
 		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to dial")
 			return
 		}
 		conn.SetReadLimit(512 << 20)
@@ -193,6 +195,7 @@ func (sh *Shard) Connect() (err error) {
 
 	err = sh.readMessage(sh.ctx, sh.wsConn)
 	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to read message")
 		return
 	}
 
@@ -213,23 +216,29 @@ func (sh *Shard) Connect() (err error) {
 	seq := atomic.LoadInt64(sh.seq)
 	if sh.sessionID == "" || seq == 0 {
 		err = sh.Identify()
+		sh.SetStatus(structs.ShardConnected)
 		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to identify")
 			return
 		}
 	} else {
 		err = sh.Resume()
+		// We will assume the bot is ready.
+		sh.SetStatus(structs.ShardReady)
 		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to resume")
 			return
 		}
 	}
-	sh.SetStatus(structs.ShardConnected)
 
 	sh.Manager.ConfigurationMu.RLock()
 	bucket := fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency)
 	sh.Manager.Buckets.ResetBucket(bucket)
 	sh.Manager.ConfigurationMu.RUnlock()
 
-	go sh.Heartbeat()
+	if sh.HeartbeatActive.IsNotSet() {
+		go sh.Heartbeat()
+	}
 
 	sh.Logger.Trace().Msg("Finished connecting")
 	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
@@ -297,7 +306,20 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		}
 
 	case structs.GatewayOpHello:
-		sh.Logger.Warn().Msg("Received HELLO whilst listening. This should not occur.")
+		hello := structs.Hello{}
+		err = sh.decodeContent(&hello)
+
+		sh.LastHeartbeatMu.Lock()
+		sh.LastHeartbeatAck = time.Now().UTC()
+		sh.LastHeartbeatSent = time.Now().UTC()
+		sh.LastHeartbeatMu.Unlock()
+
+		sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
+		sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+
+		sh.Logger.Debug().Dur("interval", sh.HeartbeatInterval).Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).Msg("Retrieved HELLO event from discord")
+		sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
+
 		return
 
 	case structs.GatewayOpReconnect:
@@ -549,6 +571,9 @@ func (sh *Shard) Listen() (err error) {
 // Heartbeat maintains a heartbeat with discord
 // TODO: Make a shardgroup specific heartbeat function to heartbeat on behalf of all running shards
 func (sh *Shard) Heartbeat() {
+	sh.HeartbeatActive.Set()
+	defer sh.HeartbeatActive.UnSet()
+
 	for {
 		select {
 		case <-sh.ctx.Done():
