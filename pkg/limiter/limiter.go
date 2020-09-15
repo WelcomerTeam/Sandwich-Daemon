@@ -51,13 +51,7 @@ func (c *ConcurrencyLimiter) InProgress() int32 {
 
 // DurationLimiter represents something that will wait until the ratelimit
 // has cleared
-type DurationLimiter interface {
-	Lock()
-	Reset()
-}
-
-// DefaultLimiter is the default limiter object
-type DefaultLimiter struct {
+type DurationLimiter struct {
 	name     string
 	limit    *int32
 	duration *int64
@@ -68,9 +62,9 @@ type DefaultLimiter struct {
 
 // NewDurationLimiter creates a DurationLimiter. This is useful for allowing
 // a specific operation to run only X ammount of times in a duration of Y.
-func NewDurationLimiter(name string, limit int32, duration time.Duration) (bs DurationLimiter) {
+func NewDurationLimiter(name string, limit int32, duration time.Duration) (bs *DurationLimiter) {
 	nanos := duration.Nanoseconds()
-	bs = &DefaultLimiter{
+	bs = &DurationLimiter{
 		name:     name,
 		limit:    &limit,
 		duration: &nanos,
@@ -82,7 +76,7 @@ func NewDurationLimiter(name string, limit int32, duration time.Duration) (bs Du
 }
 
 // Lock waits until there is an available slot in the Limiter
-func (l *DefaultLimiter) Lock() {
+func (l *DurationLimiter) Lock() {
 	now := time.Now().UnixNano()
 
 	// If we have surpassed the resetAt, then make a new resetAt and free
@@ -108,7 +102,7 @@ func (l *DefaultLimiter) Lock() {
 }
 
 // Reset resets the resetsAt
-func (l *DefaultLimiter) Reset() {
+func (l *DurationLimiter) Reset() {
 	now := time.Now().UnixNano()
 	atomic.StoreInt64(l.resetsAt, now+atomic.LoadInt64(l.duration))
 }

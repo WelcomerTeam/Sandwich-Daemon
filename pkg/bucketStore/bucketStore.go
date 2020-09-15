@@ -14,20 +14,27 @@ var ErrNoSuchBucket = errors.New("Bucket does not exist. Use CreateWaitForBucket
 
 // BucketStore is used for managing various limiters
 type BucketStore struct {
-	Buckets   map[string]limiter.DurationLimiter
+	Buckets   map[string]*limiter.DurationLimiter
 	BucketsMu sync.RWMutex
 }
 
 // NewBucketStore creates a new Buckets map to store different limits
 func NewBucketStore() (bs *BucketStore) {
 	return &BucketStore{
-		Buckets:   make(map[string]limiter.DurationLimiter),
+		Buckets:   make(map[string]*limiter.DurationLimiter),
 		BucketsMu: sync.RWMutex{},
 	}
 }
 
 // CreateBucket will create a new bucket or overwrite
-func (bs *BucketStore) CreateBucket(name string, limit int32, duration time.Duration) limiter.DurationLimiter {
+func (bs *BucketStore) CreateBucket(name string, limit int32, duration time.Duration) *limiter.DurationLimiter {
+	bs.BucketsMu.RLock()
+	bucket, exists := bs.Buckets[name]
+	bs.BucketsMu.RUnlock()
+	if exists {
+		return bucket
+	}
+
 	bs.BucketsMu.Lock()
 	bs.Buckets[name] = limiter.NewDurationLimiter(name, limit, duration)
 	bs.BucketsMu.Unlock()
@@ -37,7 +44,9 @@ func (bs *BucketStore) CreateBucket(name string, limit int32, duration time.Dura
 
 // WaitForBucket will wait for a bucket to be ready
 func (bs *BucketStore) WaitForBucket(name string) (err error) {
+	bs.BucketsMu.RLock()
 	bucket, exists := bs.Buckets[name]
+	bs.BucketsMu.RUnlock()
 
 	if !exists {
 		return ErrNoSuchBucket

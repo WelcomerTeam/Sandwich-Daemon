@@ -137,8 +137,15 @@ func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Starting shard")
 	sh.SetStatus(structs.ShardWaiting)
 
+	sh.Manager.GatewayMu.RLock()
+	concurrencyBucket := sh.ShardID % sh.Manager.Gateway.SessionStartLimit.MaxConcurrency
+	if _, ok := sh.ShardGroup.IdentifyBucket[concurrencyBucket]; !ok {
+		sh.ShardGroup.IdentifyBucket[concurrencyBucket] = &sync.Mutex{}
+	}
+
 	sh.Manager.Buckets.CreateBucket(fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount), 120, time.Minute)
-	sh.Manager.Sandwich.Buckets.CreateBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency), 1, identifyRatelimit)
+	sh.Manager.Sandwich.Buckets.CreateBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), concurrencyBucket), 1, identifyRatelimit)
+	sh.Manager.GatewayMu.RUnlock()
 
 	// When an error occurs and we have to reconnect, we make a ready channel by default
 	// which seems to cause a problem with WaitForReady. To circumvent this, we will
@@ -159,16 +166,18 @@ func (sh *Shard) Connect() (err error) {
 		return
 	}
 
-	// TODO: Add Concurrent Client Support
-	// This will limit the ammount of shards that can be connecting simultaneously
-	// May be abandoned as this boy is fast af :pepega:
-	// Could help with a shit ton running at once whilst scaling
-
 	defer func() {
-		if err != nil {
+		if err != nil && sh.wsConn != nil {
 			sh.CloseWS(websocket.StatusNormalClosure)
 		}
 	}()
+
+	// TODO: Add Concurrent Client Support
+	// This will limit the ammount of shards that can be connecting simultaneously
+	// Currently just uses a mutex to allow for only one per maxconcurrency
+	sh.Logger.Trace().Msg("Waiting for identify mutex")
+	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Lock()
+	sh.Logger.Trace().Msg("Starting connecting")
 
 	if sh.wsConn == nil {
 		var conn *websocket.Conn
@@ -213,25 +222,28 @@ func (sh *Shard) Connect() (err error) {
 			return
 		}
 	}
+	sh.SetStatus(structs.ShardConnected)
 
 	sh.Manager.ConfigurationMu.RLock()
 	bucket := fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency)
 	sh.Manager.Buckets.ResetBucket(bucket)
 	sh.Manager.ConfigurationMu.RUnlock()
 
-	err = sh.readMessage(sh.ctx, sh.wsConn)
-	if err != nil {
-		return
-	}
-
 	go sh.Heartbeat()
 
-	err = sh.OnEvent(sh.msg)
-	if err != nil {
-		sh.Logger.Error().Err(err).Msg("Error whilst handling event")
-	}
+	sh.Logger.Trace().Msg("Finished connecting")
+	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
 
-	sh.SetStatus(structs.ShardConnected)
+	// err = sh.readMessage(sh.ctx, sh.wsConn)
+	// if err != nil {
+	// 	return
+	// }
+
+	// err = sh.OnEvent(sh.msg)
+	// if err != nil {
+	// 	sh.Logger.Error().Err(err).Msg("Error whilst handling event")
+	// }
+
 	// atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
 	return
 }
@@ -607,9 +619,8 @@ func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err e
 
 // CloseWS closes the websocket
 func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
-	sh.Logger.Debug().Str("code", statusCode.String()).Msg("Closing websocket connection")
-
 	if sh.wsConn != nil {
+		sh.Logger.Debug().Str("code", statusCode.String()).Msg("Closing websocket connection")
 		err = sh.wsConn.Close(statusCode, "")
 		sh.wsConn = nil
 	}
@@ -647,7 +658,10 @@ func (sh *Shard) Identify() (err error) {
 	defer sh.Manager.ConfigurationMu.RUnlock()
 
 	sh.Manager.GatewayMu.RLock()
-	sh.Manager.Sandwich.Buckets.WaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency))
+	err = sh.Manager.Sandwich.Buckets.WaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency))
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to wait for bucket")
+	}
 	sh.Manager.GatewayMu.RUnlock()
 
 	err = sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
@@ -756,7 +770,7 @@ func (sh *Shard) WaitForReady() {
 			status := sh.Status
 			sh.StatusMu.RUnlock()
 
-			if status == structs.ShardConnected {
+			if status == structs.ShardReady {
 				sh.Logger.Warn().Msg("Shard ready due to status change")
 				return
 			}
@@ -819,6 +833,8 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 	if sh.ctx != nil && sh.cancel != nil {
 		sh.cancel()
 	}
-	sh.CloseWS(code)
+	if sh.wsConn != nil {
+		sh.CloseWS(code)
+	}
 	sh.SetStatus(structs.ShardClosed)
 }

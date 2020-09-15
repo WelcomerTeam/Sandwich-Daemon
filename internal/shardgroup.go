@@ -34,6 +34,9 @@ type ShardGroup struct {
 	// WaitGroup for detecting when all shards are ready
 	Wait *sync.WaitGroup `json:"-"`
 
+	// Mutex map to limit connections per max_concurrency connection
+	IdentifyBucket map[int]*sync.Mutex `json:"-"`
+
 	// Used for detecting errors during shard startup
 	err chan error
 	// Used to close active goroutines
@@ -54,10 +57,11 @@ func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 		Manager: mg,
 		Logger:  mg.Logger,
 
-		Shards: make(map[int]*Shard),
-		Wait:   &sync.WaitGroup{},
-		err:    make(chan error),
-		close:  make(chan void),
+		Shards:         make(map[int]*Shard),
+		Wait:           &sync.WaitGroup{},
+		IdentifyBucket: make(map[int]*sync.Mutex),
+		err:            make(chan error),
+		close:          make(chan void),
 
 		floodgate: abool.New(),
 	}
