@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/accumulator"
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
@@ -244,8 +243,8 @@ func (mg *Manager) Open() (err error) {
 
 	mg.Analytics = accumulator.NewAccumulator(
 		mg.ctx,
-		60, // 15 minutes of analytics
-		time.Second*15,
+		Samples,
+		Interval,
 	)
 
 	err = mg.RedisClient.Ping(mg.ctx).Err()

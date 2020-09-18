@@ -34,7 +34,7 @@ const ErrOnConfigurationFailure = true
 const ConfigurationPath = "sandwich.yaml"
 
 // Interval between each analytic sample
-const Interval = time.Second * 5
+const Interval = time.Second * 15
 
 // Samples to hold. 5 seconds and 720 samples is 1 hour
 const Samples = 720
@@ -395,7 +395,7 @@ func (sg *Sandwich) Open() (err error) {
 		e := time.NewTicker(Interval)
 		for {
 			<-e.C
-			now := time.Now().UTC()
+			now := time.Now().UTC().Round(time.Second)
 			sg.ManagersMu.RLock()
 			for _, mg := range sg.Managers {
 				if mg.Analytics != nil {
