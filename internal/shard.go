@@ -263,14 +263,16 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 	// This goroutine shows events that are taking too long.
 	fin := make(chan void)
 	go func() {
+		waitTime := time.Second * 30
 		since := time.Now()
+		t := time.NewTimer(waitTime)
 		for {
-			time.Sleep(time.Second * 30)
 			select {
 			case <-fin:
 				return
-			default:
+			case <-t.C:
 				sh.Logger.Warn().Str("type", msg.Type).Int("op", int(msg.Op)).Str("data", string(msg.Data)).Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
+				t.Reset(waitTime)
 			}
 		}
 	}()
