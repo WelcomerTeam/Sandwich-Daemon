@@ -279,7 +279,7 @@
                             </div>
                             <div v-else>
                                 <line-chart :chart-data="analytics.chart" :height="150"
-                                    :options="{scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                    :options="{title:{display:true, text:'Events'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
                                 </line-chart>
                             </div>
                         </div>
