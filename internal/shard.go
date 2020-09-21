@@ -771,9 +771,11 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 	sh.Logger.Trace().Msg(strings.ReplaceAll(string(res), sh.Manager.Configuration.Token, "..."))
 	sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
-	err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
-	if err != nil {
-		return xerrors.Errorf("writeJSON write: %w", err)
+	if sh.wsConn != nil {
+		err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
+		if err != nil {
+			return xerrors.Errorf("writeJSON write: %w", err)
+		}
 	}
 
 	return
