@@ -31,12 +31,12 @@ func main() {
 
 	sg, err := gateway.NewSandwich(logger)
 	if err != nil {
-		log.Panic().Err(err).Send()
+		log.Panic().Err(err).Msgf("Cannot create sandwich: %s", err)
 	}
 
 	err = sg.Open()
 	if err != nil {
-		log.Panic().Err(err).Send()
+		log.Panic().Err(err).Msgf("Cannot open sandwich: %s", err)
 	}
 
 	sc := make(chan os.Signal, 1)
