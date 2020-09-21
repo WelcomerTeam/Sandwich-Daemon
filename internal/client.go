@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -27,16 +28,20 @@ type Client struct {
 	URLHost   string
 	URLScheme string
 	UserAgent string
+
+	// Will use RestTunnel if not empty
+	restTunnelURL string
 }
 
 // NewClient makes a new client
-func NewClient(token string) *Client {
+func NewClient(token string, restTunnelURL string) *Client {
 	return &Client{
-		Token:      token,
-		HTTP:       http.DefaultClient,
-		APIVersion: "6",
-		URLHost:    "discord.com",
-		URLScheme:  "https",
+		Token:         token,
+		HTTP:          http.DefaultClient,
+		APIVersion:    "6",
+		URLHost:       "discord.com",
+		URLScheme:     "https",
+		restTunnelURL: restTunnelURL,
 	}
 }
 
@@ -83,20 +88,33 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 		req.Header.Set("Authorization", "Bot "+c.Token)
 	}
 
-	res, err = c.HTTP.Do(req)
-	if err != nil {
-		return
-	}
-
-	if res.StatusCode == http.StatusTooManyRequests {
-		resp := structs.TooManyRequests{}
-		err = json.NewDecoder(res.Body).Decode(&resp)
+	if c.restTunnelURL == "" {
+		res, err = c.HTTP.Do(req)
 		if err != nil {
 			return
 		}
 
-		<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
-		return c.HandleRequest(req, true)
+		if res.StatusCode == http.StatusTooManyRequests {
+			resp := structs.TooManyRequests{}
+			err = json.NewDecoder(res.Body).Decode(&resp)
+			if err != nil {
+				return
+			}
+
+			<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
+			return c.HandleRequest(req, true)
+		}
+	} else {
+		req.Header.Set("Rt-URL", req.URL.String())
+		req.Header.Set("Rt-Priority", "true")
+		req.Header.Set("Rt-ResponseType", "RespondWithResponse")
+		_url, _ := url.Parse(c.restTunnelURL)
+		req.URL = _url
+
+		res, err = c.HTTP.Do(req)
+		if err != nil {
+			return
+		}
 	}
 
 	if res.StatusCode == http.StatusUnauthorized {

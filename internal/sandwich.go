@@ -3,6 +3,8 @@ package gateway
 import (
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -54,6 +56,11 @@ type SandwichConfiguration struct {
 		MaxAge     int    `json:"max_age" yaml:"max_age"`         // Number of days to keep a logfile
 	} `json:"logging" yaml:"logging"`
 
+	RestTunnel struct {
+		Enabled bool   `json:"enabled" yaml:"enabled"`
+		URL     string `json:"url" yaml:"url"`
+	} `json:"resttunnel" yaml:"resttunnel"`
+
 	Redis struct {
 		Address  string `json:"address" yaml:"address"`
 		Password string `json:"password" yaml:"password"`
@@ -85,6 +92,8 @@ type Sandwich struct {
 
 	ConfigurationMu sync.RWMutex
 	Configuration   *SandwichConfiguration `json:"configuration"`
+
+	RestTunnelEnabled bool `json:"rest_tunnel_enabled"`
 
 	ManagersMu sync.RWMutex        `json:"-"`
 	Managers   map[string]*Manager `json:"managers"`
@@ -302,6 +311,32 @@ func (sg *Sandwich) Open() (err error) {
 		DB:       sg.Configuration.Redis.DB,
 	})
 	sg.Logger.Info().Msg("Created standalone redis client")
+
+	if sg.Configuration.RestTunnel.Enabled && sg.Configuration.RestTunnel.URL != "" {
+		if _url, err := url.Parse(sg.Configuration.RestTunnel.URL); err == nil {
+			if resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/alive"); err == nil {
+				body, _ := ioutil.ReadAll(resp.Body)
+				aliveResponse := struct {
+					Version string `json:"version"`
+				}{}
+				if err := json.Unmarshal(body, &aliveResponse); err == nil {
+					sg.Logger.Info().Msgf("\\o/ Detected RestTunnel version %s", aliveResponse.Version)
+					sg.RestTunnelEnabled = true
+				} else {
+					sg.Logger.Error().Err(err).Msg("Failed to parse RestTunnel alive response")
+					sg.RestTunnelEnabled = false
+				}
+			} else {
+				sg.Logger.Error().Err(err).Msgf("Failed to connect to RestTunnel")
+				sg.RestTunnelEnabled = false
+			}
+		} else {
+			sg.Logger.Error().Err(err).Msgf("Failed to parse RestTunnel URL %s", sg.Configuration.RestTunnel.URL)
+			sg.RestTunnelEnabled = false
+		}
+	} else {
+		sg.RestTunnelEnabled = false
+	}
 
 	for _, managerConfiguration := range sg.Configuration.Managers {
 

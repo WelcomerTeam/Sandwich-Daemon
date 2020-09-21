@@ -86,8 +86,6 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		ShardGroup: sg,
 		Manager:    sg.Manager,
 
-		ctx: context.Background(),
-
 		HeartbeatActive:   abool.New(),
 		LastHeartbeatMu:   sync.RWMutex{},
 		LastHeartbeatAck:  time.Now().UTC(),
@@ -114,6 +112,7 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 
 		errs: make(chan error),
 	}
+	sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	atomic.StoreInt32(sh.Retries, sg.Manager.Configuration.Bot.Retries)
 	return sh
 }
@@ -158,8 +157,6 @@ func (sh *Shard) Connect() (err error) {
 	if sh.ready == nil {
 		sh.ready = make(chan void, 1)
 	}
-
-	sh.ctx, sh.cancel = context.WithCancel(context.Background())
 
 	sh.Manager.GatewayMu.RLock()
 	gatewayURL := sh.Manager.Gateway.URL
@@ -404,7 +401,10 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 				err = sh.readMessage(sh.ctx, sh.wsConn)
 			}
 			if err != nil || timedout {
-				if xerrors.Is(err, context.Canceled) || timedout {
+				if xerrors.Is(err, context.Canceled) {
+					break
+				}
+				if timedout {
 					sh.Logger.Debug().Int("guildEvents", guildCreateEvents).Msg("Shard has finished lazy loading")
 					err = nil
 				} else {
@@ -624,7 +624,7 @@ func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err e
 	mt, sh.buf, err = wsConn.Read(ctx)
 	select {
 	case <-ctx.Done():
-		return
+		return context.Canceled
 	default:
 	}
 

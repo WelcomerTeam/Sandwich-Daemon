@@ -152,8 +152,6 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		Configuration:   configuration,
 		Buckets:         bucketstore.NewBucketStore(),
 
-		Client: NewClient(configuration.Token),
-
 		GatewayMu: sync.RWMutex{},
 		Gateway:   structs.GatewayBot{},
 
@@ -168,6 +166,12 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 
 		EventBlacklist:   make(map[string]void),
 		ProduceBlacklist: make(map[string]void),
+	}
+
+	if s.RestTunnelEnabled {
+		mg.Client = NewClient(configuration.Token, s.Configuration.RestTunnel.URL)
+	} else {
+		mg.Client = NewClient(configuration.Token, "")
 	}
 
 	err = mg.NormalizeConfiguration()
