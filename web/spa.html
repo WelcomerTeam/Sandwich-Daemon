@@ -258,18 +258,18 @@
                 <div class="tab-content" id="pills-tabContent">
                     <div class="tab-pane fade show active" id="pills-home" role="tabpanel"
                         aria-labelledby="pills-home-tab">
-                        <div
-                            class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
-                            <card-display :title="'Guilds'" :value="analytics.guilds" :bg=`bg-dark`>
-                            </card-display>
-                            <card-display :title="'Online'" :value="analytics.online" :bg="analytics.colour">
-                            </card-display>
-                            <card-display :title="'Uptime'" :value="analytics.uptime" :bg=`bg-dark`></card-display>
-                            <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
-                            </card-display>
-                        </div>
                         <div class="m-5">
-                            <h3 class="text-center">Analytics</h3>
+                            <h3 class="text-center text-dark">Sandwich Daemon</h3>
+                            <div
+                                class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
+                                <card-display :title="'Guilds'" :value="analytics.guilds" :bg=`bg-dark`>
+                                </card-display>
+                                <card-display :title="'Online'" :value="analytics.online" :bg="analytics.colour">
+                                </card-display>
+                                <card-display :title="'Uptime'" :value="analytics.uptime" :bg=`bg-dark`></card-display>
+                                <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
+                                </card-display>
+                            </div>
                             <div v-if="this.loadingAnalytics">
                                 <div class="d-flex justify-content-center">
                                     <div class="spinner-border text-dark" role="status">
@@ -281,6 +281,71 @@
                                 <line-chart :chart-data="analytics.chart" :height="150"
                                     :options="{title:{display:true, text:'Events'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
                                 </line-chart>
+                            </div>
+                        </div>
+
+                        <div v-if="daemon.rest_tunnel_enabled" class="m-5">
+                            <div v-if="this.loadingRestTunnel" class="d-flex justify-content-center">
+                                <div class="spinner-border text-dark" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                            <div v-else>
+                                <h3 class="text-center text-dark">RestTunnel</h3>
+                                <div
+                                    class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
+                                    <card-display :title="'Requests Processed'" :value="resttunnel.numbers.requests"
+                                        :bg=`bg-dark`>
+                                    </card-display>
+                                    <card-display :title="'Hits'" :value="resttunnel.numbers.hits" :bg=`bg-dark`>
+                                    </card-display>
+                                    <card-display :title="'Misses'" :value="resttunnel.numbers.misses" :bg=`bg-dark`>
+                                    </card-display>
+                                    <card-display :title="'Uptime'" :value="resttunnel.uptime" :bg=`bg-dark`>
+                                    </card-display>
+                                    <card-display :title="'Waiting'" :value="resttunnel.numbers.waiting" :bg=`bg-dark`>
+                                    </card-display>
+                                </div>
+                                <div
+                                    class="row row-cols-2 row-cols-sm-1 row-cols-md-2 row-cols-xl-3 g-4 justify-content-center">
+
+                                    <div class="col justify-content-center d-flex">
+                                        <line-chart :chart-data="resttunnel.charts.hits" :height="300"
+                                            :options="{title:{display:true, text:'Ratelimit Hits'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                        </line-chart>
+                                    </div>
+
+                                    <div class="col justify-content-center d-flex">
+                                        <line-chart :chart-data="resttunnel.charts.misses" :height="300"
+                                            :options="{title:{display:true, text:'Ratelimit Misses'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                        </line-chart>
+                                    </div>
+
+                                    <div class="col justify-content-center d-flex">
+                                        <line-chart :chart-data="resttunnel.charts.waiting" :height="300"
+                                            :options="{title:{display:true, text:'Waiting requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                        </line-chart>
+                                    </div>
+
+                                    <div class="col justify-content-center d-flex">
+                                        <line-chart :chart-data="resttunnel.charts.requests" :height="300"
+                                            :options="{title:{display:true, text:'Total requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                        </line-chart>
+                                    </div>
+
+                                    <div class="col justify-content-center d-flex">
+                                        <line-chart :chart-data="resttunnel.charts.callbacks" :height="300"
+                                            :options="{title:{display:true, text:'Callback buffer'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                        </line-chart>
+                                    </div>
+
+                                    <div class="col justify-content-center d-flex">
+                                        <line-chart :chart-data="resttunnel.charts.average_response" :height="300"
+                                            :options="{title:{display:true, text:'Average response'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                        </line-chart>
+                                    </div>
+
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -874,6 +939,11 @@
                                         href="#daemonSettings-logging" role="tab" aria-selected="true">Logging</a>
                                 </li>
                                 <li class="nav-item" role="presentation">
+                                    <a class="nav-link" id="resttunnel-tab" data-toggle="tab"
+                                        href="#daemonSettings-resttunnel" role="tab"
+                                        aria-selected="false"><b>RestTunnel</b></a>
+                                </li>
+                                <li class="nav-item" role="presentation">
                                     <a class="nav-link" id="redis-tab" data-toggle="tab" href="#daemonSettings-redis"
                                         role="tab" aria-selected="false">Redis</a>
                                 </li>
@@ -931,6 +1001,29 @@
                                     <p class="text-muted">Number of days that a log file can exist before it is removed.
                                     </p>
                                     <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                                </div>
+                                <div class="tab-pane fade" id="daemonSettings-resttunnel" role="tabpanel"
+                                    aria-labelledby="resttunnel-tab">
+                                    <!-- RestTunnel -->
+                                    <p class="text-muted">RestTunnel is a second-party application that is used in
+                                        conjunction with Sandwich-Daemon to allow for centralised ratelimit management
+                                        for multiple systems. The Github repository can be found <a
+                                            href="https://github.com/TheRockettek/RestTunnel">here</a>.
+                                    </p>
+                                    <p class="text-muted">RestTunnel enabled: <b>{{ daemon.rest_tunnel_enabled }}</b>
+                                    </p>
+
+                                    <div class="pb-4">
+                                        <form-input v-model="daemon.configuration.resttunnel.enabled" :type=`checkbox`
+                                            :id=`restTunnelEnabled` :label="'Enabled'"></form-input>
+                                    </div>
+                                    <form-input v-model="daemon.configuration.resttunnel.url" :type=`text`
+                                        :id=`restTunnelURL` :placeholder="'http://127.0.0.1:8000'" :label="'URL'">
+                                    </form-input>
+                                    <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                                    <button type="button" class="btn btn-dark" v-on:click="verifyRestTunnel()">
+                                        Verify RestTunnel
+                                    </button>
                                 </div>
                                 <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
                                     aria-labelledby="redis-tab">

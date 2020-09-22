@@ -4,6 +4,8 @@ import (
 	"context"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -158,6 +160,25 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				}
 
 				res, err = json.Marshal(RestResponse{true, response, nil})
+			} else {
+				res, err = json.Marshal(RestResponse{false, httpInterfaceNotEnabled, nil})
+			}
+
+			if err == nil {
+				ctx.Write(res)
+				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			}
+		case "/api/resttunnel":
+			if sg.Configuration.HTTP.Enabled {
+				if sg.RestTunnelEnabled {
+					_url, _ := url.Parse(sg.Configuration.RestTunnel.URL)
+					resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/api/analytics")
+					if err == nil {
+						res, _ = ioutil.ReadAll(resp.Body)
+					} else {
+						res, err = json.Marshal(RestResponse{false, err.Error(), nil})
+					}
+				}
 			} else {
 				res, err = json.Marshal(RestResponse{false, httpInterfaceNotEnabled, nil})
 			}
@@ -528,6 +549,37 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 							daemonUpdateSettingsEvent.Managers = configuration.Managers
 							sg.ConfigurationMu.RLock()
 							err = sg.SaveConfiguration(&daemonUpdateSettingsEvent, ConfigurationPath)
+
+							// Redetect RestTunnel
+							if sg.Configuration.RestTunnel != daemonUpdateSettingsEvent.RestTunnel {
+								var restTunnelEnabled bool
+								if daemonUpdateSettingsEvent.RestTunnel.Enabled {
+									restTunnelEnabled, _ = sg.VerifyRestTunnel(daemonUpdateSettingsEvent.RestTunnel.URL)
+								} else {
+									restTunnelEnabled = false
+								}
+								if restTunnelEnabled != sg.RestTunnelEnabled {
+									sg.ManagersMu.RLock()
+									if restTunnelEnabled {
+										// RestTunnel is now enabled
+										for _, mg := range sg.Managers {
+											mg.Client.mu.Lock()
+											mg.Client.restTunnelURL = daemonUpdateSettingsEvent.RestTunnel.URL
+											mg.Client.mu.Unlock()
+										}
+									} else {
+										// RestTunnel is now disabled
+										for _, mg := range sg.Managers {
+											mg.Client.mu.Lock()
+											mg.Client.restTunnelURL = ""
+											mg.Client.mu.Unlock()
+										}
+									}
+									sg.ManagersMu.RUnlock()
+								}
+								sg.RestTunnelEnabled = restTunnelEnabled
+							}
+
 							sg.ConfigurationMu.RUnlock()
 							if err == nil {
 								daemonUpdateSettingsEvent.Managers = sg.Configuration.Managers

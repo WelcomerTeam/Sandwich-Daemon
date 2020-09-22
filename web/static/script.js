@@ -232,6 +232,25 @@ vue = new Vue({
             },
             loadingAnalytics: true,
 
+            resttunnel: {
+                charts: {
+                    hits: {},
+                    misses: {},
+                    waiting: {},
+                    requests: {},
+                    callbacks: {},
+                    average_response: {}
+                },
+                numbers: {
+                    hits: 0,
+                    misses: 0,
+                    requests: 0,
+                    waiting: 0,
+                },
+                uptime: "...",
+            },
+            loadingRestTunnel: true,
+
             createShardGroupDialogueData: {
                 cluster: "",
                 autoShard: true,
@@ -431,6 +450,7 @@ vue = new Vue({
                     if (result.data.success == false) { return }
                     if (this.error) { document.location.reload() }
 
+                    this.daemon.rest_tunnel_enabled = result.data.response.rest_tunnel_enabled;
                     clusters = Object.keys(result.data.response.managers)
                     for (mgindex in clusters) {
                         cluster_key = clusters[mgindex]
@@ -486,6 +506,20 @@ vue = new Vue({
                 })
                 .catch(error => { console.log(error); this.showToast("Exception fetching analytics", error); })
                 .finally(() => this.loadingAnalytics = false)
+            if (this.daemon.rest_tunnel_enabled) {
+                axios
+                    .get('/api/resttunnel')
+                    .then(result => {
+                        if (result.data.success == false) { return }
+                        if (this.error) { document.location.reload() }
+
+                        this.resttunnel.charts = result.data.charts;
+                        this.resttunnel.uptime = result.data.uptime;
+                        this.resttunnel.numbers = result.data.numbers;
+                    })
+                    .catch(error => { console.log(error); this.showToast("Exception fetching resttunnel", error); })
+                    .finally(() => this.loadingRestTunnel = false)
+            }
         },
         fromClusters(clusters) {
             _clusters = {}

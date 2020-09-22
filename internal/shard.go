@@ -112,7 +112,9 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 
 		errs: make(chan error),
 	}
-	sh.ctx, sh.cancel = context.WithCancel(context.Background())
+	if sh.ctx == nil || sh.cancel == nil {
+		sh.ctx, sh.cancel = context.WithCancel(context.Background())
+	}
 	atomic.StoreInt32(sh.Retries, sg.Manager.Configuration.Bot.Retries)
 	return sh
 }

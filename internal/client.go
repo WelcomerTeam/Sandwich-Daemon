@@ -16,6 +16,8 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Client represents the REST client
 type Client struct {
+	mu sync.RWMutex
+
 	Token string
 
 	HTTP    *http.Client
@@ -36,6 +38,7 @@ type Client struct {
 // NewClient makes a new client
 func NewClient(token string, restTunnelURL string) *Client {
 	return &Client{
+		mu:            sync.RWMutex{},
 		Token:         token,
 		HTTP:          http.DefaultClient,
 		APIVersion:    "6",
@@ -69,6 +72,9 @@ func (c *Client) FetchJSON(method string, url string, body io.Reader, structure 
 // HandleRequest makes a request to the Discord API
 // TODO: Buckets
 func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Response, err error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	if !retry {
 		// If we are trying the request, do not add again
 		req.URL.Path = "/api/v" + c.APIVersion + req.URL.Path

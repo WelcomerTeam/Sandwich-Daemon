@@ -90,7 +90,7 @@ type Sandwich struct {
 
 	Start time.Time `json:"uptime"`
 
-	ConfigurationMu sync.RWMutex
+	ConfigurationMu sync.RWMutex           `json:"-"`
 	Configuration   *SandwichConfiguration `json:"configuration"`
 
 	RestTunnelEnabled bool `json:"rest_tunnel_enabled"`
@@ -98,7 +98,7 @@ type Sandwich struct {
 	ManagersMu sync.RWMutex        `json:"-"`
 	Managers   map[string]*Manager `json:"managers"`
 
-	TotalEvents *int64
+	TotalEvents *int64 `json:"-"`
 
 	// Buckets will be shared between all Managers
 	Buckets *bucketstore.BucketStore `json:"-"`
@@ -312,28 +312,8 @@ func (sg *Sandwich) Open() (err error) {
 	})
 	sg.Logger.Info().Msg("Created standalone redis client")
 
-	if sg.Configuration.RestTunnel.Enabled && sg.Configuration.RestTunnel.URL != "" {
-		if _url, err := url.Parse(sg.Configuration.RestTunnel.URL); err == nil {
-			if resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/alive"); err == nil {
-				body, _ := ioutil.ReadAll(resp.Body)
-				aliveResponse := struct {
-					Version string `json:"version"`
-				}{}
-				if err := json.Unmarshal(body, &aliveResponse); err == nil {
-					sg.Logger.Info().Msgf("\\o/ Detected RestTunnel version %s", aliveResponse.Version)
-					sg.RestTunnelEnabled = true
-				} else {
-					sg.Logger.Error().Err(err).Msg("Failed to parse RestTunnel alive response")
-					sg.RestTunnelEnabled = false
-				}
-			} else {
-				sg.Logger.Error().Err(err).Msgf("Failed to connect to RestTunnel")
-				sg.RestTunnelEnabled = false
-			}
-		} else {
-			sg.Logger.Error().Err(err).Msgf("Failed to parse RestTunnel URL %s", sg.Configuration.RestTunnel.URL)
-			sg.RestTunnelEnabled = false
-		}
+	if sg.Configuration.RestTunnel.Enabled {
+		sg.RestTunnelEnabled, _ = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 	} else {
 		sg.RestTunnelEnabled = false
 	}
@@ -442,6 +422,30 @@ func (sg *Sandwich) Open() (err error) {
 	}()
 
 	return
+}
+
+// VerifyRestTunnel returns a boolean if RestTunnel can be found and is alive
+func (sg *Sandwich) VerifyRestTunnel(rturl string) (enabled bool, err error) {
+	if rturl != "" {
+		if _url, err := url.Parse(rturl); err == nil {
+			if resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/alive"); err == nil {
+				body, _ := ioutil.ReadAll(resp.Body)
+				aliveResponse := struct {
+					Version string `json:"version"`
+				}{}
+				if err := json.Unmarshal(body, &aliveResponse); err == nil {
+					sg.Logger.Info().Msgf("\\o/ Detected RestTunnel version %s", aliveResponse.Version)
+					return true, nil
+				}
+				sg.Logger.Error().Err(err).Msg("Failed to parse RestTunnel alive response")
+			} else {
+				sg.Logger.Error().Err(err).Msgf("Failed to connect to RestTunnel")
+			}
+		} else {
+			sg.Logger.Error().Err(err).Msgf("Failed to parse RestTunnel URL %s", rturl)
+		}
+	}
+	return false, err
 }
 
 // Close will gracefully close the application
