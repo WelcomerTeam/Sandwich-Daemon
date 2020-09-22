@@ -147,6 +147,14 @@ func (sh *Shard) Connect() (err error) {
 		sh.ShardGroup.IdentifyBucket[concurrencyBucket] = &sync.Mutex{}
 	}
 
+	// If the context has canceled, create new context
+	select {
+	case <-sh.ctx.Done():
+		sh.ctx, sh.cancel = context.WithCancel(context.Background())
+	default:
+	}
+
+	sh.Logger.Trace().Msg("Creating buckets")
 	sh.Manager.Buckets.CreateBucket(fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount), 120, time.Minute)
 	sh.Manager.Sandwich.Buckets.CreateBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), concurrencyBucket), 1, identifyRatelimit)
 	sh.Manager.GatewayMu.RUnlock()
@@ -174,7 +182,9 @@ func (sh *Shard) Connect() (err error) {
 	// This will limit the ammount of shards that can be connecting simultaneously
 	// Currently just uses a mutex to allow for only one per maxconcurrency
 	sh.Logger.Trace().Msg("Waiting for identify mutex")
+
 	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Lock()
+	defer sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
 
 	sh.Logger.Trace().Msg("Starting connecting")
 	sh.SetStatus(structs.ShardConnecting)
@@ -192,6 +202,7 @@ func (sh *Shard) Connect() (err error) {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
 
+	sh.Logger.Trace().Msg("Reading from WS")
 	err = sh.readMessage(sh.ctx, sh.wsConn)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to read message")
@@ -240,7 +251,6 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	sh.Logger.Trace().Msg("Finished connecting")
-	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
 
 	// err = sh.readMessage(sh.ctx, sh.wsConn)
 	// if err != nil {
