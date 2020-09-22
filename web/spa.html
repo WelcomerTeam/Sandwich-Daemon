@@ -311,37 +311,37 @@
 
                                     <div class="col justify-content-center d-flex">
                                         <line-chart :chart-data="resttunnel.charts.hits" :height="300"
-                                            :options="{title:{display:true, text:'Ratelimit Hits'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            :options="{title:{display:true, text:'Ratelimit Hits'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
                                         </line-chart>
                                     </div>
 
                                     <div class="col justify-content-center d-flex">
                                         <line-chart :chart-data="resttunnel.charts.misses" :height="300"
-                                            :options="{title:{display:true, text:'Ratelimit Misses'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            :options="{title:{display:true, text:'Ratelimit Misses'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
                                         </line-chart>
                                     </div>
 
                                     <div class="col justify-content-center d-flex">
                                         <line-chart :chart-data="resttunnel.charts.waiting" :height="300"
-                                            :options="{title:{display:true, text:'Waiting requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            :options="{title:{display:true, text:'Waiting requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
                                         </line-chart>
                                     </div>
 
                                     <div class="col justify-content-center d-flex">
                                         <line-chart :chart-data="resttunnel.charts.requests" :height="300"
-                                            :options="{title:{display:true, text:'Total requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            :options="{title:{display:true, text:'Total requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
                                         </line-chart>
                                     </div>
 
                                     <div class="col justify-content-center d-flex">
                                         <line-chart :chart-data="resttunnel.charts.callbacks" :height="300"
-                                            :options="{title:{display:true, text:'Callback buffer'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            :options="{title:{display:true, text:'Callback buffer'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
                                         </line-chart>
                                     </div>
 
                                     <div class="col justify-content-center d-flex">
                                         <line-chart :chart-data="resttunnel.charts.average_response" :height="300"
-                                            :options="{title:{display:true, text:'Average response'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            :options="{title:{display:true, text:'Average response'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{beginAtZero: true}}],xAxes:[{type:'time'}]}, animation:{duration:0},tooltips: {callbacks: {label: function(tooltipItems, data) {return data.datasets[tooltipItems.datasetIndex].label +': ' + tooltipItems.yLabel + 'ms';}}}}">
                                         </line-chart>
                                     </div>
 

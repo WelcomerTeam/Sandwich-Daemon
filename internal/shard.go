@@ -251,18 +251,6 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	sh.Logger.Trace().Msg("Finished connecting")
-
-	// err = sh.readMessage(sh.ctx, sh.wsConn)
-	// if err != nil {
-	// 	return
-	// }
-
-	// err = sh.OnEvent(sh.msg)
-	// if err != nil {
-	// 	sh.Logger.Error().Err(err).Msg("Error whilst handling event")
-	// }
-
-	// atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
 	return
 }
 
@@ -566,6 +554,7 @@ func (sh *Shard) Listen() (err error) {
 				if err != nil {
 					return err
 				}
+				return
 			}
 			wsConn = sh.wsConn
 		}

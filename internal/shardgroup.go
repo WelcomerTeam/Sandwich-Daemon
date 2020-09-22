@@ -94,10 +94,16 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		sg.Shards[shardID] = shard
 	}
 
-	for _, shardID := range sg.ShardIDs {
+	for index, shardID := range sg.ShardIDs {
 		shard := sg.Shards[shardID]
 		for {
 			err = shard.Connect()
+			if index == 0 && err == nil {
+				err = shard.readMessage(shard.ctx, shard.wsConn)
+				if err == nil {
+					err = shard.OnEvent(shard.msg)
+				}
+			}
 			if err != nil && !xerrors.Is(err, context.Canceled) {
 				retries := atomic.LoadInt32(shard.Retries)
 				if retries > 0 {
