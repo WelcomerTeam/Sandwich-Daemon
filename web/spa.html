@@ -1,6 +1,10 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
+    <meta charset=UTF-8>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <script src="/static/vue.prod.js"></script>
     <script src="/static/axios.min.js"></script>
     <link rel="stylesheet" href="/static/bootstrap.min.css">
@@ -121,44 +125,51 @@
                                 </button>
                             </div>
                             <div class="modal-body">
-                                <div class="mb-3">
-                                    <label class="col-sm-12 form-label">Identifier <span
+                                <form>
+                                    <div class="mb-3">
+                                        <label class="col-sm-12 form-label">Identifier <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" class="form-control"
+                                            v-model="createManagerDialogueData.identifier"
+                                            placeholder="Enter unique identifiable name for manager">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="col-sm-12 form-label">Token <span
+                                                class="text-danger">*</span></label>
+                                        <input class="form-control" type="password"
+                                            v-model="createManagerDialogueData.token" placeholder="Enter bot token">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="col-sm-12 form-label">Redis Prefix</label>
+                                        <input class="form-control" type="text"
+                                            v-model="createManagerDialogueData.prefix"
+                                            :placeholder="'eg: ' + createManagerDialogueData.identifier">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="col-sm-12 form-label">NATs Client Name <span
+                                                class="text-danger">*</span></label>
+                                        <input class="form-control" type="text"
+                                            v-model="createManagerDialogueData.client"
+                                            :placeholder="'eg: ' + createManagerDialogueData.identifier">
+                                    </div>
+                                    <div class="mb-3">
+
+                                        <label class="col-sm-12 form-label">NATs Channel Name</label>
+                                        <input class="form-control" type="text"
+                                            v-model="createManagerDialogueData.channel"
+                                            :placeholder="'Defaults to ' + daemon.configuration.nats.channel">
+                                    </div>
+
+                                    <input class="form-check-input" type="checkbox"
+                                        v-model="createManagerDialogueData.persist">
+                                    <label class="form-check-label mb-2">Persist <span
                                             class="text-danger">*</span></label>
-                                    <input type="text" class="form-control"
-                                        v-model="createManagerDialogueData.identifier"
-                                        placeholder="Enter unique identifiable name for manager">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="col-sm-12 form-label">Token <span class="text-danger">*</span></label>
-                                    <input class="form-control" type="password"
-                                        v-model="createManagerDialogueData.token" placeholder="Enter bot token">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="col-sm-12 form-label">Redis Prefix</label>
-                                    <input class="form-control" type="text" v-model="createManagerDialogueData.prefix"
-                                        :placeholder="'eg: ' + createManagerDialogueData.identifier">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="col-sm-12 form-label">NATs Client Name <span
-                                            class="text-danger">*</span></label>
-                                    <input class="form-control" type="text" v-model="createManagerDialogueData.client"
-                                        :placeholder="'eg: ' + createManagerDialogueData.identifier">
-                                </div>
-                                <div class="mb-3">
-
-                                    <label class="col-sm-12 form-label">NATs Channel Name</label>
-                                    <input class="form-control" type="text" v-model="createManagerDialogueData.channel"
-                                        :placeholder="'Defaults to ' + daemon.configuration.nats.channel">
-                                </div>
-
-                                <input class="form-check-input" type="checkbox"
-                                    v-model="createManagerDialogueData.persist">
-                                <label class="form-check-label mb-2">Persist <span class="text-danger">*</span></label>
-                                <p class="text-muted">When enabled, changes
-                                    to Manager will be saved to the configuration. Uncheck if you do not want to save
-                                    the
-                                    manager.</p>
-
+                                    <p class="text-muted">When enabled, changes
+                                        to Manager will be saved to the configuration. Uncheck if you do not want to
+                                        save
+                                        the
+                                        manager.</p>
+                                </form>
                                 <p class="text-danger">* Required</p>
                             </div>
                             <div class="modal-footer">
