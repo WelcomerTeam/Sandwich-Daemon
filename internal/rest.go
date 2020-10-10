@@ -75,10 +75,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	} else {
 		switch path {
 		case "/":
-			b, _ := ioutil.ReadFile("web/spa.html")
-			ctx.Response.Header.Set("content-type", "text/html;charset=UTF-8")
-			ctx.Write(b)
-
+			ctx.SendFile("web/spa.html")
 			ctx.SetStatusCode(200)
 
 		case "/api/configuration":
@@ -92,6 +89,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 			}
+
 		case "/api/cluster":
 			if sg.Configuration.HTTP.Enabled {
 				clusterData := make(map[string]map[int32]*ShardGroup)
@@ -107,6 +105,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 			}
+
 		case "/api/analytics":
 			if sg.Configuration.HTTP.Enabled {
 
@@ -168,6 +167,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 			}
+
 		case "/api/resttunnel":
 			if sg.Configuration.HTTP.Enabled {
 				if sg.RestTunnelEnabled {
@@ -187,6 +187,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
 			}
+
 		case "/api/rpc":
 			rpcMessage := RPCRequest{}
 			err = json.Unmarshal(ctx.PostBody(), &rpcMessage)
@@ -607,6 +608,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 			ctx.Write(res)
 			ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+
 		default:
 			ctx.SetStatusCode(404)
 		}
