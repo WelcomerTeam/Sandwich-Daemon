@@ -513,7 +513,7 @@
                                                             </div>
 
                                                             <div
-                                                                v-if="shardgroup.status == 2 && (shardgroup.shard_count > cluster.gateway.shards * 4)">
+                                                                v-if="shardgroup.shard_count > (cluster.gateway.shards * 4)">
                                                                 <div class="p-3 mb-2 bg-info text-white">You are
                                                                     launching this shardgroup with an unnecessarily
                                                                     large number of shards. This may cause the
