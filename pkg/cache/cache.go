@@ -13,7 +13,7 @@ type Cache struct {
 
 	ttl time.Duration
 
-	// New optionally specifices a function to retrieve a new value when Get
+	// New specifies a function to retrieve a new value when Get
 	// would otherwise return nil.
 	New func(key int64) interface{}
 }

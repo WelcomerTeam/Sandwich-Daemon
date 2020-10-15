@@ -16,6 +16,9 @@ func main() {
 	flag.Parse()
 
 	level, err := zerolog.ParseLevel(*lFlag)
+	if err != nil {
+		level = zerolog.InfoLevel
+	}
 
 	logger := zerolog.ConsoleWriter{
 		Out:        os.Stdout,

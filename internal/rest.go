@@ -124,7 +124,8 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 					var guildCount int64
 
-					if guildCount, ok := guilds[mg.Configuration.Caching.RedisPrefix]; !ok {
+					guildCount, ok := guilds[mg.Configuration.Caching.RedisPrefix]
+					if !ok {
 						guildCount, err = sg.RedisClient.HLen(context.Background(), mg.CreateKey("guilds")).Result()
 						guilds[mg.Configuration.Caching.RedisPrefix] = guildCount
 						if err != nil {
@@ -606,8 +607,12 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid RPC Payload").Error(), ""})
 			}
 
-			ctx.Write(res)
-			ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			if err != nil {
+				ctx.Write(res)
+				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
+			} else {
+				ctx.Error(err.Error(), http.StatusInternalServerError)
+			}
 
 		default:
 			ctx.SetStatusCode(404)

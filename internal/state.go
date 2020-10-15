@@ -54,7 +54,7 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	// 	emojis map[snowflake.ID]*structs.Emoji,
 	// 	channels map[snowflake.ID]*structs.Channel)
 
-	// Im sorry for commiting war crimes
+	// Im sorry for committing war crimes
 	sg.ID = guild.ID
 	sg.Name = guild.Name
 	sg.Icon = guild.Icon

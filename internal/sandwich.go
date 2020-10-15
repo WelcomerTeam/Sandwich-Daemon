@@ -377,7 +377,6 @@ func (sg *Sandwich) Open() (err error) {
 		var events int64
 		var managerEvents int64
 		t := time.NewTicker(time.Second * 1)
-		events = int64(0)
 		for {
 			<-t.C
 			events = 0

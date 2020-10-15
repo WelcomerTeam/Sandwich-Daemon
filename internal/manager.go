@@ -80,7 +80,7 @@ type ManagerConfiguration struct {
 		// should use by default.
 		ChannelName string `json:"channel_name" yaml:"channel_name" msgpack:"channel_name"`
 		// UseRandomSuffix will append numbers to the end of the client name in order to
-		// reduce likelyhood of clashing cluster IDs.
+		// reduce likelihood of clashing cluster IDs.
 		UseRandomSuffix bool `json:"use_random_suffix" yaml:"use_random_suffix" msgpack:"use_random_suffix"`
 	} `json:"messaging" msgpack:"messaging"`
 
@@ -126,7 +126,7 @@ type Manager struct {
 	// shard groups at once. This is used during rolling restarts where we would have
 	// a shard group of 160 and 176 active at the same time. Once the 176 shardgroup
 	// has finished ready, the other shard group will stop. 176 will not relay messages
-	// until it has removed the old shardgroup to reduce likelyhood of duplicate messages.
+	// until it has removed the old shardgroup to reduce likelihood of duplicate messages.
 	// These messages will just be completely ignored as if it was in the EventBlacklist
 	ShardGroups       map[int32]*ShardGroup `json:"shard_groups"`
 	ShardGroupMu      sync.Mutex            `json:"-"`
