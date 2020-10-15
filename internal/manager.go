@@ -24,7 +24,7 @@ type void struct{}
 
 // ManagerConfiguration represents the configuration for the manager
 type ManagerConfiguration struct {
-	AutoStart bool `json:"auto_start" yaml:"auto_start" msgpack:"auto_start"` // Boolean to statt the Manager when the daemon starts
+	AutoStart bool `json:"auto_start" yaml:"auto_start" msgpack:"auto_start"` // Boolean to start the Manager when the daemon starts
 	Persist   bool `json:"persist" msgpack:"persist"`                         // Boolean to dictate if configuration should be saved
 
 	Identifier  string `json:"identifier" msgpack:"identifier"`
@@ -294,7 +294,7 @@ func (mg *Manager) Open() (err error) {
 	return
 }
 
-// GatherShardCount returns the expected shardcount using the gateay object stored
+// GatherShardCount returns the expected shardcount using the gateway object stored
 func (mg *Manager) GatherShardCount() (shardCount int) {
 	mg.Sandwich.ConfigurationMu.RLock()
 	defer mg.Sandwich.ConfigurationMu.RUnlock()
@@ -328,7 +328,7 @@ func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan
 	return
 }
 
-// PublishEvent sends an event to consaumers
+// PublishEvent sends an event to consumers
 func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
 	packet := mg.pp.Get().(*structs.PublishEvent)
 	defer mg.pp.Put(packet)

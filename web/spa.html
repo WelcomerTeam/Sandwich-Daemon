@@ -18,922 +18,986 @@
 
 <body>
     <div id="app">
-        <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
-            <div class="container-fluid">
-                <a class="navbar-brand">Sandwich
-                    Daemon</a>
-                <button class="navbar-toggler" type="button" data-toggle="collapse"
-                    data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
-                    aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav mr-auto">
-                        <li class="nav-item">
-                            <a class="nav-link" aria-current="page"
-                                href="https://github.com/TheRockettek/Sandwich-Daemon">GitHub</a>
-                        </li>
-                        <span class="nav-link text-muted">Version 🥪</a>
-                    </ul>
+        <div v-cloak>
+            <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+                <div class="container-fluid">
+                    <a class="navbar-brand">Sandwich
+                        Daemon</a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse"
+                        data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                        <ul class="navbar-nav mr-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" aria-current="page"
+                                    href="https://github.com/TheRockettek/Sandwich-Daemon">GitHub</a>
+                            </li>
+                            <span class="nav-link text-muted">Version 🥪</a>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-        </nav>
-        <div class="container-xl p-3">
+            </nav>
+            <div class="container-xl p-3">
 
-            <div v-if="!this.loading && !this.error">
-                <!-- Create ShardGroup Dialogue -->
-                <div class="modal fade" id="createShardGroupDialogue" tabindex="-1"
-                    aria-labelledby="createShardGroupDialogueLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="createShardGroupDialogueLabel">New ShardGroup for
-                                    {{ createShardGroupDialogueData.cluster }}</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label class="col-sm-12 form-label">Shard Count</label>
-                                    <input class="form-check-input" type="checkbox"
-                                        v-model="createShardGroupDialogueData.autoShard">
-                                    <label class="form-check-label mb-2">Auto Determine</label>
-                                    <input type="number" class="form-control"
-                                        v-model="createShardGroupDialogueData.shardCount"
-                                        :disabled="createShardGroupDialogueData.autoShard">
+                <div v-if="!this.loading && !this.error">
+                    <!-- Create ShardGroup Dialogue -->
+                    <div class="modal fade" id="createShardGroupDialogue" tabindex="-1"
+                        aria-labelledby="createShardGroupDialogueLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="createShardGroupDialogueLabel">New ShardGroup for
+                                        {{ createShardGroupDialogueData.cluster }}</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="col-sm-12 form-label">Shard IDs</label>
-                                    <input class="form-check-input" type="checkbox"
-                                        v-model="createShardGroupDialogueData.autoIDs">
-                                    <label class="form-check-label mb-2">Auto Determine</label>
-                                    <input type="text" class="form-control"
-                                        v-model="createShardGroupDialogueData.shardIDs"
-                                        :disabled="createShardGroupDialogueData.autoIDs"
-                                        placeholder="from-to,from-to,from-to">
-                                </div>
-                                <!-- <div class="form-check mt-5">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="col-sm-12 form-label">Shard Count</label>
+                                        <input class="form-check-input" type="checkbox"
+                                            v-model="createShardGroupDialogueData.autoShard">
+                                        <label class="form-check-label mb-2">Auto Determine</label>
+                                        <input type="number" class="form-control"
+                                            v-model="createShardGroupDialogueData.shardCount"
+                                            :disabled="createShardGroupDialogueData.autoShard">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="col-sm-12 form-label">Shard IDs</label>
+                                        <input class="form-check-input" type="checkbox"
+                                            v-model="createShardGroupDialogueData.autoIDs">
+                                        <label class="form-check-label mb-2">Auto Determine</label>
+                                        <input type="text" class="form-control"
+                                            v-model="createShardGroupDialogueData.shardIDs"
+                                            :disabled="createShardGroupDialogueData.autoIDs"
+                                            placeholder="from-to,from-to,from-to">
+                                    </div>
+                                    <!-- <div class="form-check mt-5">
                             <input class="form-check-input" type="checkbox"
                                 v-model="createShardGroupDialogueData.startImmediately">
                             <label class="form-check-label">Start ShardGroup Immediately</label>
                         </div> -->
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-success" v-on:click="createShardGroup()">Create
-                                    ShardGroup</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Stop Shardgroup Dialogue -->
-                <div class="modal fade" id="stopShardGroupDialogue" tabindex="-1"
-                    aria-labelledby="stopShardGroupDialogueLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="stopShardGroupDialogueLabel">Stop ShardGroup
-                                    {{ stopShardGroupDialogueData.shardgroup }} for
-                                    {{ stopShardGroupDialogueData.cluster }}</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <div class="modal-body">
-                                <span>Are you sure you want to kill this shardgroup?</span>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-danger" v-on:click="stopShardGroup()">Stop
-                                    ShardGroup</button>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-success" v-on:click="createShardGroup()">Create
+                                        ShardGroup</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Create Manager Dialogue -->
-                <div class="modal fade" id="createManagerDialogue" tabindex="-1"
-                    aria-labelledby="createManagerDialogueLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="createManagerDialogueLabel">New Manager</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
+                    <!-- Stop Shardgroup Dialogue -->
+                    <div class="modal fade" id="stopShardGroupDialogue" tabindex="-1"
+                        aria-labelledby="stopShardGroupDialogueLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="stopShardGroupDialogueLabel">Stop ShardGroup
+                                        {{ stopShardGroupDialogueData.shardgroup }} for
+                                        {{ stopShardGroupDialogueData.cluster }}</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <span>Are you sure you want to kill this shard group?</span>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-danger" v-on:click="stopShardGroup()">Stop
+                                        ShardGroup</button>
+                                </div>
                             </div>
-                            <div class="modal-body">
-                                <form>
-                                    <div class="mb-3">
-                                        <label class="col-sm-12 form-label">Identifier <span
+                        </div>
+                    </div>
+
+                    <!-- Create Manager Dialogue -->
+                    <div class="modal fade" id="createManagerDialogue" tabindex="-1"
+                        aria-labelledby="createManagerDialogueLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="createManagerDialogueLabel">New Manager</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form>
+                                        <div class="mb-3">
+                                            <label class="col-sm-12 form-label">Identifier <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="text" class="form-control"
+                                                v-model="createManagerDialogueData.identifier"
+                                                placeholder="Enter unique identifiable name for manager">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="col-sm-12 form-label">Token <span
+                                                    class="text-danger">*</span></label>
+                                            <input class="form-control" type="password"
+                                                v-model="createManagerDialogueData.token" placeholder="Enter bot token">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="col-sm-12 form-label">Redis Prefix</label>
+                                            <input class="form-control" type="text"
+                                                v-model="createManagerDialogueData.prefix"
+                                                :placeholder="'eg: ' + createManagerDialogueData.identifier">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="col-sm-12 form-label">NATs Client Name <span
+                                                    class="text-danger">*</span></label>
+                                            <input class="form-control" type="text"
+                                                v-model="createManagerDialogueData.client"
+                                                :placeholder="'eg: ' + createManagerDialogueData.identifier">
+                                        </div>
+                                        <div class="mb-3">
+
+                                            <label class="col-sm-12 form-label">NATs Channel Name</label>
+                                            <input class="form-control" type="text"
+                                                v-model="createManagerDialogueData.channel"
+                                                :placeholder="'Defaults to ' + daemon.configuration.nats.channel">
+                                        </div>
+
+                                        <input class="form-check-input" type="checkbox"
+                                            v-model="createManagerDialogueData.persist">
+                                        <label class="form-check-label mb-2">Persist <span
                                                 class="text-danger">*</span></label>
-                                        <input type="text" class="form-control"
-                                            v-model="createManagerDialogueData.identifier"
-                                            placeholder="Enter unique identifiable name for manager">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="col-sm-12 form-label">Token <span
-                                                class="text-danger">*</span></label>
-                                        <input class="form-control" type="password"
-                                            v-model="createManagerDialogueData.token" placeholder="Enter bot token">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="col-sm-12 form-label">Redis Prefix</label>
-                                        <input class="form-control" type="text"
-                                            v-model="createManagerDialogueData.prefix"
-                                            :placeholder="'eg: ' + createManagerDialogueData.identifier">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="col-sm-12 form-label">NATs Client Name <span
-                                                class="text-danger">*</span></label>
-                                        <input class="form-control" type="text"
-                                            v-model="createManagerDialogueData.client"
-                                            :placeholder="'eg: ' + createManagerDialogueData.identifier">
-                                    </div>
-                                    <div class="mb-3">
-
-                                        <label class="col-sm-12 form-label">NATs Channel Name</label>
-                                        <input class="form-control" type="text"
-                                            v-model="createManagerDialogueData.channel"
-                                            :placeholder="'Defaults to ' + daemon.configuration.nats.channel">
-                                    </div>
-
-                                    <input class="form-check-input" type="checkbox"
-                                        v-model="createManagerDialogueData.persist">
-                                    <label class="form-check-label mb-2">Persist <span
-                                            class="text-danger">*</span></label>
-                                    <p class="text-muted">When enabled, changes
-                                        to Manager will be saved to the configuration. Uncheck if you do not want to
-                                        save
-                                        the
-                                        manager.</p>
-                                </form>
-                                <p class="text-danger">* Required</p>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-success" v-on:click="createManager()">Create
-                                    Manager</button>
+                                        <p class="text-muted">When enabled, changes
+                                            to Manager will be saved to the configuration. Un-check if you do not want
+                                            to save the manager.</p>
+                                    </form>
+                                    <p class="text-danger">* Required</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-success" v-on:click="createManager()">Create
+                                        Manager</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Delete Manager Dialogue -->
-                <div class="modal fade" id="deleteManagerDialogue" tabindex="-1"
-                    aria-labelledby="deleteManagerDialogueLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="deleteManagerDialogueLabel">Delete Manager
-                                    {{ deleteManagerDialogueData.cluster }}?</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <div class="modal-body">
-                                <label class="form-check-label mb-2">Confirm deleting cluster by typing its name</label>
-                                <input type="text" class="form-control" v-model="deleteManagerDialogueData.confirm"
-                                    :placeholder="'Type: \'' + deleteManagerDialogueData.cluster + '\''">
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-danger" v-on:click="deleteManager()">Delete
-                                    Manager</button>
+                    <!-- Delete Manager Dialogue -->
+                    <div class="modal fade" id="deleteManagerDialogue" tabindex="-1"
+                        aria-labelledby="deleteManagerDialogueLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteManagerDialogueLabel">Delete Manager
+                                        {{ deleteManagerDialogueData.cluster }}?</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <label class="form-check-label mb-2">Confirm deleting cluster by typing
+                                        <b>{{ deleteManagerDialogueData.cluster }}</b></label>
+                                    <input type="text" class="form-control" v-model="deleteManagerDialogueData.confirm"
+                                        :placeholder="'Type: \'' + deleteManagerDialogueData.cluster + '\''">
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-danger" v-on:click="deleteManager()">Delete
+                                        Manager</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Restart Manager Dialogue -->
-                <div class="modal fade" id="restartManagerDialogue" tabindex="-1"
-                    aria-labelledby="restartManagerDialogueLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="restartManagerDialogueLabel">Restart Manager
-                                    {{ restartManagerDialogueData.cluster }}?</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <div class="modal-body">
-                                <label class="form-check-label mb-2">Confirm restarting cluster by typing its name. This
-                                    will stop any currently running shardgroups</label>
-                                <input type="text" class="form-control" v-model="restartManagerDialogueData.confirm"
-                                    :placeholder="'Type: \'' + restartManagerDialogueData.cluster + '\''">
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-info" v-on:click="restartManager()">Restart
-                                    Manager</button>
+                    <!-- Restart Manager Dialogue -->
+                    <div class="modal fade" id="restartManagerDialogue" tabindex="-1"
+                        aria-labelledby="restartManagerDialogueLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="restartManagerDialogueLabel">Restart Manager
+                                        {{ restartManagerDialogueData.cluster }}?</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <label class="form-check-label mb-2">Confirm restarting cluster by typing its name.
+                                        This
+                                        will stop any currently running shardgroups</label>
+                                    <input type="text" class="form-control" v-model="restartManagerDialogueData.confirm"
+                                        :placeholder="'Type: \'' + restartManagerDialogueData.cluster + '\''">
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-info" v-on:click="restartManager()">Restart
+                                        Manager</button>
+                                </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
 
-            </div>
-
-            <!-- App -->
-            <div v-if="this.loading">
-                <div class="d-flex justify-content-center">
-                    <div class="spinner-border text-dark" role="status">
-                        <span class="sr-only">Loading...</span>
+                <!-- App -->
+                <div v-if="this.loading">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-dark" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div v-else-if="this.error">
-                <div class="alert alert-danger" role="alert">
-                    <h4 class="alert-heading">An error occured:</h4>
-                    <hr>
-                    <p class="mb-0">{{ daemon }}</p>
+                <div v-else-if="this.error">
+                    <div class="alert alert-danger" role="alert">
+                        <h4 class="alert-heading">An error occurred:</h4>
+                        <hr>
+                        <p class="mb-0">{{ daemon }}</p>
+                    </div>
                 </div>
-            </div>
-            <div v-else>
-                <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link active" id="pills-home-tab" data-toggle="pill" href="#pills-home" role="tab"
-                            aria-controls="pills-home" aria-selected="true">Analytics</a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="pills-clusters-tab" data-toggle="pill" href="#pills-clusters" role="tab"
-                            aria-controls="pills-clusters" aria-selected="false">Managers</a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="pills-settings-tab bg-dark" data-toggle="pill" href="#pills-settings"
-                            role="tab" aria-controls="pills-settings" aria-selected="false">Daemon Settings</a>
-                    </li>
-                </ul>
-                <div class="tab-content" id="pills-tabContent">
-                    <div class="tab-pane fade show active" id="pills-home" role="tabpanel"
-                        aria-labelledby="pills-home-tab">
-                        <div class="m-5">
-                            <h3 class="text-center text-dark">Sandwich Daemon</h3>
-                            <div
-                                class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
-                                <card-display :title="'Guilds'" :value="analytics.guilds" :bg=`bg-dark`>
-                                </card-display>
-                                <card-display :title="'Online'" :value="analytics.online" :bg="analytics.colour">
-                                </card-display>
-                                <card-display :title="'Uptime'" :value="analytics.uptime" :bg=`bg-dark`></card-display>
-                                <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
-                                </card-display>
+                <div v-else>
+                    <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="pills-home-tab" data-toggle="pill" href="#pills-home"
+                                role="tab" aria-controls="pills-home" aria-selected="true">Analytics</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="pills-clusters-tab" data-toggle="pill" href="#pills-clusters"
+                                role="tab" aria-controls="pills-clusters" aria-selected="false">Managers</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="pills-settings-tab bg-dark" data-toggle="pill"
+                                href="#pills-settings" role="tab" aria-controls="pills-settings"
+                                aria-selected="false">Daemon Settings</a>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="pills-tabContent">
+                        <div class="tab-pane fade show active" id="pills-home" role="tabpanel"
+                            aria-labelledby="pills-home-tab">
+                            <div class="m-5">
+                                <h3 class="text-center text-dark">Sandwich Daemon</h3>
+                                <div
+                                    class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
+                                    <card-display :title="'Guilds'" :value="analytics.guilds" :bg=`bg-dark`>
+                                    </card-display>
+                                    <card-display :title="'Online'" :value="analytics.online" :bg="analytics.colour">
+                                    </card-display>
+                                    <card-display :title="'Uptime'" :value="analytics.uptime" :bg=`bg-dark`>
+                                    </card-display>
+                                    <card-display :title="'Events Processed'" :value="analytics.events" :bg=`bg-dark`>
+                                    </card-display>
+                                </div>
+                                <div v-if="this.loadingAnalytics">
+                                    <div class="d-flex justify-content-center">
+                                        <div class="spinner-border text-dark" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else>
+                                    <line-chart :chart-data="analytics.chart" :height="150"
+                                        :options="{title:{display:true, text:'Events'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                    </line-chart>
+                                </div>
                             </div>
-                            <div v-if="this.loadingAnalytics">
-                                <div class="d-flex justify-content-center">
+
+                            <div v-if="daemon.rest_tunnel_enabled" class="m-5">
+                                <div v-if="this.loadingRestTunnel" class="d-flex justify-content-center">
                                     <div class="spinner-border text-dark" role="status">
                                         <span class="sr-only">Loading...</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div v-else>
-                                <line-chart :chart-data="analytics.chart" :height="150"
-                                    :options="{title:{display:true, text:'Events'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events'}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
-                                </line-chart>
-                            </div>
-                        </div>
-
-                        <div v-if="daemon.rest_tunnel_enabled" class="m-5">
-                            <div v-if="this.loadingRestTunnel" class="d-flex justify-content-center">
-                                <div class="spinner-border text-dark" role="status">
-                                    <span class="sr-only">Loading...</span>
-                                </div>
-                            </div>
-                            <div v-else>
-                                <h3 class="text-center text-dark">RestTunnel</h3>
-                                <div
-                                    class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
-                                    <card-display :title="'Requests Processed'" :value="resttunnel.numbers.requests"
-                                        :bg=`bg-dark`>
-                                    </card-display>
-                                    <card-display :title="'Hits'" :value="resttunnel.numbers.hits" :bg=`bg-dark`>
-                                    </card-display>
-                                    <card-display :title="'Misses'" :value="resttunnel.numbers.misses" :bg=`bg-dark`>
-                                    </card-display>
-                                    <card-display :title="'Uptime'" :value="resttunnel.uptime" :bg=`bg-dark`>
-                                    </card-display>
-                                    <card-display :title="'Waiting'" :value="resttunnel.numbers.waiting" :bg=`bg-dark`>
-                                    </card-display>
-                                </div>
-                                <div
-                                    class="row row-cols-2 row-cols-sm-1 row-cols-md-2 row-cols-xl-3 g-4 justify-content-center">
-
-                                    <div class="col justify-content-center d-flex">
-                                        <line-chart :chart-data="resttunnel.charts.hits" :height="300"
-                                            :options="{title:{display:true, text:'Ratelimit Hits'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
-                                        </line-chart>
+                                <div v-else>
+                                    <h3 class="text-center text-dark">RestTunnel</h3>
+                                    <div
+                                        class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center">
+                                        <card-display :title="'Requests Processed'" :value="resttunnel.numbers.requests"
+                                            :bg=`bg-dark`>
+                                        </card-display>
+                                        <card-display :title="'Hits'" :value="resttunnel.numbers.hits" :bg=`bg-dark`>
+                                        </card-display>
+                                        <card-display :title="'Misses'" :value="resttunnel.numbers.misses"
+                                            :bg=`bg-dark`>
+                                        </card-display>
+                                        <card-display :title="'Uptime'" :value="resttunnel.uptime" :bg=`bg-dark`>
+                                        </card-display>
+                                        <card-display :title="'Waiting'" :value="resttunnel.numbers.waiting"
+                                            :bg=`bg-dark`>
+                                        </card-display>
                                     </div>
+                                    <div
+                                        class="row row-cols-2 row-cols-sm-1 row-cols-md-2 row-cols-xl-3 g-4 justify-content-center">
 
-                                    <div class="col justify-content-center d-flex">
-                                        <line-chart :chart-data="resttunnel.charts.misses" :height="300"
-                                            :options="{title:{display:true, text:'Ratelimit Misses'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
-                                        </line-chart>
+                                        <div class="col justify-content-center d-flex">
+                                            <line-chart :chart-data="resttunnel.charts.hits" :height="300"
+                                                :options="{title:{display:true, text:'Ratelimit Hits'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            </line-chart>
+                                        </div>
+
+                                        <div class="col justify-content-center d-flex">
+                                            <line-chart :chart-data="resttunnel.charts.misses" :height="300"
+                                                :options="{title:{display:true, text:'Ratelimit Misses'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            </line-chart>
+                                        </div>
+
+                                        <div class="col justify-content-center d-flex">
+                                            <line-chart :chart-data="resttunnel.charts.waiting" :height="300"
+                                                :options="{title:{display:true, text:'Waiting requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            </line-chart>
+                                        </div>
+
+                                        <div class="col justify-content-center d-flex">
+                                            <line-chart :chart-data="resttunnel.charts.requests" :height="300"
+                                                :options="{title:{display:true, text:'Total requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            </line-chart>
+                                        </div>
+
+                                        <div class="col justify-content-center d-flex">
+                                            <line-chart :chart-data="resttunnel.charts.callbacks" :height="300"
+                                                :options="{title:{display:true, text:'Callback buffer'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
+                                            </line-chart>
+                                        </div>
+
+                                        <div class="col justify-content-center d-flex">
+                                            <line-chart :chart-data="resttunnel.charts.average_response" :height="300"
+                                                :options="{title:{display:true, text:'Average response'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{beginAtZero: true}}],xAxes:[{type:'time'}]}, animation:{duration:0},tooltips: {callbacks: {label: function(tooltipItems, data) {return data.datasets[tooltipItems.datasetIndex].label +': ' + tooltipItems.yLabel + 'ms';}}}}">
+                                            </line-chart>
+                                        </div>
+
                                     </div>
-
-                                    <div class="col justify-content-center d-flex">
-                                        <line-chart :chart-data="resttunnel.charts.waiting" :height="300"
-                                            :options="{title:{display:true, text:'Waiting requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
-                                        </line-chart>
-                                    </div>
-
-                                    <div class="col justify-content-center d-flex">
-                                        <line-chart :chart-data="resttunnel.charts.requests" :height="300"
-                                            :options="{title:{display:true, text:'Total requests'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
-                                        </line-chart>
-                                    </div>
-
-                                    <div class="col justify-content-center d-flex">
-                                        <line-chart :chart-data="resttunnel.charts.callbacks" :height="300"
-                                            :options="{title:{display:true, text:'Callback buffer'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{fixedStepSize:1}}],xAxes:[{type:'time'}]}, animation:{duration:0}}">
-                                        </line-chart>
-                                    </div>
-
-                                    <div class="col justify-content-center d-flex">
-                                        <line-chart :chart-data="resttunnel.charts.average_response" :height="300"
-                                            :options="{title:{display:true, text:'Average response'}, elements: {point:{radius: 0}, line:{tension:0.2,borderJoinStyle:'round'}},scales: {yAxes:[{display:true, labelString:'events',ticks:{beginAtZero: true}}],xAxes:[{type:'time'}]}, animation:{duration:0},tooltips: {callbacks: {label: function(tooltipItems, data) {return data.datasets[tooltipItems.datasetIndex].label +': ' + tooltipItems.yLabel + 'ms';}}}}">
-                                        </line-chart>
-                                    </div>
-
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="tab-pane fade" id="pills-clusters" role="tabpanel" aria-labelledby="pills-clusters-tab">
-                        <button type="button" class="btn btn-dark" v-on:click="createManagerDialogue()">
-                            Create Manager
-                        </button>
-                        <div v-for="cluster in this.fromClusters(daemon.managers)">
-                            <div class="accordion my-4" :id="'cluster-' + cluster.configuration.identifier">
-                                <div class="card">
-                                    <div class="card-header" :id="'header-cluster-' + cluster.configuration.identifier">
-                                        <h2 class="mb-0">
-                                            <button
-                                                class="btn btn-link btn-block text-left text-decoration-none text-dark"
-                                                type="button" data-toggle="collapse"
-                                                :data-target="'#collapse-cluster-' + cluster.configuration.identifier"
-                                                aria-expanded="true"
-                                                :aria-controls="'collapse-cluster-' + cluster.configuration.identifier">
-                                                <span
-                                                    :class="'badge bg-' + colourCluster[cluster.status] || 'default'">{{ statusGroup[cluster.status] }}</span>
-                                                <span>{{ cluster.configuration.display_name }}</span>
-                                            </button>
-                                        </h2>
-                                    </div>
-                                    <div :id="'collapse-cluster-' + cluster.configuration.identifier" class="collapse"
-                                        :aria-labelledby="'header-cluster-' + cluster.configuration.identifier"
-                                        :data-parent="'#cluster-' + cluster.configuration.identifier">
-                                        <div class="card-body">
-                                            <ul class="nav nav-tabs" id="pills-tab" role="tablist">
-                                                <li class="nav-item" role="presentation">
-                                                    <a class="nav-link active"
-                                                        :id="'cluster-' + cluster.configuration.identifier + '-pills-status-tab'"
-                                                        data-toggle="pill"
-                                                        :href="'#cluster-' + cluster.configuration.identifier + '-pills-status'"
-                                                        role="tab"
-                                                        :aria-controls="'cluster-' + cluster.configuration.identifier + '-pills-status'"
-                                                        aria-selected="true">Status</a>
-                                                </li>
-                                                <li class="nav-item" role="presentation">
-                                                    <a class="nav-link"
-                                                        :id="'cluster-' + cluster.configuration.identifier + '-pills-settings-tab'"
-                                                        data-toggle="pill"
-                                                        :href="'#cluster-' + cluster.configuration.identifier + '-pills-settings'"
-                                                        role="tab"
-                                                        :aria-controls="'cluster-' + cluster.configuration.identifier + '-pills-settings'"
-                                                        aria-selected="false">Settings</a>
-                                                </li>
-                                            </ul>
-                                            <div class="tab-content">
-                                                <div class="tab-pane fade p-4 active show"
-                                                    :id="'cluster-' + cluster.configuration.identifier + '-pills-status'"
-                                                    role="tabpanel"
-                                                    :aria-labelledby="'cluster-' + cluster.configuration.identifier + '-pills-status-tab'">
-                                                    <ul class="list-group mb-4">
-                                                        <li
-                                                            class="list-group-item d-flex justify-content-between align-items-center">
-                                                            Shard Groups
-                                                            <span
-                                                                class="badge bg-dark rounded-pill">{{ Object.keys(cluster.shardgroups).length }}</span>
-                                                        </li>
-                                                        <li
-                                                            class="list-group-item d-flex justify-content-between align-items-center">
-                                                            Average Latency
-                                                            <span
-                                                                class="badge bg-dark rounded-pill">{{ calculateAverage(cluster) }}
-                                                                ms</span>
-                                                        </li>
-                                                        <li
-                                                            class="list-group-item d-flex justify-content-between align-items-center">
-                                                            Sessions
-                                                            <span
-                                                                class="badge bg-dark rounded-pill">{{ cluster.gateway.session_start_limit.remaining }}/{{ cluster.gateway.session_start_limit.total }}
-                                                                ({{ cluster.gateway.session_start_limit.max_concurrency }})</span>
-                                                        </li>
-                                                    </ul>
-
-                                                    <button type="button" class="btn btn-dark"
-                                                        v-on:click="createShardGroupDialogue(cluster.configuration.identifier)">
-                                                        Scale Manager
-                                                    </button>
-                                                    <button type="button" class="btn btn-info"
-                                                        v-on:click="refreshGateway(cluster.configuration.identifier)">
-                                                        Refresh Gateway
-                                                    </button>
-                                                    <button type="button" class="btn btn-dark"
-                                                        v-on:click="deleteManagerDialogue(cluster.configuration.identifier)">
-                                                        Delete Manager
-                                                    </button>
-                                                    <button type="button" class="btn btn-dark"
-                                                        v-on:click="restartManagerDialogue(cluster.configuration.identifier)">
-                                                        Restart Manager
-                                                    </button>
-
-                                                    <div v-if="cluster.error != ''">
-                                                        <div class="p-3 mb-2 bg-danger text-white my-4">
-                                                            {{ cluster.error }}</div>
-                                                    </div>
-
-                                                    <div v-for="(shardgroup,index) in cluster.shardgroups"
-                                                        class="border border-bottom bg-light rounded-lg p-3 my-4">
-                                                        <div class="mb-3">
-                                                            <h5>
+                        <div class="tab-pane fade" id="pills-clusters" role="tabpanel"
+                            aria-labelledby="pills-clusters-tab">
+                            <button type="button" class="btn btn-dark" v-on:click="createManagerDialogue()">
+                                Create Manager
+                            </button>
+                            <div v-for="cluster in this.fromClusters(daemon.managers)">
+                                <div class="accordion my-4" :id="'cluster-' + cluster.configuration.identifier">
+                                    <div class="card">
+                                        <div class="card-header"
+                                            :id="'header-cluster-' + cluster.configuration.identifier">
+                                            <h2 class="mb-0">
+                                                <button
+                                                    class="btn btn-link btn-block text-left text-decoration-none text-dark"
+                                                    type="button" data-toggle="collapse"
+                                                    :data-target="'#collapse-cluster-' + cluster.configuration.identifier"
+                                                    aria-expanded="true"
+                                                    :aria-controls="'collapse-cluster-' + cluster.configuration.identifier">
+                                                    <span
+                                                        :class="'badge bg-' + colourCluster[cluster.status] || 'default'">{{ statusGroup[cluster.status] }}</span>
+                                                    <span>{{ cluster.configuration.display_name }}</span>
+                                                </button>
+                                            </h2>
+                                        </div>
+                                        <div :id="'collapse-cluster-' + cluster.configuration.identifier"
+                                            class="collapse"
+                                            :aria-labelledby="'header-cluster-' + cluster.configuration.identifier"
+                                            :data-parent="'#cluster-' + cluster.configuration.identifier">
+                                            <div class="card-body">
+                                                <ul class="nav nav-tabs" id="pills-tab" role="tablist">
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link active"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-pills-status-tab'"
+                                                            data-toggle="pill"
+                                                            :href="'#cluster-' + cluster.configuration.identifier + '-pills-status'"
+                                                            role="tab"
+                                                            :aria-controls="'cluster-' + cluster.configuration.identifier + '-pills-status'"
+                                                            aria-selected="true">Status</a>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <a class="nav-link"
+                                                            :id="'cluster-' + cluster.configuration.identifier + '-pills-settings-tab'"
+                                                            data-toggle="pill"
+                                                            :href="'#cluster-' + cluster.configuration.identifier + '-pills-settings'"
+                                                            role="tab"
+                                                            :aria-controls="'cluster-' + cluster.configuration.identifier + '-pills-settings'"
+                                                            aria-selected="false">Settings</a>
+                                                    </li>
+                                                </ul>
+                                                <div class="tab-content">
+                                                    <div class="tab-pane fade p-4 active show"
+                                                        :id="'cluster-' + cluster.configuration.identifier + '-pills-status'"
+                                                        role="tabpanel"
+                                                        :aria-labelledby="'cluster-' + cluster.configuration.identifier + '-pills-status-tab'">
+                                                        <ul class="list-group mb-4">
+                                                            <li
+                                                                class="list-group-item d-flex justify-content-between align-items-center">
+                                                                Shard Groups
                                                                 <span
-                                                                    :class="'badge rounded-pill bg-' + colourGroup[shardgroup.status] || 'default'">{{ statusGroup[shardgroup.status] }}</span>
-                                                                ShardGroup {{ shardgroup.id }}
-                                                            </h5>
-                                                            <div v-if="shardgroup.status != 6">
-                                                                <button type="button" class="btn btn-dark"
-                                                                    v-on:click="stopShardGroupDialogue(cluster.configuration.identifier, shardgroup.id)">
-                                                                    Stop ShardGroup
-                                                                </button>
-                                                            </div>
-                                                            <div v-if="shardgroup.status >= 6">
-                                                                <button type="button" class="btn btn-dark"
-                                                                    v-on:click="deleteShardGroup(cluster.configuration.identifier, shardgroup.id)">
-                                                                    Delete ShardGroup
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
-                                                        <div v-if="shardgroup.status != 6">
-                                                            <ul class="list-group mb-4">
-                                                                <li
-                                                                    class="list-group-item d-flex justify-content-between align-items-center">
-                                                                    Status
-                                                                    <status-graph :value="shardgroup"
-                                                                        :colours="colourShard" style="width: 50%">
-                                                                    </status-graph>
-                                                                </li>
-                                                                <li
-                                                                    class="list-group-item d-flex justify-content-between align-items-center">
-                                                                    Uptime
-                                                                    <span
-                                                                        class="badge bg-dark rounded-pill">{{ since(shardgroup.uptime) }}</span>
-                                                                </li>
-                                                                <li
-                                                                    class="list-group-item d-flex justify-content-between align-items-center">
-                                                                    Shards
-                                                                    <span
-                                                                        class="badge bg-dark rounded-pill">{{ Object.keys(shardgroup.shard_ids).length }}/{{ shardgroup.shard_count }}</span>
-                                                                </li>
-                                                                <li
-                                                                    class="list-group-item d-flex justify-content-between align-items-center">
-                                                                    Average Latency
-                                                                    <span
-                                                                        class="badge bg-dark rounded-pill">{{ calculateAverageShardGroup(shardgroup) }}
-                                                                        ms</span>
-                                                                </li>
-                                                            </ul>
-
-                                                            <div v-if="shardgroup.error">
-                                                                <div class="p-3 mb-2 bg-danger text-white">
-                                                                    {{ shardgroup.error }}</div>
-                                                            </div>
-
-                                                            <div
-                                                                v-if="shardgroup.shard_count > (cluster.gateway.shards * 4)">
-                                                                <div class="p-3 mb-2 bg-info text-white">You are
-                                                                    launching this shardgroup with an unnecessarily
-                                                                    large number of shards. This may cause the
-                                                                    shardgroup to take longer to become ready. It is
-                                                                    recommend you use a smaller number closer to the
-                                                                    recommended shard count of 1 shard per 1000 guilds
-                                                                    which is <b>{{ cluster.gateway.shards }}</b>.</div>
-                                                            </div>
-
-                                                            <table class="table table-borderless">
-                                                                <thead>
-                                                                    <tr class="table-dark">
-                                                                        <th scope="col">Shard</th>
-                                                                        <th scope="col">Status</th>
-                                                                        <th scope="col">RTT Latency</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <tr class="table-default"
-                                                                        v-for="(shard) in shardgroup.shards">
-                                                                        <th scope="row">{{ shard.shard_id }}</th>
-                                                                        <td><span
-                                                                                :class="'badge bg-' + colourShard[shard.status]">{{ statusShard[shard.status] }}</span>
-                                                                        </td>
-                                                                        <td>{{ new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent) }}ms
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="tab-pane fade"
-                                                    :id="'cluster-' + cluster.configuration.identifier + '-pills-settings'"
-                                                    role="tabpanel"
-                                                    :aria-labelledby="'cluster-' + cluster.configuration.identifier + '-pills-settings-tab'">
-                                                    <form @submit.prevent>
-                                                        <ul class="nav nav-tabs" id="tabpanel" role="tablist">
-                                                            <li class="nav-item" role="presentation">
-                                                                <a class="nav-link active" id="general-tab"
-                                                                    data-toggle="tab"
-                                                                    :href="'#cluster-' + cluster.configuration.identifier + '-Settings-general'"
-                                                                    role="tab" aria-selected="true">General</a>
+                                                                    class="badge bg-dark rounded-pill">{{ Object.keys(cluster.shardgroups).length }}</span>
                                                             </li>
-                                                            <li class="nav-item" role="presentation">
-                                                                <a class="nav-link" id="bot-tab" data-toggle="tab"
-                                                                    :href="'#cluster-' + cluster.configuration.identifier + '-Settings-bot'"
-                                                                    role="tab" aria-selected="false">Bot</a>
+                                                            <li
+                                                                class="list-group-item d-flex justify-content-between align-items-center">
+                                                                Average Latency
+                                                                <span
+                                                                    class="badge bg-dark rounded-pill">{{ calculateAverage(cluster) }}
+                                                                    ms</span>
                                                             </li>
-                                                            <li class="nav-item" role="presentation">
-                                                                <a class="nav-link" id="caching-tab" data-toggle="tab"
-                                                                    :href="'#cluster-' + cluster.configuration.identifier + '-Settings-caching'"
-                                                                    role="tab" aria-selected="false">Caching</a>
-                                                            </li>
-                                                            <li class="nav-item" role="presentation">
-                                                                <a class="nav-link" id="events-tab" data-toggle="tab"
-                                                                    :href="'#cluster-' + cluster.configuration.identifier + '-Settings-events'"
-                                                                    role="tab" aria-selected="false">Events</a>
-                                                            </li>
-                                                            <li class="nav-item" role="presentation">
-                                                                <a class="nav-link" id="messaging-tab" data-toggle="tab"
-                                                                    :href="'#cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
-                                                                    role="tab" aria-selected="false">Messaging</a>
-                                                            </li>
-                                                            <li class="nav-item" role="presentation">
-                                                                <a class="nav-link" id="sharding-tab" data-toggle="tab"
-                                                                    :href="'#cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
-                                                                    role="tab" aria-selected="false">Sharding</a>
-                                                            </li>
-                                                            <li class="nav-item" role="presentation">
-                                                                <a class="nav-link" id="raw-tab" data-toggle="tab"
-                                                                    :href="'#cluster-' + cluster.configuration.identifier + '-Settings-raw'"
-                                                                    role="tab" aria-selected="false">RAW (Read Only)</a>
+                                                            <li
+                                                                class="list-group-item d-flex justify-content-between align-items-center">
+                                                                Sessions
+                                                                <span
+                                                                    class="badge bg-dark rounded-pill">{{ cluster.gateway.session_start_limit.remaining }}/{{ cluster.gateway.session_start_limit.total }}
+                                                                    ({{ cluster.gateway.session_start_limit.max_concurrency }})</span>
                                                             </li>
                                                         </ul>
-                                                        <div class="tab-content p-5" id="pills-clusterSettings">
-                                                            <div class="tab-pane fade show active"
-                                                                :id="'cluster-' + cluster.configuration.identifier + '-Settings-general'"
-                                                                role="tabpanel" aria-labelledby="general-tab">
-                                                                <!-- General -->
-                                                                <div class="pb-4">
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.auto_start"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-autostart'"
-                                                                        :label="'Auto Start'"></form-input>
-                                                                    <p class="text-muted">When enabled, the Manager will
-                                                                        start up a shardgroup automatically.</p>
-                                                                    <form-input v-model="cluster.configuration.persist"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-persist'"
-                                                                        :label="'Persist'"></form-input>
-                                                                    <p class="text-muted">When enabled, changes
-                                                                        to Manager will be saved else the configuration
-                                                                        will
-                                                                        be discarded when the daemon is next started.
-                                                                    </p>
-                                                                </div>
-                                                                <form-input v-model="cluster.configuration.identifier"
-                                                                    :type=`text`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-identifier'"
-                                                                    :label="'Identifier'" :disabled="true"></form-input>
-                                                                <p class="text-muted"><b>You cannot modify the
-                                                                        identifier as
-                                                                        that can possibly break many things.</b> The
-                                                                    name
-                                                                    the manager is internally referenced by. NATs
-                                                                    packets
-                                                                    will also include this identifier in its messages.
-                                                                </p>
-                                                                <form-input v-model="cluster.configuration.display_name"
-                                                                    :type=`text`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-display_name'"
-                                                                    :label="'Display Name'"></form-input>
-                                                                <form-input v-model="cluster.configuration.token"
-                                                                    :type=`password`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-token'"
-                                                                    :label="'Token'"></form-input>
-                                                                <form-submit v-on:click="saveClusterSettings(cluster)">
-                                                                </form-submit>
-                                                            </div>
-                                                            <div class="tab-pane fade"
-                                                                :id="'cluster-' + cluster.configuration.identifier + '-Settings-bot'"
-                                                                role="tabpanel" aria-labelledby="bot-tab">
-                                                                <!-- Bot -->
-                                                                <div class="pb-4">
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.bot.compression"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.compression'"
-                                                                        :label="'Compression'"></form-input>
-                                                                    <p class="text-muted">Enables zstd compression on
-                                                                        the
-                                                                        gateway websocket. Recommended.</p>
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.bot.guild_subscriptions"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.guild_subscriptions'"
-                                                                        :label="'Guild Subscriptions'"></form-input>
-                                                                    <p class="text-muted"><b>Not recommended, use
-                                                                            intents.</b> Events such as PRESENCE_UPDATE,
-                                                                        TYPING, GUILD_MEMBER_JOIN etc. are not sent to
-                                                                        the
-                                                                        bot.</p>
-                                                                </div>
-                                                                <form-input v-model="cluster.configuration.bot.presence"
-                                                                    :type=`presence`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.presence'"
-                                                                    :label="'Presence'"></form-input>
-                                                                <form-input v-model="cluster.configuration.bot.intents"
-                                                                    :type=`intent`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.intents'"
-                                                                    :label="'Intents'"></form-input>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.bot.large_threshold"
-                                                                    :type=`number`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.large_threshold'"
-                                                                    :label="'Large Threshold'"></form-input>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.bot.max_heartbeat_failures"
-                                                                    :type=`number`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.max_heartbeat_failures'"
-                                                                    :label="'Max Heartbeat Failures'"></form-input>
-                                                                <p class="text-muted">Amount of heartbeat durations
-                                                                    until
-                                                                    the bot forcibly reconnects. 5 is recommended.</p>
-                                                                <form-input v-model="cluster.configuration.bot.retries"
-                                                                    :type=`number`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.retries'"
-                                                                    :label="'Retries'"></form-input>
-                                                                <p class="text-muted">Amount of reconnets to attempt
-                                                                    before
-                                                                    giving up. Recommended to be more than 1 in the
-                                                                    event it
-                                                                    fails when starting up a ShardGroup causing all
-                                                                    other
-                                                                    shards to die.</p>
-                                                                <form-submit v-on:click="saveClusterSettings(cluster)">
-                                                                </form-submit>
-                                                            </div>
-                                                            <div class="tab-pane fade"
-                                                                :id="'cluster-' + cluster.configuration.identifier + '-Settings-caching'"
-                                                                role="tabpanel" aria-labelledby="caching-tab">
-                                                                <!-- Caching -->
-                                                                <div class="pb-4">
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.caching.cache_users"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_users'"
-                                                                        :label="'Cache Users'"></form-input>
-                                                                    <p class="text-muted">If enabled, users will be
-                                                                        cached
-                                                                        on redis.</p>
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.caching.cache_members"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_members'"
-                                                                        :label="'Cache Members'"></form-input>
-                                                                    <p class="text-muted">If enabled, members will be
-                                                                        cached
-                                                                        on redis.</p>
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.caching.request_members"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_members'"
-                                                                        :label="'Request Members'"></form-input>
-                                                                    <p class="text-muted"><b>Due to the new intent
-                                                                            changes,
-                                                                            enabling this on larger bots is not
-                                                                            recommended.</b> If enabled, guild members
-                                                                        will
-                                                                        be requested when lazy loading.</p>
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.caching.store_mutuals"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.store_mutuals'"
-                                                                        :label="'Store Mutuals'"></form-input>
-                                                                    <p class="text-muted">If enabled, guild ids a member
-                                                                        is
-                                                                        on is stored on redis.</p>
-                                                                </div>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.caching.redis_prefix"
-                                                                    :type=`text`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.redis_prefix'"
-                                                                    :label="'Redis Prefix'"></form-input>
-                                                                <p class="text-muted">String all redis requests will be
-                                                                    prepended with {PREFIX}:{KEY}. Useful when wanting
-                                                                    to
-                                                                    seperate managers from each other. Having multiple
-                                                                    managers with the same key can cause destruction.
-                                                                </p>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.caching.request_chunk_size"
-                                                                    :type=`number`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_chunk_size'"
-                                                                    :label="'Request Chunk Size'"></form-input>
-                                                                <p class="text-muted">Number of guilds to request in a
-                                                                    REQUEST_GUILD_MEMBERS request. With the new changes,
-                                                                    this should be set to 1. Sending more than 1 when it
-                                                                    limits to 1 will not fail but will only sent the
-                                                                    members
-                                                                    of the first ID specified.</p>
-                                                                <form-submit v-on:click="saveClusterSettings(cluster)">
-                                                                </form-submit>
-                                                            </div>
-                                                            <div class="tab-pane fade"
-                                                                :id="'cluster-' + cluster.configuration.identifier + '-Settings-events'"
-                                                                role="tabpanel" aria-labelledby="events-tab">
-                                                                <p class="text-muted">Changes to events will be
-                                                                    reflected
-                                                                    when a new shardgroup is made</p>
-                                                                <!-- Events -->
-                                                                <div class="pb-4">
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.events.ignore_bots"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-events.ignore_bots'"
-                                                                        :label="'Ignore Bots'"></form-input>
-                                                                    <p class="text-muted">When enabled, consumers will
-                                                                        not
-                                                                        receive MESSAGE_CREATE events if the author is a
-                                                                        bot
-                                                                    </p>
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.events.check_prefixes"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-events.check_prefixes'"
-                                                                        :label="'Check Prefixes'"></form-input>
-                                                                    <p class="text-muted">When enabled, consumers will
-                                                                        receive only MESSAGE_CREATE events that start
-                                                                        with a
-                                                                        defined prefix. The prefix is determined from a
-                                                                        HGET
-                                                                        to {REDIS_PREFIX}:prefix with the guild id as a
-                                                                        key.
-                                                                    </p>
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.events.allow_mention_prefix"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-events.allow_mention_prefix'"
-                                                                        :label="'Allow Mention Prefix'"></form-input>
-                                                                </div>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.events.fallback_prefix"
-                                                                    :type=`text`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-events.fallback_prefix'"
-                                                                    :label="'Fallback Prefix'"
-                                                                    :placeholder="'No prefix'"></form-input>
-                                                                </p class="text-muted">
-                                                                If the daemon is unable to fetch a custom prefix
-                                                                from redis, it will use the fallback prefix and
-                                                                mention prefix (if enabled). If fallback prefix is
-                                                                left empty, it will not allow any message to be used
-                                                                as a command.
-                                                                </p>
 
-                                                                <form-input
-                                                                    v-model="cluster.configuration.events.event_blacklist"
-                                                                    :type=`list`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-events.event_blacklist'"
-                                                                    :label="'Event Blacklist'"></form-input>
-                                                                <p class="text-muted">Events in event blacklist are
-                                                                    completely ignored by Sandwich Daemon. It is
-                                                                    recommended
-                                                                    you instead use Intents to stop events as it still
-                                                                    has
-                                                                    to process the events.</p>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.events.produce_blacklist"
-                                                                    :type=`list`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-events.produce_blacklist'"
-                                                                    :label="'Produce Blacklist'"></form-input>
-                                                                <p class="text-muted">Events in produce blacklist are
-                                                                    processed (cached etc.) however are not relayed to
-                                                                    consumers. Useful for reducing events that the
-                                                                    consumers unnecessarily need but you still need for
-                                                                    cache purposes.</p>
-                                                                <form-submit v-on:click="saveClusterSettings(cluster)">
-                                                                </form-submit>
-                                                            </div>
-                                                            <div class="tab-pane fade"
-                                                                :id="'cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
-                                                                role="tabpanel" aria-labelledby="messaging-tab">
-                                                                <!-- Messaging -->
-                                                                <div class="pb-4">
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.messaging.use_random_suffix"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.use_random_suffix'"
-                                                                        :label="'Use Random Suffix'"></form-input>
-                                                                    <p class="text-muted">When enabled, the client name
-                                                                        will
-                                                                        have a random suffix added. Useful if you have
-                                                                        multiple managers using the same client name.
-                                                                    </p>
+                                                        <button type="button" class="btn btn-dark"
+                                                            v-on:click="createShardGroupDialogue(cluster.configuration.identifier)">
+                                                            Scale Manager
+                                                        </button>
+                                                        <button type="button" class="btn btn-info"
+                                                            v-on:click="refreshGateway(cluster.configuration.identifier)">
+                                                            Refresh Gateway
+                                                        </button>
+                                                        <button type="button" class="btn btn-dark"
+                                                            v-on:click="deleteManagerDialogue(cluster.configuration.identifier)">
+                                                            Delete Manager
+                                                        </button>
+                                                        <button type="button" class="btn btn-dark"
+                                                            v-on:click="restartManagerDialogue(cluster.configuration.identifier)">
+                                                            Restart Manager
+                                                        </button>
+
+                                                        <div v-if="cluster.error != ''">
+                                                            <div class="p-3 mb-2 bg-danger text-white my-4">
+                                                                {{ cluster.error }}</div>
+                                                        </div>
+
+                                                        <div v-for="(shardgroup,index) in cluster.shardgroups"
+                                                            class="border border-bottom bg-light rounded-lg p-3 my-4">
+                                                            <div class="mb-3">
+                                                                <h5>
+                                                                    <span
+                                                                        :class="'badge rounded-pill bg-' + colourGroup[shardgroup.status] || 'default'">{{ statusGroup[shardgroup.status] }}</span>
+                                                                    ShardGroup {{ shardgroup.id }}
+                                                                </h5>
+                                                                <div v-if="shardgroup.status != 6">
+                                                                    <button type="button" class="btn btn-dark"
+                                                                        v-on:click="stopShardGroupDialogue(cluster.configuration.identifier, shardgroup.id)">
+                                                                        Stop ShardGroup
+                                                                    </button>
                                                                 </div>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.messaging.client_name"
-                                                                    :type=`text`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.client_name'"
-                                                                    :label="'Client Name'"></form-input>
-                                                                <p class="text-muted">Name of the client the manager
-                                                                    uses.
-                                                                    <b>Client names must be unique.</b> If you are using
-                                                                    multiple managers with the same client name, it is
-                                                                    recommended you use seperate client names or enable
-                                                                    random suffix.</p>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.messaging.channel_name"
-                                                                    :type=`text`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.channel_name'"
-                                                                    :label="'Channel Name'"></form-input>
-                                                                <p class="text-muted">Custom definition of the channel
-                                                                    the
-                                                                    manager will use. If empty, it will use the
-                                                                    configuration in daemon.nats.channel which managers
-                                                                    should use by default.</p>
-                                                                <form-submit v-on:click="saveClusterSettings(cluster)">
-                                                                </form-submit>
-                                                            </div>
-                                                            <div class="tab-pane fade"
-                                                                :id="'cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
-                                                                role="tabpanel" aria-labelledby="sharding-tab">
-                                                                <!-- Sharding -->
-                                                                <div class="pb-4">
-                                                                    <form-input
-                                                                        v-model="cluster.configuration.sharding.auto_sharded"
-                                                                        :type=`checkbox`
-                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.auto_sharded'"
-                                                                        :label="'AutoSharded'"></form-input>
-                                                                    <p class="text-muted">If enabled, will set the shard
-                                                                        count to what is recommended on the gateway</p>
+                                                                <div v-if="shardgroup.status >= 6">
+                                                                    <button type="button" class="btn btn-dark"
+                                                                        v-on:click="deleteShardGroup(cluster.configuration.identifier, shardgroup.id)">
+                                                                        Delete ShardGroup
+                                                                    </button>
                                                                 </div>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.sharding.shard_count"
-                                                                    :type=`number`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.shard_count'"
-                                                                    :label="'Shard Count'"></form-input>
-                                                                <p class="text-muted">Shard Count to launch shardgroups
-                                                                    with. Be aware this has no security and if it has
-                                                                    not
-                                                                    supplied enough shards, it will error. It is
-                                                                    recommended
-                                                                    you use autosharded, enabling autosharded will
-                                                                    overwrite
-                                                                    this value.
-                                                                </p>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.sharding.cluster_count"
-                                                                    :type=`number`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.cluster_count'"
-                                                                    :label="'Cluster Count'"></form-input>
-                                                                <p class="text-muted"><b>Use if you have multiple
-                                                                        daemons
-                                                                        running. This must be the same number on all
-                                                                        daemons and starts from 0.</b> Total number of
-                                                                    clusters running.</p>
-                                                                <form-input
-                                                                    v-model="cluster.configuration.sharding.cluster_id"
-                                                                    :type=`number`
-                                                                    :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.cluster_id'"
-                                                                    :label="'Cluster ID'"></form-input>
-                                                                <p class="text-muted"><b>Use if you have multiple
-                                                                        daemons
-                                                                        running. This must be a different number on all
-                                                                        daemons.</b> Cluster ID of current daemon. With
-                                                                    only
-                                                                    1 cluster, this ID must be 0 similarly to how shard
-                                                                    count and shard ID works.</p>
-                                                                <form-submit v-on:click="saveClusterSettings(cluster)">
-                                                                </form-submit>
                                                             </div>
-                                                            <div class="tab-pane fade"
-                                                                :id="'cluster-' + cluster.configuration.identifier + '-Settings-raw'"
-                                                                role="tabpanel" aria-labelledby="raw-tab">
-                                                                <pre>{{ cluster }}</pre>
+
+                                                            <div v-if="shardgroup.status != 6">
+                                                                <ul class="list-group mb-4">
+                                                                    <li
+                                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                                        Status
+                                                                        <status-graph :value="shardgroup"
+                                                                            :colours="colourShard" style="width: 50%">
+                                                                        </status-graph>
+                                                                    </li>
+                                                                    <li
+                                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                                        Uptime
+                                                                        <span
+                                                                            class="badge bg-dark rounded-pill">{{ since(shardgroup.uptime) }}</span>
+                                                                    </li>
+                                                                    <li
+                                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                                        Shards
+                                                                        <span
+                                                                            class="badge bg-dark rounded-pill">{{ Object.keys(shardgroup.shard_ids).length }}/{{ shardgroup.shard_count }}</span>
+                                                                    </li>
+                                                                    <li
+                                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                                        Average Latency
+                                                                        <span
+                                                                            class="badge bg-dark rounded-pill">{{ calculateAverageShardGroup(shardgroup) }}
+                                                                            ms</span>
+                                                                    </li>
+                                                                </ul>
+
+                                                                <div v-if="shardgroup.error">
+                                                                    <div class="p-3 mb-2 bg-danger text-white">
+                                                                        {{ shardgroup.error }}</div>
+                                                                </div>
+
+                                                                <div
+                                                                    v-if="shardgroup.shard_count > (cluster.gateway.shards * 4)">
+                                                                    <div class="p-3 mb-2 bg-info text-white">You are
+                                                                        launching this shardgroup with an unnecessarily
+                                                                        large number of shards. This may cause the
+                                                                        shardgroup to take longer to become ready. It is
+                                                                        recommend you use a smaller number closer to the
+                                                                        recommended shard count of 1 shard per 1000
+                                                                        guilds
+                                                                        which is <b>{{ cluster.gateway.shards }}</b>.
+                                                                    </div>
+                                                                </div>
+
+                                                                <table class="table table-borderless">
+                                                                    <thead>
+                                                                        <tr class="table-dark">
+                                                                            <th scope="col">Shard</th>
+                                                                            <th scope="col">Status</th>
+                                                                            <th scope="col">RTT Latency</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr class="table-default"
+                                                                            v-for="(shard) in shardgroup.shards">
+                                                                            <th scope="row">{{ shard.shard_id }}</th>
+                                                                            <td><span
+                                                                                    :class="'badge bg-' + colourShard[shard.status]">{{ statusShard[shard.status] }}</span>
+                                                                            </td>
+                                                                            <td>{{ new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent) }}ms
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
                                                             </div>
                                                         </div>
-                                                    </form>
+                                                    </div>
+                                                    <div class="tab-pane fade"
+                                                        :id="'cluster-' + cluster.configuration.identifier + '-pills-settings'"
+                                                        role="tabpanel"
+                                                        :aria-labelledby="'cluster-' + cluster.configuration.identifier + '-pills-settings-tab'">
+                                                        <form @submit.prevent>
+                                                            <ul class="nav nav-tabs" id="tabpanel" role="tablist">
+                                                                <li class="nav-item" role="presentation">
+                                                                    <a class="nav-link active" id="general-tab"
+                                                                        data-toggle="tab"
+                                                                        :href="'#cluster-' + cluster.configuration.identifier + '-Settings-general'"
+                                                                        role="tab" aria-selected="true">General</a>
+                                                                </li>
+                                                                <li class="nav-item" role="presentation">
+                                                                    <a class="nav-link" id="bot-tab" data-toggle="tab"
+                                                                        :href="'#cluster-' + cluster.configuration.identifier + '-Settings-bot'"
+                                                                        role="tab" aria-selected="false">Bot</a>
+                                                                </li>
+                                                                <li class="nav-item" role="presentation">
+                                                                    <a class="nav-link" id="caching-tab"
+                                                                        data-toggle="tab"
+                                                                        :href="'#cluster-' + cluster.configuration.identifier + '-Settings-caching'"
+                                                                        role="tab" aria-selected="false">Caching</a>
+                                                                </li>
+                                                                <li class="nav-item" role="presentation">
+                                                                    <a class="nav-link" id="events-tab"
+                                                                        data-toggle="tab"
+                                                                        :href="'#cluster-' + cluster.configuration.identifier + '-Settings-events'"
+                                                                        role="tab" aria-selected="false">Events</a>
+                                                                </li>
+                                                                <li class="nav-item" role="presentation">
+                                                                    <a class="nav-link" id="messaging-tab"
+                                                                        data-toggle="tab"
+                                                                        :href="'#cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
+                                                                        role="tab" aria-selected="false">Messaging</a>
+                                                                </li>
+                                                                <li class="nav-item" role="presentation">
+                                                                    <a class="nav-link" id="sharding-tab"
+                                                                        data-toggle="tab"
+                                                                        :href="'#cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
+                                                                        role="tab" aria-selected="false">Sharding</a>
+                                                                </li>
+                                                                <li class="nav-item" role="presentation">
+                                                                    <a class="nav-link" id="raw-tab" data-toggle="tab"
+                                                                        :href="'#cluster-' + cluster.configuration.identifier + '-Settings-raw'"
+                                                                        role="tab" aria-selected="false">RAW (Read
+                                                                        Only)</a>
+                                                                </li>
+                                                            </ul>
+                                                            <div class="tab-content p-5" id="pills-clusterSettings">
+                                                                <div class="tab-pane fade show active"
+                                                                    :id="'cluster-' + cluster.configuration.identifier + '-Settings-general'"
+                                                                    role="tabpanel" aria-labelledby="general-tab">
+                                                                    <!-- General -->
+                                                                    <div class="pb-4">
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.auto_start"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-autostart'"
+                                                                            :label="'Auto Start'"></form-input>
+                                                                        <p class="text-muted">When enabled, the Manager
+                                                                            will
+                                                                            start up a shardgroup automatically.</p>
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.persist"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-persist'"
+                                                                            :label="'Persist'"></form-input>
+                                                                        <p class="text-muted">When enabled, changes
+                                                                            to Manager will be saved else the
+                                                                            configuration
+                                                                            will
+                                                                            be discarded when the daemon is next
+                                                                            started.
+                                                                        </p>
+                                                                    </div>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.identifier"
+                                                                        :type=`text`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-identifier'"
+                                                                        :label="'Identifier'" :disabled="true">
+                                                                    </form-input>
+                                                                    <p class="text-muted"><b>You cannot modify the
+                                                                            identifier as
+                                                                            that can possibly break many things.</b> The
+                                                                        name
+                                                                        the manager is internally referenced by. NATs
+                                                                        packets
+                                                                        will also include this identifier in its
+                                                                        messages.
+                                                                    </p>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.display_name"
+                                                                        :type=`text`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-display_name'"
+                                                                        :label="'Display Name'"></form-input>
+                                                                    <form-input v-model="cluster.configuration.token"
+                                                                        :type=`password`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-token'"
+                                                                        :label="'Token'"></form-input>
+                                                                    <form-submit
+                                                                        v-on:click="saveClusterSettings(cluster)">
+                                                                    </form-submit>
+                                                                </div>
+                                                                <div class="tab-pane fade"
+                                                                    :id="'cluster-' + cluster.configuration.identifier + '-Settings-bot'"
+                                                                    role="tabpanel" aria-labelledby="bot-tab">
+                                                                    <!-- Bot -->
+                                                                    <div class="pb-4">
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.bot.compression"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.compression'"
+                                                                            :label="'Compression'"></form-input>
+                                                                        <p class="text-muted">Enables zstd compression
+                                                                            on
+                                                                            the
+                                                                            gateway websocket. Recommended.</p>
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.bot.guild_subscriptions"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.guild_subscriptions'"
+                                                                            :label="'Guild Subscriptions'"></form-input>
+                                                                        <p class="text-muted"><b>Not recommended, use
+                                                                                intents.</b> Events such as
+                                                                            PRESENCE_UPDATE,
+                                                                            TYPING, GUILD_MEMBER_JOIN etc. are not sent
+                                                                            to
+                                                                            the
+                                                                            bot.</p>
+                                                                    </div>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.bot.presence"
+                                                                        :type=`presence`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.presence'"
+                                                                        :label="'Presence'"></form-input>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.bot.intents"
+                                                                        :type=`intent`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.intents'"
+                                                                        :label="'Intents'"></form-input>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.bot.large_threshold"
+                                                                        :type=`number`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.large_threshold'"
+                                                                        :label="'Large Threshold'"></form-input>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.bot.max_heartbeat_failures"
+                                                                        :type=`number`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.max_heartbeat_failures'"
+                                                                        :label="'Max Heartbeat Failures'"></form-input>
+                                                                    <p class="text-muted">Amount of heartbeat durations
+                                                                        until
+                                                                        the bot forcibly reconnects. 5 is recommended.
+                                                                    </p>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.bot.retries"
+                                                                        :type=`number`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-bot.retries'"
+                                                                        :label="'Retries'"></form-input>
+                                                                    <p class="text-muted">Amount of reconnects to
+                                                                        attempt
+                                                                        before
+                                                                        giving up. Recommended to be more than 1 in the
+                                                                        event it
+                                                                        fails when starting up a ShardGroup causing all
+                                                                        other
+                                                                        shards to die.</p>
+                                                                    <form-submit
+                                                                        v-on:click="saveClusterSettings(cluster)">
+                                                                    </form-submit>
+                                                                </div>
+                                                                <div class="tab-pane fade"
+                                                                    :id="'cluster-' + cluster.configuration.identifier + '-Settings-caching'"
+                                                                    role="tabpanel" aria-labelledby="caching-tab">
+                                                                    <!-- Caching -->
+                                                                    <div class="pb-4">
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.caching.cache_users"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_users'"
+                                                                            :label="'Cache Users'"></form-input>
+                                                                        <p class="text-muted">If enabled, users will be
+                                                                            cached
+                                                                            on redis.</p>
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.caching.cache_members"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.cache_members'"
+                                                                            :label="'Cache Members'"></form-input>
+                                                                        <p class="text-muted">If enabled, members will
+                                                                            be
+                                                                            cached
+                                                                            on redis.</p>
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.caching.request_members"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_members'"
+                                                                            :label="'Request Members'"></form-input>
+                                                                        <p class="text-muted"><b>Due to the new intent
+                                                                                changes,
+                                                                                enabling this on larger bots is not
+                                                                                recommended.</b> If enabled, guild
+                                                                            members
+                                                                            will
+                                                                            be requested when lazy loading.</p>
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.caching.store_mutuals"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.store_mutuals'"
+                                                                            :label="'Store Mutuals'"></form-input>
+                                                                        <p class="text-muted">If enabled, guild ids a
+                                                                            member
+                                                                            is
+                                                                            on is stored on redis.</p>
+                                                                    </div>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.caching.redis_prefix"
+                                                                        :type=`text`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.redis_prefix'"
+                                                                        :label="'Redis Prefix'"></form-input>
+                                                                    <p class="text-muted">String all redis requests will
+                                                                        be
+                                                                        pre-pended with {PREFIX}:{KEY}. Useful when
+                                                                        wanting
+                                                                        to
+                                                                        separate managers from each other. Having
+                                                                        multiple
+                                                                        managers with the same key can cause
+                                                                        destruction.
+                                                                    </p>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.caching.request_chunk_size"
+                                                                        :type=`number`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-caching.request_chunk_size'"
+                                                                        :label="'Request Chunk Size'"></form-input>
+                                                                    <p class="text-muted">Number of guilds to request in
+                                                                        a
+                                                                        REQUEST_GUILD_MEMBERS request. With the new
+                                                                        changes,
+                                                                        this should be set to 1. Sending more than 1
+                                                                        when it
+                                                                        limits to 1 will not fail but will only sent the
+                                                                        members
+                                                                        of the first ID specified.</p>
+                                                                    <form-submit
+                                                                        v-on:click="saveClusterSettings(cluster)">
+                                                                    </form-submit>
+                                                                </div>
+                                                                <div class="tab-pane fade"
+                                                                    :id="'cluster-' + cluster.configuration.identifier + '-Settings-events'"
+                                                                    role="tabpanel" aria-labelledby="events-tab">
+                                                                    <p class="text-muted">Changes to events will be
+                                                                        reflected
+                                                                        when a new shardgroup is made</p>
+                                                                    <!-- Events -->
+                                                                    <div class="pb-4">
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.events.ignore_bots"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-events.ignore_bots'"
+                                                                            :label="'Ignore Bots'"></form-input>
+                                                                        <p class="text-muted">When enabled, consumers
+                                                                            will
+                                                                            not
+                                                                            receive MESSAGE_CREATE events if the author
+                                                                            is a
+                                                                            bot
+                                                                        </p>
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.events.check_prefixes"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-events.check_prefixes'"
+                                                                            :label="'Check Prefixes'"></form-input>
+                                                                        <p class="text-muted">When enabled, consumers
+                                                                            will
+                                                                            receive only MESSAGE_CREATE events that
+                                                                            start
+                                                                            with a
+                                                                            defined prefix. The prefix is determined
+                                                                            from a
+                                                                            HGET
+                                                                            to {REDIS_PREFIX}:prefix with the guild id
+                                                                            as a
+                                                                            key.
+                                                                        </p>
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.events.allow_mention_prefix"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-events.allow_mention_prefix'"
+                                                                            :label="'Allow Mention Prefix'">
+                                                                        </form-input>
+                                                                    </div>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.events.fallback_prefix"
+                                                                        :type=`text`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-events.fallback_prefix'"
+                                                                        :label="'Fallback Prefix'"
+                                                                        :placeholder="'No prefix'"></form-input>
+                                                                    </p class="text-muted">
+                                                                    If the daemon is unable to fetch a custom prefix
+                                                                    from redis, it will use the fallback prefix and
+                                                                    mention prefix (if enabled). If fallback prefix is
+                                                                    left empty, it will not allow any message to be used
+                                                                    as a command.
+                                                                    </p>
+
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.events.event_blacklist"
+                                                                        :type=`list`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-events.event_blacklist'"
+                                                                        :label="'Event Blacklist'"></form-input>
+                                                                    <p class="text-muted">Events in event blacklist are
+                                                                        completely ignored by Sandwich Daemon. It is
+                                                                        recommended
+                                                                        you instead use Intents to stop events as it
+                                                                        still
+                                                                        has
+                                                                        to process the events.</p>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.events.produce_blacklist"
+                                                                        :type=`list`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-events.produce_blacklist'"
+                                                                        :label="'Produce Blacklist'"></form-input>
+                                                                    <p class="text-muted">Events in produce blacklist
+                                                                        are
+                                                                        processed (cached etc.) however are not relayed
+                                                                        to
+                                                                        consumers. Useful for reducing events that the
+                                                                        consumers unnecessarily need but you still need
+                                                                        for
+                                                                        cache purposes.</p>
+                                                                    <form-submit
+                                                                        v-on:click="saveClusterSettings(cluster)">
+                                                                    </form-submit>
+                                                                </div>
+                                                                <div class="tab-pane fade"
+                                                                    :id="'cluster-' + cluster.configuration.identifier + '-Settings-messaging'"
+                                                                    role="tabpanel" aria-labelledby="messaging-tab">
+                                                                    <!-- Messaging -->
+                                                                    <div class="pb-4">
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.messaging.use_random_suffix"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.use_random_suffix'"
+                                                                            :label="'Use Random Suffix'"></form-input>
+                                                                        <p class="text-muted">When enabled, the client
+                                                                            name
+                                                                            will
+                                                                            have a random suffix added. Useful if you
+                                                                            have
+                                                                            multiple managers using the same client
+                                                                            name.
+                                                                        </p>
+                                                                    </div>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.messaging.client_name"
+                                                                        :type=`text`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.client_name'"
+                                                                        :label="'Client Name'"></form-input>
+                                                                    <p class="text-muted">Name of the client the manager
+                                                                        uses.
+                                                                        <b>Client names must be unique.</b> If you are
+                                                                        using multiple managers with the same client
+                                                                        name, it is recommended you use separate client
+                                                                        names or enable random suffix.</p>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.messaging.channel_name"
+                                                                        :type=`text`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-messaging.channel_name'"
+                                                                        :label="'Channel Name'"></form-input>
+                                                                    <p class="text-muted">Custom definition of the
+                                                                        channel the manager will use. If empty, it will
+                                                                        use the configuration in daemon.nats.channel
+                                                                        which managers should use by default.</p>
+                                                                    <form-submit
+                                                                        v-on:click="saveClusterSettings(cluster)">
+                                                                    </form-submit>
+                                                                </div>
+                                                                <div class="tab-pane fade"
+                                                                    :id="'cluster-' + cluster.configuration.identifier + '-Settings-sharding'"
+                                                                    role="tabpanel" aria-labelledby="sharding-tab">
+                                                                    <!-- Sharding -->
+                                                                    <div class="pb-4">
+                                                                        <form-input
+                                                                            v-model="cluster.configuration.sharding.auto_sharded"
+                                                                            :type=`checkbox`
+                                                                            :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.auto_sharded'"
+                                                                            :label="'AutoSharded'"></form-input>
+                                                                        <p class="text-muted">If enabled, will set the
+                                                                            shard count to what is recommended on the
+                                                                            gateway
+                                                                        </p>
+                                                                    </div>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.sharding.shard_count"
+                                                                        :type=`number`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.shard_count'"
+                                                                        :label="'Shard Count'"></form-input>
+                                                                    <p class="text-muted">Shard Count to launch shard
+                                                                        groups with. Be aware this has no security and
+                                                                        if it has not supplied enough shards, it will
+                                                                        error. It is recommended you use autosharded,
+                                                                        enabling autosharded will overwrite this value.
+                                                                    </p>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.sharding.cluster_count"
+                                                                        :type=`number`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.cluster_count'"
+                                                                        :label="'Cluster Count'"></form-input>
+                                                                    <p class="text-muted"><b>Use if you have multiple
+                                                                            daemons
+                                                                            running. This must be the same number on all
+                                                                            daemons and starts from 0.</b> Total number
+                                                                        of
+                                                                        clusters running.</p>
+                                                                    <form-input
+                                                                        v-model="cluster.configuration.sharding.cluster_id"
+                                                                        :type=`number`
+                                                                        :id="'clusterConfig-' + cluster.configuration.identifier + '-sharding.cluster_id'"
+                                                                        :label="'Cluster ID'"></form-input>
+                                                                    <p class="text-muted"><b>Use if you have multiple
+                                                                            daemons
+                                                                            running. This must be a different number on
+                                                                            all
+                                                                            daemons.</b> Cluster ID of current daemon.
+                                                                        With
+                                                                        only
+                                                                        1 cluster, this ID must be 0 similarly to how
+                                                                        shard
+                                                                        count and shard ID works.</p>
+                                                                    <form-submit
+                                                                        v-on:click="saveClusterSettings(cluster)">
+                                                                    </form-submit>
+                                                                </div>
+                                                                <div class="tab-pane fade"
+                                                                    :id="'cluster-' + cluster.configuration.identifier + '-Settings-raw'"
+                                                                    role="tabpanel" aria-labelledby="raw-tab">
+                                                                    <pre>{{ cluster }}</pre>
+                                                                </div>
+                                                            </div>
+                                                        </form>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -941,180 +1005,190 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="tab-pane fade" id="pills-settings" role="tabpanel" aria-labelledby="pills-settings-tab">
-                        <form @submit.prevent>
-                            <ul class="nav nav-tabs" id="tabpanel" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link active" id="logging-tab" data-toggle="tab"
-                                        href="#daemonSettings-logging" role="tab" aria-selected="true">Logging</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="resttunnel-tab" data-toggle="tab"
-                                        href="#daemonSettings-resttunnel" role="tab"
-                                        aria-selected="false"><b>RestTunnel</b></a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="redis-tab" data-toggle="tab" href="#daemonSettings-redis"
-                                        role="tab" aria-selected="false">Redis</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="nats-tab" data-toggle="tab" href="#daemonSettings-nats"
-                                        role="tab" aria-selected="false">NATs</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="http-tab" data-toggle="tab" href="#daemonSettings-http"
-                                        role="tab" aria-selected="false">HTTP</a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" id="raw-tab" data-toggle="tab" href="#daemonSettings-raw"
-                                        role="tab" aria-selected="false">RAW (Read Only)</a>
-                                </li>
-                            </ul>
-                            <div class="tab-content p-5" id="pills-daemonSettings">
-                                <div class="tab-pane fade show active" id="daemonSettings-logging" role="tabpanel"
-                                    aria-labelledby="logging-tab">
-                                    <!-- Logging -->
-                                    <div class="pb-4">
-                                        <form-input v-model="daemon.configuration.logging.console_logging"
-                                            :type=`checkbox` :id=`loggingConsoleLogging` :label="'Console Logging'">
+                        <div class="tab-pane fade" id="pills-settings" role="tabpanel"
+                            aria-labelledby="pills-settings-tab">
+                            <form @submit.prevent>
+                                <ul class="nav nav-tabs" id="tabpanel" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link active" id="logging-tab" data-toggle="tab"
+                                            href="#daemonSettings-logging" role="tab" aria-selected="true">Logging</a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" id="resttunnel-tab" data-toggle="tab"
+                                            href="#daemonSettings-resttunnel" role="tab"
+                                            aria-selected="false"><b>RestTunnel</b></a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" id="redis-tab" data-toggle="tab"
+                                            href="#daemonSettings-redis" role="tab" aria-selected="false">Redis</a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" id="nats-tab" data-toggle="tab" href="#daemonSettings-nats"
+                                            role="tab" aria-selected="false">NATs</a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" id="http-tab" data-toggle="tab" href="#daemonSettings-http"
+                                            role="tab" aria-selected="false">HTTP</a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link" id="raw-tab" data-toggle="tab" href="#daemonSettings-raw"
+                                            role="tab" aria-selected="false">RAW (Read Only)</a>
+                                    </li>
+                                </ul>
+                                <div class="tab-content p-5" id="pills-daemonSettings">
+                                    <div class="tab-pane fade show active" id="daemonSettings-logging" role="tabpanel"
+                                        aria-labelledby="logging-tab">
+                                        <!-- Logging -->
+                                        <div class="pb-4">
+                                            <form-input v-model="daemon.configuration.logging.console_logging"
+                                                :type=`checkbox` :id=`loggingConsoleLogging` :label="'Console Logging'">
+                                            </form-input>
+                                            <p class="text-muted">If enabled, logs will be shown in console.</p>
+                                            <form-input v-model="daemon.configuration.logging.file_logging"
+                                                :type=`checkbox` :id=`loggingFileLogging` :label="'File Logging'">
+                                            </form-input>
+                                            <p class="text-muted">If enabled, logs will be saved to a file.</p>
+                                            <form-input v-model="daemon.configuration.logging.encode_as_json"
+                                                :type=`checkbox` :id=`loggingEncodeAsJson` :label="'Encode as JSON'">
+                                            </form-input>
+                                            <p class="text-muted">If enabled, text will be encoded as json instead of
+                                                human
+                                                readable.</p>
+                                        </div>
+                                        <form-input v-model="daemon.configuration.logging.directory" :type=`text`
+                                            :id=`loggingDirectory` :label="'Directory'">
                                         </form-input>
-                                        <p class="text-muted">If enabled, logs will be shown in console.</p>
-                                        <form-input v-model="daemon.configuration.logging.file_logging" :type=`checkbox`
-                                            :id=`loggingFileLogging` :label="'File Logging'">
+                                        <form-input v-model="daemon.configuration.logging.filename" :type=`text`
+                                            :id=`loggingFilename` :label="'Filename'">
                                         </form-input>
-                                        <p class="text-muted">If enabled, logs will be saved to a file.</p>
-                                        <form-input v-model="daemon.configuration.logging.encode_as_json"
-                                            :type=`checkbox` :id=`loggingEncodeAsJson` :label="'Encode as JSON'">
+                                        <form-input v-model="daemon.configuration.logging.max_size" :type=`number`
+                                            :id=`loggingMaxSize` :label="'Max Size'">
                                         </form-input>
-                                        <p class="text-muted">If enabled, text will be encoded as json instead of human
-                                            readable.</p>
+                                        <p class="text-muted"><b>Stored in Megabytes.</b> Max size each log can be
+                                            before a
+                                            new
+                                            file is made. 0 is unlimited.</p>
+                                        <form-input v-model="daemon.configuration.logging.max_backups" :type=`number`
+                                            :id=`loggingMaxBackups` :label="'Max Backups'">
+                                        </form-input>
+                                        <p class="text-muted">Max number of log files before old ones are deleted.</p>
+                                        <form-input v-model="daemon.configuration.logging.max_age" :type=`number`
+                                            :id=`loggingMaxAge` :label="'Max Age'">
+                                        </form-input>
+                                        <p class="text-muted">Number of days that a log file can exist before it is
+                                            removed.
+                                        </p>
+                                        <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                                     </div>
-                                    <form-input v-model="daemon.configuration.logging.directory" :type=`text`
-                                        :id=`loggingDirectory` :label="'Directory'">
-                                    </form-input>
-                                    <form-input v-model="daemon.configuration.logging.filename" :type=`text`
-                                        :id=`loggingFilename` :label="'Filename'">
-                                    </form-input>
-                                    <form-input v-model="daemon.configuration.logging.max_size" :type=`number`
-                                        :id=`loggingMaxSize` :label="'Max Size'">
-                                    </form-input>
-                                    <p class="text-muted"><b>Stored in Megabytes.</b> Max size each log can be before a
-                                        new
-                                        file is made. 0 is unlimited.</p>
-                                    <form-input v-model="daemon.configuration.logging.max_backups" :type=`number`
-                                        :id=`loggingMaxBackups` :label="'Max Backups'">
-                                    </form-input>
-                                    <p class="text-muted">Max number of log files before old ones are deleted.</p>
-                                    <form-input v-model="daemon.configuration.logging.max_age" :type=`number`
-                                        :id=`loggingMaxAge` :label="'Max Age'">
-                                    </form-input>
-                                    <p class="text-muted">Number of days that a log file can exist before it is removed.
-                                    </p>
-                                    <form-submit v-on:click="saveDaemonSettings()"></form-submit>
-                                </div>
-                                <div class="tab-pane fade" id="daemonSettings-resttunnel" role="tabpanel"
-                                    aria-labelledby="resttunnel-tab">
-                                    <!-- RestTunnel -->
-                                    <p class="text-muted">RestTunnel is a second-party application that is used in
-                                        conjunction with Sandwich-Daemon to allow for centralised ratelimit management
-                                        for multiple systems. The Github repository can be found <a
-                                            href="https://github.com/TheRockettek/RestTunnel">here</a>.
-                                    </p>
-                                    <p class="text-muted">RestTunnel enabled: <b>{{ daemon.rest_tunnel_enabled }}</b>
-                                    </p>
+                                    <div class="tab-pane fade" id="daemonSettings-resttunnel" role="tabpanel"
+                                        aria-labelledby="resttunnel-tab">
+                                        <!-- RestTunnel -->
+                                        <p class="text-muted">RestTunnel is a second-party application that is used in
+                                            conjunction with Sandwich-Daemon to allow for centralized rate limit
+                                            management
+                                            for multiple systems. The Github repository can be found <a
+                                                href="https://github.com/TheRockettek/RestTunnel">here</a>.
+                                        </p>
+                                        <p class="text-muted">RestTunnel enabled:
+                                            <b>{{ daemon.rest_tunnel_enabled }}</b>
+                                        </p>
 
-                                    <div class="pb-4">
-                                        <form-input v-model="daemon.configuration.resttunnel.enabled" :type=`checkbox`
-                                            :id=`restTunnelEnabled` :label="'Enabled'"></form-input>
+                                        <div class="pb-4">
+                                            <form-input v-model="daemon.configuration.resttunnel.enabled"
+                                                :type=`checkbox` :id=`restTunnelEnabled` :label="'Enabled'">
+                                            </form-input>
+                                        </div>
+                                        <form-input v-model="daemon.configuration.resttunnel.url" :type=`text`
+                                            :id=`restTunnelURL` :placeholder="'http://127.0.0.1:8000'" :label="'URL'">
+                                        </form-input>
+                                        <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                                        <button type="button" class="btn btn-dark" v-on:click="verifyRestTunnel()">
+                                            Verify RestTunnel
+                                        </button>
                                     </div>
-                                    <form-input v-model="daemon.configuration.resttunnel.url" :type=`text`
-                                        :id=`restTunnelURL` :placeholder="'http://127.0.0.1:8000'" :label="'URL'">
-                                    </form-input>
-                                    <form-submit v-on:click="saveDaemonSettings()"></form-submit>
-                                    <button type="button" class="btn btn-dark" v-on:click="verifyRestTunnel()">
-                                        Verify RestTunnel
-                                    </button>
-                                </div>
-                                <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
-                                    aria-labelledby="redis-tab">
-                                    <!-- Redis -->
-                                    <p class="text-muted">Redis is the driver that handles caching of objects within
-                                        Sandwich Daemon. This allows for multiple programs to share and interact with
-                                        the
-                                        same cache without passing on the objects in messages or using RPC.</p>
-                                    <div class="pb-4">
-                                        <form-input v-model="daemon.configuration.redis.unique_clients" :type=`checkbox`
-                                            :id=`redisUniqueClients` :label="'Unique Clients'"></form-input>
+                                    <div class="tab-pane fade" id="daemonSettings-redis" role="tabpanel"
+                                        aria-labelledby="redis-tab">
+                                        <!-- Redis -->
+                                        <p class="text-muted">Redis is the driver that handles caching of objects within
+                                            Sandwich Daemon. This allows for multiple programs to share and interact
+                                            with
+                                            the
+                                            same cache without passing on the objects in messages or using RPC.</p>
+                                        <div class="pb-4">
+                                            <form-input v-model="daemon.configuration.redis.unique_clients"
+                                                :type=`checkbox` :id=`redisUniqueClients` :label="'Unique Clients'">
+                                            </form-input>
+                                        </div>
+                                        <p class="text-muted">If enabled, each Manager will have their own redis
+                                            connection
+                                            else
+                                            they will share the same connection.</p>
+                                        <form-input v-model="daemon.configuration.redis.address" :type=`text`
+                                            :id=`redisAddress` :label="'Address'"></form-input>
+                                        <form-input v-model="daemon.configuration.redis.password" :type=`password`
+                                            :id=`redisPassword` :label="'Password'"></form-input>
+                                        <form-input v-model="daemon.configuration.redis.database" :type=`number`
+                                            :id=`redisDB` :label="'Database'"></form-input>
+                                        <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                                     </div>
-                                    <p class="text-muted">If enabled, each Manager will have their own redis connection
-                                        else
-                                        they will share the same connection.</p>
-                                    <form-input v-model="daemon.configuration.redis.address" :type=`text`
-                                        :id=`redisAddress` :label="'Address'"></form-input>
-                                    <form-input v-model="daemon.configuration.redis.password" :type=`password`
-                                        :id=`redisPassword` :label="'Password'"></form-input>
-                                    <form-input v-model="daemon.configuration.redis.database" :type=`number`
-                                        :id=`redisDB` :label="'Database'"></form-input>
-                                    <form-submit v-on:click="saveDaemonSettings()"></form-submit>
-                                </div>
-                                <div class="tab-pane fade" id="daemonSettings-nats" role="tabpanel"
-                                    aria-labelledby="nats-tab">
-                                    <!-- NATs -->
-                                    <p class="text-muted">NATs is the driver that allows for consumers to process the
-                                        messages that are sent by the Daemon. This ensures that the consumers receive
-                                        their
-                                        messages and they only receive it once.</p>
-                                    <form-input v-model="daemon.configuration.nats.address" :type=`text`
-                                        :id=`natsAddress` :label="'Address'"></form-input>
-                                    <form-input v-model="daemon.configuration.nats.channel" :type=`text`
-                                        :id=`natsChannel` :label="'Channel'"></form-input>
-                                    <form-input v-model="daemon.configuration.nats.cluster" :type=`text`
-                                        :id=`natsCluster` :label="'Cluster'"></form-input>
-                                    <form-submit v-on:click="saveDaemonSettings()"></form-submit>
-                                </div>
-                                <div class="tab-pane fade" id="daemonSettings-http" role="tabpanel"
-                                    aria-labelledby="http-tab">
-                                    <!-- HTTP -->
-                                    <div class="pb-4">
-                                        <form-input v-model="daemon.configuration.http.enabled" :type=`checkbox`
-                                            :id=`httpEnabled` :label="'Enabled'"></form-input>
-                                        <p class="text-muted">Disabling HTTP will still show the web interface however
-                                            will
-                                            shown an error.</p>
+                                    <div class="tab-pane fade" id="daemonSettings-nats" role="tabpanel"
+                                        aria-labelledby="nats-tab">
+                                        <!-- NATs -->
+                                        <p class="text-muted">NATs is the driver that allows for consumers to process
+                                            the messages that are sent by the Daemon. This ensures that the consumers
+                                            receive their messages and they only receive it once.</p>
+                                        <form-input v-model="daemon.configuration.nats.address" :type=`text`
+                                            :id=`natsAddress` :label="'Address'"></form-input>
+                                        <form-input v-model="daemon.configuration.nats.channel" :type=`text`
+                                            :id=`natsChannel` :label="'Channel'"></form-input>
+                                        <form-input v-model="daemon.configuration.nats.cluster" :type=`text`
+                                            :id=`natsCluster` :label="'Cluster'"></form-input>
+                                        <form-submit v-on:click="saveDaemonSettings()"></form-submit>
                                     </div>
-                                    <form-input v-model="daemon.configuration.http.host" :type=`text` :id=`httpHost`
-                                        :label="'Host'"></form-input>
-                                    <p class="text-muted"><b>It is recommended you keep this on localhost or 127.0.0.1
-                                            as
-                                            Sandwich Daemon does not require a username or password to interact with the
-                                            dashboard.</b> Entering 0.0.0.0 or the devices IP will make it public, use a
-                                        public IP at your own risk.</p>
-                                    <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                                    <div class="tab-pane fade" id="daemonSettings-http" role="tabpanel"
+                                        aria-labelledby="http-tab">
+                                        <!-- HTTP -->
+                                        <div class="pb-4">
+                                            <form-input v-model="daemon.configuration.http.enabled" :type=`checkbox`
+                                                :id=`httpEnabled` :label="'Enabled'"></form-input>
+                                            <p class="text-muted">Disabling HTTP will still show the web interface
+                                                however
+                                                will
+                                                shown an error.</p>
+                                        </div>
+                                        <form-input v-model="daemon.configuration.http.host" :type=`text` :id=`httpHost`
+                                            :label="'Host'"></form-input>
+                                        <p class="text-muted"><b>It is recommended you keep this on a local IP such as
+                                                localhost or
+                                                127.0.0.1 as Sandwich Daemon does not require authentication to
+                                                interact with the dashboard.</b> Entering 0.0.0.0 or the devices IP will
+                                            make it public, use a public IP at your own risk.</p>
+                                        <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                                    </div>
+                                    <div class="tab-pane fade" id="daemonSettings-raw" role="tabpanel"
+                                        aria-labelledby="raw-tab">
+                                        <!-- RAW -->
+                                        <pre>{{ daemon.configuration }}</pre>
+                                    </div>
                                 </div>
-                                <div class="tab-pane fade" id="daemonSettings-raw" role="tabpanel"
-                                    aria-labelledby="raw-tab">
-                                    <!-- RAW -->
-                                    <pre>{{ daemon.configuration }}</pre>
-                                </div>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div aria-live="polite" aria-atomic="true" style="position: relative; min-height: 200px;">
-            <div style="position: fixed; top: 20px; right: 20px;">
-                <div class="toast" id="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="toast-header">
-                        <strong class="mr-auto">{{ toast.title }} </strong>
-                        <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="toast-body">
-                        {{ toast.body }}
+            <div aria-live="polite" aria-atomic="true" style="position: relative; min-height: 200px;">
+                <div style="position: fixed; top: 20px; right: 20px;">
+                    <div class="toast" id="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-header">
+                            <strong class="mr-auto">{{ toast.title }} </strong>
+                            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="toast-body">
+                            {{ toast.body }}
+                        </div>
                     </div>
                 </div>
             </div>

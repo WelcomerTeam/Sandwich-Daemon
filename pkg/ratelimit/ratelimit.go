@@ -139,7 +139,7 @@ func (b *Bucket) Release(headers http.Header) error {
 	// If global is set, then it will block all buckets until after Retry-After
 	// If Retry-After without global is provided it will use that for the new reset
 	// time since it's more accurate than X-RateLimit-Reset.
-	// If Retry-After after is not proided, it will update the reset time from X-RateLimit-Reset
+	// If Retry-After after is not provided, it will update the reset time from X-RateLimit-Reset
 	if retryAfter != "" {
 		parsedAfter, err := strconv.ParseInt(retryAfter, 10, 64)
 		if err != nil {
@@ -174,7 +174,7 @@ func (b *Bucket) Release(headers http.Header) error {
 		b.reset = time.Now().Add(delta)
 	}
 
-	// Udpate remaining if header is present
+	// Update remaining if header is present
 	if remaining != "" {
 		parsedRemaining, err := strconv.ParseInt(remaining, 10, 32)
 		if err != nil {

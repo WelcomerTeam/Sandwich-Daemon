@@ -15,7 +15,7 @@ type ConcurrencyLimiter struct {
 }
 
 // NewConcurrencyLimiter allocates a new ConcurrencyLimiter. This is useful
-// for limiting the ammount of functions running at once and is used to
+// for limiting the amount of functions running at once and is used to
 // only allow a specific number of sessions to start at once.
 func NewConcurrencyLimiter(name string, limit int) *ConcurrencyLimiter {
 	c := &ConcurrencyLimiter{
@@ -61,7 +61,7 @@ type DurationLimiter struct {
 }
 
 // NewDurationLimiter creates a DurationLimiter. This is useful for allowing
-// a specific operation to run only X ammount of times in a duration of Y.
+// a specific operation to run only X amount of times in a duration of Y.
 func NewDurationLimiter(name string, limit int32, duration time.Duration) (bs *DurationLimiter) {
 	nanos := duration.Nanoseconds()
 	bs = &DurationLimiter{

@@ -162,7 +162,7 @@ func (sh *Shard) Connect() (err error) {
 	// When an error occurs and we have to reconnect, we make a ready channel by default
 	// which seems to cause a problem with WaitForReady. To circumvent this, we will
 	// make the ready only when the channel is closed however this may not be necessary
-	// as there is now a loop that fires every 10 seconds meaning it will be up to date reguardless
+	// as there is now a loop that fires every 10 seconds meaning it will be up to date regardless
 
 	if sh.ready == nil {
 		sh.ready = make(chan void, 1)
@@ -179,7 +179,7 @@ func (sh *Shard) Connect() (err error) {
 	}()
 
 	// TODO: Add Concurrent Client Support
-	// This will limit the ammount of shards that can be connecting simultaneously
+	// This will limit the amount of shards that can be connecting simultaneously
 	// Currently just uses a mutex to allow for only one per maxconcurrency
 	sh.Logger.Trace().Msg("Waiting for identify mutex")
 
@@ -339,7 +339,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 	case structs.GatewayOpHeartbeatACK:
 		sh.LastHeartbeatMu.Lock()
 		sh.LastHeartbeatAck = time.Now().UTC()
-		sh.Logger.Debug().Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).Msg("Received heartbeack ACK")
+		sh.Logger.Debug().Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).Msg("Received heartbeat ACK")
 		sh.LastHeartbeatMu.Unlock()
 		return
 
@@ -385,12 +385,12 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 		// If true will only run events once finished loading.
 		// TODO: Add to sandwich configuration.
-		premtiveEvents := false
+		preemptiveEvents := false
 
 		// I planned on using a context with timeout here to timeout reading messages however it seems the parent as also inheriting it.
 		// This means in its current configuration it may get stuck getting READY until it receives another event which should not be
 		// a problem on larger bots however it will be a problem when you excessively shard on smaller bots that may have a shard only receive
-		// a single event every few seconds, in which it will have to wait for to recognise it has passed the timeout limit. At the moment
+		// a single event every few seconds, in which it will have to wait for to recognize it has passed the timeout limit. At the moment
 		// we just have a warning message if you excessively shard. This also does mean if your bot never receives any events it will never
 		// ready.
 
@@ -456,7 +456,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 				}
 				wait = time.Now().UTC().Add(2 * time.Second)
 			} else {
-				if premtiveEvents {
+				if preemptiveEvents {
 					events = append(events, sh.msg)
 				} else {
 					if err = sh.OnDispatch(sh.msg); err != nil {
@@ -469,12 +469,12 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		sh.ready <- void{}
 		sh.SetStatus(structs.ShardReady)
 
-		if premtiveEvents {
-			sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemtive events")
+		if preemptiveEvents {
+			sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemptive events")
 			for _, event := range events {
 				sh.Logger.Debug().Str("type", event.Type).Send()
 				if err = sh.OnDispatch(event); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemtive events")
+					sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemptive events")
 				}
 			}
 			sh.Logger.Debug().Msg("Finished dispatching events")
@@ -710,7 +710,7 @@ func (sh *Shard) Identify() (err error) {
 	return
 }
 
-// PublishEvent sends an event to consaumers
+// PublishEvent sends an event to consumers
 func (sh *Shard) PublishEvent(Type string, Data interface{}) (err error) {
 	packet := sh.pp.Get().(*structs.PublishEvent)
 	defer sh.pp.Put(packet)
@@ -823,7 +823,7 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 		err := sh.Connect()
 		if err == nil {
 			atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
-			sh.Logger.Info().Msg("Successfuly reconnected to gateway")
+			sh.Logger.Info().Msg("Successfully reconnected to gateway")
 			return nil
 		}
 

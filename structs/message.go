@@ -116,7 +116,7 @@ type EmbedImage struct {
 type EmbedThumbnail struct {
 	URL      string `json:"url,omitempty" msgpack:"url,omitempty"`
 	ProxyURL string `json:"proxy_url,omitempty" msgpack:"proxy_url,omitempty"`
-	Height   int    `json:"height,omiempty" msgpack:"height,omiempty"`
+	Height   int    `json:"height,omitempty" msgpack:"height,omitempty"`
 	Width    int    `json:"width,omitempty" msgpack:"width,omitempty"`
 }
 

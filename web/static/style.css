@@ -1,3 +1,6 @@
+/* Stop flashing when loading site */
+[v-cloak] { display: none; }
+
 .nav-pills .nav-link {
     color: #343a40;
 }

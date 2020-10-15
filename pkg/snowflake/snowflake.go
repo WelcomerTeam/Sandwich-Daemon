@@ -197,7 +197,7 @@ func ParseBase2(id string) (ID, error) {
 
 // Base32 uses the z-base-32 character set but encodes and decodes similar
 // to base58, allowing it to create an even smaller result string.
-// NOTE: There are many different base32 implementations so becareful when
+// NOTE: There are many different base32 implementations so be careful when
 // doing any interoperation.
 func (f ID) Base32() string {
 
@@ -220,7 +220,7 @@ func (f ID) Base32() string {
 }
 
 // ParseBase32 parses a base32 []byte into a snowflake ID
-// NOTE: There are many different base32 implementations so becareful when
+// NOTE: There are many different base32 implementations so be careful when
 // doing any interoperation.
 func ParseBase32(b []byte) (ID, error) {
 

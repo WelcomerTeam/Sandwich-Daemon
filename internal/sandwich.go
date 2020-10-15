@@ -27,7 +27,7 @@ import (
 const VERSION = "0.1"
 
 // ErrOnConfigurationFailure will return errors when loading configuration.
-// If this is false, these errors are supressed. There is no reason for this
+// If this is false, these errors are suppressed. There is no reason for this
 // to be false.
 const ErrOnConfigurationFailure = true
 

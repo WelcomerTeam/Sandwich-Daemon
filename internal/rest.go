@@ -44,7 +44,7 @@ type RestResponse struct {
 	Error    error       `json:"error,omitempty"`
 }
 
-// HandleRequest handles any incomming HTTP requests
+// HandleRequest handles any incoming HTTP requests
 func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	var res []byte
 	var err error
@@ -680,7 +680,7 @@ func (sg *Sandwich) handleRequests() {
 	for {
 		sg.Logger.Info().Msgf("Running HTTP server at %s", sg.Configuration.HTTP.Host)
 		err := fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
-		sg.Logger.Error().Err(err).Msg("Error occured whilst running fasthttp")
+		sg.Logger.Error().Err(err).Msg("Error occurred whilst running fasthttp")
 	}
 }
 
@@ -724,7 +724,7 @@ type AnalyticResponse struct {
 	Clusters []ClusterInformation `json:"clusters"`
 }
 
-// ClusterInformation is cluster information...
+// ClusterInformation represents cluster information.
 type ClusterInformation struct {
 	Name      string                             `json:"name"`
 	Guilds    int64                              `json:"guilds"`
@@ -732,19 +732,19 @@ type ClusterInformation struct {
 	AutoStart bool                               `json:"autostart"`
 }
 
-// DataStamp is a struct to store a time and a corresponding value
+// DataStamp stores time and its corresponding value
 type DataStamp struct {
 	Time  interface{} `json:"x"`
 	Value interface{} `json:"y"`
 }
 
-// LineChart is a struct to store LineChart data easier
+// LineChart stores the data structure for a ChartJS LineChart
 type LineChart struct {
 	Labels   []string  `json:"labels,omitempty"`
 	Datasets []Dataset `json:"datasets"`
 }
 
-// Dataset is a struct to store data for a Chart
+// Dataset is stores the representation of a Dataset in ChartJS
 type Dataset struct {
 	Label            string        `json:"label"`
 	BackgroundColour string        `json:"backgroundColor,omitempty"`
