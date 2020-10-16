@@ -382,6 +382,8 @@ func (f ID) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary converts a json byte array of a snowflake ID into an ID type.
 func (f ID) UnmarshalBinary(data []byte) error {
 	_f, err := ParseString(string(data))
-	*f = *_f
+	if err == nil {
+		f = _f
+	}
 	return err
 }
