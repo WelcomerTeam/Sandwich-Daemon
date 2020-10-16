@@ -7,7 +7,6 @@ require (
 	github.com/TheRockettek/czlib v0.0.0-20200626001404-f6ab55296689
 	github.com/TheRockettek/snowflake v0.3.0
 	github.com/go-redis/redis/v8 v8.1.2
-	github.com/gordonklaus/ineffassign v0.0.0-20200809085317-e36bfde3bb78 // indirect
 	github.com/json-iterator/go v1.1.10
 	github.com/klauspost/compress v1.11.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect

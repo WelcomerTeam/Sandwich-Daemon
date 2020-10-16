@@ -607,13 +607,10 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 				res, err = json.Marshal(RPCResponse{nil, xerrors.New("Invalid RPC Payload").Error(), ""})
 			}
 
-			if err != nil {
-				ctx.Write(res)
+			if err == nil {
+				_, err = ctx.Write(res)
 				ctx.Response.Header.Set("content-type", "application/javascript;charset=UTF-8")
-			} else {
-				ctx.Error(err.Error(), http.StatusInternalServerError)
 			}
-
 		default:
 			ctx.SetStatusCode(404)
 		}
