@@ -1,26 +1,29 @@
 package structs
 
-import jsoniter "github.com/json-iterator/go"
+import (
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+	jsoniter "github.com/json-iterator/go"
+)
 
-// RestResponse is the response when returning rest requests
-type RestResponse struct {
-	Success  bool        `json:"success"`
-	Response interface{} `json:"response,omitempty"`
-	Error    error       `json:"error,omitempty"`
+// BaseResponse is the response when returning REST requests and RPC calls
+type BaseResponse struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
 }
 
-// RPCRequest is the structure the client sends when an JSON-RPC call is made
+// RPCRequest is the structure the client sends when an RPC call is made
 type RPCRequest struct {
 	Method string              `json:"method"`
-	Params jsoniter.RawMessage `json:"params"`
-	ID     string              `json:"id"`
+	Data   jsoniter.RawMessage `json:"data"`
 }
 
-// RPCResponse is the structure the server sends to respond to a JSON-RPC request
-type RPCResponse struct {
-	Result interface{} `json:"result"`
-	Error  string      `json:"error"`
-	ID     string      `json:"id"`
+// ClusterInformation represents cluster information.
+type ClusterInformation struct {
+	Name      string                     `json:"name"`
+	Guilds    int64                      `json:"guilds"`
+	Status    map[int32]ShardGroupStatus `json:"status"`
+	AutoStart bool                       `json:"autostart"`
 }
 
 // AnalyticResponse is the analytic response when you request the analytics
@@ -30,14 +33,6 @@ type AnalyticResponse struct {
 	Uptime   string               `json:"uptime"`
 	Events   int64                `json:"events"`
 	Clusters []ClusterInformation `json:"clusters"`
-}
-
-// ClusterInformation represents cluster information.
-type ClusterInformation struct {
-	Name      string                     `json:"name"`
-	Guilds    int64                      `json:"guilds"`
-	Status    map[int32]ShardGroupStatus `json:"status"`
-	AutoStart bool                       `json:"autostart"`
 }
 
 // DataStamp stores time and its corresponding value
@@ -58,4 +53,24 @@ type Dataset struct {
 	BackgroundColour string        `json:"backgroundColor,omitempty"`
 	BorderColour     string        `json:"borderColor,omitempty"`
 	Data             []interface{} `json:"data"`
+}
+
+// DiscordUser is the structure of a /users/@me request
+type DiscordUser struct {
+	ID            snowflake.ID `json:"id" msgpack:"id"`
+	Username      string       `json:"username" msgpack:"username"`
+	Discriminator string       `json:"discriminator" msgpack:"discriminator"`
+	Avatar        string       `json:"avatar" msgpack:"avatar"`
+	MFAEnabled    bool         `json:"mfa_enabled,omitempty" msgpack:"mfa_enabled,omitempty"`
+	Locale        string       `json:"locale,omitempty" msgpack:"locale,omitempty"`
+	Verified      bool         `json:"verified,omitempty" msgpack:"verified,omitempty"`
+	Email         string       `json:"email,omitempty" msgpack:"email,omitempty"`
+	Flags         int          `json:"flags" msgpack:"flags"`
+	PremiumType   int          `json:"premium_type" msgpack:"premium_type"`
+}
+
+// APIMe is the response payload for a /api/me request
+type APIMe struct {
+	Authenticated bool         `json:"authenticated"`
+	User          *DiscordUser `json:"user"`
 }

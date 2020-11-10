@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -32,55 +31,84 @@ func (mr *MethodRouter) HandleFunc(path string, f func(http.ResponseWriter, *htt
 	return mr.NewRoute().Path(path).Methods(methods...).HandlerFunc(f)
 }
 
-// DiscordUser is the structure of a /users/@me request
-type DiscordUser struct {
-	ID            snowflake.ID `json:"id" msgpack:"id"`
-	Username      string       `json:"username" msgpack:"username"`
-	Discriminator string       `json:"discriminator" msgpack:"discriminator"`
-	Avatar        string       `json:"avatar" msgpack:"avatar"`
-	MFAEnabled    bool         `json:"mfa_enabled,omitempty" msgpack:"mfa_enabled,omitempty"`
-	Locale        string       `json:"locale,omitempty" msgpack:"locale,omitempty"`
-	Verified      bool         `json:"verified,omitempty" msgpack:"verified,omitempty"`
-	Email         string       `json:"email,omitempty" msgpack:"email,omitempty"`
-	Flags         int          `json:"flags" msgpack:"flags"`
-	PremiumType   int          `json:"premium_type" msgpack:"premium_type"`
-}
-
 // AuthenticateSession verifies the session is valid. We simply store the user object
 // in the session. There are 100% better ways to do this but for our case this is
-// good enough.
-func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool) {
-	user, ok := session.Values["user"].(string)
-	if !ok {
-		return false
+// good enough. If HTTP.Public is enabled, it will not require authentication.
+// Please only use this if its on a private IP but regardless, you shouldn't have
+// this enabled
+func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool, user *structs.DiscordUser) {
+	if sg.Configuration.HTTP.Public {
+		auth = true
+		return
 	}
 
-	_user := &structs.User{}
-	err := json.Unmarshal([]byte(user), &_user)
+	userBody, ok := session.Values["user"].([]byte)
+	if !ok {
+		auth = false
+		return
+	}
+
+	err := json.Unmarshal(userBody, &user)
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to unmarshal user")
-		return false
+		auth = false
+		return
 	}
 
-	return true
+	for _, userID := range sg.Configuration.ElevatedUsers {
+		if userID == user.ID.Int64() {
+			return true, user
+		}
+	}
+
+	auth = false
+	return
 }
 
 func createEndpoints(sg *Sandwich) (router *MethodRouter) {
 	router = NewMethodRouter()
 
-	// login
-	// logout
-	// oauth/callback
+	router.HandleFunc("/login", LoginHandler(sg), "GET")
+	router.HandleFunc("/logout", LogoutHandler(sg), "GET")
+	router.HandleFunc("/oauth2/callback", OAuthCallbackHandler(sg), "GET")
 
+	router.HandleFunc("/api/me", APIMeHandler(sg), "GET")
 	// api/me
 
-	// GET /api/analytics
-	// GET /api/configuration
-	// GET /api/cluster
-	// GET /api/resttunnel
+	// GET /api/status        NONELEVATED
 
-	// PUT /api/manager/<manager>/cluster/<cluster>/shardgroup/create
-	// POST /api/manager/<manager>/cluster/cluster/shardgroup/1/stop
+	// GET /api/analytics     ELEVATED
+	// GET /api/cluster       ELEVATED
+	// GET /api/configuration ELEVATED
+	// GET /api/resttunnel    ELEVATED
+
+	// named cluster despite being manager
+
+	// manager:shardgroup:create
+	// manager:shardgroup:stop
+	// manager:shardgroup:delete
+
+	// manager:create
+	// manager:update
+	// manager:delete
+	// manager:restart
+	// manager:refresh_gateway
+
+	// daemon:verify_resttunnel
+	// daemon:update
+
+	// POST /api/manager/<manager>/shardgroup/create              - create shardgroup
+	// POST /api/manager/<manager>/shardgroup/<shardgroup>/stop   - stops shardgroup
+	// POST /api/manager/<manager>/shardgroup/<shardgroup>/delete - deletes shardgroup
+
+	// POST /api/manager/create                    - creates manager
+	// POST /api/manager/<manager>/update          - updates manager
+	// POST /api/manager/<manager>/delete          - deletes manager
+	// POST /api/manager/<manager>/restart         - restarts manager
+	// POST /api/manager/<manager>/refresh_gateway - refresh gateway from payload
+
+	// POST /api/daemon/verify_resttunnel - reverify resttunnel
+	// POST /api/daemon/update            - update daemon configuration
 
 	return
 }

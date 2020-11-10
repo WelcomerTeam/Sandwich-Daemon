@@ -22,43 +22,56 @@ nats:
 http:
   enabled: true
   host: 127.0.0.1:5469
+  secret: changeTheSecretToA32LetterString
+  public: false
+oauth:
+  clientid: 0
+  clientsecret: 0
+  scopes:
+    - identify
+    - email
+  endpoint:
+    authurl: https://discord.com/api/oauth2/authorize
+    tokenurl: https://discord.com/api/oauth2/token
+  redirecturl: http://127.0.0.1:5469/oauth2/callback
+elevated_users:
 managers:
-- auto_start: true
-  persist: true
-  identifier: welcomerBeta
-  display_name: Welcomer Beta
-  token: '[TOKEN]'
-  bot:
-    compression: true
-    default_presence:
-      name: Default presence test
-      type: 0
-      application_id: 0
-    guild_subscriptions: false
-    intents: 0
-    large_threshold: 250
-    max_heartbeat_failures: 5
-    retries: 2
-  caching:
-    redis_prefix: welcomer
-    cache_members: false
-    request_members: false
-    request_chunk_size: 1
-    ignore_bots: true
-    store_mutuals: true
-  events:
-    event_blacklist: []
-    produce_blacklist: []
-    ignore_bots: true
-    check_prefixes: true
-    allow_mention_prefix: true
-    fallback_prefix: "!"
-  messaging:
-    client_name: welcomer
-    channel_name: sandwich
-    use_random_suffix: true
-  sharding:
-    auto_sharded: true
-    shard_count: 2
-    cluster_count: 1
-    cluster_id: 0
+  - auto_start: true
+    persist: true
+    identifier: welcomerBeta
+    display_name: Welcomer Beta
+    token: "[TOKEN]"
+    bot:
+      compression: true
+      default_presence:
+        name: Default presence test
+        type: 0
+        application_id: 0
+      guild_subscriptions: false
+      intents: 0
+      large_threshold: 250
+      max_heartbeat_failures: 5
+      retries: 2
+    caching:
+      redis_prefix: welcomer
+      cache_members: false
+      request_members: false
+      request_chunk_size: 1
+      ignore_bots: true
+      store_mutuals: true
+    events:
+      event_blacklist: []
+      produce_blacklist: []
+      ignore_bots: true
+      check_prefixes: true
+      allow_mention_prefix: true
+      fallback_prefix: "!"
+    messaging:
+      client_name: welcomer
+      channel_name: sandwich
+      use_random_suffix: true
+    sharding:
+      auto_sharded: true
+      shard_count: 2
+      cluster_count: 1
+      cluster_id: 0

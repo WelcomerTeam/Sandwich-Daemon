@@ -23,6 +23,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
+	"golang.org/x/oauth2"
 	"golang.org/x/xerrors"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
@@ -85,7 +86,11 @@ type SandwichConfiguration struct {
 		Enabled       bool   `json:"enabled" yaml:"enabled"`
 		Host          string `json:"host" yaml:"host"`
 		SessionSecret string `json:"secret" yaml:"secret"`
+		Public        bool   `json:"public" yaml:"public"`
 	} `json:"http" yaml:"http"`
+
+	ElevatedUsers []int64        `json:"elevated_users" yaml:"elevated_users"`
+	OAuth         *oauth2.Config `json:"oauth" yaml:"oauth"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
 }
