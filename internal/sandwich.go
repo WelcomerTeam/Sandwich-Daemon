@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
 	"github.com/go-redis/redis/v8"
+	"github.com/gorilla/sessions"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
@@ -80,8 +82,9 @@ type SandwichConfiguration struct {
 	} `json:"nats" yaml:"nats"`
 
 	HTTP struct {
-		Enabled bool   `json:"enabled" yaml:"enabled"`
-		Host    string `json:"host" yaml:"host"`
+		Enabled       bool   `json:"enabled" yaml:"enabled"`
+		Host          string `json:"host" yaml:"host"`
+		SessionSecret string `json:"secret" yaml:"secret"`
 	} `json:"http" yaml:"http"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
@@ -110,6 +113,12 @@ type Sandwich struct {
 	RedisClient *redis.Client `json:"-"`
 	NatsClient  *nats.Conn    `json:"-"`
 	StanClient  stan.Conn     `json:"-"`
+
+	Router *MethodRouter
+	Store  *sessions.CookieStore
+
+	distHandler fasthttp.RequestHandler
+	fs          *fasthttp.FS
 }
 
 // NewSandwich creates the application state and initializes it
@@ -164,17 +173,6 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	mw := io.MultiWriter(writers...)
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
 	sg.Logger.Info().Msg("Logging configured")
-
-	go func() {
-		if sg.Configuration.HTTP.Enabled {
-			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
-			if err != nil {
-				sg.Logger.Error().Err(err).Msg("Failed to start up http server")
-			}
-		} else {
-			sg.Logger.Info().Msg("The web interface will not start as HTTP is disabled in the configuration")
-		}
-	}()
 
 	return
 }
@@ -365,19 +363,50 @@ func (sg *Sandwich) Open() (err error) {
 	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n     _--*         *--__         Sandwich Daemon %s\n _-**                  **-_\n|_*--_                _-* _|    HTTP: %s\n| *-_ *---_     _----* _-* |    Managers: %d\n *-_ *--__ *****  __---* _*\n     *--__ *-----** ___--*      %s\n         **-____-**\n",
 		VERSION, sg.Configuration.HTTP.Host, len(sg.Configuration.Managers), "┬─┬ ノ( ゜-゜ノ)")
 
+	sg.Logger.Info().Msg("Starting up http server")
+	sg.fs = &fasthttp.FS{
+		Root:               "web/dist",
+		IndexNames:         []string{"index.html"},
+		GenerateIndexPages: true,
+		Compress:           true,
+		AcceptByteRange:    true,
+		CacheDuration:      time.Hour * 24,
+		PathNotFound:       fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) { return }),
+	}
+	sg.distHandler = sg.fs.NewRequestHandler()
+
+	if sg.Configuration.HTTP.Enabled {
+		sg.Store = sessions.NewCookieStore([]byte(sg.Configuration.HTTP.SessionSecret))
+
+		sg.Logger.Info().Msg("Creating endpoints")
+		sg.Router = createEndpoints(sg)
+
+		go func() {
+			fmt.Printf("Serving on %s (Press CTRL+C to quit)\n", sg.Configuration.HTTP.Host)
+			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
+			if err != nil {
+				sg.Logger.Error().Err(err).Msg("Failed to start up http server")
+			}
+		}()
+	} else {
+		sg.Logger.Info().Msg("The web interface will not start as HTTP is disabled in the configuration")
+	}
+
+	sg.Logger.Info().Msg("Creating standalone redis client")
 	sg.RedisClient = redis.NewClient(&redis.Options{
 		Addr:     sg.Configuration.Redis.Address,
 		Password: sg.Configuration.Redis.Password,
 		DB:       sg.Configuration.Redis.DB,
 	})
-	sg.Logger.Info().Msg("Created standalone redis client")
 
+	sg.Logger.Info().Msg("Configuring RestTunnel")
 	if sg.Configuration.RestTunnel.Enabled {
 		sg.RestTunnelEnabled, _ = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 	} else {
 		sg.RestTunnelEnabled = false
 	}
 
+	sg.Logger.Info().Msg("Creating managers")
 	for _, managerConfiguration := range sg.Configuration.Managers {
 
 		manager, err := sg.NewManager(managerConfiguration)
