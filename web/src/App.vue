@@ -1,32 +1,21 @@
 <template>
   <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
+    <div v-cloak>
     </div>
-    <router-view />
+
+    <pre>loading: {{ $store.state.userLoading }}</pre>
+    <pre>user: {{ JSON.stringify($store.state.user) }}</pre>
+    <pre>auth: {{ $store.state.userAuthenticated }}</pre>
+    <pre>error: {{ $store.state.error }}</pre>
   </div>
 </template>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+html {
+  min-height: 100%;
 }
 
-#nav {
-  padding: 30px;
-}
-
-#nav a {
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-#nav a.router-link-exact-active {
-  color: #42b983;
+[v-cloak] {
+  visibility: hidden;
 }
 </style>

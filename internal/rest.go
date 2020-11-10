@@ -73,7 +73,9 @@ func createEndpoints(sg *Sandwich) (router *MethodRouter) {
 	router.HandleFunc("/oauth2/callback", OAuthCallbackHandler(sg), "GET")
 
 	router.HandleFunc("/api/me", APIMeHandler(sg), "GET")
-	// api/me
+
+	router.HandleFunc("/api/status", APIStatusHandler(sg), "GET")
+	router.HandleFunc("/api/analytics", APIAnalyticsHandler(sg), "GET")
 
 	// GET /api/status        NONELEVATED
 

@@ -74,3 +74,31 @@ type APIMe struct {
 	Authenticated bool         `json:"authenticated"`
 	User          *DiscordUser `json:"user"`
 }
+
+// APIStatusResult is the main /api/status body where both the managers
+// and its uptime is handled
+type APIStatusResult struct {
+	Managers []APIStatusManager `json:"managers"`
+	Uptime   int64              `json:"uptime"`
+}
+
+// APIStatusManager is the structure of a manager
+type APIStatusManager struct {
+	DisplayName string                `json:"name"`
+	Guilds      int64                 `json:"guilds"`
+	ShardGroups []APIStatusShardGroup `json:"shard_groups"`
+}
+
+// APIStatusShardGroup is the structure of a shardgroup
+type APIStatusShardGroup struct {
+	ID     int32            `json:"id"`
+	Status ShardGroupStatus `json:"status"`
+	Shards []APIStatusShard `json:"shards"`
+}
+
+// APIStatusShard is the structure of a shard
+type APIStatusShard struct {
+	Status  ShardStatus `json:"status"`
+	Latency int64       `json:"latency"`
+	Uptime  int64       `json:"uptime"`
+}

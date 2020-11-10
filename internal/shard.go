@@ -512,6 +512,13 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	return
 }
 
+// Latency returns the heartbeat latency in milliseconds
+func (sh *Shard) Latency() (latency int64) {
+	sh.LastHeartbeatMu.RLock()
+	defer sh.LastHeartbeatMu.RUnlock()
+	return sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Round(time.Millisecond).Milliseconds()
+}
+
 // HandleGuildCreate handles the guild create event
 func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err error) {
 	guildPayload := structs.GuildCreate{}

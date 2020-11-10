@@ -4,10 +4,13 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/hashicorp/go-uuid"
 )
+
+const forbiddenMessage = "You are not elevated"
 
 func passResponse(rw http.ResponseWriter, data interface{}, success bool, status int) {
 	var resp []byte
@@ -153,3 +156,78 @@ func APIMeHandler(sg *Sandwich) http.HandlerFunc {
 		}, true, http.StatusOK)
 	}
 }
+
+// APIStatusHandler handles the /api/status request which does not
+// require elevation and provides basic information
+func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+
+		guildCounts := make(map[string]int64)
+		now := time.Now().UTC()
+
+		_result := structs.APIStatusResult{
+			Managers: make([]structs.APIStatusManager, 0, len(sg.Managers)),
+			Uptime:   now.Sub(sg.Start).Round(time.Millisecond).Milliseconds(),
+		}
+
+		for _, manager := range sg.Managers {
+			guildCount, ok := guildCounts[manager.Configuration.Caching.RedisPrefix]
+			if !ok {
+				guildCount, err := sg.RedisClient.HLen(context.Background(), manager.CreateKey("guilds")).Result()
+				if err != nil {
+					passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+					return
+				}
+				guildCounts[manager.Configuration.Caching.RedisPrefix] = guildCount
+			}
+			_manager := structs.APIStatusManager{
+				DisplayName: manager.Configuration.DisplayName,
+				Guilds:      guildCount,
+				ShardGroups: make([]structs.APIStatusShardGroup, 0, len(manager.ShardGroups)),
+			}
+			for _, shardgroup := range manager.ShardGroups {
+				shardgroup.StatusMu.RLock()
+				_shardgroup := structs.APIStatusShardGroup{
+					ID:     shardgroup.ID,
+					Status: shardgroup.Status,
+					Shards: make([]structs.APIStatusShard, 0, len(shardgroup.Shards)),
+				}
+				shardgroup.StatusMu.RUnlock()
+				for _, shard := range shardgroup.Shards {
+					shard.StatusMu.RLock()
+					_shard := structs.APIStatusShard{
+						Status:  shard.Status,
+						Latency: shard.Latency(),
+						Uptime:  now.Sub(shard.Start).Round(time.Millisecond).Milliseconds(),
+					}
+					shard.StatusMu.RUnlock()
+					_shardgroup.Shards = append(_shardgroup.Shards, _shard)
+				}
+				_manager.ShardGroups = append(_manager.ShardGroups, _shardgroup)
+			}
+			_result.Managers = append(_result.Managers, _manager)
+		}
+
+		passResponse(rw, _result, true, http.StatusOK)
+	}
+}
+
+// APIAnalyticsHandler handles the /api/analytics request which
+// requires elevation
+func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+
+		passResponse(rw, "OK", true, http.StatusOK)
+	}
+}
+
+// session, _ := sg.Store.Get(r, sessionName)
+// if auth, _ := sg.AuthenticateSession(session); !auth {
+// 	passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+// 	return
+// }
