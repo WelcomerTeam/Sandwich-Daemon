@@ -34,10 +34,10 @@ type AnalyticResponse struct {
 
 // ClusterInformation represents cluster information.
 type ClusterInformation struct {
-	Name      string                             `json:"name"`
-	Guilds    int64                              `json:"guilds"`
-	Status    map[int32]structs.ShardGroupStatus `json:"status"`
-	AutoStart bool                               `json:"autostart"`
+	Name      string                     `json:"name"`
+	Guilds    int64                      `json:"guilds"`
+	Status    map[int32]ShardGroupStatus `json:"status"`
+	AutoStart bool                       `json:"autostart"`
 }
 
 // DataStamp stores time and its corresponding value

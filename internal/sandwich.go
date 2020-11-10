@@ -19,6 +19,8 @@ import (
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttpadaptor"
 	"golang.org/x/xerrors"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
@@ -163,15 +165,16 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
 	sg.Logger.Info().Msg("Logging configured")
 
-
 	go func() {
 		if sg.Configuration.HTTP.Enabled {
 			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
 			if err != nil {
 				sg.Logger.Error().Err(err).Msg("Failed to start up http server")
-			}	
+			}
+		} else {
+			sg.Logger.Info().Msg("The web interface will not start as HTTP is disabled in the configuration")
 		}
-	}
+	}()
 
 	return
 }
