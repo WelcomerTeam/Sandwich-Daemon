@@ -6,8 +6,6 @@ github.com/TheRockettek/czlib
 # github.com/TheRockettek/snowflake v0.3.0
 ## explicit
 github.com/TheRockettek/snowflake
-# github.com/andybalholm/brotli v1.0.0
-github.com/andybalholm/brotli
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
 # github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
@@ -27,16 +25,20 @@ github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 # github.com/golang/protobuf v1.4.2
 github.com/golang/protobuf/proto
-# github.com/gordonklaus/ineffassign v0.0.0-20200809085317-e36bfde3bb78
+# github.com/gorilla/mux v1.8.0
 ## explicit
+github.com/gorilla/mux
+# github.com/gorilla/securecookie v1.1.1
+github.com/gorilla/securecookie
+# github.com/gorilla/sessions v1.2.1
+## explicit
+github.com/gorilla/sessions
 # github.com/json-iterator/go v1.1.10
 ## explicit
 github.com/json-iterator/go
 # github.com/klauspost/compress v1.11.0
 ## explicit
 github.com/klauspost/compress/flate
-github.com/klauspost/compress/gzip
-github.com/klauspost/compress/zlib
 # github.com/kr/pretty v0.1.0
 ## explicit
 # github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421
@@ -71,13 +73,8 @@ github.com/rs/zerolog/log
 # github.com/tevino/abool v1.2.0
 ## explicit
 github.com/tevino/abool
-# github.com/valyala/bytebufferpool v1.0.0
-github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.16.0
 ## explicit
-github.com/valyala/fasthttp
-github.com/valyala/fasthttp/fasthttputil
-github.com/valyala/fasthttp/stackless
 # github.com/vmihailenco/msgpack v4.0.4+incompatible
 ## explicit
 github.com/vmihailenco/msgpack

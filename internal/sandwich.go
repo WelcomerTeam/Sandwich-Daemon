@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -130,8 +131,6 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	sg.Configuration = configuration
 	sg.ConfigurationMu.Unlock()
 
-	go sg.handleRequests()
-
 	var writers []io.Writer
 	sg.ConfigurationMu.RLock()
 	if sg.Configuration.Logging.ConsoleLoggingEnabled {
@@ -164,7 +163,65 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
 	sg.Logger.Info().Msg("Logging configured")
 
+
+	go func() {
+		if sg.Configuration.HTTP.Enabled {
+			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
+			if err != nil {
+				sg.Logger.Error().Err(err).Msg("Failed to start up http server")
+			}	
+		}
+	}
+
 	return
+}
+
+// HandleRequest handles incoming HTTP requests
+func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
+	start := time.Now()
+	var processingMS int64
+
+	defer func() {
+		var log *zerolog.Event
+		statusCode := ctx.Response.StatusCode()
+		switch {
+		case (statusCode >= 400 && statusCode <= 499):
+			log = sg.Logger.Warn()
+		case (statusCode >= 500 && statusCode <= 599):
+			log = sg.Logger.Error()
+		default:
+			log = sg.Logger.Info()
+		}
+		log.Msgf("%s %s %s %d %d %dms",
+			ctx.RemoteAddr(),
+			ctx.Request.Header.Method(),
+			ctx.Request.URI().PathOriginal(),
+			statusCode,
+			len(ctx.Response.Body()),
+			processingMS,
+		)
+	}()
+
+	fasthttp.CompressHandlerBrotliLevel(func(ctx *fasthttp.RequestCtx) {
+		fasthttpadaptor.NewFastHTTPHandler(sg.Router)(ctx)
+		if ctx.Response.StatusCode() != 404 {
+			ctx.SetContentType("application/json;charset=utf8")
+		}
+		// If there is no URL in router then try serving from the dist
+		// folder.
+		if ctx.Response.StatusCode() == 404 {
+			ctx.Response.Reset()
+			sg.distHandler(ctx)
+		}
+		// If there is no URL in router or in dist then send index.html
+		if ctx.Response.StatusCode() == 404 {
+			ctx.Response.Reset()
+			ctx.SendFile("web/dist/index.html")
+		}
+	}, fasthttp.CompressBrotliBestCompression, fasthttp.CompressBestCompression)(ctx)
+
+	processingMS = time.Now().Sub(start).Milliseconds()
+	ctx.Response.Header.Set("X-Elapsed", strconv.FormatInt(processingMS, 10))
 }
 
 // LoadConfiguration loads the sandwich configuration
