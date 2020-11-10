@@ -368,19 +368,23 @@ func (sg *Sandwich) Open() (err error) {
 	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n     _--*         *--__         Sandwich Daemon %s\n _-**                  **-_\n|_*--_                _-* _|    HTTP: %s\n| *-_ *---_     _----* _-* |    Managers: %d\n *-_ *--__ *****  __---* _*\n     *--__ *-----** ___--*      %s\n         **-____-**\n",
 		VERSION, sg.Configuration.HTTP.Host, len(sg.Configuration.Managers), "┬─┬ ノ( ゜-゜ノ)")
 
-	sg.Logger.Info().Msg("Starting up http server")
-	sg.fs = &fasthttp.FS{
-		Root:               "web/dist",
-		IndexNames:         []string{"index.html"},
-		GenerateIndexPages: true,
-		Compress:           true,
-		AcceptByteRange:    true,
-		CacheDuration:      time.Hour * 24,
-		PathNotFound:       fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) { return }),
-	}
-	sg.distHandler = sg.fs.NewRequestHandler()
-
 	if sg.Configuration.HTTP.Enabled {
+		if sg.Configuration.HTTP.Public {
+			sg.Logger.Warn().Msg("Public mode is enabled on the HTTP API. This can allow anyone to get bot credentials if exposed publicly. It is recommended you disable this and add trusted user ids in sandwich.yaml under \"elevated_users\"")
+		}
+
+		sg.Logger.Info().Msg("Starting up http server")
+		sg.fs = &fasthttp.FS{
+			Root:               "web/dist",
+			IndexNames:         []string{"index.html"},
+			GenerateIndexPages: true,
+			Compress:           true,
+			AcceptByteRange:    true,
+			CacheDuration:      time.Hour * 24,
+			PathNotFound:       fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) { return }),
+		}
+		sg.distHandler = sg.fs.NewRequestHandler()
+
 		sg.Store = sessions.NewCookieStore([]byte(sg.Configuration.HTTP.SessionSecret))
 
 		sg.Logger.Info().Msg("Creating endpoints")
