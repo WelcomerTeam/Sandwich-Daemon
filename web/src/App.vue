@@ -1,6 +1,8 @@
 <template>
   <div id="app">
     <div v-cloak>
+      You are currently using a version of Sandwich Daemon that does not include a frontend.
+      Please update
     </div>
 
     <pre>loading: {{ $store.state.userLoading }}</pre>
