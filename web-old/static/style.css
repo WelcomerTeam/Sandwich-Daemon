@@ -1,10 +1,13 @@
 /* Stop flashing when loading site */
-[v-cloak] { display: none; }
+[v-cloak] {
+  display: none;
+}
 
 .nav-pills .nav-link {
-    color: #343a40;
+  color: #343a40;
 }
-.nav-pills .nav-link.active, .nav-pills .show>.nav-link {
-    color: #fff;
-    background-color: #343a40!important;
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link {
+  color: #fff;
+  background-color: #343a40 !important;
 }
