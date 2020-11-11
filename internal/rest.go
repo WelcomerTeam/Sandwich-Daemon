@@ -75,40 +75,13 @@ func createEndpoints(sg *Sandwich) (router *MethodRouter) {
 	router.HandleFunc("/api/me", APIMeHandler(sg), "GET")
 
 	router.HandleFunc("/api/status", APIStatusHandler(sg), "GET")
+
 	router.HandleFunc("/api/analytics", APIAnalyticsHandler(sg), "GET")
-
 	router.HandleFunc("/api/managers", APIManagersHandler(sg), "GET")
-	// GET /api/cluster       ELEVATED
-	// GET /api/configuration ELEVATED
-	// GET /api/resttunnel    ELEVATED
+	router.HandleFunc("/api/configuration", APIConfigurationHandler(sg), "GET")
+	router.HandleFunc("/api/resttunnel", APIRestTunnelHandler(sg), "GET")
 
-	// named cluster despite being manager
-
-	// manager:shardgroup:create
-	// manager:shardgroup:stop
-	// manager:shardgroup:delete
-
-	// manager:create
-	// manager:update
-	// manager:delete
-	// manager:restart
-	// manager:refresh_gateway
-
-	// daemon:verify_resttunnel
-	// daemon:update
-
-	// POST /api/manager/<manager>/shardgroup/create              - create shardgroup
-	// POST /api/manager/<manager>/shardgroup/<shardgroup>/stop   - stops shardgroup
-	// POST /api/manager/<manager>/shardgroup/<shardgroup>/delete - deletes shardgroup
-
-	// POST /api/manager/create                    - creates manager
-	// POST /api/manager/<manager>/update          - updates manager
-	// POST /api/manager/<manager>/delete          - deletes manager
-	// POST /api/manager/<manager>/restart         - restarts manager
-	// POST /api/manager/<manager>/refresh_gateway - refresh gateway from payload
-
-	// POST /api/daemon/verify_resttunnel - reverify resttunnel
-	// POST /api/daemon/update            - update daemon configuration
+	router.HandleFunc("/api/rpc", APIRPCHandler(sg), "POST")
 
 	return
 }

@@ -168,7 +168,7 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		ProduceBlacklist: make(map[string]void),
 	}
 
-	if s.RestTunnelEnabled {
+	if s.RestTunnelEnabled.IsSet() {
 		mg.Client = NewClient(configuration.Token, s.Configuration.RestTunnel.URL)
 	} else {
 		mg.Client = NewClient(configuration.Token, "")

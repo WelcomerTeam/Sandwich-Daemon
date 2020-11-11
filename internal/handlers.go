@@ -2,8 +2,10 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -346,6 +348,89 @@ func APIManagersHandler(sg *Sandwich) http.HandlerFunc {
 		}
 
 		passResponse(rw, _result, true, http.StatusOK)
+	}
+}
+
+// APIConfigurationHandler handles the /api/configuration endpoint
+func APIConfigurationHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+
+		passResponse(rw, sg, true, http.StatusOK)
+	}
+}
+
+// APIRestTunnelHandler handles the /api/resttunnel endpoint
+func APIRestTunnelHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+
+		if sg.RestTunnelEnabled.IsNotSet() {
+			passResponse(rw, "RestTunnel is not enabled", false, http.StatusBadRequest)
+			return
+		}
+
+		_url, err := url.Parse(sg.Configuration.RestTunnel.URL)
+		if err != nil {
+			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+			return
+		}
+
+		resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/api/analytics")
+		if err != nil {
+			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+			return
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+			return
+		}
+
+		// We want to write directly as its a proxied request
+		rw.WriteHeader(resp.StatusCode)
+		rw.Write(body)
+	}
+}
+
+// APIRPCHandler handles the /api/rpc endpoint
+func APIRPCHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+			return
+		}
+
+		RPCMessage := structs.RPCRequest{}
+		err = json.Unmarshal(body, &RPCMessage)
+		if err != nil {
+			passResponse(rw, "Invalid payload sent", false, http.StatusBadRequest)
+			return
+		}
+
+		ok := executeRequest(sg, RPCMessage, rw)
+		if !ok {
+			passResponse(rw, fmt.Sprintf("Unknown method: %s", RPCMessage.Method), false, http.StatusBadRequest)
+			return
+		}
+
+		return
 	}
 }
 

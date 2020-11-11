@@ -21,6 +21,7 @@ import (
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/tevino/abool"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 	"golang.org/x/oauth2"
@@ -104,7 +105,7 @@ type Sandwich struct {
 	ConfigurationMu sync.RWMutex           `json:"-"`
 	Configuration   *SandwichConfiguration `json:"configuration"`
 
-	RestTunnelEnabled bool `json:"rest_tunnel_enabled"`
+	RestTunnelEnabled abool.AtomicBool `json:"rest_tunnel_enabled"`
 
 	ManagersMu sync.RWMutex        `json:"-"`
 	Managers   map[string]*Manager `json:"managers"`
@@ -410,9 +411,13 @@ func (sg *Sandwich) Open() (err error) {
 
 	sg.Logger.Info().Msg("Configuring RestTunnel")
 	if sg.Configuration.RestTunnel.Enabled {
-		sg.RestTunnelEnabled, _ = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
+		enabled, err := sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
+		}
+		sg.RestTunnelEnabled.SetTo(enabled)
 	} else {
-		sg.RestTunnelEnabled = false
+		sg.RestTunnelEnabled.UnSet()
 	}
 
 	sg.Logger.Info().Msg("Creating managers")
