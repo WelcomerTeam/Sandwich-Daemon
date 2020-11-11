@@ -4,6 +4,8 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
+	"sort"
+	"sync/atomic"
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
@@ -11,6 +13,19 @@ import (
 )
 
 const forbiddenMessage = "You are not elevated"
+
+var colours = [][]string{
+	{"rgba(149, 165, 165, 0.5)", "#7E8C8D"},
+	{"rgba(236, 240, 241, 0.5)", "#BEC3C7"},
+	{"rgba(232, 76, 61, 0.5)", "#C1392B"},
+	{"rgba(231, 126, 35, 0.5)", "#D25400"},
+	{"rgba(241, 196, 15, 0.5)", "#F39C11"},
+	{"rgba(52, 73, 94, 0.5)", "#2D3E50"},
+	{"rgba(155, 88, 181, 0.5)", "#8F44AD"},
+	{"rgba(53, 152, 219, 0.5)", "#2A80B9"},
+	{"rgba(45, 204, 112, 0.5)", "#27AE61"},
+	{"rgba(27, 188, 155, 0.5)", "#16A086"},
+}
 
 func passResponse(rw http.ResponseWriter, data interface{}, success bool, status int) {
 	var resp []byte
@@ -185,6 +200,7 @@ func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
 				Guilds:      guildCount,
 				ShardGroups: make([]structs.APIStatusShardGroup, 0, len(manager.ShardGroups)),
 			}
+
 			for _, shardgroup := range manager.ShardGroups {
 				shardgroup.StatusMu.RLock()
 				_shardgroup := structs.APIStatusShardGroup{
@@ -193,6 +209,7 @@ func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
 					Shards: make([]structs.APIStatusShard, 0, len(shardgroup.Shards)),
 				}
 				shardgroup.StatusMu.RUnlock()
+
 				for _, shard := range shardgroup.Shards {
 					shard.StatusMu.RLock()
 					_shard := structs.APIStatusShard{
@@ -212,6 +229,43 @@ func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
 	}
 }
 
+// ConstructAnalytics returns a LineChart struct based off of manager analytics
+func (sg *Sandwich) ConstructAnalytics() structs.LineChart {
+	datasets := make([]structs.Dataset, 0, len(sg.Managers))
+
+	// Create and sort x axis keys
+	mankeys := make([]string, 0, len(sg.Managers))
+	for key := range sg.Managers {
+		mankeys = append(mankeys, key)
+	}
+	sort.Strings(mankeys)
+
+	for i, ident := range mankeys {
+		mg := sg.Managers[ident]
+		if mg.Analytics == nil {
+			continue
+		}
+
+		data := make([]interface{}, 0, len(mg.Analytics.Samples))
+
+		for _, sample := range mg.Analytics.Samples {
+			data = append(data, structs.DataStamp{sample.StoredAt, sample.Value})
+		}
+
+		colour := colours[i%len(colours)]
+		datasets = append(datasets, structs.Dataset{
+			Label:            mg.Configuration.DisplayName,
+			BackgroundColour: colour[0],
+			BorderColour:     colour[1],
+			Data:             data,
+		})
+	}
+
+	return structs.LineChart{
+		Datasets: datasets,
+	}
+}
+
 // APIAnalyticsHandler handles the /api/analytics request which
 // requires elevation
 func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
@@ -222,7 +276,76 @@ func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		passResponse(rw, "OK", true, http.StatusOK)
+		managers := make([]structs.ManagerInformation, 0, len(sg.Managers))
+		guildCounts := make(map[string]int64, 0)
+
+		for _, manager := range sg.Managers {
+			manager.ConfigurationMu.RLock()
+
+			statuses := make(map[int32]structs.ShardGroupStatus)
+
+			manager.ShardGroupMu.Lock()
+			for i, sg := range manager.ShardGroups {
+				statuses[i] = sg.Status
+			}
+			manager.ShardGroupMu.Unlock()
+
+			_guildCount, ok := guildCounts[manager.Configuration.Caching.RedisPrefix]
+			if !ok {
+				guildCount, err := sg.RedisClient.HLen(context.Background(), manager.CreateKey("guilds")).Result()
+				if err != nil {
+					passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+					return
+				}
+				guildCounts[manager.Configuration.Caching.RedisPrefix] = guildCount
+			}
+
+			_manager := structs.ManagerInformation{
+				Name:      manager.Configuration.DisplayName,
+				Guilds:    _guildCount,
+				Status:    statuses,
+				AutoStart: manager.Configuration.AutoStart,
+			}
+			manager.ConfigurationMu.RUnlock()
+			managers = append(managers, _manager)
+		}
+
+		now := time.Now()
+		guildCount := int64(0)
+		for _, count := range guildCounts {
+			guildCount += count
+		}
+
+		_result := structs.APIAnalyticsResult{
+			Graph:    sg.ConstructAnalytics(),
+			Guilds:   guildCount,
+			Uptime:   DurationTimestamp(now.Sub(sg.Start)),
+			Events:   atomic.LoadInt64(sg.TotalEvents),
+			Managers: managers,
+		}
+
+		passResponse(rw, _result, true, http.StatusOK)
+	}
+}
+
+// APIManagersResult is the structure of the /api/managers endpoint
+type APIManagersResult map[string]map[int32]*ShardGroup
+
+// APIManagersHandler handles the /api/managers endpoint
+func APIManagersHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+
+		_result := APIManagersResult{}
+		for key, manager := range sg.Managers {
+			_result[key] = manager.ShardGroups
+		}
+
+		passResponse(rw, _result, true, http.StatusOK)
 	}
 }
 
@@ -230,4 +353,14 @@ func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
 // if auth, _ := sg.AuthenticateSession(session); !auth {
 // 	passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
 // 	return
+// }
+
+// return func(rw http.ResponseWriter, r *http.Request) {
+// 	session, _ := sg.Store.Get(r, sessionName)
+// 	if auth, _ := sg.AuthenticateSession(session); !auth {
+// 		passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+// 		return
+// 	}
+
+// 	passResponse(rw, "OK", true, http.StatusOK)
 // }

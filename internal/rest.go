@@ -77,9 +77,7 @@ func createEndpoints(sg *Sandwich) (router *MethodRouter) {
 	router.HandleFunc("/api/status", APIStatusHandler(sg), "GET")
 	router.HandleFunc("/api/analytics", APIAnalyticsHandler(sg), "GET")
 
-	// GET /api/status        NONELEVATED
-
-	// GET /api/analytics     ELEVATED
+	router.HandleFunc("/api/managers", APIManagersHandler(sg), "GET")
 	// GET /api/cluster       ELEVATED
 	// GET /api/configuration ELEVATED
 	// GET /api/resttunnel    ELEVATED

@@ -18,23 +18,6 @@ type RPCRequest struct {
 	Data   jsoniter.RawMessage `json:"data"`
 }
 
-// ClusterInformation represents cluster information.
-type ClusterInformation struct {
-	Name      string                     `json:"name"`
-	Guilds    int64                      `json:"guilds"`
-	Status    map[int32]ShardGroupStatus `json:"status"`
-	AutoStart bool                       `json:"autostart"`
-}
-
-// AnalyticResponse is the analytic response when you request the analytics
-type AnalyticResponse struct {
-	Graph    LineChart            `json:"chart"`
-	Guilds   int64                `json:"guilds"`
-	Uptime   string               `json:"uptime"`
-	Events   int64                `json:"events"`
-	Clusters []ClusterInformation `json:"clusters"`
-}
-
 // DataStamp stores time and its corresponding value
 type DataStamp struct {
 	Time  interface{} `json:"x"`
@@ -101,4 +84,21 @@ type APIStatusShard struct {
 	Status  ShardStatus `json:"status"`
 	Latency int64       `json:"latency"`
 	Uptime  int64       `json:"uptime"`
+}
+
+// APIAnalyticsResult is the structure of the /api/analytics request
+type APIAnalyticsResult struct {
+	Graph    LineChart            `json:"chart"`
+	Guilds   int64                `json:"guilds"`
+	Uptime   string               `json:"uptime"`
+	Events   int64                `json:"events"`
+	Managers []ManagerInformation `json:"manager"`
+}
+
+// ManagerInformation is the structure of the manager in the /api/analytics request
+type ManagerInformation struct {
+	Name      string                     `json:"name"`
+	Guilds    int64                      `json:"guilds"`
+	Status    map[int32]ShardGroupStatus `json:"status"`
+	AutoStart bool                       `json:"autostart"`
 }
