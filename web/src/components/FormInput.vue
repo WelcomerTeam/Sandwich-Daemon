@@ -12,7 +12,7 @@
       <label class="form-check-label" :for="id">{{ label }}</label>
     </div>
     <div class="mb-3" v-else-if="type == 'text'">
-      <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+      <label :for="id" v-if="label" class="col-sm-12 form-label">{{ label }}</label>
       <input
         type="text"
         class="form-control"
@@ -24,7 +24,7 @@
       />
     </div>
     <div class="mb-3" v-else-if="type == 'list'">
-      <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+      <label :for="id" v-if="label" class="col-sm-12 form-label">{{ label }}</label>
       <input
         type="text"
         class="form-control"
@@ -38,7 +38,7 @@
       />
     </div>
     <div class="mb-3" v-else-if="type == 'number'">
-      <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+      <label :for="id" v-if="label" class="col-sm-12 form-label">{{ label }}</label>
       <input
         type="number"
         class="form-control"
@@ -50,7 +50,7 @@
       />
     </div>
     <div class="mb-3" v-else-if="type == 'password'">
-      <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+      <label :for="id" v-if="label" class="col-sm-12 form-label">{{ label }}</label>
       <div class="input-group">
         <input
           type="password"
@@ -65,14 +65,14 @@
         <button
           class="btn btn-outline-dark"
           type="button"
-          v-on:click="copyFormInputPassword()"
+          v-clipboard:copy="value"
         >
           Copy
         </button>
       </div>
     </div>
     <div class="mb-3" v-else-if="type == 'select'">
-      <label :for="id" class="col-sm-12 form-label">{{ label }}</label>
+      <label :for="id" v-if="label" class="col-sm-12 form-label">{{ label }}</label>
       <select
         class="form-select"
         :id="id"
@@ -236,18 +236,6 @@ export default {
     }
   },
   methods: {
-    copyFormInputPassword: function() {
-      var elem = document.createElement("textarea");
-      elem.value = this.$el.lastChild.firstChild.value;
-      elem.type = "hidden";
-      document.body.append(elem);
-
-      elem.select();
-      elem.setSelectionRange(0, 99999);
-
-      document.execCommand("copy");
-      elem.parentElement.removeChild(elem);
-    },
     calculateIntent() {
       this.intentValue = 0;
       this.selectedIntent.forEach(a => {

@@ -1,5 +1,5 @@
 <template>
-  <button type="submit" class="btn btn-dark" @click="onClick">
+  <button type="submit" class="btn btn-dark mr-1" @click="onClick">
     {{ label }}
   </button>
 </template>

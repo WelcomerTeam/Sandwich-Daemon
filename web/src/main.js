@@ -1,5 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
+import VueClipboard from "vue-clipboard2";
 import App from "./App.vue";
 import "./registerServiceWorker";
 import router from "./router";
@@ -15,6 +16,7 @@ import "chartjs-adapter-moment";
 
 Vue.config.productionTip = false;
 
+Vue.use(VueClipboard);
 Vue.use(Vuex);
 const store = new Vuex.Store({
   state: {

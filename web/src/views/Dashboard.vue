@@ -1083,7 +1083,7 @@
                                       '-autostart'
                                   "
                                   :label="'Auto Start'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   When enabled, the Manager will start up a
                                   shardgroup automatically.
@@ -1097,7 +1097,7 @@
                                       '-persist'
                                   "
                                   :label="'Persist'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   When enabled, changes to Manager will be saved
                                   else the configuration will be discarded when
@@ -1114,8 +1114,7 @@
                                 "
                                 :label="'Identifier'"
                                 :disabled="true"
-                              >
-                              </form-input>
+                              />
                               <p class="text-muted">
                                 <b
                                   >You cannot modify the identifier as that can
@@ -1134,7 +1133,7 @@
                                     '-display_name'
                                 "
                                 :label="'Display Name'"
-                              ></form-input>
+                              />
                               <form-input
                                 v-model="manager.configuration.token"
                                 :type="'password'"
@@ -1144,7 +1143,7 @@
                                     '-token'
                                 "
                                 :label="'Token'"
-                              ></form-input>
+                              />
                               <form-submit
                                 v-on:click="saveClusterSettings(manager)"
                               >
@@ -1173,7 +1172,7 @@
                                       '-bot.compression'
                                   "
                                   :label="'Compression'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   Enables zstd compression on the gateway
                                   websocket. Recommended.
@@ -1190,7 +1189,7 @@
                                       '-bot.guild_subscriptions'
                                   "
                                   :label="'Guild Subscriptions'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   <b>Not recommended, use intents.</b> Events
                                   such as PRESENCE_UPDATE, TYPING,
@@ -1207,7 +1206,7 @@
                                     '-bot.presence'
                                 "
                                 :label="'Presence'"
-                              ></form-input>
+                              />
                               <form-input
                                 v-model="manager.configuration.bot.intents"
                                 :type="'intent'"
@@ -1217,7 +1216,7 @@
                                     '-bot.intents'
                                 "
                                 :label="'Intents'"
-                              ></form-input>
+                              />
                               <form-input
                                 v-model="
                                   manager.configuration.bot.large_threshold
@@ -1229,7 +1228,7 @@
                                     '-bot.large_threshold'
                                 "
                                 :label="'Large Threshold'"
-                              ></form-input>
+                              />
                               <form-input
                                 v-model="
                                   manager.configuration.bot
@@ -1242,7 +1241,7 @@
                                     '-bot.max_heartbeat_failures'
                                 "
                                 :label="'Max Heartbeat Failures'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Amount of heartbeat durations until the bot
                                 forcibly reconnects. 5 is recommended.
@@ -1256,7 +1255,7 @@
                                     '-bot.retries'
                                 "
                                 :label="'Retries'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Amount of reconnects to attempt before giving
                                 up. Recommended to be more than 1 in the event
@@ -1291,7 +1290,7 @@
                                       '-caching.cache_users'
                                   "
                                   :label="'Cache Users'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   If enabled, users will be cached on redis.
                                 </p>
@@ -1306,7 +1305,7 @@
                                       '-caching.cache_members'
                                   "
                                   :label="'Cache Members'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   If enabled, members will be cached on redis.
                                 </p>
@@ -1322,7 +1321,7 @@
                                       '-caching.request_members'
                                   "
                                   :label="'Request Members'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   <b
                                     >Due to the new intent changes, enabling
@@ -1342,7 +1341,7 @@
                                       '-caching.store_mutuals'
                                   "
                                   :label="'Store Mutuals'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   If enabled, guild ids a member is on is stored
                                   on redis.
@@ -1359,7 +1358,7 @@
                                     '-caching.redis_prefix'
                                 "
                                 :label="'Redis Prefix'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 String all redis requests will be pre-pended
                                 with {PREFIX}:{KEY}. Useful when wanting to
@@ -1379,7 +1378,7 @@
                                     '-caching.request_chunk_size'
                                 "
                                 :label="'Request Chunk Size'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Number of guilds to request in a
                                 REQUEST_GUILD_MEMBERS request. With the new
@@ -1420,7 +1419,7 @@
                                       '-events.ignore_bots'
                                   "
                                   :label="'Ignore Bots'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   When enabled, consumers will not receive
                                   MESSAGE_CREATE events if the author is a bot
@@ -1436,7 +1435,7 @@
                                       '-events.check_prefixes'
                                   "
                                   :label="'Check Prefixes'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   When enabled, consumers will receive only
                                   MESSAGE_CREATE events that start with a
@@ -1456,8 +1455,7 @@
                                       '-events.allow_mention_prefix'
                                   "
                                   :label="'Allow Mention Prefix'"
-                                >
-                                </form-input>
+                                />
                               </div>
                               <form-input
                                 v-model="
@@ -1471,7 +1469,7 @@
                                 "
                                 :label="'Fallback Prefix'"
                                 :placeholder="'No prefix'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 If the daemon is unable to fetch a custom prefix
                                 from redis, it will use the fallback prefix and
@@ -1491,7 +1489,7 @@
                                     '-events.event_blacklist'
                                 "
                                 :label="'Event Blacklist'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Events in event blacklist are completely ignored
                                 by Sandwich Daemon. It is recommended you
@@ -1509,7 +1507,7 @@
                                     '-events.produce_blacklist'
                                 "
                                 :label="'Produce Blacklist'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Events in produce blacklist are processed
                                 (cached etc.) however are not relayed to
@@ -1546,7 +1544,7 @@
                                       '-messaging.use_random_suffix'
                                   "
                                   :label="'Use Random Suffix'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   When enabled, the client name will have a
                                   random suffix added. Useful if you have
@@ -1564,7 +1562,7 @@
                                     '-messaging.client_name'
                                 "
                                 :label="'Client Name'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Name of the client the manager uses.
                                 <b>Client names must be unique.</b> If you are
@@ -1583,7 +1581,7 @@
                                     '-messaging.channel_name'
                                 "
                                 :label="'Channel Name'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Custom definition of the channel the manager
                                 will use. If empty, it will use the
@@ -1618,7 +1616,7 @@
                                       '-sharding.auto_sharded'
                                   "
                                   :label="'AutoSharded'"
-                                ></form-input>
+                                />
                                 <p class="text-muted">
                                   If enabled, will set the shard count to what
                                   is recommended on the gateway
@@ -1635,7 +1633,7 @@
                                     '-sharding.shard_count'
                                 "
                                 :label="'Shard Count'"
-                              ></form-input>
+                              />
                               <p class="text-muted">
                                 Shard Count to launch shard groups with. Be
                                 aware this has no security and if it has not
@@ -1734,13 +1732,14 @@
               <li class="nav-item" role="presentation">
                 <a
                   class="nav-link"
-                  id="resttunnel-tab"
+                  id="access-tab"
                   data-toggle="tab"
-                  href="#daemonSettings-resttunnel"
+                  href="#daemonSettings-access"
                   role="tab"
                   aria-selected="false"
-                  ><b>RestTunnel</b></a
                 >
+                  Access
+                </a>
               </li>
               <li class="nav-item" role="presentation">
                 <a
@@ -1778,6 +1777,17 @@
               <li class="nav-item" role="presentation">
                 <a
                   class="nav-link"
+                  id="resttunnel-tab"
+                  data-toggle="tab"
+                  href="#daemonSettings-resttunnel"
+                  role="tab"
+                  aria-selected="false"
+                  ><b>RestTunnel</b></a
+                >
+              </li>
+              <li class="nav-item" role="presentation">
+                <a
+                  class="nav-link"
                   id="raw-tab"
                   data-toggle="tab"
                   href="#daemonSettings-raw"
@@ -1801,8 +1811,7 @@
                     :type="'checkbox'"
                     :id="'loggingConsoleLogging'"
                     :label="'Console Logging'"
-                  >
-                  </form-input>
+                  />
                   <p class="text-muted">
                     If enabled, logs will be shown in console.
                   </p>
@@ -1811,8 +1820,7 @@
                     :type="'checkbox'"
                     :id="'loggingFileLogging'"
                     :label="'File Logging'"
-                  >
-                  </form-input>
+                  />
                   <p class="text-muted">
                     If enabled, logs will be saved to a file.
                   </p>
@@ -1821,8 +1829,7 @@
                     :type="'checkbox'"
                     :id="'loggingEncodeAsJson'"
                     :label="'Encode as JSON'"
-                  >
-                  </form-input>
+                  />
                   <p class="text-muted">
                     If enabled, text will be encoded as json instead of human
                     readable.
@@ -1833,22 +1840,19 @@
                   :type="'text'"
                   :id="'loggingDirectory'"
                   :label="'Directory'"
-                >
-                </form-input>
+                />
                 <form-input
                   v-model="daemon.configuration.logging.filename"
                   :type="'text'"
                   :id="'loggingFilename'"
                   :label="'Filename'"
-                >
-                </form-input>
+                />
                 <form-input
                   v-model="daemon.configuration.logging.max_size"
                   :type="'number'"
                   :id="'loggingMaxSize'"
                   :label="'Max Size'"
-                >
-                </form-input>
+                />
                 <p class="text-muted">
                   <b>Stored in Megabytes.</b> Max size each log can be before a
                   new file is made. 0 is unlimited.
@@ -1858,8 +1862,7 @@
                   :type="'number'"
                   :id="'loggingMaxBackups'"
                   :label="'Max Backups'"
-                >
-                </form-input>
+                />
                 <p class="text-muted">
                   Max number of log files before old ones are deleted.
                 </p>
@@ -1868,8 +1871,7 @@
                   :type="'number'"
                   :id="'loggingMaxAge'"
                   :label="'Max Age'"
-                >
-                </form-input>
+                />
                 <p class="text-muted">
                   Number of days that a log file can exist before it is removed.
                 </p>
@@ -1900,8 +1902,7 @@
                     :type="'checkbox'"
                     :id="'restTunnelEnabled'"
                     :label="'Enabled'"
-                  >
-                  </form-input>
+                  />
                 </div>
                 <form-input
                   v-model="daemon.configuration.resttunnel.url"
@@ -1909,8 +1910,7 @@
                   :id="'restTunnelURL'"
                   :placeholder="'http://127.0.0.1:8000'"
                   :label="'URL'"
-                >
-                </form-input>
+                />
                 <button
                   type="button"
                   class="btn btn-dark mr-1"
@@ -1925,6 +1925,62 @@
                 >
                   Verify RestTunnel
                 </button>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="daemonSettings-access"
+                role="tabpanel"
+                aria-labelledby="access-tab"
+              >
+                <!-- Access -->
+                <p class="text-muted">
+                  Access allows you to manage who has access to the dashboard
+                </p>
+                <div class="pb-4">
+                  <form-input
+                    v-model="daemon.configuration.http.public"
+                    :type="'checkbox'"
+                    :id="'httpPublic'"
+                    :label="'Public Access'"
+                  />
+                  <p class="text-muted">If enabled, users will not need elevation to access the internal API. <b>This should never need to be enabled.</b></p>
+                </div>
+
+                <ul class="list-group mt-3 mb-2">
+                  <li class="list-group-item list-group-item-dark">Users ({{ daemon.configuration.elevated_users.length }})</li>
+                  <li
+                    class="list-group-item"
+                    v-for="(id, index) in daemon.configuration.elevated_users"
+                    v-bind:key="index"
+                  >
+                    {{ id }}
+                  </li>
+                </ul>
+                <form-input
+                  v-model="userid"
+                  :type="'number'"
+                  :id="'elevatedUsers'"
+                  :label="''"
+                  :placeholder="'Discord user ID'"
+                />
+                <form-submit
+                  v-on:click="
+                    daemon.configuration.elevated_users = daemon.configuration.elevated_users.filter(item => item !== userid )
+                  "
+                  :label="'Remove User'"
+                />
+                <form-submit
+                  v-on:click="
+                    if (daemon.configuration.elevated_users.includes(userid)) { return }
+                    daemon.configuration.elevated_users.push(userid);
+                  "
+                  :label="'Add User'"
+                />
+                <p class="text-muted">
+                  List of discord user IDs who are able to manage the settings on the dashboard. Only give this to users you trust.
+                </p>
+
+                <form-submit v-on:click="saveDaemonSettings()"></form-submit>
               </div>
               <div
                 class="tab-pane fade"
@@ -1945,8 +2001,7 @@
                     :type="'checkbox'"
                     :id="'redisUniqueClients'"
                     :label="'Unique Clients'"
-                  >
-                  </form-input>
+                  />
                 </div>
                 <p class="text-muted">
                   If enabled, each Manager will have their own redis connection
@@ -1957,19 +2012,19 @@
                   :type="'text'"
                   :id="'redisAddress'"
                   :label="'Address'"
-                ></form-input>
+                />
                 <form-input
                   v-model="daemon.configuration.redis.password"
                   :type="'password'"
                   :id="'redisPassword'"
                   :label="'Password'"
-                ></form-input>
+                />
                 <form-input
                   v-model="daemon.configuration.redis.database"
                   :type="'number'"
                   :id="'redisDB'"
                   :label="'Database'"
-                ></form-input>
+                />
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
               </div>
               <div
@@ -1990,19 +2045,19 @@
                   :type="'text'"
                   :id="'natsAddress'"
                   :label="'Address'"
-                ></form-input>
+                />
                 <form-input
                   v-model="daemon.configuration.nats.channel"
                   :type="'text'"
                   :id="'natsChannel'"
                   :label="'Channel'"
-                ></form-input>
+                />
                 <form-input
                   v-model="daemon.configuration.nats.manager"
                   :type="'text'"
                   :id="'natsCluster'"
                   :label="'Cluster'"
-                ></form-input>
+                />
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
               </div>
               <div
@@ -2018,7 +2073,7 @@
                     :type="'checkbox'"
                     :id="'httpEnabled'"
                     :label="'Enabled'"
-                  ></form-input>
+                  />
                   <p class="text-muted">
                     Disabling HTTP will still show the web interface however
                     will shown an error.
@@ -2029,15 +2084,27 @@
                   :type="'text'"
                   :id="'httpHost'"
                   :label="'Host'"
-                ></form-input>
+                />
                 <p class="text-muted">
                   <b
                     >It is recommended you keep this on a local IP such as
-                    localhost or 127.0.0.1 as Sandwich Daemon does not require
-                    authentication to interact with the dashboard.</b
+                    localhost or 127.0.0.1 or disable public access in the
+                    Access tab.</b
                   >
-                  Entering 0.0.0.0 or the devices IP will make it public, use a
-                  public IP at your own risk.
+                  Entering 0.0.0.0 or the devices IP will make it accessable to
+                  users outside of the local network. Ensure you disable public
+                  access in the Access tab.
+                </p>
+
+                <form-input
+                  v-model="daemon.configuration.http.secret"
+                  :type="'password'"
+                  :id="'httpSecret'"
+                  :label="'Session Secret'"
+                />
+                <p class="text-muted">
+                  Secret to use for encrypting user sessions.
+                  <b>Changing this will log you out</b>
                 </p>
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
               </div>
@@ -2133,6 +2200,7 @@ export default {
       version: "...",
       loading: true,
       error: false,
+      userid: undefined,
       daemon: {
         managers: []
       },
