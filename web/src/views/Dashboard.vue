@@ -485,31 +485,31 @@
                 <card-display
                   :title="'Requests Processed'"
                   :value="resttunnel.numbers.requests"
-                  :bg="bg - dark"
+                  :bg="'bg-dark'"
                 >
                 </card-display>
                 <card-display
                   :title="'Hits'"
                   :value="resttunnel.numbers.hits"
-                  :bg="bg - dark"
+                  :bg="'bg-dark'"
                 >
                 </card-display>
                 <card-display
                   :title="'Misses'"
                   :value="resttunnel.numbers.misses"
-                  :bg="bg - dark"
+                  :bg="'bg-dark'"
                 >
                 </card-display>
                 <card-display
                   :title="'Uptime'"
                   :value="resttunnel.uptime"
-                  :bg="bg - dark"
+                  :bg="'bg-dark'"
                 >
                 </card-display>
                 <card-display
                   :title="'Waiting'"
                   :value="resttunnel.numbers.waiting"
-                  :bg="bg - dark"
+                  :bg="'bg-dark'"
                 >
                 </card-display>
               </div>
@@ -2212,6 +2212,7 @@ export default {
       error: false,
       userid: undefined,
       daemon: {
+        rest_tunnel_enabled: true,
         managers: []
       },
       toast: {
@@ -2736,9 +2737,9 @@ export default {
               document.location.reload();
             }
 
-            this.resttunnel.charts = result.data.charts;
-            this.resttunnel.uptime = result.data.uptime;
-            this.resttunnel.numbers = result.data.numbers;
+            this.resttunnel.charts = result.data.data.charts;
+            this.resttunnel.uptime = result.data.data.uptime;
+            this.resttunnel.numbers = result.data.data.numbers;
           })
           .catch(error => {
             console.log(error);
