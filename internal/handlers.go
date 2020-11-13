@@ -385,7 +385,7 @@ func APIRestTunnelHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/api/analytics")
+		resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/resttunnel/analytics")
 		if err != nil {
 			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
 			return
