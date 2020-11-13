@@ -169,9 +169,9 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 	}
 
 	if s.RestTunnelEnabled.IsSet() {
-		mg.Client = NewClient(configuration.Token, s.Configuration.RestTunnel.URL)
+		mg.Client = NewClient(configuration.Token, s.Configuration.RestTunnel.URL, s.RestTunnelReverse.IsSet())
 	} else {
-		mg.Client = NewClient(configuration.Token, "")
+		mg.Client = NewClient(configuration.Token, "", false)
 	}
 
 	err = mg.NormalizeConfiguration()

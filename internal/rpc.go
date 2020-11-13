@@ -454,17 +454,19 @@ func RPCManagerRefreshGateway(sg *Sandwich, req structs.RPCRequest, rw http.Resp
 // RPCDaemonVerifyRestTunnel checks if RestTunnel is active
 func RPCDaemonVerifyRestTunnel(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	var restTunnelEnabled bool
+	var reverse bool
 	var err error
 
 	sg.ConfigurationMu.Lock()
 	if sg.Configuration.RestTunnel.Enabled {
-		restTunnelEnabled, err = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
+		restTunnelEnabled, reverse, err = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 		if err != nil {
 			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
 		}
 	} else {
 		restTunnelEnabled = false
 	}
+	sg.RestTunnelReverse.SetTo(reverse)
 	sg.RestTunnelEnabled.SetTo(restTunnelEnabled)
 	sg.ConfigurationMu.Unlock()
 
@@ -494,10 +496,11 @@ func RPCDaemonUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrite
 	}
 
 	var restTunnelEnabled bool
+	var reverse bool
 
 	sg.ConfigurationMu.Lock()
 	if sg.Configuration.RestTunnel.Enabled {
-		restTunnelEnabled, err = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
+		restTunnelEnabled, reverse, err = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 		if err != nil {
 			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
 		}
@@ -512,11 +515,12 @@ func RPCDaemonUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrite
 		restTunnelURL = ""
 	}
 
-	if restTunnelEnabled != sg.RestTunnelEnabled.IsSet() {
+	if restTunnelEnabled != sg.RestTunnelEnabled.IsSet() || reverse != sg.RestTunnelReverse.IsSet() {
 		sg.ManagersMu.RLock()
 		for _, _manager := range sg.Managers {
 			_manager.Client.mu.Lock()
 			_manager.Client.restTunnelURL = restTunnelURL
+			_manager.Client.reverse = reverse
 			_manager.Client.mu.Unlock()
 		}
 		sg.ManagersMu.RUnlock()

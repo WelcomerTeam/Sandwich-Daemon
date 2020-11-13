@@ -15,6 +15,7 @@ import (
 	"time"
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
+	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/sessions"
 	"github.com/nats-io/nats.go"
@@ -105,6 +106,7 @@ type Sandwich struct {
 	ConfigurationMu sync.RWMutex           `json:"-"`
 	Configuration   *SandwichConfiguration `json:"configuration"`
 
+	RestTunnelReverse      abool.AtomicBool `json:"-"`
 	RestTunnelEnabled      abool.AtomicBool `json:"-"`
 	RestTunnelEnabledValue bool             `json:"rest_tunnel_enabled"`
 
@@ -412,10 +414,11 @@ func (sg *Sandwich) Open() (err error) {
 
 	sg.Logger.Info().Msg("Configuring RestTunnel")
 	if sg.Configuration.RestTunnel.Enabled {
-		enabled, err := sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
+		enabled, reverse, err := sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 		if err != nil {
 			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
 		}
+		sg.RestTunnelReverse.SetTo(reverse)
 		sg.RestTunnelEnabled.SetTo(enabled)
 	} else {
 		sg.RestTunnelEnabled.UnSet()
@@ -528,27 +531,34 @@ func (sg *Sandwich) Open() (err error) {
 }
 
 // VerifyRestTunnel returns a boolean if RestTunnel can be found and is alive
-func (sg *Sandwich) VerifyRestTunnel(rturl string) (enabled bool, err error) {
-	if rturl != "" {
-		if _url, err := url.Parse(rturl); err == nil {
-			if resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/alive"); err == nil {
-				body, _ := ioutil.ReadAll(resp.Body)
-				aliveResponse := struct {
-					Version string `json:"version"`
-				}{}
-				if err := json.Unmarshal(body, &aliveResponse); err == nil {
-					sg.Logger.Info().Msgf("\\o/ Detected RestTunnel version %s", aliveResponse.Version)
-					return true, nil
-				}
-				sg.Logger.Error().Err(err).Msg("Failed to parse RestTunnel alive response")
-			} else {
-				sg.Logger.Error().Err(err).Msgf("Failed to connect to RestTunnel")
-			}
-		} else {
-			sg.Logger.Error().Err(err).Msgf("Failed to parse RestTunnel URL %s", rturl)
-		}
+func (sg *Sandwich) VerifyRestTunnel(restTunnelURL string) (enabled bool, reverse bool, err error) {
+	if restTunnelURL == "" {
+		return
 	}
-	return false, err
+
+	_url, err := url.Parse(restTunnelURL)
+	if err != nil {
+		sg.Logger.Error().Err(err).Msgf("Failed to parse RestTunnel URL %s", restTunnelURL)
+		return
+	}
+
+	resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/resttunnel")
+	if err != nil {
+		sg.Logger.Error().Err(err).Msgf("Failed to connect to RestTunnel")
+		return
+	}
+
+	baseResponse := structs.RestTunnelAliveResponse{}
+
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&baseResponse)
+	if err != nil {
+		sg.Logger.Error().Err(err).Msg("Failed to parse RestTunnel alive response")
+	}
+
+	aliveResponse := baseResponse.Data
+	sg.Logger.Info().Msgf("\\o/ Detected RestTunnel version %s. Running in reverse mode: %t", aliveResponse.Version, aliveResponse.Reverse)
+	return true, aliveResponse.Reverse, nil
 }
 
 // Close will gracefully close the application

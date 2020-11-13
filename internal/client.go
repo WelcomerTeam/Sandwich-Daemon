@@ -33,10 +33,11 @@ type Client struct {
 
 	// Will use RestTunnel if not empty
 	restTunnelURL string
+	reverse       bool
 }
 
 // NewClient makes a new client
-func NewClient(token string, restTunnelURL string) *Client {
+func NewClient(token string, restTunnelURL string, reverse bool) *Client {
 	return &Client{
 		mu:            sync.RWMutex{},
 		Token:         token,
@@ -45,6 +46,7 @@ func NewClient(token string, restTunnelURL string) *Client {
 		URLHost:       "discord.com",
 		URLScheme:     "https",
 		restTunnelURL: restTunnelURL,
+		reverse:       reverse,
 	}
 }
 
@@ -94,7 +96,22 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 		req.Header.Set("Authorization", "Bot "+c.Token)
 	}
 
-	if c.restTunnelURL == "" {
+	if c.restTunnelURL != "" {
+		req.Header.Set("Rt-Priority", "true")
+		req.Header.Set("Rt-ResponseType", "RespondWithResponse")
+		_url, _ := url.Parse(c.restTunnelURL)
+		if c.reverse {
+			req.URL.Host = _url.Host
+			req.URL.Scheme = _url.Scheme
+		} else {
+			req.Header.Set("Rt-URL", req.URL.String())
+			req.URL = _url
+		}
+		res, err = c.HTTP.Do(req)
+		if err != nil {
+			return
+		}
+	} else {
 		res, err = c.HTTP.Do(req)
 		if err != nil {
 			return
@@ -109,17 +126,6 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 
 			<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
 			return c.HandleRequest(req, true)
-		}
-	} else {
-		req.Header.Set("Rt-URL", req.URL.String())
-		req.Header.Set("Rt-Priority", "true")
-		req.Header.Set("Rt-ResponseType", "RespondWithResponse")
-		_url, _ := url.Parse(c.restTunnelURL)
-		req.URL = _url
-
-		res, err = c.HTTP.Do(req)
-		if err != nil {
-			return
 		}
 	}
 
