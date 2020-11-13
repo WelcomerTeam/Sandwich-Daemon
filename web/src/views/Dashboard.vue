@@ -1943,11 +1943,16 @@
                     :id="'httpPublic'"
                     :label="'Public Access'"
                   />
-                  <p class="text-muted">If enabled, users will not need elevation to access the internal API. <b>This should never need to be enabled.</b></p>
+                  <p class="text-muted">
+                    If enabled, users will not need elevation to access the
+                    internal API. <b>This should never need to be enabled.</b>
+                  </p>
                 </div>
 
                 <ul class="list-group mt-3 mb-2">
-                  <li class="list-group-item list-group-item-dark">Users ({{ daemon.configuration.elevated_users.length }})</li>
+                  <li class="list-group-item list-group-item-dark">
+                    Users ({{ daemon.configuration.elevated_users.length }})
+                  </li>
                   <li
                     class="list-group-item"
                     v-for="(id, index) in daemon.configuration.elevated_users"
@@ -1965,19 +1970,24 @@
                 />
                 <form-submit
                   v-on:click="
-                    daemon.configuration.elevated_users = daemon.configuration.elevated_users.filter(item => item !== userid )
+                    daemon.configuration.elevated_users = daemon.configuration.elevated_users.filter(
+                      item => item !== userid
+                    )
                   "
                   :label="'Remove User'"
                 />
                 <form-submit
                   v-on:click="
-                    if (daemon.configuration.elevated_users.includes(userid)) { return }
+                    if (daemon.configuration.elevated_users.includes(userid)) {
+                      return;
+                    }
                     daemon.configuration.elevated_users.push(userid);
                   "
                   :label="'Add User'"
                 />
                 <p class="text-muted">
-                  List of discord user IDs who are able to manage the settings on the dashboard. Only give this to users you trust.
+                  List of discord user IDs who are able to manage the settings
+                  on the dashboard. Only give this to users you trust.
                 </p>
 
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
