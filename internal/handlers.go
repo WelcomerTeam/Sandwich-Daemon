@@ -360,6 +360,7 @@ func APIConfigurationHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
+		sg.RestTunnelEnabledValue = sg.RestTunnelEnabled.IsSet()
 		passResponse(rw, sg, true, http.StatusOK)
 	}
 }

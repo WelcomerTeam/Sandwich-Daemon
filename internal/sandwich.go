@@ -105,7 +105,8 @@ type Sandwich struct {
 	ConfigurationMu sync.RWMutex           `json:"-"`
 	Configuration   *SandwichConfiguration `json:"configuration"`
 
-	RestTunnelEnabled abool.AtomicBool `json:"rest_tunnel_enabled"`
+	RestTunnelEnabled      abool.AtomicBool `json:"-"`
+	RestTunnelEnabledValue bool             `json:"rest_tunnel_enabled"`
 
 	ManagersMu sync.RWMutex        `json:"-"`
 	Managers   map[string]*Manager `json:"managers"`
@@ -120,8 +121,8 @@ type Sandwich struct {
 	NatsClient  *nats.Conn    `json:"-"`
 	StanClient  stan.Conn     `json:"-"`
 
-	Router *MethodRouter
-	Store  *sessions.CookieStore
+	Router *MethodRouter         `json:"-"`
+	Store  *sessions.CookieStore `json:"-"`
 
 	distHandler fasthttp.RequestHandler
 	fs          *fasthttp.FS

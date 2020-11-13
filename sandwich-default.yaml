@@ -31,7 +31,7 @@ oauth:
     - identify
     - email
   endpoint:
-    authurl: https://discord.com/api/oauth2/authorize
+    authurl: https://discord.com/api/oauth2/authorize?prompt=none
     tokenurl: https://discord.com/api/oauth2/token
   redirecturl: http://127.0.0.1:5469/oauth2/callback
 elevated_users:

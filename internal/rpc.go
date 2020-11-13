@@ -79,11 +79,11 @@ func RPCManagerShardGroupCreate(sg *Sandwich, req structs.RPCRequest, rw http.Re
 		// TODO: We should handle this properly but it will error out when it starts up anyway
 	}
 
-	if len(event.ShardIDs) > manager.Gateway.SessionStartLimit.Remaining {
+	if len(event.ShardIDs) < manager.Gateway.SessionStartLimit.Remaining {
 		manager.Scale(event.ShardIDs, event.ShardCount, true)
 		passResponse(rw, true, true, http.StatusOK)
 	} else {
-		passResponse(rw, fmt.Sprintf("Not enough sessions to start %d shards. %d remain", len(event.ShardIDs), manager.Gateway.SessionStartLimit.Remaining), false, http.StatusBadRequest)
+		passResponse(rw, fmt.Sprintf("Not enough sessions to start %d shard(s). %d remain", len(event.ShardIDs), manager.Gateway.SessionStartLimit.Remaining), false, http.StatusBadRequest)
 	}
 
 	return true

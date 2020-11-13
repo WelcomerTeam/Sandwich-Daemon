@@ -92,7 +92,7 @@ type APIAnalyticsResult struct {
 	Guilds   int64                `json:"guilds"`
 	Uptime   string               `json:"uptime"`
 	Events   int64                `json:"events"`
-	Managers []ManagerInformation `json:"manager"`
+	Managers []ManagerInformation `json:"managers"`
 }
 
 // ManagerInformation is the structure of the manager in the /api/analytics request

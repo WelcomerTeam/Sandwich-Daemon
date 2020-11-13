@@ -10,6 +10,8 @@ var jsonBig = JSONBig({ storeAsString: true });
 
 import "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "moment";
+import "chartjs-adapter-moment";
 
 Vue.config.productionTip = false;
 
@@ -36,7 +38,6 @@ new Vue({
         .get("/api/me", { transformResponse: [data => jsonBig.parse(data)] })
         .then(result => {
           var data = result.data;
-          console.log(data);
           if (data.success) {
             store.state.userAuthenticated = data.data.authenticated;
             store.state.user = data.data.user;
@@ -46,7 +47,8 @@ new Vue({
         })
         .catch(error => {
           if (error.response?.data) {
-            store.state.error = error.response.data.error || error.response.data;
+            store.state.error =
+              error.response.data.error || error.response.data;
           } else {
             store.state.error = error.text || error.toString();
           }
