@@ -12,7 +12,6 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/json-iterator/go v1.1.10
 	github.com/klauspost/compress v1.11.0 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/nats-io/nats-server/v2 v2.1.8 // indirect
 	github.com/nats-io/nats-streaming-server v0.18.0 // indirect
 	github.com/nats-io/nats.go v1.10.0
