@@ -111,12 +111,15 @@ func OAuthCallbackHandler(sg *Sandwich) http.HandlerFunc {
 		_csrfString := urlQuery.Get("state")
 		csrfString, ok := session.Values["oauth_csrf"].(string)
 		if !ok {
-			http.Error(rw, "Missing CSRF state", http.StatusInternalServerError)
+			// http.Error(rw, "Missing CSRF state", http.StatusInternalServerError)
+			http.Redirect(rw, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
 		if _csrfString != csrfString {
-			http.Error(rw, "Mismatched CSRF states", http.StatusUnauthorized)
+			// http.Error(rw, "Mismatched CSRF states", http.StatusUnauthorized)
+			http.Redirect(rw, r, "/login", http.StatusTemporaryRedirect)
+			return
 		}
 
 		// Just to be sure, remove the CSRF after we have compared the CSRF
@@ -126,27 +129,32 @@ func OAuthCallbackHandler(sg *Sandwich) http.HandlerFunc {
 		code := urlQuery.Get("code")
 		token, err := sg.Configuration.OAuth.Exchange(ctx, code)
 		if err != nil {
-			http.Error(rw, "Failed to exchange code: "+err.Error(), http.StatusInternalServerError)
+			// http.Error(rw, "Failed to exchange code: "+err.Error(), http.StatusInternalServerError)
+			http.Redirect(rw, r, "/login", http.StatusTemporaryRedirect)
+			return
 		}
 
 		// Create a client with our exchanged token and retrieve a user.
 		client := sg.Configuration.OAuth.Client(ctx, token)
 		resp, err := client.Get(discordUsersMe)
 		if err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			// http.Error(rw, err.Error(), http.StatusInternalServerError)
+			http.Redirect(rw, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			// http.Error(rw, err.Error(), http.StatusInternalServerError)
+			http.Redirect(rw, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
 		discordUserResponse := &structs.DiscordUser{}
 		err = json.Unmarshal(body, &discordUserResponse)
 		if err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			// http.Error(rw, err.Error(), http.StatusInternalServerError)
+			http.Redirect(rw, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
