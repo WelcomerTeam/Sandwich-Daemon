@@ -950,758 +950,743 @@
                             '-pills-settings-tab'
                         "
                       >
-                        <form @submit.prevent>
-                          <ul class="nav nav-tabs" id="tabpanel" role="tablist">
-                            <li class="nav-item" role="presentation">
-                              <a
-                                class="nav-link active"
-                                id="general-tab"
-                                data-toggle="tab"
-                                :href="
-                                  '#manager-' +
-                                    manager.configuration.identifier +
-                                    '-Settings-general'
-                                "
-                                role="tab"
-                                aria-selected="true"
-                                >General</a
-                              >
-                            </li>
-                            <li class="nav-item" role="presentation">
-                              <a
-                                class="nav-link"
-                                id="bot-tab"
-                                data-toggle="tab"
-                                :href="
-                                  '#manager-' +
-                                    manager.configuration.identifier +
-                                    '-Settings-bot'
-                                "
-                                role="tab"
-                                aria-selected="false"
-                                >Bot</a
-                              >
-                            </li>
-                            <li class="nav-item" role="presentation">
-                              <a
-                                class="nav-link"
-                                id="caching-tab"
-                                data-toggle="tab"
-                                :href="
-                                  '#manager-' +
-                                    manager.configuration.identifier +
-                                    '-Settings-caching'
-                                "
-                                role="tab"
-                                aria-selected="false"
-                                >Caching</a
-                              >
-                            </li>
-                            <li class="nav-item" role="presentation">
-                              <a
-                                class="nav-link"
-                                id="events-tab"
-                                data-toggle="tab"
-                                :href="
-                                  '#manager-' +
-                                    manager.configuration.identifier +
-                                    '-Settings-events'
-                                "
-                                role="tab"
-                                aria-selected="false"
-                                >Events</a
-                              >
-                            </li>
-                            <li class="nav-item" role="presentation">
-                              <a
-                                class="nav-link"
-                                id="messaging-tab"
-                                data-toggle="tab"
-                                :href="
-                                  '#manager-' +
-                                    manager.configuration.identifier +
-                                    '-Settings-messaging'
-                                "
-                                role="tab"
-                                aria-selected="false"
-                                >Messaging</a
-                              >
-                            </li>
-                            <li class="nav-item" role="presentation">
-                              <a
-                                class="nav-link"
-                                id="sharding-tab"
-                                data-toggle="tab"
-                                :href="
-                                  '#manager-' +
-                                    manager.configuration.identifier +
-                                    '-Settings-sharding'
-                                "
-                                role="tab"
-                                aria-selected="false"
-                                >Sharding</a
-                              >
-                            </li>
-                            <li class="nav-item" role="presentation">
-                              <a
-                                class="nav-link"
-                                id="raw-tab"
-                                data-toggle="tab"
-                                :href="
-                                  '#manager-' +
-                                    manager.configuration.identifier +
-                                    '-Settings-raw'
-                                "
-                                role="tab"
-                                aria-selected="false"
-                                >RAW (Read Only)</a
-                              >
-                            </li>
-                          </ul>
-                          <div
-                            class="tab-content p-5"
-                            id="pills-managerSettings"
-                          >
-                            <div
-                              class="tab-pane fade show active"
-                              :id="
-                                'manager-' +
+                        <ul class="nav nav-tabs" id="tabpanel" role="tablist">
+                          <li class="nav-item" role="presentation">
+                            <a
+                              class="nav-link active"
+                              id="general-tab"
+                              data-toggle="tab"
+                              :href="
+                                '#manager-' +
                                   manager.configuration.identifier +
                                   '-Settings-general'
                               "
-                              role="tabpanel"
-                              aria-labelledby="general-tab"
+                              role="tab"
+                              aria-selected="true"
+                              >General</a
                             >
-                              <!-- General -->
-                              <div class="pb-4">
-                                <form-input
-                                  v-model="manager.configuration.auto_start"
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-autostart'
-                                  "
-                                  :label="'Auto Start'"
-                                />
-                                <p class="text-muted">
-                                  When enabled, the Manager will start up a
-                                  shardgroup automatically.
-                                </p>
-                                <form-input
-                                  v-model="manager.configuration.persist"
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-persist'
-                                  "
-                                  :label="'Persist'"
-                                />
-                                <p class="text-muted">
-                                  When enabled, changes to Manager will be saved
-                                  else the configuration will be discarded when
-                                  the daemon is next started.
-                                </p>
-                              </div>
-                              <form-input
-                                v-model="manager.configuration.identifier"
-                                :type="'text'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-identifier'
-                                "
-                                :label="'Identifier'"
-                                :disabled="true"
-                              />
-                              <p class="text-muted">
-                                <b
-                                  >You cannot modify the identifier as that can
-                                  possibly break many things.</b
-                                >
-                                The name the manager is internally referenced
-                                by. NATs packets will also include this
-                                identifier in its messages.
-                              </p>
-                              <form-input
-                                v-model="manager.configuration.display_name"
-                                :type="'text'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-display_name'
-                                "
-                                :label="'Display Name'"
-                              />
-                              <form-input
-                                v-model="manager.configuration.token"
-                                :type="'password'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-token'
-                                "
-                                :label="'Token'"
-                              />
-                              <form-submit
-                                v-on:click="saveClusterSettings(manager)"
-                              >
-                              </form-submit>
-                            </div>
-                            <div
-                              class="tab-pane fade"
-                              :id="
-                                'manager-' +
+                          </li>
+                          <li class="nav-item" role="presentation">
+                            <a
+                              class="nav-link"
+                              id="bot-tab"
+                              data-toggle="tab"
+                              :href="
+                                '#manager-' +
                                   manager.configuration.identifier +
                                   '-Settings-bot'
                               "
-                              role="tabpanel"
-                              aria-labelledby="bot-tab"
+                              role="tab"
+                              aria-selected="false"
+                              >Bot</a
                             >
-                              <!-- Bot -->
-                              <div class="pb-4">
-                                <form-input
-                                  v-model="
-                                    manager.configuration.bot.compression
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-bot.compression'
-                                  "
-                                  :label="'Compression'"
-                                />
-                                <p class="text-muted">
-                                  Enables zstd compression on the gateway
-                                  websocket. Recommended.
-                                </p>
-                                <form-input
-                                  v-model="
-                                    manager.configuration.bot
-                                      .guild_subscriptions
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-bot.guild_subscriptions'
-                                  "
-                                  :label="'Guild Subscriptions'"
-                                />
-                                <p class="text-muted">
-                                  <b>Not recommended, use intents.</b> Events
-                                  such as PRESENCE_UPDATE, TYPING,
-                                  GUILD_MEMBER_JOIN etc. are not sent to the
-                                  bot.
-                                </p>
-                              </div>
-                              <form-input
-                                v-model="manager.configuration.bot.presence"
-                                :type="'presence'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-bot.presence'
-                                "
-                                :label="'Presence'"
-                              />
-                              <form-input
-                                v-model="manager.configuration.bot.intents"
-                                :type="'intent'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-bot.intents'
-                                "
-                                :label="'Intents'"
-                              />
-                              <form-input
-                                v-model="
-                                  manager.configuration.bot.large_threshold
-                                "
-                                :type="'number'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-bot.large_threshold'
-                                "
-                                :label="'Large Threshold'"
-                              />
-                              <form-input
-                                v-model="
-                                  manager.configuration.bot
-                                    .max_heartbeat_failures
-                                "
-                                :type="'number'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-bot.max_heartbeat_failures'
-                                "
-                                :label="'Max Heartbeat Failures'"
-                              />
-                              <p class="text-muted">
-                                Amount of heartbeat durations until the bot
-                                forcibly reconnects. 5 is recommended.
-                              </p>
-                              <form-input
-                                v-model="manager.configuration.bot.retries"
-                                :type="'number'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-bot.retries'
-                                "
-                                :label="'Retries'"
-                              />
-                              <p class="text-muted">
-                                Amount of reconnects to attempt before giving
-                                up. Recommended to be more than 1 in the event
-                                it fails when starting up a ShardGroup causing
-                                all other shards to die.
-                              </p>
-                              <form-submit
-                                v-on:click="saveClusterSettings(manager)"
-                              >
-                              </form-submit>
-                            </div>
-                            <div
-                              class="tab-pane fade"
-                              :id="
-                                'manager-' +
+                          </li>
+                          <li class="nav-item" role="presentation">
+                            <a
+                              class="nav-link"
+                              id="caching-tab"
+                              data-toggle="tab"
+                              :href="
+                                '#manager-' +
                                   manager.configuration.identifier +
                                   '-Settings-caching'
                               "
-                              role="tabpanel"
-                              aria-labelledby="caching-tab"
+                              role="tab"
+                              aria-selected="false"
+                              >Caching</a
                             >
-                              <!-- Caching -->
-                              <div class="pb-4">
-                                <form-input
-                                  v-model="
-                                    manager.configuration.caching.cache_users
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-caching.cache_users'
-                                  "
-                                  :label="'Cache Users'"
-                                />
-                                <p class="text-muted">
-                                  If enabled, users will be cached on redis.
-                                </p>
-                                <form-input
-                                  v-model="
-                                    manager.configuration.caching.cache_members
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-caching.cache_members'
-                                  "
-                                  :label="'Cache Members'"
-                                />
-                                <p class="text-muted">
-                                  If enabled, members will be cached on redis.
-                                </p>
-                                <form-input
-                                  v-model="
-                                    manager.configuration.caching
-                                      .request_members
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-caching.request_members'
-                                  "
-                                  :label="'Request Members'"
-                                />
-                                <p class="text-muted">
-                                  <b
-                                    >Due to the new intent changes, enabling
-                                    this on larger bots is not recommended.</b
-                                  >
-                                  If enabled, guild members will be requested
-                                  when lazy loading.
-                                </p>
-                                <form-input
-                                  v-model="
-                                    manager.configuration.caching.store_mutuals
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-caching.store_mutuals'
-                                  "
-                                  :label="'Store Mutuals'"
-                                />
-                                <p class="text-muted">
-                                  If enabled, guild ids a member is on is stored
-                                  on redis.
-                                </p>
-                              </div>
-                              <form-input
-                                v-model="
-                                  manager.configuration.caching.redis_prefix
-                                "
-                                :type="'text'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-caching.redis_prefix'
-                                "
-                                :label="'Redis Prefix'"
-                              />
-                              <p class="text-muted">
-                                String all redis requests will be pre-pended
-                                with {PREFIX}:{KEY}. Useful when wanting to
-                                separate managers from each other. Having
-                                multiple managers with the same key can cause
-                                destruction.
-                              </p>
-                              <form-input
-                                v-model="
-                                  manager.configuration.caching
-                                    .request_chunk_size
-                                "
-                                :type="'number'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-caching.request_chunk_size'
-                                "
-                                :label="'Request Chunk Size'"
-                              />
-                              <p class="text-muted">
-                                Number of guilds to request in a
-                                REQUEST_GUILD_MEMBERS request. With the new
-                                changes, this should be set to 1. Sending more
-                                than 1 when it limits to 1 will not fail but
-                                will only sent the members of the first ID
-                                specified.
-                              </p>
-                              <form-submit
-                                v-on:click="saveClusterSettings(manager)"
-                              >
-                              </form-submit>
-                            </div>
-                            <div
-                              class="tab-pane fade"
-                              :id="
-                                'manager-' +
+                          </li>
+                          <li class="nav-item" role="presentation">
+                            <a
+                              class="nav-link"
+                              id="events-tab"
+                              data-toggle="tab"
+                              :href="
+                                '#manager-' +
                                   manager.configuration.identifier +
                                   '-Settings-events'
                               "
-                              role="tabpanel"
-                              aria-labelledby="events-tab"
+                              role="tab"
+                              aria-selected="false"
+                              >Events</a
                             >
-                              <p class="text-muted">
-                                Changes to events will be reflected when a new
-                                shardgroup is made
-                              </p>
-                              <!-- Events -->
-                              <div class="pb-4">
-                                <form-input
-                                  v-model="
-                                    manager.configuration.events.ignore_bots
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-events.ignore_bots'
-                                  "
-                                  :label="'Ignore Bots'"
-                                />
-                                <p class="text-muted">
-                                  When enabled, consumers will not receive
-                                  MESSAGE_CREATE events if the author is a bot
-                                </p>
-                                <form-input
-                                  v-model="
-                                    manager.configuration.events.check_prefixes
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-events.check_prefixes'
-                                  "
-                                  :label="'Check Prefixes'"
-                                />
-                                <p class="text-muted">
-                                  When enabled, consumers will receive only
-                                  MESSAGE_CREATE events that start with a
-                                  defined prefix. The prefix is determined from
-                                  a HGET to {REDIS_PREFIX}:prefix with the guild
-                                  id as a key.
-                                </p>
-                                <form-input
-                                  v-model="
-                                    manager.configuration.events
-                                      .allow_mention_prefix
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-events.allow_mention_prefix'
-                                  "
-                                  :label="'Allow Mention Prefix'"
-                                />
-                              </div>
-                              <form-input
-                                v-model="
-                                  manager.configuration.events.fallback_prefix
-                                "
-                                :type="'text'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-events.fallback_prefix'
-                                "
-                                :label="'Fallback Prefix'"
-                                :placeholder="'No prefix'"
-                              />
-                              <p class="text-muted">
-                                If the daemon is unable to fetch a custom prefix
-                                from redis, it will use the fallback prefix and
-                                mention prefix (if enabled). If fallback prefix
-                                is left empty, it will not allow any message to
-                                be used as a command.
-                              </p>
-
-                              <form-input
-                                v-model="
-                                  manager.configuration.events.event_blacklist
-                                "
-                                :type="'list'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-events.event_blacklist'
-                                "
-                                :label="'Event Blacklist'"
-                              />
-                              <p class="text-muted">
-                                Events in event blacklist are completely ignored
-                                by Sandwich Daemon. It is recommended you
-                                instead use Intents to stop events as it still
-                                has to process the events.
-                              </p>
-                              <form-input
-                                v-model="
-                                  manager.configuration.events.produce_blacklist
-                                "
-                                :type="'list'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-events.produce_blacklist'
-                                "
-                                :label="'Produce Blacklist'"
-                              />
-                              <p class="text-muted">
-                                Events in produce blacklist are processed
-                                (cached etc.) however are not relayed to
-                                consumers. Useful for reducing events that the
-                                consumers unnecessarily need but you still need
-                                for cache purposes.
-                              </p>
-                              <form-submit
-                                v-on:click="saveClusterSettings(manager)"
-                              >
-                              </form-submit>
-                            </div>
-                            <div
-                              class="tab-pane fade"
-                              :id="
-                                'manager-' +
+                          </li>
+                          <li class="nav-item" role="presentation">
+                            <a
+                              class="nav-link"
+                              id="messaging-tab"
+                              data-toggle="tab"
+                              :href="
+                                '#manager-' +
                                   manager.configuration.identifier +
                                   '-Settings-messaging'
                               "
-                              role="tabpanel"
-                              aria-labelledby="messaging-tab"
+                              role="tab"
+                              aria-selected="false"
+                              >Messaging</a
                             >
-                              <!-- Messaging -->
-                              <div class="pb-4">
-                                <form-input
-                                  v-model="
-                                    manager.configuration.messaging
-                                      .use_random_suffix
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-messaging.use_random_suffix'
-                                  "
-                                  :label="'Use Random Suffix'"
-                                />
-                                <p class="text-muted">
-                                  When enabled, the client name will have a
-                                  random suffix added. Useful if you have
-                                  multiple managers using the same client name.
-                                </p>
-                              </div>
-                              <form-input
-                                v-model="
-                                  manager.configuration.messaging.client_name
-                                "
-                                :type="'text'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-messaging.client_name'
-                                "
-                                :label="'Client Name'"
-                              />
-                              <p class="text-muted">
-                                Name of the client the manager uses.
-                                <b>Client names must be unique.</b> If you are
-                                using multiple managers with the same client
-                                name, it is recommended you use separate client
-                                names or enable random suffix.
-                              </p>
-                              <form-input
-                                v-model="
-                                  manager.configuration.messaging.channel_name
-                                "
-                                :type="'text'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-messaging.channel_name'
-                                "
-                                :label="'Channel Name'"
-                              />
-                              <p class="text-muted">
-                                Custom definition of the channel the manager
-                                will use. If empty, it will use the
-                                configuration in daemon.nats.channel which
-                                managers should use by default.
-                              </p>
-                              <form-submit
-                                v-on:click="saveClusterSettings(manager)"
-                              >
-                              </form-submit>
-                            </div>
-                            <div
-                              class="tab-pane fade"
-                              :id="
-                                'manager-' +
+                          </li>
+                          <li class="nav-item" role="presentation">
+                            <a
+                              class="nav-link"
+                              id="sharding-tab"
+                              data-toggle="tab"
+                              :href="
+                                '#manager-' +
                                   manager.configuration.identifier +
                                   '-Settings-sharding'
                               "
-                              role="tabpanel"
-                              aria-labelledby="sharding-tab"
+                              role="tab"
+                              aria-selected="false"
+                              >Sharding</a
                             >
-                              <!-- Sharding -->
-                              <div class="pb-4">
-                                <form-input
-                                  v-model="
-                                    manager.configuration.sharding.auto_sharded
-                                  "
-                                  :type="'checkbox'"
-                                  :id="
-                                    'managerConfig-' +
-                                      manager.configuration.identifier +
-                                      '-sharding.auto_sharded'
-                                  "
-                                  :label="'AutoSharded'"
-                                />
-                                <p class="text-muted">
-                                  If enabled, will set the shard count to what
-                                  is recommended on the gateway
-                                </p>
-                              </div>
-                              <form-input
-                                v-model="
-                                  manager.configuration.sharding.shard_count
-                                "
-                                :type="'number'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-sharding.shard_count'
-                                "
-                                :label="'Shard Count'"
-                              />
-                              <p class="text-muted">
-                                Shard Count to launch shard groups with. Be
-                                aware this has no security and if it has not
-                                supplied enough shards, it will error. It is
-                                recommended you use autosharded, enabling
-                                autosharded will overwrite this value.
-                              </p>
-                              <form-input
-                                v-model="
-                                  manager.configuration.sharding.manager_count
-                                "
-                                :type="'number'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-sharding.manager_count'
-                                "
-                                :label="'Cluster Count'"
-                              ></form-input>
-                              <p class="text-muted">
-                                <b
-                                  >Use if you have multiple daemons running.
-                                  This must be the same number on all daemons
-                                  and starts from 0.</b
-                                >
-                                Total number of managers running.
-                              </p>
-                              <form-input
-                                v-model="
-                                  manager.configuration.sharding.manager_id
-                                "
-                                :type="'number'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-sharding.manager_id'
-                                "
-                                :label="'Cluster ID'"
-                              ></form-input>
-                              <p class="text-muted">
-                                <b
-                                  >Use if you have multiple daemons running.
-                                  This must be a different number on all
-                                  daemons.</b
-                                >
-                                Cluster ID of current daemon. With only 1
-                                manager, this ID must be 0 similarly to how
-                                shard count and shard ID works.
-                              </p>
-                              <form-submit
-                                v-on:click="saveClusterSettings(manager)"
-                              >
-                              </form-submit>
-                            </div>
-                            <div
-                              class="tab-pane fade"
-                              :id="
-                                'manager-' +
+                          </li>
+                          <li class="nav-item" role="presentation">
+                            <a
+                              class="nav-link"
+                              id="raw-tab"
+                              data-toggle="tab"
+                              :href="
+                                '#manager-' +
                                   manager.configuration.identifier +
                                   '-Settings-raw'
                               "
-                              role="tabpanel"
-                              aria-labelledby="raw-tab"
+                              role="tab"
+                              aria-selected="false"
+                              >RAW (Read Only)</a
                             >
-                              <pre>{{ manager }}</pre>
+                          </li>
+                        </ul>
+                        <div class="tab-content p-5" id="pills-managerSettings">
+                          <div
+                            class="tab-pane fade show active"
+                            :id="
+                              'manager-' +
+                                manager.configuration.identifier +
+                                '-Settings-general'
+                            "
+                            role="tabpanel"
+                            aria-labelledby="general-tab"
+                          >
+                            <!-- General -->
+                            <div class="pb-4">
+                              <form-input
+                                v-model="manager.configuration.auto_start"
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-autostart'
+                                "
+                                :label="'Auto Start'"
+                              />
+                              <p class="text-muted">
+                                When enabled, the Manager will start up a
+                                shardgroup automatically.
+                              </p>
+                              <form-input
+                                v-model="manager.configuration.persist"
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-persist'
+                                "
+                                :label="'Persist'"
+                              />
+                              <p class="text-muted">
+                                When enabled, changes to Manager will be saved
+                                else the configuration will be discarded when
+                                the daemon is next started.
+                              </p>
                             </div>
+                            <form-input
+                              v-model="manager.configuration.identifier"
+                              :type="'text'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-identifier'
+                              "
+                              :label="'Identifier'"
+                              :disabled="true"
+                            />
+                            <p class="text-muted">
+                              <b
+                                >You cannot modify the identifier as that can
+                                possibly break many things.</b
+                              >
+                              The name the manager is internally referenced by.
+                              NATs packets will also include this identifier in
+                              its messages.
+                            </p>
+                            <form-input
+                              v-model="manager.configuration.display_name"
+                              :type="'text'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-display_name'
+                              "
+                              :label="'Display Name'"
+                            />
+                            <form-input
+                              v-model="manager.configuration.token"
+                              :type="'password'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-token'
+                              "
+                              :label="'Token'"
+                            />
+                            <form-submit
+                              v-on:click="saveClusterSettings(manager)"
+                            >
+                            </form-submit>
                           </div>
-                        </form>
+                          <div
+                            class="tab-pane fade"
+                            :id="
+                              'manager-' +
+                                manager.configuration.identifier +
+                                '-Settings-bot'
+                            "
+                            role="tabpanel"
+                            aria-labelledby="bot-tab"
+                          >
+                            <!-- Bot -->
+                            <div class="pb-4">
+                              <form-input
+                                v-model="manager.configuration.bot.compression"
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-bot.compression'
+                                "
+                                :label="'Compression'"
+                              />
+                              <p class="text-muted">
+                                Enables zstd compression on the gateway
+                                websocket. Recommended.
+                              </p>
+                              <form-input
+                                v-model="
+                                  manager.configuration.bot.guild_subscriptions
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-bot.guild_subscriptions'
+                                "
+                                :label="'Guild Subscriptions'"
+                              />
+                              <p class="text-muted">
+                                <b>Not recommended, use intents.</b> Events such
+                                as PRESENCE_UPDATE, TYPING, GUILD_MEMBER_JOIN
+                                etc. are not sent to the bot.
+                              </p>
+                            </div>
+                            <form-input
+                              v-model="manager.configuration.bot.presence"
+                              :type="'presence'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-bot.presence'
+                              "
+                              :label="'Presence'"
+                            />
+                            <form-input
+                              v-model="manager.configuration.bot.intents"
+                              :type="'intent'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-bot.intents'
+                              "
+                              :label="'Intents'"
+                            />
+                            <form-input
+                              v-model="
+                                manager.configuration.bot.large_threshold
+                              "
+                              :type="'number'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-bot.large_threshold'
+                              "
+                              :label="'Large Threshold'"
+                            />
+                            <form-input
+                              v-model="
+                                manager.configuration.bot.max_heartbeat_failures
+                              "
+                              :type="'number'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-bot.max_heartbeat_failures'
+                              "
+                              :label="'Max Heartbeat Failures'"
+                            />
+                            <p class="text-muted">
+                              Amount of heartbeat durations until the bot
+                              forcibly reconnects. 5 is recommended.
+                            </p>
+                            <form-input
+                              v-model="manager.configuration.bot.retries"
+                              :type="'number'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-bot.retries'
+                              "
+                              :label="'Retries'"
+                            />
+                            <p class="text-muted">
+                              Amount of reconnects to attempt before giving up.
+                              Recommended to be more than 1 in the event it
+                              fails when starting up a ShardGroup causing all
+                              other shards to die.
+                            </p>
+                            <form-submit
+                              v-on:click="saveClusterSettings(manager)"
+                            >
+                            </form-submit>
+                          </div>
+                          <div
+                            class="tab-pane fade"
+                            :id="
+                              'manager-' +
+                                manager.configuration.identifier +
+                                '-Settings-caching'
+                            "
+                            role="tabpanel"
+                            aria-labelledby="caching-tab"
+                          >
+                            <!-- Caching -->
+                            <div class="pb-4">
+                              <form-input
+                                v-model="
+                                  manager.configuration.caching.cache_users
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-caching.cache_users'
+                                "
+                                :label="'Cache Users'"
+                              />
+                              <p class="text-muted">
+                                If enabled, users will be cached on redis.
+                              </p>
+                              <form-input
+                                v-model="
+                                  manager.configuration.caching.cache_members
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-caching.cache_members'
+                                "
+                                :label="'Cache Members'"
+                              />
+                              <p class="text-muted">
+                                If enabled, members will be cached on redis.
+                              </p>
+                              <form-input
+                                v-model="
+                                  manager.configuration.caching.request_members
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-caching.request_members'
+                                "
+                                :label="'Request Members'"
+                              />
+                              <p class="text-muted">
+                                <b
+                                  >Due to the new intent changes, enabling this
+                                  on larger bots is not recommended.</b
+                                >
+                                If enabled, guild members will be requested when
+                                lazy loading.
+                              </p>
+                              <form-input
+                                v-model="
+                                  manager.configuration.caching.store_mutuals
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-caching.store_mutuals'
+                                "
+                                :label="'Store Mutuals'"
+                              />
+                              <p class="text-muted">
+                                If enabled, guild ids a member is on is stored
+                                on redis.
+                              </p>
+                            </div>
+                            <form-input
+                              v-model="
+                                manager.configuration.caching.redis_prefix
+                              "
+                              :type="'text'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-caching.redis_prefix'
+                              "
+                              :label="'Redis Prefix'"
+                            />
+                            <p class="text-muted">
+                              String all redis requests will be pre-pended with
+                              {PREFIX}:{KEY}. Useful when wanting to separate
+                              managers from each other. Having multiple managers
+                              with the same key can cause destruction.
+                            </p>
+                            <form-input
+                              v-model="
+                                manager.configuration.caching.request_chunk_size
+                              "
+                              :type="'number'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-caching.request_chunk_size'
+                              "
+                              :label="'Request Chunk Size'"
+                            />
+                            <p class="text-muted">
+                              Number of guilds to request in a
+                              REQUEST_GUILD_MEMBERS request. With the new
+                              changes, this should be set to 1. Sending more
+                              than 1 when it limits to 1 will not fail but will
+                              only sent the members of the first ID specified.
+                            </p>
+                            <form-submit
+                              v-on:click="saveClusterSettings(manager)"
+                            >
+                            </form-submit>
+                          </div>
+                          <div
+                            class="tab-pane fade"
+                            :id="
+                              'manager-' +
+                                manager.configuration.identifier +
+                                '-Settings-events'
+                            "
+                            role="tabpanel"
+                            aria-labelledby="events-tab"
+                          >
+                            <p class="text-muted">
+                              Changes to events will be reflected when a new
+                              shardgroup is made
+                            </p>
+                            <!-- Events -->
+                            <div class="pb-4">
+                              <form-input
+                                v-model="
+                                  manager.configuration.events.ignore_bots
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-events.ignore_bots'
+                                "
+                                :label="'Ignore Bots'"
+                              />
+                              <p class="text-muted">
+                                When enabled, consumers will not receive
+                                MESSAGE_CREATE events if the author is a bot
+                              </p>
+                              <form-input
+                                v-model="
+                                  manager.configuration.events.check_prefixes
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-events.check_prefixes'
+                                "
+                                :label="'Check Prefixes'"
+                              />
+                              <p class="text-muted">
+                                When enabled, consumers will receive only
+                                MESSAGE_CREATE events that start with a defined
+                                prefix. The prefix is determined from a HGET to
+                                {REDIS_PREFIX}:prefix with the guild id as a
+                                key.
+                              </p>
+                              <form-input
+                                v-model="
+                                  manager.configuration.events
+                                    .allow_mention_prefix
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-events.allow_mention_prefix'
+                                "
+                                :label="'Allow Mention Prefix'"
+                              />
+                            </div>
+                            <form-input
+                              v-model="
+                                manager.configuration.events.fallback_prefix
+                              "
+                              :type="'text'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-events.fallback_prefix'
+                              "
+                              :label="'Fallback Prefix'"
+                              :placeholder="'No prefix'"
+                            />
+                            <p class="text-muted">
+                              If the daemon is unable to fetch a custom prefix
+                              from redis, it will use the fallback prefix and
+                              mention prefix (if enabled). If fallback prefix is
+                              left empty, it will not allow any message to be
+                              used as a command.
+                            </p>
+
+                            <form-input
+                              v-model="
+                                manager.configuration.events.event_blacklist
+                              "
+                              :type="'list'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-events.event_blacklist'
+                              "
+                              :label="'Event Blacklist'"
+                            />
+                            <p class="text-muted">
+                              Events in event blacklist are completely ignored
+                              by Sandwich Daemon. It is recommended you instead
+                              use Intents to stop events as it still has to
+                              process the events.
+                            </p>
+                            <form-input
+                              v-model="
+                                manager.configuration.events.produce_blacklist
+                              "
+                              :type="'list'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-events.produce_blacklist'
+                              "
+                              :label="'Produce Blacklist'"
+                            />
+                            <p class="text-muted">
+                              Events in produce blacklist are processed (cached
+                              etc.) however are not relayed to consumers. Useful
+                              for reducing events that the consumers
+                              unnecessarily need but you still need for cache
+                              purposes.
+                            </p>
+                            <form-submit
+                              v-on:click="saveClusterSettings(manager)"
+                            >
+                            </form-submit>
+                          </div>
+                          <div
+                            class="tab-pane fade"
+                            :id="
+                              'manager-' +
+                                manager.configuration.identifier +
+                                '-Settings-messaging'
+                            "
+                            role="tabpanel"
+                            aria-labelledby="messaging-tab"
+                          >
+                            <!-- Messaging -->
+                            <div class="pb-4">
+                              <form-input
+                                v-model="
+                                  manager.configuration.messaging
+                                    .use_random_suffix
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-messaging.use_random_suffix'
+                                "
+                                :label="'Use Random Suffix'"
+                              />
+                              <p class="text-muted">
+                                When enabled, the client name will have a random
+                                suffix added. Useful if you have multiple
+                                managers using the same client name.
+                              </p>
+                            </div>
+                            <form-input
+                              v-model="
+                                manager.configuration.messaging.client_name
+                              "
+                              :type="'text'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-messaging.client_name'
+                              "
+                              :label="'Client Name'"
+                            />
+                            <p class="text-muted">
+                              Name of the client the manager uses.
+                              <b>Client names must be unique.</b> If you are
+                              using multiple managers with the same client name,
+                              it is recommended you use separate client names or
+                              enable random suffix.
+                            </p>
+                            <form-input
+                              v-model="
+                                manager.configuration.messaging.channel_name
+                              "
+                              :type="'text'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-messaging.channel_name'
+                              "
+                              :label="'Channel Name'"
+                            />
+                            <p class="text-muted">
+                              Custom definition of the channel the manager will
+                              use. If empty, it will use the configuration in
+                              daemon.nats.channel which managers should use by
+                              default.
+                            </p>
+                            <form-submit
+                              v-on:click="saveClusterSettings(manager)"
+                            >
+                            </form-submit>
+                          </div>
+                          <div
+                            class="tab-pane fade"
+                            :id="
+                              'manager-' +
+                                manager.configuration.identifier +
+                                '-Settings-sharding'
+                            "
+                            role="tabpanel"
+                            aria-labelledby="sharding-tab"
+                          >
+                            <!-- Sharding -->
+                            <div class="pb-4">
+                              <form-input
+                                v-model="
+                                  manager.configuration.sharding.auto_sharded
+                                "
+                                :type="'checkbox'"
+                                :id="
+                                  'managerConfig-' +
+                                    manager.configuration.identifier +
+                                    '-sharding.auto_sharded'
+                                "
+                                :label="'AutoSharded'"
+                              />
+                              <p class="text-muted">
+                                If enabled, will set the shard count to what is
+                                recommended on the gateway
+                              </p>
+                            </div>
+                            <form-input
+                              v-model="
+                                manager.configuration.sharding.shard_count
+                              "
+                              :type="'number'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-sharding.shard_count'
+                              "
+                              :label="'Shard Count'"
+                            />
+                            <p class="text-muted">
+                              Shard Count to launch shard groups with. Be aware
+                              this has no security and if it has not supplied
+                              enough shards, it will error. It is recommended
+                              you use autosharded, enabling autosharded will
+                              overwrite this value.
+                            </p>
+                            <form-input
+                              v-model="
+                                manager.configuration.sharding.manager_count
+                              "
+                              :type="'number'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-sharding.manager_count'
+                              "
+                              :label="'Cluster Count'"
+                            ></form-input>
+                            <p class="text-muted">
+                              <b
+                                >Use if you have multiple daemons running. This
+                                must be the same number on all daemons and
+                                starts from 0.</b
+                              >
+                              Total number of managers running.
+                            </p>
+                            <form-input
+                              v-model="
+                                manager.configuration.sharding.manager_id
+                              "
+                              :type="'number'"
+                              :id="
+                                'managerConfig-' +
+                                  manager.configuration.identifier +
+                                  '-sharding.manager_id'
+                              "
+                              :label="'Cluster ID'"
+                            ></form-input>
+                            <p class="text-muted">
+                              <b
+                                >Use if you have multiple daemons running. This
+                                must be a different number on all daemons.</b
+                              >
+                              Cluster ID of current daemon. With only 1 manager,
+                              this ID must be 0 similarly to how shard count and
+                              shard ID works.
+                            </p>
+                            <form-submit
+                              v-on:click="saveClusterSettings(manager)"
+                            >
+                            </form-submit>
+                          </div>
+                          <div
+                            class="tab-pane fade"
+                            :id="
+                              'manager-' +
+                                manager.configuration.identifier +
+                                '-Settings-raw'
+                            "
+                            role="tabpanel"
+                            aria-labelledby="raw-tab"
+                          >
+                            <pre>{{ manager }}</pre>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

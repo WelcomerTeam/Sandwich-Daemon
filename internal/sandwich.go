@@ -32,7 +32,7 @@ import (
 )
 
 // VERSION respects semantic versioning
-const VERSION = "0.1"
+const VERSION = "0.2"
 
 // ErrOnConfigurationFailure will return errors when loading configuration.
 // If this is false, these errors are suppressed. There is no reason for this
