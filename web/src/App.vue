@@ -35,6 +35,17 @@
                 class="nav-item"
                 v-if="$store.state.user && $store.state.user.id"
               >
+                <router-link
+                  class="nav-link"
+                  aria-current="page"
+                  to="/dashboard"
+                  >Dashboard</router-link
+                >
+              </li>
+              <li
+                class="nav-item"
+                v-if="$store.state.user && $store.state.user.id"
+              >
                 <span
                   class="nav-link dropdown-toggle"
                   id="userDropdown"
