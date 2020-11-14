@@ -375,7 +375,7 @@ func APIRestTunnelHandler(sg *Sandwich) http.HandlerFunc {
 		}
 
 		if sg.RestTunnelEnabled.IsNotSet() {
-			passResponse(rw, "RestTunnel is not enabled", false, http.StatusBadRequest)
+			passResponse(rw, "RestTunnel is not enabled", true, http.StatusOK)
 			return
 		}
 

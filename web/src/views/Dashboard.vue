@@ -2206,6 +2206,7 @@ export default {
   name: "Dashboard",
   data() {
     return {
+      fetch_task: undefined,
       mdiAlertCircle: mdiAlertCircle,
       version: "...",
       loading: true,
@@ -2474,14 +2475,12 @@ export default {
     this.toastModal = new Toast(document.getElementById("toast"), {
       delay: 2000
     });
+    this.fetch_task = window.setInterval(() => {
+      this.fetchAnalytics();
+      this.fetchClustersData();
+    }, 5000);
     this.fetchConfiguration();
     this.fetchAnalytics();
-    this.$nextTick(function() {
-      window.setInterval(() => {
-        this.fetchAnalytics();
-        this.fetchClustersData();
-      }, 5000);
-    });
   },
   methods: {
     sendRPC(method, data, id) {
@@ -2646,6 +2645,9 @@ export default {
       axios
         .get("/api/configuration")
         .then(result => {
+          if (result.status == 403) {
+            clearInterval(this.fetch_task);
+          }
           if (result.data.success == false) {
             return;
           }
@@ -2668,7 +2670,9 @@ export default {
           }
         })
         .catch(error => {
-          console.log(error);
+          if (error.response?.status == 403) {
+            clearInterval(this.fetch_task);
+          }
           this.showToast("Exception fetching manager data", error);
         });
     },
@@ -2676,19 +2680,29 @@ export default {
       axios
         .get("/api/configuration")
         .then(result => {
+          if (result.status == 403) {
+            clearInterval(this.fetch_task);
+          }
           this.daemon = result.data.data;
           this.error = !result.data.success;
         })
         .catch(error => {
-          console.log(error);
+          if (error.response?.status == 403) {
+            clearInterval(this.fetch_task);
+          }
           this.showToast("Exception fetching configuration", error);
         })
-        .finally(() => (this.loading = false));
+        .finally(() => {
+          this.loading = false;
+        });
     },
     fetchAnalytics() {
       axios
         .get("/api/analytics")
         .then(result => {
+          if (result.status == 403) {
+            clearInterval(this.fetch_task);
+          }
           if (result.data.success == false) {
             return;
           }
@@ -2722,7 +2736,9 @@ export default {
           this.error = this.error | !result.data.success;
         })
         .catch(error => {
-          console.log(error);
+          if (error.response?.status == 403) {
+            clearInterval(this.fetch_task);
+          }
           this.showToast("Exception fetching analytics", error);
         })
         .finally(() => (this.loadingAnalytics = false));
@@ -2730,6 +2746,9 @@ export default {
         axios
           .get("/api/resttunnel")
           .then(result => {
+            if (result.status == 403) {
+              clearInterval(this.fetch_task);
+            }
             if (result.data.success == false) {
               return;
             }
@@ -2742,7 +2761,9 @@ export default {
             this.resttunnel.numbers = result.data.data.numbers;
           })
           .catch(error => {
-            console.log(error);
+            if (error.response?.status == 403) {
+              clearInterval(this.fetch_task);
+            }
             this.showToast("Exception fetching resttunnel", error);
           })
           .finally(() => (this.loadingRestTunnel = false));

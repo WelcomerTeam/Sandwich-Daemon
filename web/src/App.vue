@@ -31,7 +31,10 @@
                   >GitHub</a
                 >
               </li>
-              <li class="nav-item" v-if="$store.state.user.id">
+              <li
+                class="nav-item"
+                v-if="$store.state.user && $store.state.user.id"
+              >
                 <span
                   class="nav-link dropdown-toggle"
                   id="userDropdown"
