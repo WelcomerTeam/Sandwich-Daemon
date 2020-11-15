@@ -223,9 +223,7 @@
                     class="form-control"
                     type="text"
                     v-model="createManagerDialogueData.channel"
-                    :placeholder="
-                      'Defaults to ' + daemon.configuration.nats.channel
-                    "
+                    :placeholder="'Defaults to ' + configuration.nats.channel"
                   />
                 </div>
 
@@ -450,14 +448,7 @@
                 bg="bg-dark"
               />
             </div>
-            <div v-if="this.loadingAnalytics">
-              <div class="d-flex justify-content-center">
-                <div class="spinner-border text-dark" role="status">
-                  <span class="sr-only">Loading...</span>
-                </div>
-              </div>
-            </div>
-            <div v-else>
+            <div>
               <line-chart
                 v-if="analytics.chart"
                 :chart-data="analytics.chart"
@@ -468,16 +459,8 @@
             </div>
           </div>
 
-          <div v-if="daemon.rest_tunnel_enabled" class="m-5">
-            <div
-              v-if="this.loadingRestTunnel"
-              class="d-flex justify-content-center"
-            >
-              <div class="spinner-border text-dark" role="status">
-                <span class="sr-only">Loading...</span>
-              </div>
-            </div>
-            <div v-else>
+          <div v-if="rest_tunnel_enabled" class="m-5">
+            <div>
               <h3 class="text-center text-dark">RestTunnel</h3>
               <div
                 class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center"
@@ -592,10 +575,7 @@
           >
             Create Manager
           </button>
-          <div
-            v-for="(manager, index) in this.fromClusters(daemon.managers)"
-            v-bind:key="index"
-          >
+          <div v-for="(manager, index) in managers" v-bind:key="index">
             <div
               class="accordion my-4"
               :id="'manager-' + manager.configuration.identifier"
@@ -709,7 +689,7 @@
                           >
                             Shard Groups
                             <span class="badge bg-dark rounded-pill">{{
-                              Object.keys(manager.shardgroups).length
+                              Object.keys(manager.shard_groups).length
                             }}</span>
                           </li>
                           <li
@@ -788,7 +768,7 @@
                         </div>
 
                         <div
-                          v-for="(shardgroup, index) in manager.shardgroups"
+                          v-for="(shardgroup, index) in manager.shard_groups"
                           v-bind:key="index"
                           class="border border-bottom bg-light rounded-lg p-3 my-4"
                         >
@@ -1792,7 +1772,7 @@
                 <!-- Logging -->
                 <div class="pb-4">
                   <form-input
-                    v-model="daemon.configuration.logging.console_logging"
+                    v-model="configuration.logging.console_logging"
                     :type="'checkbox'"
                     :id="'loggingConsoleLogging'"
                     :label="'Console Logging'"
@@ -1801,7 +1781,7 @@
                     If enabled, logs will be shown in console.
                   </p>
                   <form-input
-                    v-model="daemon.configuration.logging.file_logging"
+                    v-model="configuration.logging.file_logging"
                     :type="'checkbox'"
                     :id="'loggingFileLogging'"
                     :label="'File Logging'"
@@ -1810,7 +1790,7 @@
                     If enabled, logs will be saved to a file.
                   </p>
                   <form-input
-                    v-model="daemon.configuration.logging.encode_as_json"
+                    v-model="configuration.logging.encode_as_json"
                     :type="'checkbox'"
                     :id="'loggingEncodeAsJson'"
                     :label="'Encode as JSON'"
@@ -1821,19 +1801,19 @@
                   </p>
                 </div>
                 <form-input
-                  v-model="daemon.configuration.logging.directory"
+                  v-model="configuration.logging.directory"
                   :type="'text'"
                   :id="'loggingDirectory'"
                   :label="'Directory'"
                 />
                 <form-input
-                  v-model="daemon.configuration.logging.filename"
+                  v-model="configuration.logging.filename"
                   :type="'text'"
                   :id="'loggingFilename'"
                   :label="'Filename'"
                 />
                 <form-input
-                  v-model="daemon.configuration.logging.max_size"
+                  v-model="configuration.logging.max_size"
                   :type="'number'"
                   :id="'loggingMaxSize'"
                   :label="'Max Size'"
@@ -1843,7 +1823,7 @@
                   new file is made. 0 is unlimited.
                 </p>
                 <form-input
-                  v-model="daemon.configuration.logging.max_backups"
+                  v-model="configuration.logging.max_backups"
                   :type="'number'"
                   :id="'loggingMaxBackups'"
                   :label="'Max Backups'"
@@ -1852,7 +1832,7 @@
                   Max number of log files before old ones are deleted.
                 </p>
                 <form-input
-                  v-model="daemon.configuration.logging.max_age"
+                  v-model="configuration.logging.max_age"
                   :type="'number'"
                   :id="'loggingMaxAge'"
                   :label="'Max Age'"
@@ -1878,19 +1858,19 @@
                 </p>
                 <p class="text-muted">
                   RestTunnel enabled:
-                  <b>{{ daemon.rest_tunnel_enabled }}</b>
+                  <b>{{ rest_tunnel_enabled }}</b>
                 </p>
 
                 <div class="pb-4">
                   <form-input
-                    v-model="daemon.configuration.resttunnel.enabled"
+                    v-model="configuration.resttunnel.enabled"
                     :type="'checkbox'"
                     :id="'restTunnelEnabled'"
                     :label="'Enabled'"
                   />
                 </div>
                 <form-input
-                  v-model="daemon.configuration.resttunnel.url"
+                  v-model="configuration.resttunnel.url"
                   :type="'text'"
                   :id="'restTunnelURL'"
                   :placeholder="'http://127.0.0.1:8000'"
@@ -1923,7 +1903,7 @@
                 </p>
                 <div class="pb-4">
                   <form-input
-                    v-model="daemon.configuration.http.public"
+                    v-model="configuration.http.public"
                     :type="'checkbox'"
                     :id="'httpPublic'"
                     :label="'Public Access'"
@@ -1936,11 +1916,11 @@
 
                 <ul class="list-group mt-3 mb-2">
                   <li class="list-group-item list-group-item-dark">
-                    Users ({{ daemon.configuration.elevated_users.length }})
+                    Users ({{ configuration.elevated_users.length }})
                   </li>
                   <li
                     class="list-group-item"
-                    v-for="(id, index) in daemon.configuration.elevated_users"
+                    v-for="(id, index) in configuration.elevated_users"
                     v-bind:key="index"
                   >
                     {{ id }}
@@ -1955,18 +1935,21 @@
                 />
                 <form-submit
                   v-on:click="
-                    daemon.configuration.elevated_users = daemon.configuration.elevated_users.filter(
+                    configuration.elevated_users = configuration.elevated_users.filter(
                       item => item !== userid
-                    )
+                    );
+                    userid = undefined;
                   "
                   :label="'Remove User'"
                 />
                 <form-submit
                   v-on:click="
-                    if (daemon.configuration.elevated_users.includes(userid)) {
+                    if (Number(userid) != userid) { return }
+                    if (configuration.elevated_users.includes(userid)) {
                       return;
                     }
-                    daemon.configuration.elevated_users.push(userid);
+                    configuration.elevated_users.push(userid);
+                    userid = undefined;
                   "
                   :label="'Add User'"
                 />
@@ -1992,7 +1975,7 @@
                 </p>
                 <div class="pb-4">
                   <form-input
-                    v-model="daemon.configuration.redis.unique_clients"
+                    v-model="configuration.redis.unique_clients"
                     :type="'checkbox'"
                     :id="'redisUniqueClients'"
                     :label="'Unique Clients'"
@@ -2003,19 +1986,19 @@
                   else they will share the same connection.
                 </p>
                 <form-input
-                  v-model="daemon.configuration.redis.address"
+                  v-model="configuration.redis.address"
                   :type="'text'"
                   :id="'redisAddress'"
                   :label="'Address'"
                 />
                 <form-input
-                  v-model="daemon.configuration.redis.password"
+                  v-model="configuration.redis.password"
                   :type="'password'"
                   :id="'redisPassword'"
                   :label="'Password'"
                 />
                 <form-input
-                  v-model="daemon.configuration.redis.database"
+                  v-model="configuration.redis.database"
                   :type="'number'"
                   :id="'redisDB'"
                   :label="'Database'"
@@ -2036,19 +2019,19 @@
                   once.
                 </p>
                 <form-input
-                  v-model="daemon.configuration.nats.address"
+                  v-model="configuration.nats.address"
                   :type="'text'"
                   :id="'natsAddress'"
                   :label="'Address'"
                 />
                 <form-input
-                  v-model="daemon.configuration.nats.channel"
+                  v-model="configuration.nats.channel"
                   :type="'text'"
                   :id="'natsChannel'"
                   :label="'Channel'"
                 />
                 <form-input
-                  v-model="daemon.configuration.nats.manager"
+                  v-model="configuration.nats.manager"
                   :type="'text'"
                   :id="'natsCluster'"
                   :label="'Cluster'"
@@ -2064,7 +2047,7 @@
                 <!-- HTTP -->
                 <div class="pb-4">
                   <form-input
-                    v-model="daemon.configuration.http.enabled"
+                    v-model="configuration.http.enabled"
                     :type="'checkbox'"
                     :id="'httpEnabled'"
                     :label="'Enabled'"
@@ -2075,7 +2058,7 @@
                   </p>
                 </div>
                 <form-input
-                  v-model="daemon.configuration.http.host"
+                  v-model="configuration.http.host"
                   :type="'text'"
                   :id="'httpHost'"
                   :label="'Host'"
@@ -2092,7 +2075,7 @@
                 </p>
 
                 <form-input
-                  v-model="daemon.configuration.http.secret"
+                  v-model="configuration.http.secret"
                   :type="'password'"
                   :id="'httpSecret'"
                   :label="'Session Secret'"
@@ -2110,7 +2093,7 @@
                 aria-labelledby="raw-tab"
               >
                 <!-- RAW -->
-                <pre>{{ daemon.configuration }}</pre>
+                <pre>{{ configuration }}</pre>
               </div>
             </div>
           </form>
@@ -2197,10 +2180,15 @@ export default {
       loading: true,
       error: false,
       userid: undefined,
-      daemon: {
-        rest_tunnel_enabled: true,
-        managers: []
-      },
+
+      loadingRestTunnel: true,
+      loadingAnalytics: true,
+
+
+      rest_tunnel_enabled: true,
+      managers: [],
+      configuration: {},
+
       toast: {
         title: "",
         body: ""
@@ -2213,7 +2201,6 @@ export default {
         online: "...",
         colour: "bg-success"
       },
-      loadingAnalytics: true,
 
       resttunnel: {
         charts: {
@@ -2232,7 +2219,6 @@ export default {
         },
         uptime: "..."
       },
-      loadingRestTunnel: true,
 
       createShardGroupDialogueData: {
         manager: "",
@@ -2460,6 +2446,8 @@ export default {
     this.toastModal = new Toast(document.getElementById("toast"), {
       delay: 2000
     });
+
+    this.fetchConfiguration();
     this.fetch_task = window.setInterval(() => {
       this.pollData();
     }, 5000);
@@ -2509,7 +2497,7 @@ export default {
     },
 
     saveDaemonSettings() {
-      this.sendRPC("daemon:update", this.daemon.configuration);
+      this.sendRPC("daemon:update", this.configuration);
     },
 
     stopShardGroupDialogue(manager, shardgroup) {
@@ -2646,22 +2634,32 @@ export default {
 
           this.error = !result.data.success;
 
-          // configuration
-          this.daemon = result.data.data.configuration;
+          this.rest_tunnel_enabled = result.data.data.rest_tunnel_enabled;
+          this.uptime = result.data.data.uptime;
 
           // managers
-          this.daemon.managers = result.data.data.managers;
+          this.managers = result.data.data.managers;
 
+          var status = 0;
           var managers = Object.keys(result.data.data.managers);
           for (var mgindex in managers) {
             var manager_key = managers[mgindex];
             var manager = result.data.data.managers[manager_key];
-            if (manager_key in this.daemon.managers) {
-              this.daemon.managers[manager_key].error = manager.error;
-              this.daemon.managers[manager_key].shard_groups =
-                manager.shard_groups;
-              this.daemon.managers[manager_key].gateway = manager.gateway;
+
+            if (manager_key in this.managers) {
+              this.managers[manager_key].error = manager.error;
+              this.managers[manager_key].shard_groups = manager.shard_groups;
+              this.managers[manager_key].gateway = manager.gateway;
             }
+
+            var shardgroups = Object.values(manager.shard_groups);
+            if (shardgroups.length > 0) {
+              status = shardgroups.slice(-1)[0].status;
+            }
+            if (manager.error != "") {
+              status = 7;
+            }
+            this.managers[manager_key].status = status;
           }
 
           // analytics
@@ -2676,7 +2674,7 @@ export default {
           for (mgindex in managers) {
             manager = managers[mgindex];
             guilds += manager.guilds;
-            var shardgroups = Object.values(manager.status);
+            shardgroups = Object.values(manager.status);
             for (var sgindex in shardgroups) {
               var shardgroupstatus = shardgroups[sgindex];
               if (2 < shardgroupstatus && shardgroupstatus < 4) {
@@ -2690,9 +2688,11 @@ export default {
           this.analytics.online = up + "/" + total;
 
           // resttunnel
-          this.resttunnel.charts = result.data.data.resttunnel.data.charts;
-          this.resttunnel.uptime = result.data.data.resttunnel.data.uptime;
-          this.resttunnel.numbers = result.data.data.resttunnel.data.numbers;
+          if (result.data.data.rest_tunnel_enabled) {
+            this.resttunnel.charts = result.data.data.resttunnel.data.charts;
+            this.resttunnel.uptime = result.data.data.resttunnel.data.uptime;
+            this.resttunnel.numbers = result.data.data.resttunnel.data.numbers;
+          }
         })
         .catch(error => {
           if (error.response?.status == 403) {
@@ -2706,165 +2706,32 @@ export default {
           this.loadingRestTunnel = false;
         });
     },
-
-    // fetchClustersData() {
-    //   axios
-    //     .get("/api/configuration")
-    //     .then(result => {
-    //       if (result.status == 403) {
-    //         clearInterval(this.fetch_task);
-    //       }
-    //       if (result.data.success == false) {
-    //         return;
-    //       }
-    //       if (this.error) {
-    //         document.location.reload();
-    //       }
-
-    //       this.daemon.rest_tunnel_enabled =
-    //         result.data.data.rest_tunnel_enabled;
-    //       var managers = Object.keys(result.data.data.managers);
-    //       for (var mgindex in managers) {
-    //         var manager_key = managers[mgindex];
-    //         var manager = result.data.data.managers[manager_key];
-    //         if (manager_key in this.daemon.managers) {
-    //           this.daemon.managers[manager_key].error = manager.error;
-    //           this.daemon.managers[manager_key].shard_groups =
-    //             manager.shard_groups;
-    //           this.daemon.managers[manager_key].gateway = manager.gateway;
-    //         }
-    //       }
-    //     })
-    //     .catch(error => {
-    //       if (error.response?.status == 403) {
-    //         clearInterval(this.fetch_task);
-    //       }
-    //       this.showToast("Exception fetching manager data", error);
-    //     });
-    // },
-    // fetchConfiguration() {
-    //   axios
-    //     .get("/api/configuration")
-    //     .then(result => {
-    //       if (result.status == 403) {
-    //         clearInterval(this.fetch_task);
-    //       }
-    //       this.daemon = result.data.data;
-    //       this.error = !result.data.success;
-    //     })
-    //     .catch(error => {
-    //       if (error.response?.status == 403) {
-    //         clearInterval(this.fetch_task);
-    //       }
-    //       this.showToast("Exception fetching configuration", error);
-    //     })
-    //     .finally(() => {
-    //       this.loading = false;
-    //     });
-    // },
-    // fetchAnalytics() {
-    //   axios
-    //     .get("/api/analytics")
-    //     .then(result => {
-    //       if (result.status == 403) {
-    //         clearInterval(this.fetch_task);
-    //       }
-    //       if (result.data.success == false) {
-    //         return;
-    //       }
-    //       if (this.error) {
-    //         document.location.reload();
-    //       }
-    //       this.analytics = result.data.data;
-
-    //       let up = 0;
-    //       let total = 0;
-    //       let guilds = 0;
-    //       this.analytics.colour = "bg-success";
-
-    //       var managers = Object.values(this.analytics.managers);
-    //       for (var mgindex in managers) {
-    //         var manager = managers[mgindex];
-    //         guilds += manager.guilds;
-    //         var shardgroups = Object.values(manager.status);
-    //         for (var sgindex in shardgroups) {
-    //           var shardgroupstatus = shardgroups[sgindex];
-    //           if (2 < shardgroupstatus && shardgroupstatus < 4) {
-    //             up++;
-    //           }
-    //           total++;
-    //         }
-    //       }
-
-    //       this.analytics.visible = guilds;
-    //       this.analytics.online = up + "/" + total;
-
-    //       this.error = this.error | !result.data.success;
-    //     })
-    //     .catch(error => {
-    //       if (error.response?.status == 403) {
-    //         clearInterval(this.fetch_task);
-    //       }
-    //       this.showToast("Exception fetching analytics", error);
-    //     })
-    //     .finally(() => (this.loadingAnalytics = false));
-    //   if (this.daemon.rest_tunnel_enabled) {
-    //     axios
-    //       .get("/api/resttunnel")
-    //       .then(result => {
-    //         if (result.status == 403) {
-    //           clearInterval(this.fetch_task);
-    //         }
-    //         if (result.data.success == false) {
-    //           return;
-    //         }
-    //         if (this.error) {
-    //           document.location.reload();
-    //         }
-
-    //         this.resttunnel.charts = result.data.data.charts;
-    //         this.resttunnel.uptime = result.data.data.uptime;
-    //         this.resttunnel.numbers = result.data.data.numbers;
-    //       })
-    //       .catch(error => {
-    //         if (error.response?.status == 403) {
-    //           clearInterval(this.fetch_task);
-    //         }
-    //         this.showToast("Exception fetching resttunnel", error);
-    //       })
-    //       .finally(() => (this.loadingRestTunnel = false));
-    //   }
-    // },
-    fromClusters(managers) {
-      var _managers = {};
-      var status = 0;
-      Object.entries(managers).forEach(item => {
-        var key = item[0];
-        var value = item[1];
-
-        var shardgroups = Object.values(value.shard_groups);
-        if (shardgroups.length > 0) {
-          status = shardgroups.slice(-1)[0].status;
-        }
-        if (value.error != "") {
-          status = 7;
-        }
-
-        _managers[key] = {
-          configuration: value.configuration,
-          shardgroups: value.shard_groups,
-          gateway: value.gateway,
-          status: status,
-          error: value.error
-        };
-      });
-      return _managers;
+    fetchConfiguration() {
+      axios
+        .get("/api/configuration")
+        .then(result => {
+          if (result.status == 403) {
+            clearInterval(this.fetch_task);
+          }
+          this.configuration = result.data.data.configuration;
+          this.rest_tunnel_enabled = result.data.data.rest_tunnel_enabled;
+          this.error = !result.data.success;
+        })
+        .catch(error => {
+          if (error.response?.status == 403) {
+            clearInterval(this.fetch_task);
+          }
+          this.showToast("Exception fetching configuration", error);
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
     calculateAverage(manager) {
       var totalShards = 0;
       var totalLatency = 0;
 
-      var shardgroups = Object.values(manager.shardgroups);
+      var shardgroups = Object.values(manager.shard_groups);
       for (var sgindex in shardgroups) {
         var shardgroup = shardgroups[sgindex];
         if (shardgroup.status < 6) {

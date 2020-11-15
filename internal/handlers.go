@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -399,23 +398,24 @@ func APIPollHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		configuration := sg.FetchConfigurationResponse()
 		resttunnel, _, _, _, _ := sg.FetchRestTunnelResponse()
 		passResponse(rw, APISubscribeResult{
-			sg.FetchManagerResponse(),
-			&configuration,
-			resttunnel,
-			sg.FetchAnalytics(),
+			Managers:          sg.FetchManagerResponse(),
+			RestTunnel:        resttunnel,
+			Analytics:         sg.FetchAnalytics(),
+			Start:             sg.Start,
+			RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
 		}, true, http.StatusOK)
 	}
 }
 
 // APISubscribeResult is the structure of the websocket payloads
 type APISubscribeResult struct {
-	Managers      map[string]structs.APIConfigurationResponseManager `json:"managers"`
-	Configuration *structs.APIConfigurationResponse                  `json:"configuration,omitempty"`
-	RestTunnel    jsoniter.RawMessage                                `json:"resttunnel,omitempty"`
-	Analytics     structs.APIAnalyticsResult                         `json:"analytics"`
+	Managers          map[string]structs.APIConfigurationResponseManager `json:"managers"`
+	RestTunnel        jsoniter.RawMessage                                `json:"resttunnel"`
+	Analytics         structs.APIAnalyticsResult                         `json:"analytics"`
+	Start             time.Time                                          `json:"uptime"`
+	RestTunnelEnabled bool                                               `json:"rest_tunnel_enabled"`
 }
 
 // APISubscribe is a websocket that incorporates the /api/managers, /api/resttunnel and /api/configuration endpoint
@@ -436,19 +436,11 @@ func APISubscribe(sg *Sandwich, ctx *fasthttp.RequestCtx) {
 		conn.EnableWriteCompression(true)
 		conn.SetCompressionLevel(flate.BestCompression)
 
-		var lastConfiguration structs.APIConfigurationResponse
-
 		t := time.NewTicker(time.Second * 15)
 		for {
 			result := APISubscribeResult{}
 			result.Managers = sg.FetchManagerResponse()
 			result.Analytics = sg.FetchAnalytics()
-
-			configuration := sg.FetchConfigurationResponse()
-			if !reflect.DeepEqual(configuration, lastConfiguration) {
-				result.Configuration = &configuration
-				lastConfiguration = configuration
-			}
 
 			resttunnel, _, _, _, _ := sg.FetchRestTunnelResponse()
 			if len(resttunnel) > 0 {
