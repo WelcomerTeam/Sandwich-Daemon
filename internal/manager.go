@@ -99,7 +99,8 @@ type Manager struct {
 	ctx    context.Context
 	cancel func()
 
-	Error string `json:"error"`
+	ErrorMu sync.RWMutex `json:"-"`
+	Error   string       `json:"error"`
 
 	Analytics *accumulator.Accumulator `json:"-"`
 
@@ -119,7 +120,7 @@ type Manager struct {
 	GatewayMu sync.RWMutex       `json:"-"`
 	Gateway   structs.GatewayBot `json:"gateway"`
 
-	pp sync.Pool
+	pp sync.Pool `json:"-"`
 
 	// ShardGroups contain the group of shards the Manager is managing. The reason
 	// we have a ShardGroup instead of a map/slice of shards is we can run multiple
@@ -129,7 +130,7 @@ type Manager struct {
 	// until it has removed the old shardgroup to reduce likelihood of duplicate messages.
 	// These messages will just be completely ignored as if it was in the EventBlacklist
 	ShardGroups       map[int32]*ShardGroup `json:"shard_groups"`
-	ShardGroupMu      sync.Mutex            `json:"-"`
+	ShardGroupsMu     sync.RWMutex          `json:"-"`
 	ShardGroupIter    *int32                `json:"-"`
 	ShardGroupCounter sync.WaitGroup        `json:"-"`
 
@@ -146,7 +147,8 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		Sandwich: s,
 		Logger:   logger,
 
-		Error: "",
+		ErrorMu: sync.RWMutex{},
+		Error:   "",
 
 		ConfigurationMu: sync.RWMutex{},
 		Configuration:   configuration,
@@ -160,7 +162,7 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		},
 
 		ShardGroups:       make(map[int32]*ShardGroup),
-		ShardGroupMu:      sync.Mutex{},
+		ShardGroupsMu:     sync.RWMutex{},
 		ShardGroupIter:    new(int32),
 		ShardGroupCounter: sync.WaitGroup{},
 
@@ -176,7 +178,9 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 
 	err = mg.NormalizeConfiguration()
 	if err != nil {
+		mg.ErrorMu.Lock()
 		mg.Error = err.Error()
+		mg.ErrorMu.Unlock()
 		return nil, xerrors.Errorf("new manager: %w", err)
 	}
 
@@ -317,9 +321,9 @@ func (mg *Manager) GatherShardCount() (shardCount int) {
 func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan bool, err error) {
 	iter := atomic.AddInt32(mg.ShardGroupIter, 1) - 1
 	sg := mg.NewShardGroup(iter)
-	mg.ShardGroupMu.Lock()
+	mg.ShardGroupsMu.Lock()
 	mg.ShardGroups[iter] = sg
-	mg.ShardGroupMu.Unlock()
+	mg.ShardGroupsMu.Unlock()
 
 	if start {
 		ready, err = sg.Open(shardIDs, shardCount)
@@ -375,11 +379,11 @@ func (mg *Manager) GenerateShardIDs(shardCount int) (shardIDs []int) {
 func (mg *Manager) Close() {
 	mg.Logger.Info().Msg("Closing down manager")
 
-	mg.ShardGroupMu.Lock()
+	mg.ShardGroupsMu.RLock()
 	for _, shardGroup := range mg.ShardGroups {
 		shardGroup.Close()
 	}
-	mg.ShardGroupMu.Unlock()
+	mg.ShardGroupsMu.RUnlock()
 
 	// cancel is not defined when a manager does not autostart
 	if mg.cancel != nil {

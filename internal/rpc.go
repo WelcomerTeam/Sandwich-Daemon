@@ -106,10 +106,9 @@ func RPCManagerShardGroupStop(sg *Sandwich, req structs.RPCRequest, rw http.Resp
 		return false
 	}
 
-	manager.ShardGroupMu.Lock()
-	defer manager.ShardGroupMu.Unlock()
-
+	manager.ShardGroupsMu.RLock()
 	shardgroup, ok := manager.ShardGroups[event.ShardGroup]
+	manager.ShardGroupsMu.RUnlock()
 	if !ok {
 		passResponse(rw, "Invalid shardgroup provided", false, http.StatusBadRequest)
 		return false
@@ -137,10 +136,9 @@ func RPCManagerShardGroupDelete(sg *Sandwich, req structs.RPCRequest, rw http.Re
 		return false
 	}
 
-	manager.ShardGroupMu.Lock()
-	defer manager.ShardGroupMu.Unlock()
-
+	manager.ShardGroupsMu.RLock()
 	shardgroup, ok := manager.ShardGroups[event.ShardGroup]
+	manager.ShardGroupsMu.RUnlock()
 	if !ok {
 		passResponse(rw, "Invalid shardgroup provided", false, http.StatusBadRequest)
 		return false
@@ -151,7 +149,9 @@ func RPCManagerShardGroupDelete(sg *Sandwich, req structs.RPCRequest, rw http.Re
 		return false
 	}
 
+	manager.ShardGroupsMu.Lock()
 	delete(manager.ShardGroups, event.ShardGroup)
+	manager.ShardGroupsMu.Unlock()
 
 	passResponse(rw, true, true, http.StatusOK)
 	return true

@@ -1,6 +1,8 @@
 package structs
 
 import (
+	"time"
+
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -101,4 +103,45 @@ type ManagerInformation struct {
 	Guilds    int64                      `json:"guilds"`
 	Status    map[int32]ShardGroupStatus `json:"status"`
 	AutoStart bool                       `json:"autostart"`
+}
+
+// APIConfigurationResponse is the structure of the thread safe /api/configuration endpoint
+type APIConfigurationResponse struct {
+	Start             time.Time                                  `json:"uptime"`
+	Configuration     interface{}                                `json:"configuration"`
+	Managers          map[string]APIConfigurationResponseManager `json:"managers"`
+	RestTunnelEnabled bool                                       `json:"rest_tunnel_enabled"`
+}
+
+// APIConfigurationResponseManager is the structure of the manager in the /api/configuration endpoint
+type APIConfigurationResponseManager struct {
+	ShardGroups   map[int32]APIConfigurationResponseShardGroup `json:"shard_groups"`
+	Configuration interface{}                                  `json:"configuration"`
+	Gateway       interface{}                                  `json:"gateway"`
+	Error         string                                       `json:"error"`
+}
+
+// APIConfigurationResponseShardGroup is the structure of a shardgroup in the /api/configuration endpoint
+type APIConfigurationResponseShardGroup struct {
+	Status     ShardGroupStatus    `json:"status"`
+	Error      string              `json:"error"`
+	Start      time.Time           `json:"uptime"`
+	WaitingFor int32               `json:"waiting_for"`
+	ID         int32               `json:"id"`
+	ShardCount int                 `json:"shard_count"`
+	ShardIDs   []int               `json:"shard_ids"`
+	Shards     map[int]interface{} `json:"shards"`
+}
+
+// APIConfigurationResponseShard is the structure of a shard in the /api/configuration endpoint
+type APIConfigurationResponseShard struct {
+	ShardID              int           `json:"shard_id"`
+	Status               ShardStatus   `json:"status"`
+	User                 *User         `json:"user"`
+	LastHeartbeatAck     time.Time     `json:"last_heartbeat_ack"`
+	LastHeartbeatSent    time.Time     `json:"last_heartbeat_sent"`
+	HeartbeatInterval    time.Duration `json:"heartbeat_interval"`
+	MaxHeartbeatFailures time.Duration `json:"max_heartbeat_failures"`
+	Start                time.Time     `json:"start"`
+	Retries              int32         `json:"retries"`
 }

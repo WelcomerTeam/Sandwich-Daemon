@@ -16,20 +16,24 @@ import (
 type ShardGroup struct {
 	StatusMu sync.RWMutex             `json:"-"`
 	Status   structs.ShardGroupStatus `json:"status"`
-	Error    string                   `json:"error"`
+
+	ErrorMu sync.RWMutex `json:"-"`
+	Error   string       `json:"error"`
 
 	Start time.Time `json:"uptime"`
 
-	WaitingFor int `json:"waiting_for"`
+	WaitingFor *int32 `json:"waiting_for"`
 
 	ID int32 `json:"id"` // track of shardgroups
 
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
 
-	ShardCount int            `json:"shard_count"`
-	ShardIDs   []int          `json:"shard_ids"`
-	Shards     map[int]*Shard `json:"shards"`
+	ShardCount int   `json:"shard_count"`
+	ShardIDs   []int `json:"shard_ids"`
+
+	ShardsMu sync.RWMutex   `json:"-"`
+	Shards   map[int]*Shard `json:"shards"`
 
 	// WaitGroup for detecting when all shards are ready
 	Wait *sync.WaitGroup `json:"-"`
@@ -48,15 +52,19 @@ type ShardGroup struct {
 // NewShardGroup creates a new shardgroup
 func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 	return &ShardGroup{
-		Status:   structs.ShardGroupIdle,
 		StatusMu: sync.RWMutex{},
+		Status:   structs.ShardGroupIdle,
+		ErrorMu:  sync.RWMutex{},
 		Error:    "",
+
+		WaitingFor: new(int32),
 
 		ID: id,
 
 		Manager: mg,
 		Logger:  mg.Logger,
 
+		ShardsMu:       sync.RWMutex{},
 		Shards:         make(map[int]*Shard),
 		Wait:           &sync.WaitGroup{},
 		IdentifyBucket: make(map[int]*sync.Mutex),
@@ -71,14 +79,14 @@ func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
 	sg.Start = time.Now().UTC()
 
-	sg.Manager.ShardGroupMu.Lock()
+	sg.Manager.ShardGroupsMu.Lock()
 	for _, _sg := range sg.Manager.ShardGroups {
 		// We preferably do not want to mark an erroring shardgroup as replaced as it overwrites how it is displayed.
 		if _sg.Status != structs.ShardGroupError {
 			_sg.SetStatus(structs.ShardGroupReplaced)
 		}
 	}
-	sg.Manager.ShardGroupMu.Unlock()
+	sg.Manager.ShardGroupsMu.Unlock()
 
 	sg.SetStatus(structs.ShardGroupStarting)
 
@@ -89,13 +97,17 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 
 	sg.Logger.Info().Msgf("Starting ShardGroup with %d shards", len(sg.ShardIDs))
 
+	sg.ShardsMu.Lock()
 	for _, shardID := range sg.ShardIDs {
 		shard := sg.NewShard(shardID)
 		sg.Shards[shardID] = shard
 	}
+	sg.ShardsMu.Unlock()
 
 	for index, shardID := range sg.ShardIDs {
+		sg.ShardsMu.RLock()
 		shard := sg.Shards[shardID]
+		sg.ShardsMu.RUnlock()
 		for {
 			err = shard.Connect()
 			if index == 0 && err == nil {
@@ -110,12 +122,18 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 					sg.Logger.Error().Err(err).Int32("retries", retries).Msg("Failed to connect shard. Retrying...")
 				} else {
 					sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
+
+					sg.ErrorMu.Lock()
 					sg.Error = err.Error()
+					sg.ErrorMu.Unlock()
+
 					sg.Close()
 					sg.SetStatus(structs.ShardGroupError)
+
 					for _, shard := range sg.Shards {
 						shard.SetStatus(structs.ShardClosed)
 					}
+
 					err = xerrors.Errorf("ShardGroup open: %w", err)
 					return
 				}
@@ -133,16 +151,18 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 	sg.SetStatus(structs.ShardGroupConnecting)
 
 	go func(sg *ShardGroup) {
+		sg.ShardsMu.RLock()
 		for _, shardID := range sg.ShardIDs {
 			shard := sg.Shards[shardID]
 			sg.Logger.Debug().Msgf("Waiting for shard %d to be ready", shard.ShardID)
-			sg.WaitingFor = shardID
+			atomic.StoreInt32(sg.WaitingFor, int32(shardID))
 			shard.WaitForReady()
 		}
+		sg.ShardsMu.RUnlock()
 		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
 		sg.SetStatus(structs.ShardGroupReady)
 
-		sg.Manager.ShardGroupMu.Lock()
+		sg.Manager.ShardGroupsMu.RLock()
 		for index, _sg := range sg.Manager.ShardGroups {
 			if _sg != sg {
 				_sg.floodgate.UnSet()
@@ -150,7 +170,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 				_sg.Close()
 			}
 		}
-		sg.Manager.ShardGroupMu.Unlock()
+		sg.Manager.ShardGroupsMu.RUnlock()
 
 		sg.floodgate.Set()
 		close(ready)
@@ -171,8 +191,12 @@ func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
 func (sg *ShardGroup) Close() {
 	sg.Logger.Info().Msg("Closing ShardGroup")
 	sg.SetStatus(structs.ShardGroupClosing)
+
+	sg.ShardsMu.RLock()
 	for _, shard := range sg.Shards {
 		shard.Close(1000)
 	}
+	sg.ShardsMu.RUnlock()
+
 	sg.SetStatus(structs.ShardGroupClosed)
 }

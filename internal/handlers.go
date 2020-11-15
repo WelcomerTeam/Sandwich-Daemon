@@ -220,6 +220,7 @@ func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
 				}
 				shardgroup.StatusMu.RUnlock()
 
+				shardgroup.ShardsMu.RLock()
 				for _, shard := range shardgroup.Shards {
 					shard.StatusMu.RLock()
 					_shard := structs.APIStatusShard{
@@ -230,6 +231,7 @@ func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
 					shard.StatusMu.RUnlock()
 					_shardgroup.Shards = append(_shardgroup.Shards, _shard)
 				}
+				shardgroup.ShardsMu.RUnlock()
 				_manager.ShardGroups = append(_manager.ShardGroups, _shardgroup)
 			}
 			_result.Managers = append(_result.Managers, _manager)
@@ -256,11 +258,13 @@ func (sg *Sandwich) ConstructAnalytics() structs.LineChart {
 			continue
 		}
 
+		mg.Analytics.RLock()
 		data := make([]interface{}, 0, len(mg.Analytics.Samples))
 
 		for _, sample := range mg.Analytics.Samples {
-			data = append(data, structs.DataStamp{sample.StoredAt, sample.Value})
+			data = append(data, structs.DataStamp{Time: sample.StoredAt, Value: sample.Value})
 		}
+		mg.Analytics.RUnlock()
 
 		colour := colours[i%len(colours)]
 		datasets = append(datasets, structs.Dataset{
@@ -294,11 +298,11 @@ func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
 
 			statuses := make(map[int32]structs.ShardGroupStatus)
 
-			manager.ShardGroupMu.Lock()
+			manager.ShardGroupsMu.RLock()
 			for i, sg := range manager.ShardGroups {
 				statuses[i] = sg.Status
 			}
-			manager.ShardGroupMu.Unlock()
+			manager.ShardGroupsMu.RUnlock()
 
 			_guildCount, ok := guildCounts[manager.Configuration.Caching.RedisPrefix]
 			if !ok {
@@ -351,9 +355,11 @@ func APIManagersHandler(sg *Sandwich) http.HandlerFunc {
 		}
 
 		_result := APIManagersResult{}
+		sg.ManagersMu.RLock()
 		for key, manager := range sg.Managers {
 			_result[key] = manager.ShardGroups
 		}
+		sg.ManagersMu.RUnlock()
 
 		passResponse(rw, _result, true, http.StatusOK)
 	}
@@ -368,8 +374,91 @@ func APIConfigurationHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		sg.RestTunnelEnabledValue = sg.RestTunnelEnabled.IsSet()
-		passResponse(rw, sg, true, http.StatusOK)
+		sg.ConfigurationMu.RLock()
+		defer sg.ConfigurationMu.RUnlock()
+
+		pl := structs.APIConfigurationResponse{
+			Start:             sg.Start,
+			RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
+		}
+
+		sg.ConfigurationMu.RLock()
+		pl.Configuration = sg.Configuration
+		sg.ConfigurationMu.RUnlock()
+
+		pl.Managers = make(map[string]structs.APIConfigurationResponseManager, 0)
+
+		sg.ManagersMu.RLock()
+		for managerID, manager := range sg.Managers {
+			mg := structs.APIConfigurationResponseManager{}
+
+			manager.ConfigurationMu.RLock()
+			mg.Configuration = manager.Configuration
+			manager.ConfigurationMu.RUnlock()
+
+			manager.GatewayMu.RLock()
+			mg.Gateway = manager.Gateway
+			manager.GatewayMu.RUnlock()
+
+			manager.ErrorMu.RLock()
+			mg.Error = manager.Error
+			manager.ErrorMu.RUnlock()
+
+			mg.ShardGroups = make(map[int32]structs.APIConfigurationResponseShardGroup, 0)
+
+			manager.ShardGroupsMu.RLock()
+			for shardgroupID, shardgroup := range manager.ShardGroups {
+				shg := structs.APIConfigurationResponseShardGroup{
+					Start:      shardgroup.Start,
+					ID:         shardgroup.ID,
+					ShardCount: shardgroup.ShardCount,
+					ShardIDs:   shardgroup.ShardIDs,
+					WaitingFor: atomic.LoadInt32(shardgroup.WaitingFor),
+				}
+
+				shardgroup.StatusMu.RLock()
+				shg.Status = shardgroup.Status
+				shardgroup.StatusMu.RUnlock()
+
+				shardgroup.ErrorMu.RLock()
+				shg.Error = shardgroup.Error
+				shardgroup.ErrorMu.RUnlock()
+
+				shg.Shards = make(map[int]interface{}, 0)
+
+				shardgroup.ShardsMu.RLock()
+				for shardID, shard := range shardgroup.Shards {
+					shd := structs.APIConfigurationResponseShard{
+						ShardID:              shard.ShardID,
+						User:                 shard.User,
+						HeartbeatInterval:    shard.HeartbeatInterval,
+						MaxHeartbeatFailures: shard.MaxHeartbeatFailures,
+						Start:                shard.Start,
+						Retries:              atomic.LoadInt32(shard.Retries),
+					}
+
+					shard.StatusMu.RLock()
+					shd.Status = shard.Status
+					shard.StatusMu.RUnlock()
+
+					shard.LastHeartbeatMu.RLock()
+					shd.LastHeartbeatAck = shard.LastHeartbeatAck
+					shd.LastHeartbeatSent = shard.LastHeartbeatSent
+					shard.LastHeartbeatMu.RUnlock()
+
+					shg.Shards[shardID] = shd
+				}
+				shardgroup.ShardsMu.RUnlock()
+
+				mg.ShardGroups[shardgroupID] = shg
+			}
+			manager.ShardGroupsMu.RUnlock()
+
+			pl.Managers[managerID] = mg
+		}
+		sg.ManagersMu.RUnlock()
+
+		passResponse(rw, pl, true, http.StatusOK)
 	}
 }
 

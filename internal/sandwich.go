@@ -99,6 +99,8 @@ type SandwichConfiguration struct {
 
 // Sandwich represents the global application state
 type Sandwich struct {
+	sync.RWMutex // used to block important functions
+
 	Logger zerolog.Logger `json:"-"`
 
 	Start time.Time `json:"uptime"`
@@ -106,9 +108,8 @@ type Sandwich struct {
 	ConfigurationMu sync.RWMutex           `json:"-"`
 	Configuration   *SandwichConfiguration `json:"configuration"`
 
-	RestTunnelReverse      abool.AtomicBool `json:"-"`
-	RestTunnelEnabled      abool.AtomicBool `json:"-"`
-	RestTunnelEnabledValue bool             `json:"rest_tunnel_enabled"`
+	RestTunnelReverse abool.AtomicBool `json:"-"`
+	RestTunnelEnabled abool.AtomicBool `json:"-"`
 
 	ManagersMu sync.RWMutex        `json:"-"`
 	Managers   map[string]*Manager `json:"managers"`
@@ -142,6 +143,9 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		TotalEvents:     new(int64),
 		Buckets:         bucketstore.NewBucketStore(),
 	}
+
+	sg.Lock()
+	defer sg.Unlock()
 
 	configuration, err := sg.LoadConfiguration(ConfigurationPath)
 	if err != nil {
@@ -425,6 +429,7 @@ func (sg *Sandwich) Open() (err error) {
 	}
 
 	sg.Logger.Info().Msg("Creating managers")
+	sg.ManagersMu.Lock()
 	for _, managerConfiguration := range sg.Configuration.Managers {
 
 		manager, err := sg.NewManager(managerConfiguration)
@@ -432,20 +437,17 @@ func (sg *Sandwich) Open() (err error) {
 			sg.Logger.Error().Err(err).Msg("Could not create manager")
 			continue
 		}
-		sg.ManagersMu.RLock()
 		if _, ok := sg.Managers[managerConfiguration.Identifier]; ok {
 			sg.Logger.Warn().Str("identifer", managerConfiguration.Identifier).Msg("Found conflicting manager identifiers. Ignoring!")
 			continue
 		}
-		sg.ManagersMu.RUnlock()
-
-		sg.ManagersMu.Lock()
 		sg.Managers[managerConfiguration.Identifier] = manager
-		sg.ManagersMu.Unlock()
 
 		err = manager.Open()
 		if err != nil {
+			manager.ErrorMu.Lock()
 			manager.Error = err.Error()
+			manager.ErrorMu.Unlock()
 			sg.Logger.Error().Err(err).Msg("Failed to start up manager")
 		} else {
 			if manager.Configuration.AutoStart {
@@ -479,6 +481,7 @@ func (sg *Sandwich) Open() (err error) {
 			}
 		}
 	}
+	sg.ManagersMu.Unlock()
 
 	go func() {
 		var events int64
@@ -491,13 +494,15 @@ func (sg *Sandwich) Open() (err error) {
 			for _, mg := range sg.Managers {
 				managerEvents = 0
 
-				mg.ShardGroupMu.Lock()
+				mg.ShardGroupsMu.RLock()
 				for _, sg := range mg.ShardGroups {
+					sg.ShardsMu.RLock()
 					for _, sh := range sg.Shards {
 						managerEvents += atomic.SwapInt64(sh.events, 0)
 					}
+					sg.ShardsMu.RUnlock()
 				}
-				mg.ShardGroupMu.Unlock()
+				mg.ShardGroupsMu.RUnlock()
 
 				if mg.Analytics != nil {
 					mg.Analytics.IncrementBy(managerEvents)
