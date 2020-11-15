@@ -232,7 +232,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 			ctx.Response.Reset()
 			ctx.SendFile("web/dist/index.html")
 		}
-	}, fasthttp.CompressBrotliBestCompression, fasthttp.CompressBestCompression)(ctx)
+	}, fasthttp.CompressBrotliDefaultCompression, fasthttp.CompressDefaultCompression)(ctx)
 
 	processingMS = time.Now().Sub(start).Milliseconds()
 	ctx.Response.Header.Set("X-Elapsed", strconv.FormatInt(processingMS, 10))

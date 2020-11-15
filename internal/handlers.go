@@ -374,92 +374,95 @@ func APIConfigurationHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		sg.ConfigurationMu.RLock()
-		defer sg.ConfigurationMu.RUnlock()
-
-		pl := structs.APIConfigurationResponse{
-			Start:             sg.Start,
-			RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
-		}
-
-		sg.ConfigurationMu.RLock()
-		pl.Configuration = sg.Configuration
-		sg.ConfigurationMu.RUnlock()
-
-		pl.Managers = make(map[string]structs.APIConfigurationResponseManager, 0)
-
-		sg.ManagersMu.RLock()
-		for managerID, manager := range sg.Managers {
-			mg := structs.APIConfigurationResponseManager{}
-
-			manager.ConfigurationMu.RLock()
-			mg.Configuration = manager.Configuration
-			manager.ConfigurationMu.RUnlock()
-
-			manager.GatewayMu.RLock()
-			mg.Gateway = manager.Gateway
-			manager.GatewayMu.RUnlock()
-
-			manager.ErrorMu.RLock()
-			mg.Error = manager.Error
-			manager.ErrorMu.RUnlock()
-
-			mg.ShardGroups = make(map[int32]structs.APIConfigurationResponseShardGroup, 0)
-
-			manager.ShardGroupsMu.RLock()
-			for shardgroupID, shardgroup := range manager.ShardGroups {
-				shg := structs.APIConfigurationResponseShardGroup{
-					Start:      shardgroup.Start,
-					ID:         shardgroup.ID,
-					ShardCount: shardgroup.ShardCount,
-					ShardIDs:   shardgroup.ShardIDs,
-					WaitingFor: atomic.LoadInt32(shardgroup.WaitingFor),
-				}
-
-				shardgroup.StatusMu.RLock()
-				shg.Status = shardgroup.Status
-				shardgroup.StatusMu.RUnlock()
-
-				shardgroup.ErrorMu.RLock()
-				shg.Error = shardgroup.Error
-				shardgroup.ErrorMu.RUnlock()
-
-				shg.Shards = make(map[int]interface{}, 0)
-
-				shardgroup.ShardsMu.RLock()
-				for shardID, shard := range shardgroup.Shards {
-					shd := structs.APIConfigurationResponseShard{
-						ShardID:              shard.ShardID,
-						User:                 shard.User,
-						HeartbeatInterval:    shard.HeartbeatInterval,
-						MaxHeartbeatFailures: shard.MaxHeartbeatFailures,
-						Start:                shard.Start,
-						Retries:              atomic.LoadInt32(shard.Retries),
-					}
-
-					shard.StatusMu.RLock()
-					shd.Status = shard.Status
-					shard.StatusMu.RUnlock()
-
-					shard.LastHeartbeatMu.RLock()
-					shd.LastHeartbeatAck = shard.LastHeartbeatAck
-					shd.LastHeartbeatSent = shard.LastHeartbeatSent
-					shard.LastHeartbeatMu.RUnlock()
-
-					shg.Shards[shardID] = shd
-				}
-				shardgroup.ShardsMu.RUnlock()
-
-				mg.ShardGroups[shardgroupID] = shg
-			}
-			manager.ShardGroupsMu.RUnlock()
-
-			pl.Managers[managerID] = mg
-		}
-		sg.ManagersMu.RUnlock()
-
+		pl := sg.FetchConfigurationResponse()
 		passResponse(rw, pl, true, http.StatusOK)
 	}
+}
+
+// FetchConfigurationResponse returns the data for the /api/configuration endpoint
+func (sg *Sandwich) FetchConfigurationResponse() (pl structs.APIConfigurationResponse) {
+	pl = structs.APIConfigurationResponse{
+		Start:             sg.Start,
+		RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
+	}
+
+	sg.ConfigurationMu.RLock()
+	pl.Configuration = sg.Configuration
+	sg.ConfigurationMu.RUnlock()
+
+	pl.Managers = make(map[string]structs.APIConfigurationResponseManager, 0)
+
+	sg.ManagersMu.RLock()
+	for managerID, manager := range sg.Managers {
+		mg := structs.APIConfigurationResponseManager{}
+
+		manager.ConfigurationMu.RLock()
+		mg.Configuration = manager.Configuration
+		manager.ConfigurationMu.RUnlock()
+
+		manager.GatewayMu.RLock()
+		mg.Gateway = manager.Gateway
+		manager.GatewayMu.RUnlock()
+
+		manager.ErrorMu.RLock()
+		mg.Error = manager.Error
+		manager.ErrorMu.RUnlock()
+
+		mg.ShardGroups = make(map[int32]structs.APIConfigurationResponseShardGroup, 0)
+
+		manager.ShardGroupsMu.RLock()
+		for shardgroupID, shardgroup := range manager.ShardGroups {
+			shg := structs.APIConfigurationResponseShardGroup{
+				Start:      shardgroup.Start,
+				ID:         shardgroup.ID,
+				ShardCount: shardgroup.ShardCount,
+				ShardIDs:   shardgroup.ShardIDs,
+				WaitingFor: atomic.LoadInt32(shardgroup.WaitingFor),
+			}
+
+			shardgroup.StatusMu.RLock()
+			shg.Status = shardgroup.Status
+			shardgroup.StatusMu.RUnlock()
+
+			shardgroup.ErrorMu.RLock()
+			shg.Error = shardgroup.Error
+			shardgroup.ErrorMu.RUnlock()
+
+			shg.Shards = make(map[int]interface{}, 0)
+
+			shardgroup.ShardsMu.RLock()
+			for shardID, shard := range shardgroup.Shards {
+				shd := structs.APIConfigurationResponseShard{
+					ShardID:              shard.ShardID,
+					User:                 shard.User,
+					HeartbeatInterval:    shard.HeartbeatInterval,
+					MaxHeartbeatFailures: shard.MaxHeartbeatFailures,
+					Start:                shard.Start,
+					Retries:              atomic.LoadInt32(shard.Retries),
+				}
+
+				shard.StatusMu.RLock()
+				shd.Status = shard.Status
+				shard.StatusMu.RUnlock()
+
+				shard.LastHeartbeatMu.RLock()
+				shd.LastHeartbeatAck = shard.LastHeartbeatAck
+				shd.LastHeartbeatSent = shard.LastHeartbeatSent
+				shard.LastHeartbeatMu.RUnlock()
+
+				shg.Shards[shardID] = shd
+			}
+			shardgroup.ShardsMu.RUnlock()
+
+			mg.ShardGroups[shardgroupID] = shg
+		}
+		manager.ShardGroupsMu.RUnlock()
+
+		pl.Managers[managerID] = mg
+	}
+	sg.ManagersMu.RUnlock()
+
+	return
 }
 
 // APIRestTunnelHandler handles the /api/resttunnel endpoint
@@ -471,26 +474,9 @@ func APIRestTunnelHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		if sg.RestTunnelEnabled.IsNotSet() {
-			passResponse(rw, "RestTunnel is not enabled", true, http.StatusOK)
-			return
-		}
-
-		_url, err := url.Parse(sg.Configuration.RestTunnel.URL)
-		if err != nil {
-			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
-			return
-		}
-
-		resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/resttunnel/analytics")
-		if err != nil {
-			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
-			return
-		}
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+		body, resp, err, ok, status := sg.FetchRestTunnelResponse()
+		if err != "" || !ok {
+			passResponse(rw, err, ok, status)
 			return
 		}
 
@@ -498,6 +484,43 @@ func APIRestTunnelHandler(sg *Sandwich) http.HandlerFunc {
 		rw.WriteHeader(resp.StatusCode)
 		rw.Write(body)
 	}
+}
+
+// FetchRestTunnelResponse returns the raw body for the /api/resttunnel request
+func (sg *Sandwich) FetchRestTunnelResponse() (body []byte, resp *http.Response, err string, ok bool, status int) {
+	if sg.RestTunnelEnabled.IsNotSet() {
+		err = "RestTunnel is not enabled"
+		ok = true
+		status = http.StatusOK
+		return
+	}
+	_url, _err := url.Parse(sg.Configuration.RestTunnel.URL)
+	if _err != nil {
+		err = _err.Error()
+		ok = false
+		status = http.StatusInternalServerError
+		return
+	}
+
+	resp, _err = http.Get(_url.Scheme + "://" + _url.Host + "/resttunnel/analytics")
+	if _err != nil {
+		err = _err.Error()
+		ok = false
+		status = http.StatusInternalServerError
+		return
+	}
+
+	body, _err = ioutil.ReadAll(resp.Body)
+	if _err != nil {
+		err = _err.Error()
+		ok = false
+		status = http.StatusInternalServerError
+		return
+	}
+
+	ok = true
+	status = http.StatusOK
+	return
 }
 
 // APIRPCHandler handles the /api/rpc endpoint

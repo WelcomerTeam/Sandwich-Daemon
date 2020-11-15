@@ -120,7 +120,7 @@ type Manager struct {
 	GatewayMu sync.RWMutex       `json:"-"`
 	Gateway   structs.GatewayBot `json:"gateway"`
 
-	pp sync.Pool `json:"-"`
+	pp sync.Pool
 
 	// ShardGroups contain the group of shards the Manager is managing. The reason
 	// we have a ShardGroup instead of a map/slice of shards is we can run multiple
