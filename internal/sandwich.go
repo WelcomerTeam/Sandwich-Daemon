@@ -206,6 +206,12 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		default:
 			log = sg.Logger.Info()
 		}
+
+		// Suppress /api/poll messages
+		if string(ctx.Path()) == "/api/poll" && statusCode == 200 {
+			return
+		}
+
 		log.Msgf("%s %s %s %d %d %dms",
 			ctx.RemoteAddr(),
 			ctx.Request.Header.Method(),
