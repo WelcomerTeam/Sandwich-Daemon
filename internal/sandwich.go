@@ -112,7 +112,7 @@ type Sandwich struct {
 	RestTunnelEnabled abool.AtomicBool `json:"-"`
 
 	ManagersMu sync.RWMutex        `json:"-"`
-	Managers   map[string]*Manager `json:"managers"`
+	Managers   map[string]*Manager `json:"-"`
 
 	TotalEvents *int64 `json:"-"`
 
@@ -215,6 +215,11 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 			processingMS,
 		)
 	}()
+
+	if string(ctx.Path()) == "/api/ws" {
+		APISubscribe(sg, ctx)
+		return
+	}
 
 	fasthttp.CompressHandlerBrotliLevel(func(ctx *fasthttp.RequestCtx) {
 		fasthttpadaptor.NewFastHTTPHandler(sg.Router)(ctx)

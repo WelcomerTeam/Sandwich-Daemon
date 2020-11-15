@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/TheRockettek/czlib v0.0.0-20200626001404-f6ab55296689
 	github.com/TheRockettek/snowflake v0.3.0
+	github.com/fasthttp/websocket v1.4.3
 	github.com/go-redis/redis/v8 v8.3.3
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1

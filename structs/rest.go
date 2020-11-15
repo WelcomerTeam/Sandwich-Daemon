@@ -107,10 +107,9 @@ type ManagerInformation struct {
 
 // APIConfigurationResponse is the structure of the thread safe /api/configuration endpoint
 type APIConfigurationResponse struct {
-	Start             time.Time                                  `json:"uptime"`
-	Configuration     interface{}                                `json:"configuration"`
-	Managers          map[string]APIConfigurationResponseManager `json:"managers"`
-	RestTunnelEnabled bool                                       `json:"rest_tunnel_enabled"`
+	Start             time.Time   `json:"uptime"`
+	Configuration     interface{} `json:"configuration"`
+	RestTunnelEnabled bool        `json:"rest_tunnel_enabled"`
 }
 
 // APIConfigurationResponseManager is the structure of the manager in the /api/configuration endpoint

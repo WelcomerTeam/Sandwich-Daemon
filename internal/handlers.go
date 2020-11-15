@@ -1,20 +1,30 @@
 package gateway
 
 import (
+	"compress/flate"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 	"sort"
 	"sync/atomic"
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-uuid"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
 
 const forbiddenMessage = "You are not elevated"
+
+var upgrader = websocket.FastHTTPUpgrader{
+	EnableCompression: true,
+}
 
 var colours = [][]string{
 	{"rgba(149, 165, 165, 0.5)", "#7E8C8D"},
@@ -27,6 +37,39 @@ var colours = [][]string{
 	{"rgba(53, 152, 219, 0.5)", "#2A80B9"},
 	{"rgba(45, 204, 112, 0.5)", "#27AE61"},
 	{"rgba(27, 188, 155, 0.5)", "#16A086"},
+}
+
+func passFastHTTPResponse(ctx *fasthttp.RequestCtx, data interface{}, success bool, status int) {
+	var resp []byte
+	var err error
+	if success {
+		resp, err = json.Marshal(structs.BaseResponse{
+			Success: true,
+			Data:    data,
+		})
+	} else {
+		resp, err = json.Marshal(structs.BaseResponse{
+			Success: false,
+			Error:   data.(string),
+		})
+	}
+
+	if err != nil {
+		resp, _ = json.Marshal(structs.BaseResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+		ctx.Error(string(resp), http.StatusInternalServerError)
+		return
+	}
+
+	if success {
+		ctx.SetStatusCode(status)
+		ctx.Write(resp)
+	} else {
+		ctx.Error(err.Error(), status)
+	}
+	return
 }
 
 func passResponse(rw http.ResponseWriter, data interface{}, success bool, status int) {
@@ -45,7 +88,7 @@ func passResponse(rw http.ResponseWriter, data interface{}, success bool, status
 	}
 
 	if err != nil {
-		resp, _ := json.Marshal(structs.BaseResponse{
+		resp, _ = json.Marshal(structs.BaseResponse{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -290,55 +333,145 @@ func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		managers := make([]structs.ManagerInformation, 0, len(sg.Managers))
-		guildCounts := make(map[string]int64, 0)
+		passResponse(rw, sg.FetchAnalytics(), true, http.StatusOK)
+	}
+}
 
-		for _, manager := range sg.Managers {
-			manager.ConfigurationMu.RLock()
+// FetchAnalytics returns the data for the /api/analytics endpoint
+func (sg *Sandwich) FetchAnalytics() (result structs.APIAnalyticsResult) {
+	managers := make([]structs.ManagerInformation, 0, len(sg.Managers))
+	guildCounts := make(map[string]int64, 0)
 
-			statuses := make(map[int32]structs.ShardGroupStatus)
+	for _, manager := range sg.Managers {
+		manager.ConfigurationMu.RLock()
 
-			manager.ShardGroupsMu.RLock()
-			for i, sg := range manager.ShardGroups {
-				statuses[i] = sg.Status
+		statuses := make(map[int32]structs.ShardGroupStatus)
+
+		manager.ShardGroupsMu.RLock()
+		for i, sg := range manager.ShardGroups {
+			statuses[i] = sg.Status
+		}
+		manager.ShardGroupsMu.RUnlock()
+
+		_guildCount, _ok := guildCounts[manager.Configuration.Caching.RedisPrefix]
+		if !_ok {
+			guildCount, err := sg.RedisClient.HLen(context.Background(), manager.CreateKey("guilds")).Result()
+			if err != nil {
+				sg.Logger.Error().Err(err).Msg("Failed to get hlen of table")
+				return
 			}
-			manager.ShardGroupsMu.RUnlock()
-
-			_guildCount, ok := guildCounts[manager.Configuration.Caching.RedisPrefix]
-			if !ok {
-				guildCount, err := sg.RedisClient.HLen(context.Background(), manager.CreateKey("guilds")).Result()
-				if err != nil {
-					passResponse(rw, err.Error(), false, http.StatusInternalServerError)
-					return
-				}
-				guildCounts[manager.Configuration.Caching.RedisPrefix] = guildCount
-			}
-
-			_manager := structs.ManagerInformation{
-				Name:      manager.Configuration.DisplayName,
-				Guilds:    _guildCount,
-				Status:    statuses,
-				AutoStart: manager.Configuration.AutoStart,
-			}
-			manager.ConfigurationMu.RUnlock()
-			managers = append(managers, _manager)
+			guildCounts[manager.Configuration.Caching.RedisPrefix] = guildCount
 		}
 
-		now := time.Now()
-		guildCount := int64(0)
-		for _, count := range guildCounts {
-			guildCount += count
+		_manager := structs.ManagerInformation{
+			Name:      manager.Configuration.DisplayName,
+			Guilds:    _guildCount,
+			Status:    statuses,
+			AutoStart: manager.Configuration.AutoStart,
+		}
+		manager.ConfigurationMu.RUnlock()
+		managers = append(managers, _manager)
+	}
+
+	now := time.Now()
+	guildCount := int64(0)
+	for _, count := range guildCounts {
+		guildCount += count
+	}
+
+	result = structs.APIAnalyticsResult{
+		Graph:    sg.ConstructAnalytics(),
+		Guilds:   guildCount,
+		Uptime:   DurationTimestamp(now.Sub(sg.Start)),
+		Events:   atomic.LoadInt64(sg.TotalEvents),
+		Managers: managers,
+	}
+
+	return
+}
+
+// APIPollHandler is the HTTP REST equivalent to the /api/ws endpoint and is likely to be used as it supports compression
+func APIPollHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
 		}
 
-		_result := structs.APIAnalyticsResult{
-			Graph:    sg.ConstructAnalytics(),
-			Guilds:   guildCount,
-			Uptime:   DurationTimestamp(now.Sub(sg.Start)),
-			Events:   atomic.LoadInt64(sg.TotalEvents),
-			Managers: managers,
-		}
+		configuration := sg.FetchConfigurationResponse()
+		resttunnel, _, _, _, _ := sg.FetchRestTunnelResponse()
+		passResponse(rw, APISubscribeResult{
+			sg.FetchManagerResponse(),
+			&configuration,
+			resttunnel,
+			sg.FetchAnalytics(),
+		}, true, http.StatusOK)
+	}
+}
 
-		passResponse(rw, _result, true, http.StatusOK)
+// APISubscribeResult is the structure of the websocket payloads
+type APISubscribeResult struct {
+	Managers      map[string]structs.APIConfigurationResponseManager `json:"managers"`
+	Configuration *structs.APIConfigurationResponse                  `json:"configuration,omitempty"`
+	RestTunnel    jsoniter.RawMessage                                `json:"resttunnel,omitempty"`
+	Analytics     structs.APIAnalyticsResult                         `json:"analytics"`
+}
+
+// APISubscribe is a websocket that incorporates the /api/managers, /api/resttunnel and /api/configuration endpoint
+func APISubscribe(sg *Sandwich, ctx *fasthttp.RequestCtx) {
+	fasthttpadaptor.NewFastHTTPHandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+		rw.WriteHeader(http.StatusOK)
+	})(ctx)
+	if ctx.Response.StatusCode() != 200 {
+		return
+	}
+
+	err := upgrader.Upgrade(ctx, func(conn *websocket.Conn) {
+		conn.EnableWriteCompression(true)
+		conn.SetCompressionLevel(flate.BestCompression)
+
+		var lastConfiguration structs.APIConfigurationResponse
+
+		t := time.NewTicker(time.Second * 15)
+		for {
+			result := APISubscribeResult{}
+			result.Managers = sg.FetchManagerResponse()
+			result.Analytics = sg.FetchAnalytics()
+
+			configuration := sg.FetchConfigurationResponse()
+			if !reflect.DeepEqual(configuration, lastConfiguration) {
+				result.Configuration = &configuration
+				lastConfiguration = configuration
+			}
+
+			resttunnel, _, _, _, _ := sg.FetchRestTunnelResponse()
+			if len(resttunnel) > 0 {
+				result.RestTunnel = resttunnel
+			}
+
+			resp, err := json.Marshal(result)
+			if err != nil {
+				sg.Logger.Warn().Err(err).Msg("Failed to marshal websocket payload")
+			}
+
+			err = conn.WriteMessage(websocket.TextMessage, resp)
+			if err != nil {
+				break
+			}
+			<-t.C
+		}
+	})
+
+	if err != nil {
+		sg.Logger.Err(err).Msg("Failed to upgrade connection")
+		passFastHTTPResponse(ctx, err.Error(), false, http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -354,43 +487,13 @@ func APIManagersHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		_result := APIManagersResult{}
-		sg.ManagersMu.RLock()
-		for key, manager := range sg.Managers {
-			_result[key] = manager.ShardGroups
-		}
-		sg.ManagersMu.RUnlock()
-
-		passResponse(rw, _result, true, http.StatusOK)
+		passResponse(rw, sg.FetchManagerResponse(), true, http.StatusOK)
 	}
 }
 
-// APIConfigurationHandler handles the /api/configuration endpoint
-func APIConfigurationHandler(sg *Sandwich) http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		session, _ := sg.Store.Get(r, sessionName)
-		if auth, _ := sg.AuthenticateSession(session); !auth {
-			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
-			return
-		}
-
-		pl := sg.FetchConfigurationResponse()
-		passResponse(rw, pl, true, http.StatusOK)
-	}
-}
-
-// FetchConfigurationResponse returns the data for the /api/configuration endpoint
-func (sg *Sandwich) FetchConfigurationResponse() (pl structs.APIConfigurationResponse) {
-	pl = structs.APIConfigurationResponse{
-		Start:             sg.Start,
-		RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
-	}
-
-	sg.ConfigurationMu.RLock()
-	pl.Configuration = sg.Configuration
-	sg.ConfigurationMu.RUnlock()
-
-	pl.Managers = make(map[string]structs.APIConfigurationResponseManager, 0)
+// FetchManagerResponse returns the data for the /api/manager endpoint
+func (sg *Sandwich) FetchManagerResponse() (managers map[string]structs.APIConfigurationResponseManager) {
+	managers = make(map[string]structs.APIConfigurationResponseManager, 0)
 
 	sg.ManagersMu.RLock()
 	for managerID, manager := range sg.Managers {
@@ -458,9 +561,36 @@ func (sg *Sandwich) FetchConfigurationResponse() (pl structs.APIConfigurationRes
 		}
 		manager.ShardGroupsMu.RUnlock()
 
-		pl.Managers[managerID] = mg
+		managers[managerID] = mg
 	}
 	sg.ManagersMu.RUnlock()
+
+	return
+}
+
+// APIConfigurationHandler handles the /api/configuration endpoint
+func APIConfigurationHandler(sg *Sandwich) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+
+		passResponse(rw, sg.FetchConfigurationResponse(), true, http.StatusOK)
+	}
+}
+
+// FetchConfigurationResponse returns the data for the /api/configuration endpoint
+func (sg *Sandwich) FetchConfigurationResponse() (pl structs.APIConfigurationResponse) {
+	pl = structs.APIConfigurationResponse{
+		Start:             sg.Start,
+		RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
+	}
+
+	sg.ConfigurationMu.RLock()
+	pl.Configuration = sg.Configuration
+	sg.ConfigurationMu.RUnlock()
 
 	return
 }

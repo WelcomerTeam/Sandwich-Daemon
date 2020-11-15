@@ -225,9 +225,7 @@ func RPCManagerUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	}
 	sg.Configuration.Managers = managers
 
-	sg.ConfigurationMu.RLock()
 	err = sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
-	sg.ConfigurationMu.RUnlock()
 
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)

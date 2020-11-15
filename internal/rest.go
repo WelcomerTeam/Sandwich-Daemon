@@ -81,6 +81,7 @@ func createEndpoints(sg *Sandwich) (router *MethodRouter) {
 	router.HandleFunc("/api/configuration", APIConfigurationHandler(sg), "GET")
 	router.HandleFunc("/api/resttunnel", APIRestTunnelHandler(sg), "GET")
 
+	router.HandleFunc("/api/poll", APIPollHandler(sg), "GET")
 	router.HandleFunc("/api/rpc", APIRPCHandler(sg), "POST")
 
 	return

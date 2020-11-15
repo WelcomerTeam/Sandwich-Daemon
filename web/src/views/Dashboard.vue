@@ -2461,11 +2461,15 @@ export default {
       delay: 2000
     });
     this.fetch_task = window.setInterval(() => {
-      this.fetchAnalytics();
-      this.fetchClustersData();
+      this.pollData();
     }, 5000);
-    this.fetchConfiguration();
-    this.fetchAnalytics();
+    this.pollData();
+    // this.fetch_task = window.setInterval(() => {
+    //   this.fetchAnalytics();
+    //   this.fetchClustersData();
+    // }, 5000);
+    // this.fetchConfiguration();
+    // this.fetchAnalytics();
   },
   methods: {
     sendRPC(method, data, id) {
@@ -2626,9 +2630,9 @@ export default {
       this.createShardGroupDialogueModal.hide();
     },
 
-    fetchClustersData() {
+    pollData() {
       axios
-        .get("/api/configuration")
+        .get("/api/poll")
         .then(result => {
           if (result.status == 403) {
             clearInterval(this.fetch_task);
@@ -2640,8 +2644,14 @@ export default {
             document.location.reload();
           }
 
-          this.daemon.rest_tunnel_enabled =
-            result.data.data.rest_tunnel_enabled;
+          this.error = !result.data.success;
+
+          // configuration
+          this.daemon = result.data.data.configuration;
+
+          // managers
+          this.daemon.managers = result.data.data.managers;
+
           var managers = Object.keys(result.data.data.managers);
           for (var mgindex in managers) {
             var manager_key = managers[mgindex];
@@ -2653,57 +2663,18 @@ export default {
               this.daemon.managers[manager_key].gateway = manager.gateway;
             }
           }
-        })
-        .catch(error => {
-          if (error.response?.status == 403) {
-            clearInterval(this.fetch_task);
-          }
-          this.showToast("Exception fetching manager data", error);
-        });
-    },
-    fetchConfiguration() {
-      axios
-        .get("/api/configuration")
-        .then(result => {
-          if (result.status == 403) {
-            clearInterval(this.fetch_task);
-          }
-          this.daemon = result.data.data;
-          this.error = !result.data.success;
-        })
-        .catch(error => {
-          if (error.response?.status == 403) {
-            clearInterval(this.fetch_task);
-          }
-          this.showToast("Exception fetching configuration", error);
-        })
-        .finally(() => {
-          this.loading = false;
-        });
-    },
-    fetchAnalytics() {
-      axios
-        .get("/api/analytics")
-        .then(result => {
-          if (result.status == 403) {
-            clearInterval(this.fetch_task);
-          }
-          if (result.data.success == false) {
-            return;
-          }
-          if (this.error) {
-            document.location.reload();
-          }
-          this.analytics = result.data.data;
+
+          // analytics
+          this.analytics = result.data.data.analytics;
 
           let up = 0;
           let total = 0;
           let guilds = 0;
           this.analytics.colour = "bg-success";
 
-          var managers = Object.values(this.analytics.managers);
-          for (var mgindex in managers) {
-            var manager = managers[mgindex];
+          managers = Object.values(this.analytics.managers);
+          for (mgindex in managers) {
+            manager = managers[mgindex];
             guilds += manager.guilds;
             var shardgroups = Object.values(manager.status);
             for (var sgindex in shardgroups) {
@@ -2718,42 +2689,152 @@ export default {
           this.analytics.visible = guilds;
           this.analytics.online = up + "/" + total;
 
-          this.error = this.error | !result.data.success;
+          // resttunnel
+          this.resttunnel.charts = result.data.data.resttunnel.data.charts;
+          this.resttunnel.uptime = result.data.data.resttunnel.data.uptime;
+          this.resttunnel.numbers = result.data.data.resttunnel.data.numbers;
         })
         .catch(error => {
           if (error.response?.status == 403) {
             clearInterval(this.fetch_task);
           }
-          this.showToast("Exception fetching analytics", error);
+          this.showToast("Exception fetching manager data", error);
         })
-        .finally(() => (this.loadingAnalytics = false));
-      if (this.daemon.rest_tunnel_enabled) {
-        axios
-          .get("/api/resttunnel")
-          .then(result => {
-            if (result.status == 403) {
-              clearInterval(this.fetch_task);
-            }
-            if (result.data.success == false) {
-              return;
-            }
-            if (this.error) {
-              document.location.reload();
-            }
-
-            this.resttunnel.charts = result.data.data.charts;
-            this.resttunnel.uptime = result.data.data.uptime;
-            this.resttunnel.numbers = result.data.data.numbers;
-          })
-          .catch(error => {
-            if (error.response?.status == 403) {
-              clearInterval(this.fetch_task);
-            }
-            this.showToast("Exception fetching resttunnel", error);
-          })
-          .finally(() => (this.loadingRestTunnel = false));
-      }
+        .finally(() => {
+          this.loading = false;
+          this.loadingAnalytics = false;
+          this.loadingRestTunnel = false;
+        });
     },
+
+    // fetchClustersData() {
+    //   axios
+    //     .get("/api/configuration")
+    //     .then(result => {
+    //       if (result.status == 403) {
+    //         clearInterval(this.fetch_task);
+    //       }
+    //       if (result.data.success == false) {
+    //         return;
+    //       }
+    //       if (this.error) {
+    //         document.location.reload();
+    //       }
+
+    //       this.daemon.rest_tunnel_enabled =
+    //         result.data.data.rest_tunnel_enabled;
+    //       var managers = Object.keys(result.data.data.managers);
+    //       for (var mgindex in managers) {
+    //         var manager_key = managers[mgindex];
+    //         var manager = result.data.data.managers[manager_key];
+    //         if (manager_key in this.daemon.managers) {
+    //           this.daemon.managers[manager_key].error = manager.error;
+    //           this.daemon.managers[manager_key].shard_groups =
+    //             manager.shard_groups;
+    //           this.daemon.managers[manager_key].gateway = manager.gateway;
+    //         }
+    //       }
+    //     })
+    //     .catch(error => {
+    //       if (error.response?.status == 403) {
+    //         clearInterval(this.fetch_task);
+    //       }
+    //       this.showToast("Exception fetching manager data", error);
+    //     });
+    // },
+    // fetchConfiguration() {
+    //   axios
+    //     .get("/api/configuration")
+    //     .then(result => {
+    //       if (result.status == 403) {
+    //         clearInterval(this.fetch_task);
+    //       }
+    //       this.daemon = result.data.data;
+    //       this.error = !result.data.success;
+    //     })
+    //     .catch(error => {
+    //       if (error.response?.status == 403) {
+    //         clearInterval(this.fetch_task);
+    //       }
+    //       this.showToast("Exception fetching configuration", error);
+    //     })
+    //     .finally(() => {
+    //       this.loading = false;
+    //     });
+    // },
+    // fetchAnalytics() {
+    //   axios
+    //     .get("/api/analytics")
+    //     .then(result => {
+    //       if (result.status == 403) {
+    //         clearInterval(this.fetch_task);
+    //       }
+    //       if (result.data.success == false) {
+    //         return;
+    //       }
+    //       if (this.error) {
+    //         document.location.reload();
+    //       }
+    //       this.analytics = result.data.data;
+
+    //       let up = 0;
+    //       let total = 0;
+    //       let guilds = 0;
+    //       this.analytics.colour = "bg-success";
+
+    //       var managers = Object.values(this.analytics.managers);
+    //       for (var mgindex in managers) {
+    //         var manager = managers[mgindex];
+    //         guilds += manager.guilds;
+    //         var shardgroups = Object.values(manager.status);
+    //         for (var sgindex in shardgroups) {
+    //           var shardgroupstatus = shardgroups[sgindex];
+    //           if (2 < shardgroupstatus && shardgroupstatus < 4) {
+    //             up++;
+    //           }
+    //           total++;
+    //         }
+    //       }
+
+    //       this.analytics.visible = guilds;
+    //       this.analytics.online = up + "/" + total;
+
+    //       this.error = this.error | !result.data.success;
+    //     })
+    //     .catch(error => {
+    //       if (error.response?.status == 403) {
+    //         clearInterval(this.fetch_task);
+    //       }
+    //       this.showToast("Exception fetching analytics", error);
+    //     })
+    //     .finally(() => (this.loadingAnalytics = false));
+    //   if (this.daemon.rest_tunnel_enabled) {
+    //     axios
+    //       .get("/api/resttunnel")
+    //       .then(result => {
+    //         if (result.status == 403) {
+    //           clearInterval(this.fetch_task);
+    //         }
+    //         if (result.data.success == false) {
+    //           return;
+    //         }
+    //         if (this.error) {
+    //           document.location.reload();
+    //         }
+
+    //         this.resttunnel.charts = result.data.data.charts;
+    //         this.resttunnel.uptime = result.data.data.uptime;
+    //         this.resttunnel.numbers = result.data.data.numbers;
+    //       })
+    //       .catch(error => {
+    //         if (error.response?.status == 403) {
+    //           clearInterval(this.fetch_task);
+    //         }
+    //         this.showToast("Exception fetching resttunnel", error);
+    //       })
+    //       .finally(() => (this.loadingRestTunnel = false));
+    //   }
+    // },
     fromClusters(managers) {
       var _managers = {};
       var status = 0;
