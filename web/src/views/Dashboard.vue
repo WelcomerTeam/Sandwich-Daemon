@@ -1944,7 +1944,9 @@
                 />
                 <form-submit
                   v-on:click="
-                    if (Number(userid) != userid) { return }
+                    if (Number(userid) != userid) {
+                      return;
+                    }
                     if (configuration.elevated_users.includes(userid)) {
                       return;
                     }
@@ -2183,7 +2185,6 @@ export default {
 
       loadingRestTunnel: true,
       loadingAnalytics: true,
-
 
       rest_tunnel_enabled: true,
       managers: [],
@@ -2452,12 +2453,6 @@ export default {
       this.pollData();
     }, 5000);
     this.pollData();
-    // this.fetch_task = window.setInterval(() => {
-    //   this.fetchAnalytics();
-    //   this.fetchClustersData();
-    // }, 5000);
-    // this.fetchConfiguration();
-    // this.fetchAnalytics();
   },
   methods: {
     sendRPC(method, data, id) {
@@ -2514,7 +2509,7 @@ export default {
     stopShardGroup() {
       var config = Object.assign({}, this.stopShardGroupDialogueData);
       this.sendRPC("manager:shardgroup:stop", config);
-      setTimeout(() => this.fetchClustersData(), 1000);
+      setTimeout(() => this.pollData(), 1000);
 
       this.stopShardGroupDialogueModal.hide();
     },
@@ -2524,7 +2519,7 @@ export default {
         shardgroup: shardgroup
       };
       this.sendRPC("manager:shardgroup:delete", config);
-      setTimeout(() => this.fetchClustersData(), 1000);
+      setTimeout(() => this.pollData(), 1000);
     },
 
     refreshGateway(manager) {
@@ -2532,7 +2527,7 @@ export default {
         manager: manager
       };
       this.sendRPC("manager:refresh_gateway", config);
-      setTimeout(() => this.fetchClustersData(), 1000);
+      setTimeout(() => this.pollData(), 1000);
     },
 
     createManagerDialogue() {
@@ -2613,7 +2608,7 @@ export default {
       var config = Object.assign({}, this.createShardGroupDialogueData);
       config.shardCount = Number(config.shardCount);
       this.sendRPC("manager:shardgroup:create", config);
-      setTimeout(() => this.fetchClustersData(), 1000);
+      setTimeout(() => this.pollData(), 1000);
 
       this.createShardGroupDialogueModal.hide();
     },
