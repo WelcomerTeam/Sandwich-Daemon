@@ -394,13 +394,12 @@ func (sg *Sandwich) Open() (err error) {
 
 		sg.Logger.Info().Msg("Starting up http server")
 		sg.fs = &fasthttp.FS{
-			Root:               "web/dist",
-			IndexNames:         []string{"index.html"},
-			GenerateIndexPages: true,
-			Compress:           true,
-			AcceptByteRange:    true,
-			CacheDuration:      time.Hour * 24,
-			PathNotFound:       fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) { return }),
+			Root:            "web/dist",
+			Compress:        true,
+			CompressBrotli:  true,
+			AcceptByteRange: true,
+			CacheDuration:   time.Hour * 24 * 30,
+			PathNotFound:    fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) { return }),
 		}
 		sg.distHandler = sg.fs.NewRequestHandler()
 
