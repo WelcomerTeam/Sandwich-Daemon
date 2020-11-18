@@ -448,7 +448,7 @@ func (sg *Sandwich) Open() (err error) {
 			continue
 		}
 		if _, ok := sg.Managers[managerConfiguration.Identifier]; ok {
-			sg.Logger.Warn().Str("identifer", managerConfiguration.Identifier).Msg("Found conflicting manager identifiers. Ignoring!")
+			sg.Logger.Warn().Str("identifier", managerConfiguration.Identifier).Msg("Found conflicting manager identifiers. Ignoring!")
 			continue
 		}
 		sg.Managers[managerConfiguration.Identifier] = manager
