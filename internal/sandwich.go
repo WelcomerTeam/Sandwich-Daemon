@@ -234,7 +234,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		}
 		// If there is no URL in router then try serving from the dist
 		// folder.
-		if ctx.Response.StatusCode() == 404 {
+		if ctx.Response.StatusCode() == 404 && string(ctx.Path()) != "/" {
 			ctx.Response.Reset()
 			sg.distHandler(ctx)
 		}
