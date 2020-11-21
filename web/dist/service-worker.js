@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/precache-manifest.245b8ce3f9a8d0f4040bc608a8f29975.js"
+  "/precache-manifest.f4704be141584567a9565282cc35c493.js"
 );
 
 workbox.core.setCacheNameDetails({prefix: "sandwich-daemon"});
