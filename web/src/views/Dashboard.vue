@@ -1946,7 +1946,7 @@
                     );
                     userid = undefined;
                   "
-                  :disabled="userid != $store.state.user.id"
+                  :disabled="userid == $store.state.user.id"
                   :label="'Remove User'"
                 />
                 <form-submit
