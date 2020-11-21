@@ -2187,7 +2187,7 @@ export default {
       loadingAnalytics: true,
 
       rest_tunnel_enabled: true,
-      managers: [],
+      managers: {},
       configuration: {},
 
       toast: {
@@ -2634,28 +2634,33 @@ export default {
 
           // managers
 
-          var status = 0;
           var managers = Object.keys(result.data.data.managers);
           for (var mgindex in managers) {
             var manager_key = managers[mgindex];
             var manager = result.data.data.managers[manager_key];
+            var _manager;
 
-            if (!(manager_key in this.managers)) {
-              this.managers[manager_key] = manager;
+            if (manager_key in this.managers) {
+              _manager = this.managers[manager_key];
+            } else {
+              _manager = manager;
             }
 
-            this.managers[manager_key].error = manager.error;
-            this.managers[manager_key].gateway = manager.gateway;
-            this.managers[manager_key].shard_groups = manager.shard_groups;
+            _manager.error = manager.error;
+            _manager.gateway = manager.gateway;
+            _manager.shard_groups = manager.shard_groups;
 
             var shardgroups = Object.values(manager.shard_groups);
+
+            _manager.status = 0;
             if (shardgroups.length > 0) {
-              status = shardgroups.slice(-1)[0].status;
+              _manager.status = shardgroups.slice(-1)[0].status;
             }
             if (manager.error != "") {
-              status = 7;
+              _manager.status = 7;
             }
-            this.managers[manager_key].status = status;
+            
+            this.$set(this.managers, manager_key, _manager);
           }
 
           // analytics
