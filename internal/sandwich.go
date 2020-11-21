@@ -91,7 +91,7 @@ type SandwichConfiguration struct {
 		Public        bool   `json:"public" yaml:"public"`
 	} `json:"http" yaml:"http"`
 
-	ElevatedUsers []int64        `json:"elevated_users" yaml:"elevated_users"`
+	ElevatedUsers []string       `json:"elevated_users" yaml:"elevated_users"`
 	OAuth         *oauth2.Config `json:"oauth" yaml:"oauth"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`

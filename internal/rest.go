@@ -56,7 +56,7 @@ func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool, u
 	}
 
 	for _, userID := range sg.Configuration.ElevatedUsers {
-		if userID == user.ID.Int64() {
+		if userID == user.ID.String() {
 			return true, user
 		}
 	}

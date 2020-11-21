@@ -1928,7 +1928,7 @@
                 </ul>
                 <form-input
                   v-model="userid"
-                  :type="'number'"
+                  :type="'text'"
                   :id="'elevatedUsers'"
                   :label="''"
                   :placeholder="'Discord user ID'"
@@ -2633,7 +2633,6 @@ export default {
           this.uptime = result.data.data.uptime;
 
           // managers
-          this.managers = result.data.data.managers;
 
           var status = 0;
           var managers = Object.keys(result.data.data.managers);
@@ -2641,11 +2640,13 @@ export default {
             var manager_key = managers[mgindex];
             var manager = result.data.data.managers[manager_key];
 
-            if (manager_key in this.managers) {
-              this.managers[manager_key].error = manager.error;
-              this.managers[manager_key].shard_groups = manager.shard_groups;
-              this.managers[manager_key].gateway = manager.gateway;
+            if (!(manager_key in this.managers)) {
+              this.managers[manager_key] = manager;
             }
+
+            this.managers[manager_key].error = manager.error;
+            this.managers[manager_key].gateway = manager.gateway;
+            this.managers[manager_key].shard_groups = manager.shard_groups;
 
             var shardgroups = Object.values(manager.shard_groups);
             if (shardgroups.length > 0) {
