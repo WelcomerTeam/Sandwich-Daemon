@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/nats-io/stan.go"
@@ -246,8 +247,11 @@ func RPCManagerCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 		return false
 	}
 
+	_displayName := event.Identifier
+	_identifier := strings.ReplaceAll(event.Identifier, " ", "")
+
 	sg.ManagersMu.RLock()
-	_, ok := sg.Managers[event.Identifier]
+	_, ok := sg.Managers[_identifier]
 	sg.ManagersMu.RUnlock()
 	if ok {
 		passResponse(rw, "Manager with this name already exists", false, http.StatusBadRequest)
@@ -256,8 +260,8 @@ func RPCManagerCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 
 	config := &ManagerConfiguration{
 		Persist:     event.Persist,
-		Identifier:  event.Identifier,
-		DisplayName: event.Identifier,
+		Identifier:  _identifier,
+		DisplayName: _displayName,
 		Token:       event.Token,
 	}
 

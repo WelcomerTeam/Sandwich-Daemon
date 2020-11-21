@@ -205,17 +205,19 @@
                     v-model="createManagerDialogueData.prefix"
                     :placeholder="'eg: ' + createManagerDialogueData.identifier"
                   />
+                  <p class="text-muted">Duplicate redis prefixes are completely fine and will share caches between multiple managers</p>
                 </div>
                 <div class="mb-3">
                   <label class="col-sm-12 form-label"
-                    >NATs Client Name <span class="text-danger">*</span></label
-                  >
+                    >NATs Client Name <span class="text-danger">*</span>
+                  </label>
                   <input
                     class="form-control"
                     type="text"
                     v-model="createManagerDialogueData.client"
                     :placeholder="'eg: ' + createManagerDialogueData.identifier"
                   />
+                  <p class="text-muted">Duplicate client names will not allow the manager to start however the exact name the NATs client uses does not impact anything</p>
                 </div>
                 <div class="mb-3">
                   <label class="col-sm-12 form-label">NATs Channel Name</label>
@@ -225,6 +227,7 @@
                     v-model="createManagerDialogueData.channel"
                     :placeholder="'Defaults to ' + configuration.nats.channel"
                   />
+                  <p class="text-muted">Keeping all your managers on a single channel name is useful as it allows multiple consumers to manage multiple managers as they all read from the same source</p>
                 </div>
 
                 <input
@@ -232,7 +235,7 @@
                   type="checkbox"
                   v-model="createManagerDialogueData.persist"
                 />
-                <label class="form-check-label mb-2"
+                <label class="form-check-label ml-2 mb-2"
                   >Persist <span class="text-danger">*</span></label
                 >
                 <p class="text-muted">
@@ -1935,11 +1938,15 @@
                 />
                 <form-submit
                   v-on:click="
+                    if (userid == $store.state.user.id) {
+                      return
+                    };
                     configuration.elevated_users = configuration.elevated_users.filter(
                       item => item !== userid
                     );
                     userid = undefined;
                   "
+                  :disabled="userid != $store.state.user.id"
                   :label="'Remove User'"
                 />
                 <form-submit
