@@ -52,7 +52,7 @@
                   type="checkbox"
                   v-model="createShardGroupDialogueData.autoShard"
                 />
-                <label class="form-check-label mb-2">Auto Determine</label>
+                <label class="form-check-label ml-2 mb-2">Auto Determine</label>
                 <input
                   type="number"
                   class="form-control"
@@ -67,7 +67,7 @@
                   type="checkbox"
                   v-model="createShardGroupDialogueData.autoIDs"
                 />
-                <label class="form-check-label mb-2">Auto Determine</label>
+                <label class="form-check-label ml-2 mb-2">Auto Determine</label>
                 <input
                   type="text"
                   class="form-control"
