@@ -134,8 +134,8 @@ type Manager struct {
 	ShardGroupIter    *int32                `json:"-"`
 	ShardGroupCounter sync.WaitGroup        `json:"-"`
 
-	EventBlacklist   map[string]void `json:"-"`
-	ProduceBlacklist map[string]void `json:"-"`
+	EventBlacklist   []string `json:"-"`
+	ProduceBlacklist []string `json:"-"`
 }
 
 // NewManager creates a new manager
@@ -166,8 +166,8 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		ShardGroupIter:    new(int32),
 		ShardGroupCounter: sync.WaitGroup{},
 
-		EventBlacklist:   make(map[string]void),
-		ProduceBlacklist: make(map[string]void),
+		EventBlacklist:   make([]string, 0),
+		ProduceBlacklist: make([]string, 0),
 	}
 
 	if s.RestTunnelEnabled.IsSet() {
@@ -281,17 +281,8 @@ func (mg *Manager) Open() (err error) {
 		return xerrors.Errorf("manager open stan connect: %w", err)
 	}
 
-	if len(mg.EventBlacklist) == 0 {
-		for _, value := range mg.Configuration.Events.EventBlacklist {
-			mg.EventBlacklist[value] = void{}
-		}
-	}
-
-	if len(mg.ProduceBlacklist) == 0 {
-		for _, value := range mg.Configuration.Events.ProduceBlacklist {
-			mg.ProduceBlacklist[value] = void{}
-		}
-	}
+	mg.EventBlacklist = mg.Configuration.Events.EventBlacklist
+	mg.ProduceBlacklist = mg.Configuration.Events.ProduceBlacklist
 
 	mg.Gateway, err = mg.GetGateway()
 

@@ -13,6 +13,7 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
 	"github.com/rs/zerolog"
+	"github.com/savsgio/gotils"
 	"github.com/tevino/abool"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
@@ -268,7 +269,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 			case <-fin:
 				return
 			case <-t.C:
-				sh.Logger.Warn().Str("type", msg.Type).Int("op", int(msg.Op)).Str("data", string(msg.Data)).Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
+				sh.Logger.Warn().Str("type", msg.Type).Int("op", int(msg.Op)).Str("data", gotils.B2S(msg.Data)).Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
 				t.Reset(waitTime)
 			}
 		}
@@ -800,7 +801,7 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 	)
 
 	sh.Manager.Sandwich.ConfigurationMu.RLock()
-	sh.Logger.Trace().Msg(strings.ReplaceAll(string(res), sh.Manager.Configuration.Token, "..."))
+	sh.Logger.Trace().Msg(strings.ReplaceAll(gotils.B2S(res), sh.Manager.Configuration.Token, "..."))
 	sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
 	if sh.wsConn != nil {

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/savsgio/gotils"
 )
 
 var (
@@ -45,7 +47,7 @@ var decodeBase58Map [256]byte
 type JSONSyntaxError struct{ original []byte }
 
 func (j JSONSyntaxError) Error() string {
-	return fmt.Sprintf("invalid snowflake ID %q", string(j.original))
+	return fmt.Sprintf("invalid snowflake ID %q", gotils.B2S(j.original))
 }
 
 // ErrInvalidBase58 is returned by ParseBase58 when given an invalid []byte
@@ -216,7 +218,7 @@ func (f ID) Base32() string {
 		b[x], b[y] = b[y], b[x]
 	}
 
-	return string(b)
+	return gotils.B2S(b)
 }
 
 // ParseBase32 parses a base32 []byte into a snowflake ID
@@ -265,7 +267,7 @@ func (f ID) Base58() string {
 		b[x], b[y] = b[y], b[x]
 	}
 
-	return string(b)
+	return gotils.B2S(b)
 }
 
 // ParseBase58 parses a base58 []byte into a snowflake ID
@@ -305,7 +307,7 @@ func (f ID) Bytes() []byte {
 
 // ParseBytes converts a byte slice into a snowflake ID
 func ParseBytes(id []byte) (ID, error) {
-	i, err := strconv.ParseInt(string(id), 10, 64)
+	i, err := strconv.ParseInt(gotils.B2S(id), 10, 64)
 	return ID(i), err
 }
 
@@ -348,16 +350,13 @@ func (f ID) MarshalJSON() ([]byte, error) {
 	buff = strconv.AppendInt(buff, int64(f), 10)
 	buff = append(buff, '"')
 
-	// println("<" + string(buff) + ">")
-
 	return buff, nil
 }
 
 // UnmarshalJSON converts a json byte array of a snowflake ID into an ID type.
 func (f *ID) UnmarshalJSON(b []byte) error {
-	// println("<" + string(b) + ">")
 
-	if string(b) == "null" {
+	if gotils.B2S(b) == "null" {
 		*f = ID(0)
 		return nil
 	}
@@ -365,7 +364,7 @@ func (f *ID) UnmarshalJSON(b []byte) error {
 		return JSONSyntaxError{b}
 	}
 
-	i, err := strconv.ParseInt(string(b[1:len(b)-1]), 10, 64)
+	i, err := strconv.ParseInt(gotils.B2S(b[1:len(b)-1]), 10, 64)
 	if err != nil {
 		return err
 	}
@@ -381,7 +380,7 @@ func (f ID) MarshalBinary() ([]byte, error) {
 
 // UnmarshalBinary converts a json byte array of a snowflake ID into an ID type.
 func (f ID) UnmarshalBinary(data []byte) error {
-	_f, err := ParseString(string(data))
+	_f, err := ParseString(gotils.B2S(data))
 	if err == nil {
 		f = _f
 	}

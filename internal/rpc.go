@@ -200,17 +200,11 @@ func RPCManagerUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	}
 
 	if !reflect.DeepEqual(event.Events.EventBlacklist, manager.Configuration.Events.EventBlacklist) {
-		manager.EventBlacklist = make(map[string]void)
-		for _, value := range manager.Configuration.Events.EventBlacklist {
-			manager.EventBlacklist[value] = void{}
-		}
+		manager.EventBlacklist = manager.Configuration.Events.EventBlacklist
 	}
 
 	if !reflect.DeepEqual(event.Events.ProduceBlacklist, manager.Configuration.Events.ProduceBlacklist) {
-		manager.ProduceBlacklist = make(map[string]void)
-		for _, value := range manager.Configuration.Events.ProduceBlacklist {
-			manager.ProduceBlacklist[value] = void{}
-		}
+		manager.ProduceBlacklist = manager.Configuration.Events.ProduceBlacklist
 	}
 
 	manager.Configuration = &event

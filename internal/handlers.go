@@ -15,6 +15,7 @@ import (
 	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-uuid"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
@@ -58,7 +59,7 @@ func passFastHTTPResponse(ctx *fasthttp.RequestCtx, data interface{}, success bo
 			Success: false,
 			Error:   err.Error(),
 		})
-		ctx.Error(string(resp), http.StatusInternalServerError)
+		ctx.Error(gotils.B2S(resp), http.StatusInternalServerError)
 		return
 	}
 
@@ -91,7 +92,7 @@ func passResponse(rw http.ResponseWriter, data interface{}, success bool, status
 			Success: false,
 			Error:   err.Error(),
 		})
-		http.Error(rw, string(resp), http.StatusInternalServerError)
+		http.Error(rw, gotils.B2S(resp), http.StatusInternalServerError)
 		return
 	}
 
@@ -99,7 +100,7 @@ func passResponse(rw http.ResponseWriter, data interface{}, success bool, status
 		rw.WriteHeader(status)
 		rw.Write(resp)
 	} else {
-		http.Error(rw, string(resp), status)
+		http.Error(rw, gotils.B2S(resp), status)
 	}
 	return
 }

@@ -18,6 +18,7 @@ require (
 	github.com/nats-io/stan.go v0.7.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/rs/zerolog v1.20.0
+	github.com/savsgio/gotils v0.0.0-20200909101946-939aa3fc74fb
 	github.com/tevino/abool v1.2.0
 	github.com/valyala/fasthttp v1.17.0
 	github.com/vmihailenco/msgpack v4.0.4+incompatible

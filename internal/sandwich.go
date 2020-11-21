@@ -22,6 +22,7 @@ import (
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/savsgio/gotils"
 	"github.com/tevino/abool"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
@@ -208,7 +209,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		}
 
 		// Suppress /api/poll messages
-		if string(ctx.Path()) == "/api/poll" && statusCode == 200 {
+		if gotils.B2S(ctx.Path()) == "/api/poll" && statusCode == 200 {
 			return
 		}
 
@@ -222,7 +223,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		)
 	}()
 
-	if string(ctx.Path()) == "/api/ws" {
+	if gotils.B2S(ctx.Path()) == "/api/ws" {
 		APISubscribe(sg, ctx)
 		return
 	}
@@ -234,7 +235,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		}
 		// If there is no URL in router then try serving from the dist
 		// folder.
-		if ctx.Response.StatusCode() == 404 && string(ctx.Path()) != "/" {
+		if ctx.Response.StatusCode() == 404 && gotils.B2S(ctx.Path()) != "/" {
 			ctx.Response.Reset()
 			sg.distHandler(ctx)
 		}
