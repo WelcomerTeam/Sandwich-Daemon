@@ -213,6 +213,7 @@ func RPCManagerUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	}
 
 	manager.Configuration = &event
+	manager.Client.Token = manager.Configuration.Token
 
 	// Updates the managers in the sandwich configuration
 	managers := []*ManagerConfiguration{}
