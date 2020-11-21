@@ -554,6 +554,30 @@ func (sh *Shard) Listen() (err error) {
 			}
 
 			sh.Logger.Error().Err(err).Msg("Error reading from gateway")
+
+			// If possible, we will check the close error to determine if we can continue
+			if ce, ok := err.(*websocket.CloseError); ok {
+				switch ce.Code {
+				case 4004: // Not authenticated
+				case 4010: // Invalid shard
+				case 4011: // Sharding required
+				case 4012: // Invalid API version
+				case 4013: // Invalid Intent(s)
+				case 4014: // Disallowed intent(s)
+					sh.Logger.Warn().Msgf("Closing ShardGroup as cannot continue without valid token. Received code %d", ce.Code)
+
+					// We cannot continue so we will kill the ShardGroup
+					sh.ShardGroup.ErrorMu.Lock()
+					sh.ShardGroup.Error = err.Error()
+					sh.ShardGroup.ErrorMu.Unlock()
+					sh.ShardGroup.Close()
+					sh.ShardGroup.SetStatus(structs.ShardGroupError)
+					return
+				default:
+					sh.Logger.Warn().Msgf("Websocket was closed with code %d", ce.Code)
+				}
+			}
+
 			if wsConn == sh.wsConn {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection, reconnecting...")
