@@ -1955,7 +1955,7 @@
                   "
                   :label="'Add User'"
                 />
-                <p class="text-muted">
+                <p class="text-muted mb-4">
                   List of discord user IDs who are able to manage the settings
                   on the dashboard. Only give this to users you trust.
                 </p>
@@ -2472,7 +2472,6 @@ export default {
           return result;
         })
         .catch(error => {
-          console.log(error);
           this.showToast("Exception sending RPC", error);
         });
     },
@@ -2659,7 +2658,7 @@ export default {
             if (manager.error != "") {
               _manager.status = 7;
             }
-            
+
             this.$set(this.managers, manager_key, _manager);
           }
 
