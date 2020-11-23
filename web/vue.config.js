@@ -3,6 +3,7 @@ const webpack = require("webpack");
 
 module.exports = {
   integrity: true,
+  productionSourceMap: false,
   pwa: {
     name: "Sandwich Daemon",
     themeColor: "#212529",
