@@ -382,9 +382,9 @@ func (f ID) MarshalBinary() ([]byte, error) {
 func (f ID) UnmarshalBinary(data []byte) error {
 	_f, err := ParseString(gotils.B2S(data))
 	if err != nil {
-		return
+		return err
 	}
 
 	f = _f
-	return
+	return err
 }
