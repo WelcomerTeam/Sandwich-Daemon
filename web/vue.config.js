@@ -2,7 +2,7 @@
 const webpack = require("webpack");
 
 module.exports = {
-  integrity: true,
+  integrity: false,
   productionSourceMap: false,
   pwa: {
     name: "Sandwich Daemon",
