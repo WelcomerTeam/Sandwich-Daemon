@@ -130,6 +130,8 @@ type Sandwich struct {
 
 	distHandler fasthttp.RequestHandler
 	fs          *fasthttp.FS
+
+	ConsolePump *ConsolePump `json:"-"`
 }
 
 // NewSandwich creates the application state and initializes it
@@ -182,6 +184,13 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 			}
 		}
 	}
+
+	// We will only enable the ConsolePump if HTTP has been enabled
+	if sg.Configuration.HTTP.Enabled {
+		sg.ConsolePump = NewConsolePump()
+		writers = append(writers, sg.ConsolePump)
+	}
+
 	sg.ConfigurationMu.RUnlock()
 
 	mw := io.MultiWriter(writers...)
@@ -196,6 +205,8 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	start := time.Now()
 	var processingMS int64
 
+	path := gotils.B2S(ctx.Path())
+
 	defer func() {
 		var log *zerolog.Event
 		statusCode := ctx.Response.StatusCode()
@@ -209,7 +220,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		}
 
 		// Suppress /api/poll messages
-		if gotils.B2S(ctx.Path()) == "/api/poll" && statusCode == 200 {
+		if path == "/api/poll" && statusCode == 200 {
 			return
 		}
 
@@ -223,8 +234,12 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		)
 	}()
 
-	if gotils.B2S(ctx.Path()) == "/api/ws" {
+	switch path {
+	case "/api/ws":
 		APISubscribe(sg, ctx)
+		return
+	case "/api/console":
+		APIConsole(sg, ctx)
 		return
 	}
 
@@ -235,7 +250,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		}
 		// If there is no URL in router then try serving from the dist
 		// folder.
-		if ctx.Response.StatusCode() == 404 && gotils.B2S(ctx.Path()) != "/" {
+		if ctx.Response.StatusCode() == 404 && path != "/" {
 			ctx.Response.Reset()
 			sg.distHandler(ctx)
 		}

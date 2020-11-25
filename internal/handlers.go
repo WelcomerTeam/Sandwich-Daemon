@@ -67,7 +67,7 @@ func passFastHTTPResponse(ctx *fasthttp.RequestCtx, data interface{}, success bo
 		ctx.SetStatusCode(status)
 		ctx.Write(resp)
 	} else {
-		ctx.Error(err.Error(), status)
+		ctx.Error(gotils.B2S(resp), status)
 	}
 	return
 }
@@ -419,6 +419,38 @@ type APISubscribeResult struct {
 	RestTunnelEnabled bool                                               `json:"rest_tunnel_enabled"`
 }
 
+// APIConsole is a websocket that relays the stdout to clients
+func APIConsole(sg *Sandwich, ctx *fasthttp.RequestCtx) {
+	fasthttpadaptor.NewFastHTTPHandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		session, _ := sg.Store.Get(r, sessionName)
+		if auth, _ := sg.AuthenticateSession(session); !auth {
+			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
+			return
+		}
+		rw.WriteHeader(http.StatusOK)
+	})(ctx)
+	if ctx.Response.StatusCode() != 200 {
+		return
+	}
+
+	err := upgrader.Upgrade(ctx, func(conn *websocket.Conn) {
+		conn.EnableWriteCompression(true)
+		conn.SetCompressionLevel(flate.BestCompression)
+
+		id := sg.ConsolePump.RegisterConnection(conn)
+		defer sg.ConsolePump.DeregisterConnection(id)
+
+		// Wait for closed/erroring websocket
+		<-sg.ConsolePump.Dead[id]
+	})
+
+	if err != nil {
+		sg.Logger.Error().Err(err).Msg("Failed to upgrade connection")
+		passFastHTTPResponse(ctx, err.Error(), false, http.StatusInternalServerError)
+		return
+	}
+}
+
 // APISubscribe is a websocket that incorporates the /api/managers, /api/resttunnel and /api/configuration endpoint
 func APISubscribe(sg *Sandwich, ctx *fasthttp.RequestCtx) {
 	fasthttpadaptor.NewFastHTTPHandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -462,7 +494,7 @@ func APISubscribe(sg *Sandwich, ctx *fasthttp.RequestCtx) {
 	})
 
 	if err != nil {
-		sg.Logger.Err(err).Msg("Failed to upgrade connection")
+		sg.Logger.Error().Err(err).Msg("Failed to upgrade APISubscribe connection")
 		passFastHTTPResponse(ctx, err.Error(), false, http.StatusInternalServerError)
 		return
 	}
