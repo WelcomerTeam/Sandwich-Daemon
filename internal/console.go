@@ -12,6 +12,9 @@ type ConsolePump struct {
 	ConnsMu sync.RWMutex              `json:"-"`
 	Conns   map[int64]*websocket.Conn `json:"-"`
 
+	ConnMuMu sync.RWMutex          `json:"-"`
+	ConnMu   map[int64]*sync.Mutex `json:"-"`
+
 	DeadMu sync.RWMutex        `json:"-"`
 	Dead   map[int64]chan bool `json:"-"`
 
@@ -23,9 +26,14 @@ func NewConsolePump() *ConsolePump {
 	return &ConsolePump{
 		ConnsMu: sync.RWMutex{},
 		Conns:   make(map[int64]*websocket.Conn),
-		DeadMu:  sync.RWMutex{},
-		Dead:    make(map[int64]chan bool),
-		iter:    new(int64),
+
+		ConnMuMu: sync.RWMutex{},
+		ConnMu:   make(map[int64]*sync.Mutex),
+
+		DeadMu: sync.RWMutex{},
+		Dead:   make(map[int64]chan bool),
+
+		iter: new(int64),
 	}
 }
 
@@ -38,12 +46,17 @@ func (cp *ConsolePump) Write(p []byte) (n int, err error) {
 	}
 
 	cp.ConnsMu.RLock()
+	cp.ConnMuMu.RLock()
 	for id, conn := range cp.Conns {
+		cp.ConnMu[id].Lock()
 		err = conn.WritePreparedMessage(message)
+		cp.ConnMu[id].Unlock()
+
 		if err != nil {
 			close(cp.Dead[id])
 		}
 	}
+	cp.ConnMuMu.RUnlock()
 	cp.ConnsMu.RUnlock()
 
 	return len(p), err
@@ -59,8 +72,12 @@ func (cp *ConsolePump) RegisterConnection(conn *websocket.Conn) (id int64) {
 	cp.DeadMu.Lock()
 	defer cp.DeadMu.Unlock()
 
+	cp.ConnMuMu.Lock()
+	defer cp.ConnMuMu.Unlock()
+
 	cp.Conns[id] = conn
 	cp.Dead[id] = make(chan bool, 1)
+	cp.ConnMu[id] = &sync.Mutex{}
 	return
 }
 
@@ -72,11 +89,15 @@ func (cp *ConsolePump) DeregisterConnection(id int64) (ok bool) {
 	cp.DeadMu.Lock()
 	defer cp.DeadMu.Unlock()
 
+	cp.ConnMuMu.Lock()
+	defer cp.ConnMuMu.Unlock()
+
 	_, ok = cp.Conns[id]
 	if ok {
 		delete(cp.Conns, id)
 	}
 
 	delete(cp.Dead, id)
+	delete(cp.ConnMu, id)
 	return
 }

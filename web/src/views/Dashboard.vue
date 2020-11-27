@@ -205,7 +205,10 @@
                     v-model="createManagerDialogueData.prefix"
                     :placeholder="'eg: ' + createManagerDialogueData.identifier"
                   />
-                  <p class="text-muted">Duplicate redis prefixes are completely fine and will share caches between multiple managers</p>
+                  <p class="text-muted">
+                    Duplicate redis prefixes are completely fine and will share
+                    caches between multiple managers
+                  </p>
                 </div>
                 <div class="mb-3">
                   <label class="col-sm-12 form-label"
@@ -217,7 +220,11 @@
                     v-model="createManagerDialogueData.client"
                     :placeholder="'eg: ' + createManagerDialogueData.identifier"
                   />
-                  <p class="text-muted">Duplicate client names will not allow the manager to start however the exact name the NATs client uses does not impact anything</p>
+                  <p class="text-muted">
+                    Duplicate client names will not allow the manager to start
+                    however the exact name the NATs client uses does not impact
+                    anything
+                  </p>
                 </div>
                 <div class="mb-3">
                   <label class="col-sm-12 form-label">NATs Channel Name</label>
@@ -227,7 +234,11 @@
                     v-model="createManagerDialogueData.channel"
                     :placeholder="'Defaults to ' + configuration.nats.channel"
                   />
-                  <p class="text-muted">Keeping all your managers on a single channel name is useful as it allows multiple consumers to manage multiple managers as they all read from the same source</p>
+                  <p class="text-muted">
+                    Keeping all your managers on a single channel name is useful
+                    as it allows multiple consumers to manage multiple managers
+                    as they all read from the same source
+                  </p>
                 </div>
 
                 <input
@@ -408,13 +419,25 @@
         <li class="nav-item" role="presentation">
           <a
             class="nav-link"
-            id="pills-settings-tab bg-dark"
+            id="pills-settings-tab"
             data-toggle="pill"
             href="#pills-settings"
             role="tab"
             aria-controls="pills-settings"
             aria-selected="false"
             >Daemon Settings</a
+          >
+        </li>
+        <li class="nav-item" role="presentation">
+          <a
+            class="nav-link"
+            id="pills-console-tab"
+            data-toggle="pill"
+            href="#pills-console"
+            role="tab"
+            aria-controls="pills-console"
+            aria-selected="false"
+            >Console</a
           >
         </li>
       </ul>
@@ -1940,8 +1963,8 @@
                 <form-submit
                   v-on:click="
                     if (userid == $store.state.user.id) {
-                      return
-                    };
+                      return;
+                    }
                     configuration.elevated_users = configuration.elevated_users.filter(
                       item => item !== userid
                     );
@@ -2108,6 +2131,14 @@
             </div>
           </form>
         </div>
+        <div
+          class="tab-pane fade"
+          id="pills-console"
+          role="tabpanel"
+          aria-labelledby="pills-settings-tab"
+        >
+          <console wsurl="/api/console" :limit="0"></console>
+        </div>
       </div>
     </div>
     <div
@@ -2157,6 +2188,16 @@
   color: #fff;
   background-color: #343a40 !important;
 }
+
+.console {
+  background: #0c0c0c;
+  overflow-x: scroll;
+  white-space: pre;
+}
+
+.console > li > span {
+  margin-right: 8px;
+}
 </style>
 
 <script>
@@ -2167,6 +2208,7 @@ import { mdiAlertCircle } from "@mdi/js";
 import { Toast, Modal } from "bootstrap";
 
 import CardDisplay from "@/components/CardDisplay.vue";
+import Console from "@/components/Console.vue";
 import FormInput from "@/components/FormInput.vue";
 import FormSubmit from "@/components/FormSubmit.vue";
 import LineChart from "@/components/LineChart.vue";
@@ -2175,6 +2217,7 @@ import StatusGraph from "@/components/StatusGraph.vue";
 export default {
   components: {
     CardDisplay,
+    Console,
     FormInput,
     FormSubmit,
     LineChart,

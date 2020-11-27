@@ -26,6 +26,15 @@ var upgrader = websocket.FastHTTPUpgrader{
 	EnableCompression: true,
 }
 
+func init() {
+	upgrader.CheckOrigin = func(ctx *fasthttp.RequestCtx) bool {
+		origins := []string{"http://127.0.0.1:8081", "http://127.0.0.1:5469", "https://sandwich.welcomer.gg/"}
+		origin := gotils.B2S(ctx.Request.Header.Peek("Origin"))
+		return gotils.StringSliceInclude(origins, origin)
+	}
+	// TODO: Add origins and add to config
+}
+
 var colours = [][]string{
 	{"rgba(149, 165, 165, 0.5)", "#7E8C8D"},
 	{"rgba(236, 240, 241, 0.5)", "#BEC3C7"},
