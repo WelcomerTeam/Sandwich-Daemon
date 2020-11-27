@@ -3,12 +3,12 @@ module github.com/TheRockettek/Sandwich-Daemon
 go 1.14
 
 require (
-	github.com/TheRockettek/czlib v0.0.0-20200626001404-f6ab55296689
+	github.com/TheRockettek/czlib v0.0.0-20201127185659-53e89d979cbc
 	github.com/TheRockettek/snowflake v0.3.0
-	github.com/fasthttp/session v1.1.8
 	github.com/fasthttp/websocket v1.4.3
 	github.com/fatih/color v1.10.0 // indirect
-	github.com/go-redis/redis/v8 v8.3.4
+	github.com/go-redis/redis/v8 v8.4.0
+	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/gorilla/websocket v1.4.2 // indirect
@@ -32,7 +32,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	gopkg.in/yaml.v2 v2.3.0
-	mvdan.cc/gofumpt v0.0.0-20201123090407-3077abae40c0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	nhooyr.io/websocket v1.8.6
 )
