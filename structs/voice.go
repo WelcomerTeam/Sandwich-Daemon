@@ -2,10 +2,10 @@ package structs
 
 import "github.com/TheRockettek/snowflake"
 
-// VoiceOp is the voice packet operation codes
+// VoiceOp is the voice packet operation codes.
 type VoiceOp uint8
 
-// Voice op codes
+// Voice op codes.
 const (
 	VoiceOpIdentify VoiceOp = iota
 	VoiceOpSelectProtocol
@@ -23,7 +23,7 @@ const (
 	VoiceOpClientDisconnect
 )
 
-// Voice close codes
+// Voice close codes.
 const (
 	_ = 4000 + iota
 	VoiceCloseUnknownOpCode
@@ -44,7 +44,7 @@ const (
 	VoiceCloseUnknownEncryptionMode
 )
 
-// VoiceState represents the voice state on Discord
+// VoiceState represents the voice state on Discord.
 type VoiceState struct {
 	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
 	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
@@ -58,10 +58,10 @@ type VoiceState struct {
 	Suppress  bool         `json:"suppress" msgpack:"suppress"`
 }
 
-// VoiceStateUpdate represents the VOICE_STATE_UPDATE packet
+// VoiceStateUpdate represents the VOICE_STATE_UPDATE packet.
 type VoiceStateUpdate VoiceState
 
-// VoiceServerUpdate represents a VOICE_SERVER_UPDATE packet
+// VoiceServerUpdate represents a VOICE_SERVER_UPDATE packet.
 type VoiceServerUpdate struct {
 	Token    string       `json:"token" msgpack:"token"`
 	GuildID  snowflake.ID `json:"guild_id" msgpack:"guild_id"`

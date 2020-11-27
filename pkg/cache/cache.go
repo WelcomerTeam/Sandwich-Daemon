@@ -7,7 +7,7 @@ import (
 )
 
 // Cache allows to temporarily store values and will retrieve new ones
-// similar to a Pool if it does not exist
+// similar to a Pool if it does not exist.
 type Cache struct {
 	store map[int64]*StorePair
 
@@ -18,18 +18,19 @@ type Cache struct {
 	New func(key int64) interface{}
 }
 
-// StorePair represents a single entry in the store
+// StorePair represents a single entry in the store.
 type StorePair struct {
 	value      interface{}
 	expiration time.Time
 }
 
-// Get retrieves from the cache and if it does not exist it will call New
+// Get retrieves from the cache and if it does not exist it will call New.
 func (c *Cache) Get(key int64) interface{} {
 	pair, ok := c.store[key]
 	if !ok {
 		val := c.New(key)
 		c.store[key] = &StorePair{val, time.Now().Add(c.ttl)}
+
 		return val
 	}
 
@@ -41,14 +42,17 @@ func (c *Cache) Get(key int64) interface{} {
 // it finds a key that has not expired.
 func (c *Cache) Run() {
 	t := time.NewTicker(time.Second)
+
 	for {
 		<-t.C
+
 		now := time.Now()
 
 		for {
 			keys := reflect.ValueOf(c.store).MapKeys()
-			key := keys[rand.Intn(len(c.store))].Int()
+			key := keys[rand.Intn(len(c.store))].Int() //nolint:gosec
 			pair := c.store[key]
+
 			if pair.expiration.Before(now) {
 				delete(c.store, key)
 			} else {
@@ -58,7 +62,7 @@ func (c *Cache) Run() {
 	}
 }
 
-// Empty removes a key from the store
+// Empty removes a key from the store.
 func (c *Cache) Empty(key int64) {
 	delete(c.store, key)
 }

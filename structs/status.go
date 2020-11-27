@@ -1,9 +1,9 @@
 package structs
 
-// ShardStatus represents the shard status
+// ShardStatus represents the shard status.
 type ShardStatus int32
 
-// Status Codes for Shard
+// Status Codes for Shard.
 const (
 	ShardIdle         ShardStatus = iota // Represents a Shard that has been created but not opened yet
 	ShardWaiting                         // Represents a Shard waiting for the identify ratelimit
@@ -14,10 +14,10 @@ const (
 	ShardClosed                          // Represents a Shard that has been closed
 )
 
-// ShardGroupStatus represents a shardgroups status
+// ShardGroupStatus represents a shardgroups status.
 type ShardGroupStatus int32
 
-// Status Codes for ShardGroups
+// Status Codes for ShardGroups.
 const (
 	ShardGroupIdle       ShardGroupStatus = iota // Represents a ShardGroup that has been created but not opened yet
 	ShardGroupStarting                           // Represent a ShardGroup that is still starting up clients (connecting to gateway)

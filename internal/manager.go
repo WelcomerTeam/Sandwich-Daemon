@@ -20,12 +20,16 @@ import (
 	"golang.org/x/xerrors"
 )
 
+const maxClientNumber = 9999
+
 type void struct{}
 
-// ManagerConfiguration represents the configuration for the manager
+// ManagerConfiguration represents the configuration for the manager.
 type ManagerConfiguration struct {
-	AutoStart bool `json:"auto_start" yaml:"auto_start" msgpack:"auto_start"` // Boolean to start the Manager when the daemon starts
-	Persist   bool `json:"persist" msgpack:"persist"`                         // Boolean to dictate if configuration should be saved
+	AutoStart bool `json:"auto_start" yaml:"auto_start" msgpack:"auto_start"`
+	// Boolean to start the Manager when the daemon starts
+	Persist bool `json:"persist" msgpack:"persist"`
+	// Boolean to dictate if configuration should be saved
 
 	Identifier  string `json:"identifier" msgpack:"identifier"`
 	DisplayName string `json:"display_name" yaml:"display_name" msgpack:"display_name"`
@@ -33,45 +37,45 @@ type ManagerConfiguration struct {
 
 	// Bot specific configuration
 	Bot struct {
-		Compression          bool                  `json:"compression" msgpack:"compression"`
-		DefaultPresence      *structs.UpdateStatus `json:"presence" yaml:"presence" msgpack:"presence"`
-		GuildSubscriptions   bool                  `json:"guild_subscriptions" yaml:"guild_subscriptions" msgpack:"guild_subscriptions"`
-		Intents              int                   `json:"intents" msgpack:"intents"`
-		LargeThreshold       int                   `json:"large_threshold" yaml:"large_threshold" msgpack:"large_threshold"`
-		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures" yaml:"max_heartbeat_failures" msgpack:"max_heartbeat_failures"`
-		Retries              int32                 `json:"retries" msgpack:"retries"`
-	} `json:"bot" msgpack:"bot"`
+		DefaultPresence      *structs.UpdateStatus `json:"presence" yaml:"presence"`
+		Compression          bool                  `json:"compression" yaml:"compression"`
+		GuildSubscriptions   bool                  `json:"guild_subscriptions" yaml:"guild_subscriptions"`
+		Retries              int32                 `json:"retries" yaml:"retries"`
+		Intents              int                   `json:"intents" yaml:"intents"`
+		LargeThreshold       int                   `json:"large_threshold" yaml:"large_threshold"`
+		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures" yaml:"max_heartbeat_failures"`
+	} `json:"bot" yaml:"bot"`
 
 	Caching struct {
-		RedisPrefix string `json:"redis_prefix" yaml:"redis_prefix" msgpack:"redis_prefix"`
+		RedisPrefix string `json:"redis_prefix" yaml:"redis_prefix"`
 
-		CacheUsers       bool `json:"cache_users" yaml:"cache_users" msgpack:"cache_users"`
-		CacheMembers     bool `json:"cache_members" yaml:"cache_members" msgpack:"cache_members"`
-		RequestMembers   bool `json:"request_members" yaml:"request_members" msgpack:"request_members"`
-		RequestChunkSize int  `json:"request_chunk_size" yaml:"request_chunk_size" msgpack:"request_chunk_size"`
-		StoreMutuals     bool `json:"store_mutuals" yaml:"store_mutuals" msgpack:"store_mutuals"`
-	} `json:"caching" msgpack:"caching"`
+		RequestChunkSize int  `json:"request_chunk_size" yaml:"request_chunk_size"`
+		CacheUsers       bool `json:"cache_users" yaml:"cache_users"`
+		CacheMembers     bool `json:"cache_members" yaml:"cache_members"`
+		RequestMembers   bool `json:"request_members" yaml:"request_members"`
+		StoreMutuals     bool `json:"store_mutuals" yaml:"store_mutuals"`
+	} `json:"caching" yaml:"caching"`
 
 	Events struct {
-		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist" msgpack:"event_blacklist"`       // Events completely ignored
-		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist" msgpack:"produce_blacklist"` // Events not sent to consumers
+		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist"`     // Events completely ignored
+		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist"` // Events not sent to consumers
 
 		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
 		// a bot.
-		IgnoreBots bool `json:"ignore_bots" yaml:"ignore_bots" msgpack:"ignore_bots"`
+		IgnoreBots bool `json:"ignore_bots" yaml:"ignore_bots"`
 		// CheckPrefixes will HGET {REDIS_PREFIX}:prefix with the key GUILDID after receiving
 		// a MESSAGE_CREATE and if it is not null and the message content does not start with
 		// the prefix, it will not send the message to consumers. Useful if you only want to
 		// receive commands.
-		CheckPrefixes bool `json:"check_prefixes" yaml:"check_prefixes" msgpack:"check_prefixes"`
+		CheckPrefixes bool `json:"check_prefixes" yaml:"check_prefixes"`
 		// Also allows for a bot mention to be a prefix
-		AllowMentionPrefix bool `json:"allow_mention_prefix" yaml:"allow_mention_prefix" msgpack:"allow_mention_prefix"`
+		AllowMentionPrefix bool `json:"allow_mention_prefix" yaml:"allow_mention_prefix"`
 
 		// FallbackPrefix is the default prefix along with mention prefix (if enabled) when no
 		// entry can be found in redis. If empty it will not treat any message as a prefix and
 		// will instead discard.
 		FallbackPrefix string `json:"fallback_prefix"`
-	} `json:"events" msgpack:"events"`
+	} `json:"events" yaml:"events"`
 
 	// Messaging specific configuration
 	Messaging struct {
@@ -82,7 +86,7 @@ type ManagerConfiguration struct {
 		// UseRandomSuffix will append numbers to the end of the client name in order to
 		// reduce likelihood of clashing cluster IDs.
 		UseRandomSuffix bool `json:"use_random_suffix" yaml:"use_random_suffix" msgpack:"use_random_suffix"`
-	} `json:"messaging" msgpack:"messaging"`
+	} `json:"messaging" yaml:"messaging"`
 
 	// Sharding specific configuration
 	Sharding struct {
@@ -94,7 +98,7 @@ type ManagerConfiguration struct {
 	} `json:"sharding" msgpack:"sharding"`
 }
 
-// Manager represents a bot instance
+// Manager represents a bot instance.
 type Manager struct {
 	ctx    context.Context
 	cancel func()
@@ -138,7 +142,7 @@ type Manager struct {
 	ProduceBlacklist []string `json:"-"`
 }
 
-// NewManager creates a new manager
+// NewManager creates a new manager.
 func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager, err error) {
 	logger := sg.Logger.With().Str("manager", configuration.DisplayName).Logger()
 	logger.Info().Msg("Creating new manager")
@@ -181,13 +185,14 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		mg.ErrorMu.Lock()
 		mg.Error = err.Error()
 		mg.ErrorMu.Unlock()
-		return nil, xerrors.Errorf("new manager: %w", err)
+
+		return nil, err
 	}
 
-	return
+	return mg, err
 }
 
-// NormalizeConfiguration fills in any defaults within the configuration
+// NormalizeConfiguration fills in any defaults within the configuration.
 func (mg *Manager) NormalizeConfiguration() (err error) {
 	mg.ConfigurationMu.RLock()
 	defer mg.ConfigurationMu.RUnlock()
@@ -197,39 +202,45 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 	if mg.Configuration.Token == "" {
 		return xerrors.New("Manager configuration missing token")
 	}
+
 	mg.Configuration.Token = strings.TrimSpace(mg.Configuration.Token)
 
 	if mg.Configuration.Bot.MaxHeartbeatFailures < 1 {
 		mg.Configuration.Bot.MaxHeartbeatFailures = 1
 	}
+
 	if mg.Configuration.Bot.Retries < 1 {
 		mg.Configuration.Bot.Retries = 1
 	}
+
 	if mg.Configuration.Sharding.ClusterCount < 1 {
 		mg.Configuration.Sharding.ClusterCount = 1
 	}
 
 	if mg.Configuration.Caching.RedisPrefix == "" {
 		mg.Configuration.Caching.RedisPrefix = strings.ToLower(
-			strings.Replace(mg.Configuration.DisplayName, " ", "", -1))
+			strings.ReplaceAll(mg.Configuration.DisplayName, " ", ""),
+		)
 		mg.Logger.Info().Msgf("Using redis prefix '%s' as none was provided", mg.Configuration.Caching.RedisPrefix)
 	}
 
 	if mg.Configuration.Messaging.ClientName == "" {
 		return xerrors.New("Manager missing client name. Try sandwich")
 	}
+
 	if mg.Configuration.Messaging.ChannelName == "" {
 		mg.Configuration.Messaging.ChannelName = mg.Sandwich.Configuration.NATS.Channel
 		mg.Logger.Info().Msg("Using global messaging channel")
 	}
+
 	if mg.Configuration.Caching.RequestChunkSize <= 0 {
 		mg.Configuration.Caching.RequestChunkSize = 1
 	}
 
-	return
+	return err
 }
 
-// Open starts up the manager, initializes the config and will create a shardgroup
+// Open starts up the manager, initializes the config and will create a shardgroup.
 func (mg *Manager) Open() (err error) {
 	mg.Logger.Info().Msg("Starting up manager")
 	mg.ctx, mg.cancel = context.WithCancel(context.Background())
@@ -267,7 +278,7 @@ func (mg *Manager) Open() (err error) {
 
 	var clientName string
 	if mg.Configuration.Messaging.UseRandomSuffix {
-		clientName = mg.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(9999))
+		clientName = mg.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(maxClientNumber)) //nolint:gosec
 	} else {
 		clientName = mg.Configuration.Messaging.ClientName
 	}
@@ -286,10 +297,10 @@ func (mg *Manager) Open() (err error) {
 
 	mg.Gateway, err = mg.GetGateway()
 
-	return
+	return err
 }
 
-// GatherShardCount returns the expected shardcount using the gateway object stored
+// GatherShardCount returns the expected shardcount using the gateway object stored.
 func (mg *Manager) GatherShardCount() (shardCount int) {
 	mg.Sandwich.ConfigurationMu.RLock()
 	defer mg.Sandwich.ConfigurationMu.RUnlock()
@@ -304,11 +315,13 @@ func (mg *Manager) GatherShardCount() (shardCount int) {
 		shardCount = mg.Configuration.Sharding.ShardCount
 	}
 
-	shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) * mg.Gateway.SessionStartLimit.MaxConcurrency
+	shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) *
+		mg.Gateway.SessionStartLimit.MaxConcurrency
+
 	return
 }
 
-// Scale creates a new ShardGroup and removes old ones once it has finished
+// Scale creates a new ShardGroup and removes old ones once it has finished.
 func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan bool, err error) {
 	iter := atomic.AddInt32(mg.ShardGroupIter, 1) - 1
 	sg := mg.NewShardGroup(iter)
@@ -323,17 +336,17 @@ func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan
 	return
 }
 
-// PublishEvent sends an event to consumers
-func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
+// PublishEvent sends an event to consumers.
+func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err error) {
 	packet := mg.pp.Get().(*structs.PublishEvent)
 	defer mg.pp.Put(packet)
 
 	mg.ConfigurationMu.RLock()
 	defer mg.ConfigurationMu.RUnlock()
 
-	packet.Data = Data
+	packet.Data = eventData
 	packet.From = mg.Configuration.Identifier
-	packet.Type = Type
+	packet.Type = eventType
 
 	data, err := msgpack.Marshal(packet)
 	if err != nil {
@@ -355,18 +368,23 @@ func (mg *Manager) PublishEvent(Type string, Data interface{}) (err error) {
 	return
 }
 
-// GenerateShardIDs returns a slice of shard ids the bot will use and accounts for clusters
+// GenerateShardIDs returns a slice of shard ids the bot will use and accounts for clusters.
 func (mg *Manager) GenerateShardIDs(shardCount int) (shardIDs []int) {
 	mg.ConfigurationMu.RLock()
 	defer mg.ConfigurationMu.RUnlock()
 	deployedShards := shardCount / mg.Configuration.Sharding.ClusterCount
-	for i := (deployedShards * mg.Configuration.Sharding.ClusterID); i < (deployedShards * (mg.Configuration.Sharding.ClusterID + 1)); i++ {
+
+	currentShard := (deployedShards * mg.Configuration.Sharding.ClusterID)
+	maxShard := (deployedShards * (mg.Configuration.Sharding.ClusterID + 1))
+
+	for i := currentShard; i < maxShard; i++ {
 		shardIDs = append(shardIDs, i)
 	}
+
 	return
 }
 
-// Close will stop all shardgroups running
+// Close will stop all shardgroups running.
 func (mg *Manager) Close() {
 	mg.Logger.Info().Msg("Closing down manager")
 
@@ -380,11 +398,9 @@ func (mg *Manager) Close() {
 	if mg.cancel != nil {
 		mg.cancel()
 	}
-
-	return
 }
 
-// GetGateway returns response from /gateway/bot
+// GetGateway returns response from /gateway/bot.
 func (mg *Manager) GetGateway() (resp structs.GatewayBot, err error) {
 	err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, &resp)
 	if err != nil {

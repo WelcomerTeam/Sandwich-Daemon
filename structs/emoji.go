@@ -2,7 +2,7 @@ package structs
 
 import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 
-// Emoji represents an Emoji on discord
+// Emoji represents an Emoji on discord.
 type Emoji struct {
 	ID            snowflake.ID   `json:"id" msgpack:"id"`
 	Name          string         `json:"name" msgpack:"name"`

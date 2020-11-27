@@ -21,17 +21,21 @@ func registerHandler(method string, f func(sg *Sandwich, req structs.RPCRequest,
 func executeRequest(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) (ok bool) {
 	if f, ok := rpcHandlers[req.Method]; ok {
 		f(sg, req, rw)
+
 		return true
 	}
+
 	return false
 }
 
-// RPCManagerShardGroupCreate handles the creation of a new shardgroup
+// RPCManagerShardGroupCreate handles the creation of a new shardgroup.
 func RPCManagerShardGroupCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerShardGroupCreateEvent{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
@@ -39,14 +43,17 @@ func RPCManagerShardGroupCreate(sg *Sandwich, req structs.RPCRequest, rw http.Re
 	sg.ManagersMu.RLock()
 	manager, ok := sg.Managers[event.Manager]
 	sg.ManagersMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid manager provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	if event.AutoShard {
 		manager.GatewayMu.Lock()
 		gw, err := manager.GetGateway()
+
 		if err != nil {
 			manager.Logger.Warn().Err(err).Msg("Received error retrieving gateway object. Using old response.")
 		} else {
@@ -54,11 +61,14 @@ func RPCManagerShardGroupCreate(sg *Sandwich, req structs.RPCRequest, rw http.Re
 			// will just recycle the old response.
 			manager.Gateway = gw
 		}
+
 		event.ShardCount = manager.Gateway.Shards
 		manager.GatewayMu.Unlock()
 	}
+
 	if event.ShardCount < 1 {
 		sg.Logger.Debug().Msg("Set ShardCount to 1 as it was less than 1")
+
 		event.ShardCount = 1
 	}
 
@@ -72,81 +82,107 @@ func RPCManagerShardGroupCreate(sg *Sandwich, req structs.RPCRequest, rw http.Re
 
 	if len(event.ShardIDs) == 0 {
 		sg.Logger.Debug().Msg("Set ShardIDs to [0] as it was empty")
+
 		event.ShardIDs = []int{0}
 	}
 
 	if len(event.ShardIDs) > event.ShardCount {
-		sg.Logger.Warn().Msgf("Length of ShardIDs is larger than the ShardCount %d > %d", len(event.ShardIDs), event.ShardCount)
-		// TODO: We should handle this properly but it will error out when it starts up anyway
+		// Todo: We should handle this properly but it will error out when it starts up anyway
+		sg.Logger.Warn().Msgf(
+			"Length of ShardIDs is larger than the ShardCount %d > %d",
+			len(event.ShardIDs), event.ShardCount,
+		)
 	}
 
 	if len(event.ShardIDs) < manager.Gateway.SessionStartLimit.Remaining {
-		manager.Scale(event.ShardIDs, event.ShardCount, true)
-		passResponse(rw, true, true, http.StatusOK)
+		_, err = manager.Scale(event.ShardIDs, event.ShardCount, true)
+
+		if err != nil {
+			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+		} else {
+			passResponse(rw, true, true, http.StatusOK)
+		}
 	} else {
-		passResponse(rw, fmt.Sprintf("Not enough sessions to start %d shard(s). %d remain", len(event.ShardIDs), manager.Gateway.SessionStartLimit.Remaining), false, http.StatusBadRequest)
+		passResponse(rw, fmt.Sprintf(
+			"Not enough sessions to start %d shard(s). %d remain",
+			len(event.ShardIDs), manager.Gateway.SessionStartLimit.Remaining,
+		), false, http.StatusBadRequest)
 	}
 
 	return true
 }
 
-// RPCManagerShardGroupStop handles stopping a shardgroup
+// RPCManagerShardGroupStop handles stopping a shardgroup.
 func RPCManagerShardGroupStop(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerShardGroupStopEvent{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
 	sg.ManagersMu.RLock()
 	manager, ok := sg.Managers[event.Manager]
 	sg.ManagersMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid manager provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	manager.ShardGroupsMu.RLock()
 	shardgroup, ok := manager.ShardGroups[event.ShardGroup]
 	manager.ShardGroupsMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid shardgroup provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	shardgroup.Close()
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-// RPCManagerShardGroupDelete handles deleting a shardgroup
+// RPCManagerShardGroupDelete handles deleting a shardgroup.
 func RPCManagerShardGroupDelete(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerShardGroupDeleteEvent{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
 	sg.ManagersMu.RLock()
 	manager, ok := sg.Managers[event.Manager]
 	sg.ManagersMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid manager provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	manager.ShardGroupsMu.RLock()
 	shardgroup, ok := manager.ShardGroups[event.ShardGroup]
 	manager.ShardGroupsMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid shardgroup provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	if shardgroup.Status != structs.ShardGroupClosed {
 		passResponse(rw, "ShardGroup is not closed", false, http.StatusBadRequest)
+
 		return false
 	}
 
@@ -155,23 +191,28 @@ func RPCManagerShardGroupDelete(sg *Sandwich, req structs.RPCRequest, rw http.Re
 	manager.ShardGroupsMu.Unlock()
 
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-// RPCManagerUpdate handles updating a managers configuration
+// RPCManagerUpdate handles updating a managers configuration.
 func RPCManagerUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := ManagerConfiguration{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
 	sg.ManagersMu.RLock()
 	manager, ok := sg.Managers[event.Identifier]
 	sg.ManagersMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid manager provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
@@ -183,7 +224,8 @@ func RPCManagerUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	if event.Messaging.UseRandomSuffix != manager.Configuration.Messaging.UseRandomSuffix {
 		var clientName string
 		if manager.Configuration.Messaging.UseRandomSuffix {
-			clientName = manager.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(9999))
+			clientName = manager.Configuration.Messaging.ClientName + "-" +
+				strconv.Itoa(rand.Intn(maxClientNumber)) //nolint:gosec
 		} else {
 			clientName = manager.Configuration.Messaging.ClientName
 		}
@@ -212,6 +254,7 @@ func RPCManagerUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 
 	// Updates the managers in the sandwich configuration
 	managers := []*ManagerConfiguration{}
+
 	for _, _manager := range sg.Configuration.Managers {
 		if _manager.Identifier == manager.Configuration.Identifier {
 			managers = append(managers, manager.Configuration)
@@ -219,25 +262,30 @@ func RPCManagerUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 			managers = append(managers, _manager)
 		}
 	}
+
 	sg.Configuration.Managers = managers
 
 	err = sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
 
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-// RPCManagerCreate handles the creation of new managers
+// RPCManagerCreate handles the creation of new managers.
 func RPCManagerCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerCreateEvent{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
@@ -247,8 +295,10 @@ func RPCManagerCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	sg.ManagersMu.RLock()
 	_, ok := sg.Managers[_identifier]
 	sg.ManagersMu.RUnlock()
+
 	if ok {
 		passResponse(rw, "Manager with this name already exists", false, http.StatusBadRequest)
+
 		return false
 	}
 
@@ -283,12 +333,14 @@ func RPCManagerCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
 	manager, err := sg.NewManager(config)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
@@ -299,6 +351,7 @@ func RPCManagerCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	gw, err := manager.GetGateway()
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
@@ -307,34 +360,42 @@ func RPCManagerCreate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	manager.GatewayMu.Unlock()
 
 	err = manager.Open()
+
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-// RPCManagerDelete handles deleting managers
+// RPCManagerDelete handles deleting managers.
 func RPCManagerDelete(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerDeleteEvent{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
 	if event.Confirm != event.Manager {
 		passResponse(rw, "Incorrect confirm value. Must be equal to manager", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	sg.ManagersMu.RLock()
 	manager, ok := sg.Managers[event.Manager]
 	sg.ManagersMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid manager provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
@@ -345,12 +406,15 @@ func RPCManagerDelete(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 	sg.ManagersMu.Unlock()
 
 	managers := []*ManagerConfiguration{}
+
 	sg.ConfigurationMu.Lock()
+
 	for _, _manager := range sg.Configuration.Managers {
 		if _manager.Identifier != event.Manager {
 			managers = append(managers, _manager)
 		}
 	}
+
 	sg.Configuration.Managers = managers
 
 	err = sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
@@ -358,32 +422,39 @@ func RPCManagerDelete(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrit
 
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-// RPCManagerRestart handles restarting a manager
+// RPCManagerRestart handles restarting a manager.
 func RPCManagerRestart(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerRestartEvent{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
 	if event.Confirm != event.Manager {
 		passResponse(rw, "Incorrect confirm value. Must be equal to manager", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	sg.ManagersMu.RLock()
 	manager, ok := sg.Managers[event.Manager]
 	sg.ManagersMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid manager provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
@@ -394,8 +465,10 @@ func RPCManagerRestart(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWri
 	sg.ManagersMu.Unlock()
 
 	manager, err = sg.NewManager(manager.Configuration)
+
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
@@ -406,6 +479,7 @@ func RPCManagerRestart(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWri
 	gw, err := manager.GetGateway()
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
@@ -414,29 +488,35 @@ func RPCManagerRestart(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWri
 	manager.GatewayMu.Unlock()
 
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-// RPCManagerRefreshGateway handles refreshing the gateway
+// RPCManagerRefreshGateway handles refreshing the gateway.
 func RPCManagerRefreshGateway(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerRefreshGatewayEvent{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
 	sg.ManagersMu.RLock()
 	manager, ok := sg.Managers[event.Manager]
 	sg.ManagersMu.RUnlock()
+
 	if !ok {
 		passResponse(rw, "Invalid manager provided", false, http.StatusBadRequest)
+
 		return false
 	}
 
 	gw, err := manager.GetGateway()
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
@@ -445,13 +525,16 @@ func RPCManagerRefreshGateway(sg *Sandwich, req structs.RPCRequest, rw http.Resp
 	manager.GatewayMu.Unlock()
 
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-// RPCDaemonVerifyRestTunnel checks if RestTunnel is active
+// RPCDaemonVerifyRestTunnel checks if RestTunnel is active.
 func RPCDaemonVerifyRestTunnel(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	var restTunnelEnabled bool
+
 	var reverse bool
+
 	var err error
 
 	sg.ConfigurationMu.Lock()
@@ -463,39 +546,48 @@ func RPCDaemonVerifyRestTunnel(sg *Sandwich, req structs.RPCRequest, rw http.Res
 	} else {
 		restTunnelEnabled = false
 	}
+
 	sg.RestTunnelReverse.SetTo(reverse)
 	sg.RestTunnelEnabled.SetTo(restTunnelEnabled)
 	sg.ConfigurationMu.Unlock()
 
 	passResponse(rw, restTunnelEnabled, true, http.StatusOK)
+
 	return true
 }
 
-// RPCDaemonUpdate updates the daemon settings
+// RPCDaemonUpdate updates the daemon settings.
 func RPCDaemonUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := SandwichConfiguration{}
+
 	err := json.Unmarshal(req.Data, &event)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusBadRequest)
+
 		return false
 	}
 
 	configuration, err := sg.LoadConfiguration(ConfigurationPath)
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
+
 		return false
 	}
 
 	event.Managers = configuration.Managers
+
 	err = sg.SaveConfiguration(&event, ConfigurationPath)
+
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to save configuration however silently continuing")
 	}
 
 	var restTunnelEnabled bool
+
 	var reverse bool
 
 	sg.ConfigurationMu.Lock()
+
 	if sg.Configuration.RestTunnel.Enabled {
 		restTunnelEnabled, reverse, err = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 		if err != nil {
@@ -532,10 +624,11 @@ func RPCDaemonUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrite
 	sg.ConfigurationMu.Unlock()
 
 	passResponse(rw, true, true, http.StatusOK)
+
 	return true
 }
 
-func init() {
+func init() { //nolint
 	registerHandler("manager:update", RPCManagerUpdate)
 	registerHandler("manager:create", RPCManagerCreate)
 	registerHandler("manager:delete", RPCManagerDelete)

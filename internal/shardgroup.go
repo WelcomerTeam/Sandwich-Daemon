@@ -10,9 +10,10 @@ import (
 	"github.com/tevino/abool"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
+	"nhooyr.io/websocket"
 )
 
-// ShardGroup groups a selection of shards
+// ShardGroup groups a selection of shards.
 type ShardGroup struct {
 	StatusMu sync.RWMutex             `json:"-"`
 	Status   structs.ShardGroupStatus `json:"status"`
@@ -49,7 +50,7 @@ type ShardGroup struct {
 	floodgate *abool.AtomicBool
 }
 
-// NewShardGroup creates a new shardgroup
+// NewShardGroup creates a new shardgroup.
 func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 	return &ShardGroup{
 		StatusMu: sync.RWMutex{},
@@ -75,23 +76,27 @@ func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 	}
 }
 
-// Open starts up the shardgroup
-func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err error) {
+// Open starts up the shardgroup.
+func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err error) {
 	sg.Start = time.Now().UTC()
 
 	sg.Manager.ShardGroupsMu.Lock()
 	for _, _sg := range sg.Manager.ShardGroups {
 		// We preferably do not want to mark an erroring shardgroup as replaced as it overwrites how it is displayed.
 		if _sg.Status != structs.ShardGroupError {
-			_sg.SetStatus(structs.ShardGroupReplaced)
+			if err := _sg.SetStatus(structs.ShardGroupReplaced); err != nil {
+				_sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+			}
 		}
 	}
 	sg.Manager.ShardGroupsMu.Unlock()
 
-	sg.SetStatus(structs.ShardGroupStarting)
+	if err := sg.SetStatus(structs.ShardGroupStarting); err != nil {
+		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+	}
 
-	sg.ShardCount = ShardCount
-	sg.ShardIDs = ShardIDs
+	sg.ShardCount = shardCount
+	sg.ShardIDs = shardIDs
 
 	ready = make(chan bool, 1)
 
@@ -108,6 +113,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		sg.ShardsMu.RLock()
 		shard := sg.Shards[shardID]
 		sg.ShardsMu.RUnlock()
+
 		for {
 			err = shard.Connect()
 			if index == 0 && err == nil {
@@ -116,6 +122,7 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 					err = shard.OnEvent(shard.msg)
 				}
 			}
+
 			if err != nil && !xerrors.Is(err, context.Canceled) {
 				retries := atomic.LoadInt32(shard.Retries)
 				if retries > 0 {
@@ -128,15 +135,22 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 					sg.ErrorMu.Unlock()
 
 					sg.Close()
-					sg.SetStatus(structs.ShardGroupError)
+
+					if err := sg.SetStatus(structs.ShardGroupError); err != nil {
+						sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+					}
 
 					for _, shard := range sg.Shards {
-						shard.SetStatus(structs.ShardClosed)
+						if err = shard.SetStatus(structs.ShardClosed); err != nil {
+							shard.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+						}
 					}
 
 					err = xerrors.Errorf("ShardGroup open: %w", err)
+
 					return
 				}
+
 				atomic.AddInt32(shard.Retries, -1)
 				sg.Logger.Debug().Msgf("Shardgroup retries is now at %d", atomic.LoadInt32(shard.Retries))
 			} else {
@@ -148,7 +162,10 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 	}
 
 	sg.Logger.Debug().Msgf("All shards are now listening")
-	sg.SetStatus(structs.ShardGroupConnecting)
+
+	if err := sg.SetStatus(structs.ShardGroupConnecting); err != nil {
+		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+	}
 
 	go func(sg *ShardGroup) {
 		sg.ShardsMu.RLock()
@@ -159,8 +176,12 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 			shard.WaitForReady()
 		}
 		sg.ShardsMu.RUnlock()
+
 		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
-		sg.SetStatus(structs.ShardGroupReady)
+
+		if err := sg.SetStatus(structs.ShardGroupReady); err != nil {
+			sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+		}
 
 		sg.Manager.ShardGroupsMu.RLock()
 		for index, _sg := range sg.Manager.ShardGroups {
@@ -176,27 +197,33 @@ func (sg *ShardGroup) Open(ShardIDs []int, ShardCount int) (ready chan bool, err
 		close(ready)
 	}(sg)
 
-	return
+	return ready, nil
 }
 
-// SetStatus changes the ShardGroup status
-func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
+// SetStatus changes the ShardGroup status.
+func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) (err error) {
 	sg.StatusMu.Lock()
 	sg.Status = status
 	sg.StatusMu.Unlock()
-	sg.Manager.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{Status: int32(status)})
+
+	return sg.Manager.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{Status: int32(status)})
 }
 
-// Close closes the shard group and finishes any shards
+// Close closes the shard group and finishes any shards.
 func (sg *ShardGroup) Close() {
 	sg.Logger.Info().Msg("Closing ShardGroup")
-	sg.SetStatus(structs.ShardGroupClosing)
+
+	if err := sg.SetStatus(structs.ShardGroupClosing); err != nil {
+		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+	}
 
 	sg.ShardsMu.RLock()
 	for _, shard := range sg.Shards {
-		shard.Close(1000)
+		shard.Close(websocket.StatusNormalClosure)
 	}
 	sg.ShardsMu.RUnlock()
 
-	sg.SetStatus(structs.ShardGroupClosed)
+	if err := sg.SetStatus(structs.ShardGroupClosed); err != nil {
+		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+	}
 }

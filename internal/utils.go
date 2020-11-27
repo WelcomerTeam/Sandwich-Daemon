@@ -8,16 +8,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/xerrors"
 )
 
-func contains(a interface{}, vars ...interface{}) bool {
-	for _var := range vars {
-		if _var == a {
-			return true
-		}
-	}
-	return false
-}
+const (
+	daySeconds    = 86400
+	hourSeconds   = 3600
+	minuteSeconds = 60
+)
 
 // DeepEqualExports compares exported values of two interfaces based on the
 // tagName provided.
@@ -36,50 +35,62 @@ func DeepEqualExports(tagName string, a interface{}, b interface{}) bool {
 		if ok && tagValue != "-" && tagValue != "" {
 			val1 := reflect.Indirect(reflect.ValueOf(a)).FieldByName(field.Name)
 			val2 := reflect.Indirect(reflect.ValueOf(b)).FieldByName(field.Name)
+
 			if !reflect.DeepEqual(val1.Interface(), val2.Interface()) {
 				return false
 			}
 		}
 	}
+
 	return true
 }
 
-// QuickHash simply returns hash from input
-func QuickHash(hash string) string {
+// QuickHash simply returns hash from input.
+func QuickHash(hash string) (result string, err error) {
 	h := sha256.New()
-	h.Write([]byte(hash))
-	return hex.EncodeToString(h.Sum(nil))
+
+	if _, err := h.Write([]byte(hash)); err != nil {
+		return "", xerrors.Errorf("Failed to write to sha256 writer: %w", err)
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// DurationTimestamp outputs in a format similar to the timestamp String()
+// DurationTimestamp outputs in a format similar to the timestamp String().
 func DurationTimestamp(d time.Duration) (output string) {
 	seconds := d.Seconds()
-	if seconds > 86400 {
-		days := math.Trunc(seconds / 86400)
+	if seconds > daySeconds {
+		days := math.Trunc(seconds / daySeconds)
 		if days > 0 {
 			output += strconv.Itoa(int(days)) + "d"
 		}
-		seconds = math.Mod(seconds, 86400)
+
+		seconds = math.Mod(seconds, daySeconds)
 	}
-	if seconds > 3600 {
-		hours := math.Trunc(seconds / 3600)
+
+	if seconds > hourSeconds {
+		hours := math.Trunc(seconds / hourSeconds)
 		if hours > 0 {
 			output += strconv.Itoa(int(hours)) + "h"
 		}
-		seconds = math.Mod(seconds, 3600)
+
+		seconds = math.Mod(seconds, hourSeconds)
 	}
-	minutes := math.Trunc(seconds / 60)
+
+	minutes := math.Trunc(seconds / minuteSeconds)
 	if minutes > 0 {
 		output += strconv.Itoa(int(minutes)) + "m"
 	}
-	seconds = math.Mod(seconds, 60)
+
+	seconds = math.Mod(seconds, minuteSeconds)
 	if seconds > 0 {
 		output += strconv.Itoa(int(seconds)) + "s"
 	}
-	return
+
+	return output
 }
 
-// ReturnRange converts a string like 0-4,6-7 to [0,1,2,3,4,6,7]
+// ReturnRange converts a string like 0-4,6-7 to [0,1,2,3,4,6,7].
 func ReturnRange(_range string, max int) (result []int) {
 	for _, split := range strings.Split(_range, ",") {
 		ranges := strings.Split(split, "-")
@@ -93,5 +104,6 @@ func ReturnRange(_range string, max int) (result []int) {
 			}
 		}
 	}
+
 	return result
 }

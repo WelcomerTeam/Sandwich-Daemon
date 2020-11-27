@@ -2,7 +2,7 @@ package structs
 
 import "github.com/TheRockettek/snowflake"
 
-// Webhook represents a webhook on Discord
+// Webhook represents a webhook on Discord.
 type Webhook struct {
 	ID        snowflake.ID `json:"id" msgpack:"id"`
 	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
@@ -13,7 +13,7 @@ type Webhook struct {
 	Token     string       `json:"token" msgpack:"token"`
 }
 
-// WebhookUpdate represents a webhook update packet
+// WebhookUpdate represents a webhook update packet.
 type WebhookUpdate struct {
 	GuildID   snowflake.ID `json:"guild_id" msgpack:"guild_id"`
 	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`

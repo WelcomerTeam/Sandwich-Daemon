@@ -7,12 +7,12 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 )
 
-// Gateway represents a GET /gateway response
+// Gateway represents a GET /gateway response.
 type Gateway struct {
 	URL string `json:"url" msgpack:"url"`
 }
 
-// GatewayBot represents a GET /gateway/bot response
+// GatewayBot represents a GET /gateway/bot response.
 type GatewayBot struct {
 	URL               string `json:"url" msgpack:"url"`
 	Shards            int    `json:"shards" msgpack:"shards"`
@@ -24,10 +24,10 @@ type GatewayBot struct {
 	} `json:"session_start_limit" msgpack:"session_start_limit"`
 }
 
-// GatewayOp represents a packets operation
+// GatewayOp represents a packets operation.
 type GatewayOp uint8
 
-// Operation Codes for gateway messagess
+// Operation Codes for gateway messagess.
 const (
 	GatewayOpDispatch GatewayOp = iota
 	GatewayOpHeartbeat
@@ -43,7 +43,7 @@ const (
 	GatewayOpHeartbeatACK
 )
 
-// The different gateway intents
+// The different gateway intents.
 const (
 	IntentGuilds uint = 1 << iota
 	IntentGuildMembers
@@ -62,7 +62,7 @@ const (
 	IntentDirectMessageTyping
 )
 
-// The gateway's close codes
+// The gateway's close codes.
 const (
 	CloseUnknownError = 4000 + iota
 	CloseUnknownOpCode
@@ -76,9 +76,12 @@ const (
 	CloseSessionTimeout
 	CloseInvalidShard
 	CloseShardingRequired
+	CloseInvalidAPIVersion
+	CloseInvalidIntents
+	CloseDisallowedIntents
 )
 
-// ReceivedPayload is the base of a JSON packet received from discord
+// ReceivedPayload is the base of a JSON packet received from discord.
 type ReceivedPayload struct {
 	Op       GatewayOp       `json:"op" msgpack:"op"`
 	Data     json.RawMessage `json:"d,omitempty" msgpack:"d,omitempty"`
@@ -86,39 +89,39 @@ type ReceivedPayload struct {
 	Type     string          `json:"t,omitempty" msgpack:"t,omitempty"`
 }
 
-// SentPayload is the base of a JSON packet we sent to discord
+// SentPayload is the base of a JSON packet we sent to discord.
 type SentPayload struct {
 	Op   int         `json:"op" msgpack:"op"`
 	Data interface{} `json:"d" msgpack:"d"`
 }
 
-// Identify represents an identify packet
+// Identify represents an identify packet.
 type Identify struct {
-	Token              string              `json:"token" msgpack:"token"`
-	Properties         *IdentifyProperties `json:"properties" msgpack:"properties"`
-	Compress           bool                `json:"compress,omitempty" msgpack:"compress,omitempty"`
+	Intents            int                 `json:"intents,omitempty" msgpack:"intents,omitempty"`
 	LargeThreshold     int                 `json:"large_threshold,omitempty" msgpack:"large_threshold,omitempty"`
 	Shard              [2]int              `json:"shard,omitempty" msgpack:"shard,omitempty"`
+	Token              string              `json:"token" msgpack:"token"`
+	Properties         *IdentifyProperties `json:"properties" msgpack:"properties"`
 	Presence           *UpdateStatus       `json:"presence,omitempty" msgpack:"presence,omitempty"`
+	Compress           bool                `json:"compress,omitempty" msgpack:"compress,omitempty"`
 	GuildSubscriptions bool                `json:"guild_subscriptions,omitempty" msgpack:"guild_subscriptions,omitempty"`
-	Intents            int                 `json:"intents,omitempty" msgpack:"intents,omitempty"`
 }
 
-// IdentifyProperties is the properties sent in the identify packet
+// IdentifyProperties is the properties sent in the identify packet.
 type IdentifyProperties struct {
 	OS      string `json:"$os" msgpack:"$os"`
 	Browser string `json:"$browser" msgpack:"$browser"`
 	Device  string `json:"$device" msgpack:"$device"`
 }
 
-// RequestGuildMembers represents a request guild members packet
+// RequestGuildMembers represents a request guild members packet.
 type RequestGuildMembers struct {
 	GuildID []int64 `json:"guild_id" msgpack:"guild_id"`
 	Query   string  `json:"query" msgpack:"query"`
 	Limit   int     `json:"limit" msgpack:"limit"`
 }
 
-// UpdateVoiceState represents an update voice state packet
+// UpdateVoiceState represents an update voice state packet.
 type UpdateVoiceState struct {
 	GuildID   snowflake.ID `json:"guild_id" msgpack:"guild_id"`
 	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
@@ -126,7 +129,7 @@ type UpdateVoiceState struct {
 	SelfDeaf  bool         `json:"self_deaf" msgpack:"self_deaf"`
 }
 
-// Available statuses
+// Available statuses.
 const (
 	StatusOnline    = "online"
 	StatusDND       = "dnd"
@@ -135,7 +138,7 @@ const (
 	StatusOffline   = "offline"
 )
 
-// UpdateStatus represents an update status packet
+// UpdateStatus represents an update status packet.
 type UpdateStatus struct {
 	Since  int       `json:"since,omitempty" msgpack:"since,omitempty"`
 	Game   *Activity `json:"game,omitempty" msgpack:"game,omitempty"`
@@ -143,12 +146,12 @@ type UpdateStatus struct {
 	AFK    bool      `json:"afk" msgpack:"afk"`
 }
 
-// Hello represents a hello packet
+// Hello represents a hello packet.
 type Hello struct {
 	HeartbeatInterval time.Duration `json:"heartbeat_interval" msgpack:"heartbeat_interval"`
 }
 
-// Ready represents a ready packet
+// Ready represents a ready packet.
 type Ready struct {
 	Version   int      `json:"v" msgpack:"v"`
 	User      *User    `json:"user" msgpack:"user"`
@@ -156,7 +159,7 @@ type Ready struct {
 	SessionID string   `json:"session_id" msgpack:"session_id"`
 }
 
-// Resume represents a resume packet
+// Resume represents a resume packet.
 type Resume struct {
 	Token     string `json:"token" msgpack:"token"`
 	SessionID string `json:"session_id" msgpack:"session_id"`

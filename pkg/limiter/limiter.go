@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ConcurrencyLimiter object
+// ConcurrencyLimiter object.
 type ConcurrencyLimiter struct {
 	name       string
 	limit      int
@@ -31,7 +31,7 @@ func NewConcurrencyLimiter(name string, limit int) *ConcurrencyLimiter {
 }
 
 // Wait waits for a free ticket in the queue. Functions that call wait
-// must defer FreeTicket with thee ticket id
+// must defer FreeTicket with thee ticket ID.
 func (c *ConcurrencyLimiter) Wait() (ticket int) {
 	ticket = <-c.tickets
 	atomic.AddInt32(&c.inProgress, 1)
@@ -43,17 +43,15 @@ func (c *ConcurrencyLimiter) Wait() (ticket int) {
 func (c *ConcurrencyLimiter) FreeTicket(ticket int) {
 	c.tickets <- ticket
 	atomic.AddInt32(&c.inProgress, -1)
-
-	return
 }
 
-// InProgress returns how many tickets are being used
+// InProgress returns how many tickets are being used.
 func (c *ConcurrencyLimiter) InProgress() int32 {
 	return atomic.LoadInt32(&c.inProgress)
 }
 
-// DurationLimiter represents something that will wait until the ratelimit
-// has cleared
+// DurationLimiter represents something that will wait until the ratelimit.
+// has cleared.
 type DurationLimiter struct {
 	name     string
 	limit    *int32
@@ -79,12 +77,12 @@ func NewDurationLimiter(name string, limit int32, duration time.Duration) (bs *D
 	return bs
 }
 
-// Lock waits until there is an available slot in the Limiter
+// Lock waits until there is an available slot in the Limiter.
 func (l *DurationLimiter) Lock() {
 	now := time.Now().UnixNano()
 
 	// If we have surpassed the resetAt, then make a new resetAt and free
-	// up available
+	// up available.
 	if atomic.LoadInt64(l.resetsAt) <= now {
 		atomic.StoreInt64(l.resetsAt, now+atomic.LoadInt64(l.duration))
 		atomic.StoreInt32(l.available, atomic.LoadInt32(l.limit))
@@ -98,15 +96,14 @@ func (l *DurationLimiter) Lock() {
 		println(fmt.Sprintf("%s is being ratelimited! Waiting %dms", l.name, sleepDuration.Milliseconds()))
 		time.Sleep(sleepDuration)
 		l.Lock()
+
 		return
 	}
 
 	atomic.AddInt32(l.available, -1)
-
-	return
 }
 
-// Reset resets the resetsAt
+// Reset resets the resetsAt.
 func (l *DurationLimiter) Reset() {
 	now := time.Now().UnixNano()
 	atomic.StoreInt64(l.resetsAt, now+atomic.LoadInt64(l.duration))

@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -15,7 +15,15 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-// Client represents the REST client
+func replaceIfEmpty(v string, s string) string {
+	if v == "" {
+		return s
+	}
+
+	return v
+}
+
+// Client represents the REST client.
 type Client struct {
 	mu sync.RWMutex
 
@@ -37,7 +45,7 @@ type Client struct {
 	reverse       bool
 }
 
-// NewClient makes a new client
+// NewClient makes a new client.
 func NewClient(token string, restTunnelURL string, reverse bool) *Client {
 	return &Client{
 		mu:            sync.RWMutex{},
@@ -51,8 +59,9 @@ func NewClient(token string, restTunnelURL string, reverse bool) *Client {
 	}
 }
 
-// FetchJSON attempts to convert the response into a JSON structure
-func (c *Client) FetchJSON(ctx context.Context, method string, url string, body io.Reader, structure interface{}) (err error) {
+// FetchJSON attempts to convert the response into a JSON structure.
+func (c *Client) FetchJSON(ctx context.Context, method string, url string,
+	body io.Reader, structure interface{}) (err error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return
@@ -65,15 +74,15 @@ func (c *Client) FetchJSON(ctx context.Context, method string, url string, body 
 
 	defer res.Body.Close()
 	err = json.NewDecoder(res.Body).Decode(structure)
+
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal body: %w", err)
 	}
 
 	return
 }
 
-// HandleRequest makes a request to the Discord API
-// TODO: Buckets
+// HandleRequest makes a request to the Discord API.
 func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Response, err error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -83,24 +92,35 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 		req.URL.Path = "/api/v" + c.APIVersion + req.URL.Path
 	}
 
-	// Fill out Host and Scheme if it is empty
-	if req.URL.Host == "" {
-		req.URL.Host = c.URLHost
-	}
-	if req.URL.Scheme == "" {
-		req.URL.Scheme = c.URLScheme
-	}
-	if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", c.UserAgent)
-	}
-	if req.Header.Get("Authorization") == "" {
-		req.Header.Set("Authorization", "Bot "+c.Token)
-	}
+	req.URL.Host = replaceIfEmpty(req.URL.Host, c.URLHost)
+	req.URL.Scheme = replaceIfEmpty(req.URL.Scheme, c.URLScheme)
 
-	if c.restTunnelURL != "" {
+	req.Header.Set("User-Agent", replaceIfEmpty(req.Header.Get("User-Agent"), c.UserAgent))
+	req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), ("Bot "+c.Token)))
+
+	if c.restTunnelURL == "" {
+		if res, err = c.HTTP.Do(req); err != nil {
+			return res, fmt.Errorf("failed to do HTTP request: %w", err)
+		}
+
+		if res.StatusCode == http.StatusTooManyRequests {
+			resp := structs.TooManyRequests{}
+			err = json.NewDecoder(res.Body).Decode(&resp)
+
+			if err != nil {
+				return res, fmt.Errorf("failed to decode body: %w", err)
+			}
+
+			<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
+
+			return c.HandleRequest(req, true)
+		}
+	} else {
 		req.Header.Set("Rt-Priority", "true")
 		req.Header.Set("Rt-ResponseType", "RespondWithResponse")
+
 		_url, _ := url.Parse(c.restTunnelURL)
+
 		if c.reverse {
 			req.URL.Host = _url.Host
 			req.URL.Scheme = _url.Scheme
@@ -108,32 +128,15 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 			req.Header.Set("Rt-URL", req.URL.String())
 			req.URL = _url
 		}
-		res, err = c.HTTP.Do(req)
-		if err != nil {
-			return
-		}
-	} else {
-		res, err = c.HTTP.Do(req)
-		if err != nil {
-			return
-		}
 
-		if res.StatusCode == http.StatusTooManyRequests {
-			resp := structs.TooManyRequests{}
-			err = json.NewDecoder(res.Body).Decode(&resp)
-			if err != nil {
-				return
-			}
-
-			<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
-			return c.HandleRequest(req, true)
+		if res, err = c.HTTP.Do(req); err != nil {
+			return res, fmt.Errorf("failed to do HTTP request: %w", err)
 		}
 	}
 
 	if res.StatusCode == http.StatusUnauthorized {
-		err = errors.New("Invalid token passed")
-		return
+		return res, ErrInvalidToken
 	}
 
-	return
+	return res, nil
 }

@@ -2,10 +2,10 @@ package structs
 
 import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 
-// PresenceStatus represents a presence's status
+// PresenceStatus represents a presence's status.
 type PresenceStatus string
 
-// Presence statuses
+// Presence statuses.
 const (
 	PresenceStatusIdle    PresenceStatus = "idle"
 	PresenceStatusDND     PresenceStatus = "dnd"
@@ -13,7 +13,7 @@ const (
 	PresenceStatusOffline PresenceStatus = "offline"
 )
 
-// PresenceUpdate represents a presence update packet
+// PresenceUpdate represents a presence update packet.
 type PresenceUpdate struct {
 	User       *User          `json:"user"`
 	Roles      []snowflake.ID `json:"roles"`
@@ -23,20 +23,20 @@ type PresenceUpdate struct {
 	Activities []Activity     `json:"activities"`
 }
 
-// ActivityType represents an activity's type
+// ActivityType represents an activity's type.
 type ActivityType int
 
-// Activity types
+// Activity types.
 const (
 	ActivityTypeGame ActivityType = iota
 	ActivityTypeStreaming
 	ActivityTypeListening
 )
 
-// ActivityFlag represents an activity's flags
+// ActivityFlag represents an activity's flags.
 type ActivityFlag int
 
-// Activity flags
+// Activity flags.
 const (
 	ActivityFlagInstance ActivityFlag = 1 << iota
 	ActivityFlagJoin
@@ -46,7 +46,7 @@ const (
 	ActivityFlagPlay
 )
 
-// Activity represents an activity as sent as part of other packets
+// Activity represents an activity as sent as part of other packets.
 type Activity struct {
 	Name          string       `json:"name" yaml:"name"`
 	Type          ActivityType `json:"type" yaml:"type"`
@@ -62,19 +62,19 @@ type Activity struct {
 	Flags         ActivityFlag `json:"flags,omitempty" yaml:"flags,omitempty"`
 }
 
-// Timestamps represents the starting and ending timestamp of an activity
+// Timestamps represents the starting and ending timestamp of an activity.
 type Timestamps struct {
 	Start int `json:"start,omitempty"`
 	End   int `json:"end,omitempty"`
 }
 
-// Party represents an activity's current party information
+// Party represents an activity's current party information.
 type Party struct {
 	ID   string `json:"id,omitempty"`
 	Size []int  `json:"size,omitempty"`
 }
 
-// Assets represents an activity's images and their hover texts
+// Assets represents an activity's images and their hover texts.
 type Assets struct {
 	LargeImage string `json:"large_image,omitempty"`
 	LargeText  string `json:"large_text,omitempty"`
@@ -82,14 +82,14 @@ type Assets struct {
 	SmallText  string `json:"small_text,omitempty"`
 }
 
-// Secrets represents an activity's secrets for Rich Presence joining and spectating
+// Secrets represents an activity's secrets for Rich Presence joining and spectating.
 type Secrets struct {
 	Join     string `json:"join,omitempty"`
 	Spectate string `json:"spectate,omitempty"`
 	Match    string `json:"match,omitempty"`
 }
 
-// TypingStart represents a typing start packet
+// TypingStart represents a typing start packet.
 type TypingStart struct {
 	ChannelID snowflake.ID `json:"channel_id"`
 	GuildID   snowflake.ID `json:"guild_id,omitempty"`
@@ -97,7 +97,7 @@ type TypingStart struct {
 	Timestamp int          `json:"timestamp"`
 }
 
-// UserUpdate represents a user update packet
+// UserUpdate represents a user update packet.
 type UserUpdate struct {
 	*User
 }

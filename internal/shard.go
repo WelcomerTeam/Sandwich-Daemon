@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -20,9 +21,21 @@ import (
 	"nhooyr.io/websocket"
 )
 
+const timeoutDuration = 2 * time.Second
+
+const dispatchTimeout = 30 * time.Second
+
+const waitForReadyTimeout = 10 * time.Second
+
 const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
 
-// Shard represents the shard object
+const websocketReadLimit = 512 << 20
+
+const reconnectCloseCode = 4000
+
+const maxReconnectWait = 600
+
+// Shard represents the shard object.
 type Shard struct {
 	Status   structs.ShardStatus `json:"status"`
 	StatusMu sync.RWMutex        `json:"-"`
@@ -34,7 +47,7 @@ type Shard struct {
 	Manager    *Manager    `json:"-"`
 
 	User *structs.User `json:"user"`
-	// TODO: Add deque that can allow for an event queue (maybe)
+	// Todo: Add deque that can allow for an event queue (maybe).
 
 	ctx    context.Context
 	cancel func()
@@ -51,10 +64,9 @@ type Shard struct {
 	Unavailable map[snowflake.ID]bool `json:"-"`
 
 	Start   time.Time `json:"start"`
-	Retries *int32    `json:"retries"` // When erroring, how many times to retry connecting until shardgroup is stopped
+	Retries *int32    `json:"retries"` // When erroring, how many times to retry connecting until shardgroup is stopped.
 
-	wsConn  *websocket.Conn
-	wsMutex sync.Mutex
+	wsConn *websocket.Conn
 
 	rp sync.Pool
 	pp sync.Pool
@@ -67,14 +79,14 @@ type Shard struct {
 	seq       *int64
 	sessionID string
 
-	// Channel that dictates if the shard has been made ready
+	// Channel that dictates if the shard has been made ready.
 	ready chan void
 
-	// Channel to pipe errors
+	// Channel to pipe errors.
 	errs chan error
 }
 
-// NewShard creates a new shard object
+// NewShard creates a new shard object.
 func (sg *ShardGroup) NewShard(shardID int) *Shard {
 	logger := sg.Logger.With().Int("shard", shardID).Logger()
 	sh := &Shard{
@@ -113,14 +125,17 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 
 		errs: make(chan error),
 	}
+
 	if sh.ctx == nil || sh.cancel == nil {
 		sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	}
+
 	atomic.StoreInt32(sh.Retries, sg.Manager.Configuration.Bot.Retries)
+
 	return sh
 }
 
-// Open starts up the shard connection
+// Open starts up the shard connection.
 func (sh *Shard) Open() {
 	for {
 		err := sh.Listen()
@@ -137,33 +152,48 @@ func (sh *Shard) Open() {
 	}
 }
 
-// Connect connects to the gateway such as identifying however does not listen to new messages
+// Connect connects to the gateway such as identifying however does not listen to new messages.
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Starting shard")
-	sh.SetStatus(structs.ShardWaiting)
+
+	if err := sh.SetStatus(structs.ShardWaiting); err != nil {
+		sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+	}
 
 	sh.Manager.GatewayMu.RLock()
+
+	// Fetch the current bucket we should be using for concurrency.
 	concurrencyBucket := sh.ShardID % sh.Manager.Gateway.SessionStartLimit.MaxConcurrency
+
 	if _, ok := sh.ShardGroup.IdentifyBucket[concurrencyBucket]; !ok {
 		sh.ShardGroup.IdentifyBucket[concurrencyBucket] = &sync.Mutex{}
 	}
 
-	// If the context has canceled, create new context
+	// If the context has canceled, create new context.
 	select {
 	case <-sh.ctx.Done():
 		sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	default:
 	}
 
+	// Create and wait for the websocket bucket.
 	sh.Logger.Trace().Msg("Creating buckets")
 	sh.Manager.Buckets.CreateBucket(fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount), 120, time.Minute)
-	sh.Manager.Sandwich.Buckets.CreateBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), concurrencyBucket), 1, identifyRatelimit)
+
+	hash, err := QuickHash(sh.Manager.Configuration.Token)
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to generate token hash")
+
+		return err
+	}
+
+	sh.Manager.Sandwich.Buckets.CreateBucket(fmt.Sprintf("gw:%s:%d", hash, concurrencyBucket), 1, identifyRatelimit)
 	sh.Manager.GatewayMu.RUnlock()
 
 	// When an error occurs and we have to reconnect, we make a ready channel by default
 	// which seems to cause a problem with WaitForReady. To circumvent this, we will
 	// make the ready only when the channel is closed however this may not be necessary
-	// as there is now a loop that fires every 10 seconds meaning it will be up to date regardless
+	// as there is now a loop that fires every 10 seconds meaning it will be up to date regardless.
 
 	if sh.ready == nil {
 		sh.ready = make(chan void, 1)
@@ -175,38 +205,52 @@ func (sh *Shard) Connect() (err error) {
 
 	defer func() {
 		if err != nil && sh.wsConn != nil {
-			sh.CloseWS(websocket.StatusNormalClosure)
+			if err = sh.CloseWS(websocket.StatusNormalClosure); err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to close websocket")
+			}
 		}
 	}()
 
-	// TODO: Add Concurrent Client Support
-	// This will limit the amount of shards that can be connecting simultaneously
-	// Currently just uses a mutex to allow for only one per maxconcurrency
+	// Todo: Add Concurrent Client Support.
+	// This will limit the amount of shards that can be connecting simultaneously.
+	// Currently just uses a mutex to allow for only one per maxconcurrency.
 	sh.Logger.Trace().Msg("Waiting for identify mutex")
 
+	// Lock the identification bucket
 	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Lock()
 	defer sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
 
 	sh.Logger.Trace().Msg("Starting connecting")
-	sh.SetStatus(structs.ShardConnecting)
 
+	if err := sh.SetStatus(structs.ShardConnecting); err != nil {
+		sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+	}
+
+	// If there is no active ws connection, create a new connection to discord.
 	if sh.wsConn == nil {
 		var conn *websocket.Conn
 		conn, _, err = websocket.Dial(sh.ctx, gatewayURL, nil)
+
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to dial")
+
 			return
 		}
-		conn.SetReadLimit(512 << 20)
+
+		conn.SetReadLimit(websocketReadLimit)
 		sh.wsConn = conn
 	} else {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
 
 	sh.Logger.Trace().Msg("Reading from WS")
+
+	// Read a message from WS which we should expect to be Hello
 	err = sh.readMessage(sh.ctx, sh.wsConn)
+
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to read message")
+
 		return
 	}
 
@@ -219,31 +263,56 @@ func (sh *Shard) Connect() (err error) {
 	sh.LastHeartbeatMu.Unlock()
 
 	sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
+
 	sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
 
-	sh.Logger.Debug().Dur("interval", sh.HeartbeatInterval).Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).Msg("Retrieved HELLO event from discord")
-	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
+	sh.Logger.Debug().
+		Dur("interval", sh.HeartbeatInterval).
+		Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).
+		Msg("Retrieved HELLO event from discord")
 
+	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 	seq := atomic.LoadInt64(sh.seq)
+
+	// If we have no session ID or the sequence is 0, we can identify instead
+	// of resuming.
 	if sh.sessionID == "" || seq == 0 {
 		err = sh.Identify()
-		sh.SetStatus(structs.ShardConnected)
+		if err := sh.SetStatus(structs.ShardConnecting); err != nil {
+			sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+		}
+
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to identify")
+
 			return
 		}
 	} else {
 		err = sh.Resume()
 		// We will assume the bot is ready.
-		sh.SetStatus(structs.ShardReady)
+		if err := sh.SetStatus(structs.ShardReady); err != nil {
+			sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+		}
+
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to resume")
+
 			return
 		}
 	}
 
 	sh.Manager.ConfigurationMu.RLock()
-	bucket := fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency)
+	hash, err = QuickHash(sh.Manager.Configuration.Token)
+
+	if err != nil {
+		sh.Manager.ConfigurationMu.RUnlock()
+		sh.Logger.Error().Err(err).Msg("Failed to generate token hash")
+
+		return
+	}
+
+	// Reset the bucket we used for gateway
+	bucket := fmt.Sprintf("gw:%s:%d", hash, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency)
 	sh.Manager.Buckets.ResetBucket(bucket)
 	sh.Manager.ConfigurationMu.RUnlock()
 
@@ -252,46 +321,56 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	sh.Logger.Trace().Msg("Finished connecting")
-	return
+
+	return err
 }
 
-// OnEvent processes an event
+// OnEvent processes an event.
 func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
-
 	// This goroutine shows events that are taking too long.
 	fin := make(chan void)
+
 	go func() {
-		waitTime := time.Second * 30
 		since := time.Now()
-		t := time.NewTimer(waitTime)
+		t := time.NewTimer(dispatchTimeout)
+
 		for {
 			select {
 			case <-fin:
 				return
 			case <-t.C:
-				sh.Logger.Warn().Str("type", msg.Type).Int("op", int(msg.Op)).Str("data", gotils.B2S(msg.Data)).Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?", msg.Type, time.Now().Sub(since).Round(time.Second).Seconds())
-				t.Reset(waitTime)
+				sh.Logger.Warn().
+					Str("type", msg.Type).
+					Int("op", int(msg.Op)).
+					Str("data", gotils.B2S(msg.Data)).
+					Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?",
+						msg.Type, time.Since(since).
+							Round(time.Second).Seconds(),
+					)
+				t.Reset(dispatchTimeout)
 			}
 		}
 	}()
+
 	defer func() {
 		close(fin)
 	}()
 
 	switch msg.Op {
-
 	case structs.GatewayOpHeartbeat:
 		sh.Logger.Debug().Msg("Received heartbeat request")
 		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
+
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
 			err = sh.Reconnect(websocket.StatusNormalClosure)
+
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 			}
+
 			return
 		}
-
 	case structs.GatewayOpInvalidSession:
 		resumable := json.Get(msg.Data, "d").ToBool()
 		if !resumable {
@@ -300,11 +379,11 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		}
 
 		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
-		err = sh.Reconnect(4000)
+		err = sh.Reconnect(reconnectCloseCode)
+
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 		}
-
 	case structs.GatewayOpHello:
 		hello := structs.Hello{}
 		err = sh.decodeContent(&hello)
@@ -317,45 +396,58 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
 		sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
 
-		sh.Logger.Debug().Dur("interval", sh.HeartbeatInterval).Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).Msg("Retrieved HELLO event from discord")
+		sh.Logger.Debug().
+			Dur("interval", sh.HeartbeatInterval).
+			Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).
+			Msg("Retrieved HELLO event from discord")
+
 		sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
 		return
-
 	case structs.GatewayOpReconnect:
 		sh.Logger.Info().Msg("Reconnecting in response to gateway")
-		err = sh.Reconnect(4000)
+		err = sh.Reconnect(reconnectCloseCode)
+
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 		}
-		return
 
+		return
 	case structs.GatewayOpDispatch:
 		err = sh.OnDispatch(msg)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Error whilst dispatch event")
+
 			return
 		}
-
 	case structs.GatewayOpHeartbeatACK:
 		sh.LastHeartbeatMu.Lock()
 		sh.LastHeartbeatAck = time.Now().UTC()
-		sh.Logger.Debug().Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).Msg("Received heartbeat ACK")
-		sh.LastHeartbeatMu.Unlock()
-		return
+		sh.Logger.Debug().
+			Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).
+			Msg("Received heartbeat ACK")
 
+		sh.LastHeartbeatMu.Unlock()
+
+		return
 	default:
-		sh.Logger.Warn().Int("op", int(msg.Op)).Str("type", msg.Type).Msg("Gateway sent unknown packet")
+		sh.Logger.Warn().
+			Int("op", int(msg.Op)).
+			Str("type", msg.Type).
+			Msg("Gateway sent unknown packet")
+
 		return
 	}
 
 	atomic.StoreInt64(sh.seq, msg.Sequence)
-	return
+
+	return err
 }
 
-// OnDispatch handles a dispatch event
+// OnDispatch handles a dispatch event.
 func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	start := time.Now().UTC()
+
 	defer func() {
 		change := time.Now().UTC().Sub(start)
 		if change > time.Second {
@@ -364,12 +456,12 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	}()
 
 	switch msg.Type {
-
 	case "READY":
 		readyPayload := structs.Ready{}
 		if err = sh.decodeContent(&readyPayload); err != nil {
 			return
 		}
+
 		sh.User = readyPayload.User
 		sh.sessionID = readyPayload.SessionID
 		sh.Logger.Info().Msg("Received READY payload")
@@ -382,45 +474,57 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		for _, guild := range readyPayload.Guilds {
 			sh.Unavailable[guild.ID] = guild.Unavailable
 		}
+
 		guildCreateEvents := 0
 
 		// If true will only run events once finished loading.
-		// TODO: Add to sandwich configuration.
+		// Todo: Add to sandwich configuration.
 		preemptiveEvents := false
 
-		// I planned on using a context with timeout here to timeout reading messages however it seems the parent as also inheriting it.
-		// This means in its current configuration it may get stuck getting READY until it receives another event which should not be
-		// a problem on larger bots however it will be a problem when you excessively shard on smaller bots that may have a shard only receive
-		// a single event every few seconds, in which it will have to wait for to recognize it has passed the timeout limit. At the moment
-		// we just have a warning message if you excessively shard. This also does mean if your bot never receives any events it will never
-		// ready.
+		// I planned on using a context with timeout here to timeout reading messages however it seems the parent
+		// as also inheriting it. This means in its current configuration it may get stuck getting READY until it
+		// receives another event which should not be a problem on larger bots however it will be a problem when
+		// you excessively shard on smaller bots that may have a shard only receive a single event every few
+		// seconds, in which it will have to wait for to recognize it has passed the timeout limit. At the moment
+		// we just have a warning message if you excessively shard. This also does mean if your bot never receives
+		// any events it will never ready.
 
-		wait := time.Now().UTC().Add(2 * time.Second)
+		wait := time.Now().UTC().Add(timeoutDuration)
+
 		for {
-			timedout := time.Now().UTC().Sub(wait) > (2 * time.Second)
+			timedout := time.Now().UTC().Sub(wait) > (timeoutDuration)
+
 			if !timedout {
 				err = sh.readMessage(sh.ctx, sh.wsConn)
 			}
+
 			if err != nil || timedout {
 				if xerrors.Is(err, context.Canceled) {
 					break
 				}
+
 				if timedout {
 					sh.Logger.Debug().Int("guildEvents", guildCreateEvents).Msg("Shard has finished lazy loading")
+
 					err = nil
 				} else {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
 
 					break
 				}
+
 				sh.Manager.Sandwich.ConfigurationMu.RLock()
+
 				if sh.Manager.Configuration.Caching.RequestMembers {
 					var chunk []int64
+
 					chunkSize := sh.Manager.Configuration.Caching.RequestChunkSize
+
 					for len(guildIDs) >= chunkSize {
 						chunk, guildIDs = guildIDs[:chunkSize], guildIDs[chunkSize:]
 
 						sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
+
 						if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
 							GuildID: chunk,
 							Query:   "",
@@ -429,8 +533,10 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 							sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
 						}
 					}
+
 					if len(guildIDs) > 0 {
 						sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
+
 						if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
 							GuildID: guildIDs,
 							Query:   "",
@@ -447,38 +553,45 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 			if sh.msg.Type == "GUILD_CREATE" {
 				guildCreateEvents++
+
 				guildPayload := structs.GuildCreate{}
+
 				if err = sh.decodeContent(&guildPayload); err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
 				} else {
 					guildIDs = append(guildIDs, guildPayload.ID.Int64())
 				}
+
 				if _, err = sh.Manager.StateGuildCreate(guildPayload); err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to handle GUILD_CREATE event")
 				}
-				wait = time.Now().UTC().Add(2 * time.Second)
+
+				wait = time.Now().UTC().Add(timeoutDuration)
 			} else {
 				if preemptiveEvents {
 					events = append(events, sh.msg)
-				} else {
-					if err = sh.OnDispatch(sh.msg); err != nil {
-						sh.Logger.Error().Err(err).Msg("Failed dispatching event")
-					}
+				} else if err = sh.OnDispatch(sh.msg); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed dispatching event")
 				}
 			}
 		}
 
 		sh.ready <- void{}
-		sh.SetStatus(structs.ShardReady)
+		if err := sh.SetStatus(structs.ShardReady); err != nil {
+			sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+		}
 
 		if preemptiveEvents {
 			sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemptive events")
+
 			for _, event := range events {
 				sh.Logger.Debug().Str("type", event.Type).Send()
+
 				if err = sh.OnDispatch(event); err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemptive events")
 				}
 			}
+
 			sh.Logger.Debug().Msg("Finished dispatching events")
 		}
 
@@ -488,10 +601,8 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		guildPayload := structs.GuildCreate{}
 		if err = sh.decodeContent(&guildPayload); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
-		} else {
-			if err = sh.HandleGuildCreate(guildPayload, false); err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to process guild create")
-			}
+		} else if err = sh.HandleGuildCreate(guildPayload, false); err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to process guild create")
 		}
 
 		return
@@ -500,28 +611,31 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		guildMembersPayload := structs.GuildMembersChunk{}
 		if err = sh.decodeContent(&guildMembersPayload); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK")
-		} else {
-			if err = sh.Manager.StateGuildMembersChunk(guildMembersPayload); err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to process state")
-			}
+		} else if err = sh.Manager.StateGuildMembersChunk(guildMembersPayload); err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to process state")
 		}
 
 		return
 
 	default:
-		// sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
 	}
-	return
+
+	// Todo: Uncomment this when we have proper event handling
+	// default:
+	// 	sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
+
+	return err
 }
 
-// Latency returns the heartbeat latency in milliseconds
+// Latency returns the heartbeat latency in milliseconds.
 func (sh *Shard) Latency() (latency int64) {
 	sh.LastHeartbeatMu.RLock()
 	defer sh.LastHeartbeatMu.RUnlock()
+
 	return sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Round(time.Millisecond).Milliseconds()
 }
 
-// HandleGuildCreate handles the guild create event
+// HandleGuildCreate handles the guild create event.
 func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err error) {
 	guildPayload := structs.GuildCreate{}
 	if err = sh.decodeContent(&guildPayload); err != nil {
@@ -536,12 +650,14 @@ func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err 
 
 		_, err = sh.Manager.StateGuildCreate(guildPayload)
 	}
+
 	return
 }
 
-// Listen to gateway and process accordingly
+// Listen to gateway and process accordingly.
 func (sh *Shard) Listen() (err error) {
 	wsConn := sh.wsConn
+
 	for {
 		select {
 		case <-sh.ctx.Done():
@@ -557,26 +673,35 @@ func (sh *Shard) Listen() (err error) {
 
 			sh.Logger.Error().Err(err).Msg("Error reading from gateway")
 
-			// If possible, we will check the close error to determine if we can continue
-			if ce, ok := err.(*websocket.CloseError); ok {
-				switch ce.Code {
-				case 4004: // Not authenticated
-				case 4010: // Invalid shard
-				case 4011: // Sharding required
-				case 4012: // Invalid API version
-				case 4013: // Invalid Intent(s)
-				case 4014: // Disallowed intent(s)
-					sh.Logger.Warn().Msgf("Closing ShardGroup as cannot continue without valid token. Received code %d", ce.Code)
+			var closeError *websocket.CloseError
+
+			if errors.As(err, &closeError) {
+				// If possible, we will check the close error to determine if we can continue
+				switch closeError.Code {
+				case structs.CloseNotAuthenticated: // Not authenticated
+				case structs.CloseInvalidShard: // Invalid shard
+				case structs.CloseShardingRequired: // Sharding required
+				case structs.CloseInvalidAPIVersion: // Invalid API version
+				case structs.CloseInvalidIntents: // Invalid Intent(s)
+				case structs.CloseDisallowedIntents: // Disallowed intent(s)
+					sh.Logger.Warn().Msgf(
+						"Closing ShardGroup as cannot continue without valid token. Received code %d",
+						closeError.Code,
+					)
 
 					// We cannot continue so we will kill the ShardGroup
 					sh.ShardGroup.ErrorMu.Lock()
 					sh.ShardGroup.Error = err.Error()
 					sh.ShardGroup.ErrorMu.Unlock()
 					sh.ShardGroup.Close()
-					sh.ShardGroup.SetStatus(structs.ShardGroupError)
+
+					if err := sh.ShardGroup.SetStatus(structs.ShardGroupError); err != nil {
+						sh.ShardGroup.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
+					}
+
 					return
 				default:
-					sh.Logger.Warn().Msgf("Websocket was closed with code %d", ce.Code)
+					sh.Logger.Warn().Msgf("Websocket was closed with code %d", closeError.Code)
 				}
 			}
 
@@ -584,15 +709,21 @@ func (sh *Shard) Listen() (err error) {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection, reconnecting...")
 				err = sh.Reconnect(websocket.StatusNormalClosure)
+
 				if err != nil {
 					return err
 				}
+
 				return
 			}
+
 			wsConn = sh.wsConn
 		}
 
-		sh.OnEvent(sh.msg)
+		err = sh.OnEvent(sh.msg)
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Encountered error dispatching event")
+		}
 
 		// In the event we have reconnected, the wsConn could have changed,
 		// we will use the new wsConn if this is the case
@@ -601,11 +732,12 @@ func (sh *Shard) Listen() (err error) {
 			wsConn = sh.wsConn
 		}
 	}
-	return
+
+	return err
 }
 
 // Heartbeat maintains a heartbeat with discord
-// TODO: Make a shardgroup specific heartbeat function to heartbeat on behalf of all running shards
+// TODO: Make a shardgroup specific heartbeat function to heartbeat on behalf of all running shards.
 func (sh *Shard) Heartbeat() {
 	sh.HeartbeatActive.Set()
 	defer sh.HeartbeatActive.UnSet()
@@ -620,8 +752,8 @@ func (sh *Shard) Heartbeat() {
 
 			err := sh.SendEvent(structs.GatewayOpHeartbeat, seq)
 
-			_time := time.Now().UTC()
 			sh.LastHeartbeatMu.Lock()
+			_time := time.Now().UTC()
 			sh.LastHeartbeatSent = _time
 			lastAck := sh.LastHeartbeatAck
 			sh.LastHeartbeatMu.Unlock()
@@ -631,7 +763,10 @@ func (sh *Shard) Heartbeat() {
 					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
 				} else {
 					sh.Manager.Sandwich.ConfigurationMu.RLock()
-					sh.Logger.Warn().Err(err).Msgf("Gateway failed to ACK and has passed MaxHeartbeatFailures of %d. Reconnecting", sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+					sh.Logger.Warn().Err(err).
+						Msgf(
+							"Gateway failed to ACK and has passed MaxHeartbeatFailures of %d. Reconnecting",
+							sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
 					sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 				}
 
@@ -646,13 +781,14 @@ func (sh *Shard) Heartbeat() {
 	}
 }
 
-// decodeContent converts the stored msg into the passed interface
+// decodeContent converts the stored msg into the passed interface.
 func (sh *Shard) decodeContent(out interface{}) (err error) {
 	err = json.Unmarshal(sh.msg.Data, &out)
+
 	return
 }
 
-// readMessage fills the shard msg buffer from a websocket message
+// readMessage fills the shard msg buffer from a websocket message.
 func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err error) {
 	var mt websocket.MessageType
 	mt, sh.buf, err = wsConn.Read(ctx)
@@ -675,20 +811,22 @@ func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err e
 
 	err = json.Unmarshal(sh.buf, &sh.msg)
 	atomic.AddInt64(sh.events, 1)
+
 	return
 }
 
-// CloseWS closes the websocket
+// CloseWS closes the websocket.
 func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 	if sh.wsConn != nil {
 		sh.Logger.Debug().Str("code", statusCode.String()).Msg("Closing websocket connection")
 		err = sh.wsConn.Close(statusCode, "")
 		sh.wsConn = nil
 	}
+
 	return
 }
 
-// Resume sends the resume packet to gateway
+// Resume sends the resume packet to gateway.
 func (sh *Shard) Resume() (err error) {
 	sh.Logger.Debug().Msg("Sending resume")
 
@@ -707,7 +845,7 @@ func (sh *Shard) Resume() (err error) {
 	return
 }
 
-// Identify sends the identify packet to gateway
+// Identify sends the identify packet to gateway.
 func (sh *Shard) Identify() (err error) {
 	sh.Logger.Debug().Msg("Sending identify")
 
@@ -719,10 +857,23 @@ func (sh *Shard) Identify() (err error) {
 	defer sh.Manager.ConfigurationMu.RUnlock()
 
 	sh.Manager.GatewayMu.RLock()
-	err = sh.Manager.Sandwich.Buckets.WaitForBucket(fmt.Sprintf("gw:%s:%d", QuickHash(sh.Manager.Configuration.Token), sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency))
+
+	hash, err := QuickHash(sh.Manager.Configuration.Token)
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to generate token hash")
+		sh.Manager.GatewayMu.RUnlock()
+
+		return err
+	}
+
+	err = sh.Manager.Sandwich.Buckets.WaitForBucket(
+		fmt.Sprintf("gw:%s:%d", hash, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency),
+	)
+
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to wait for bucket")
 	}
+
 	sh.Manager.GatewayMu.RUnlock()
 
 	err = sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
@@ -740,20 +891,20 @@ func (sh *Shard) Identify() (err error) {
 		Intents:            sh.Manager.Configuration.Bot.Intents,
 	})
 
-	return
+	return err
 }
 
-// PublishEvent sends an event to consumers
-func (sh *Shard) PublishEvent(Type string, Data interface{}) (err error) {
+// PublishEvent sends an event to consumers.
+func (sh *Shard) PublishEvent(eventType string, eventData interface{}) (err error) {
 	packet := sh.pp.Get().(*structs.PublishEvent)
 	defer sh.pp.Put(packet)
 
 	sh.Manager.Sandwich.ConfigurationMu.RLock()
 	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
-	packet.Data = Data
+	packet.Data = eventData
 	packet.From = sh.Manager.Configuration.Identifier
-	packet.Type = Type
+	packet.Type = eventType
 
 	data, err := msgpack.Marshal(packet)
 	if err != nil {
@@ -771,10 +922,11 @@ func (sh *Shard) PublishEvent(Type string, Data interface{}) (err error) {
 	} else {
 		return xerrors.New("publishEvent publish: No active stanClient")
 	}
-	return
+
+	return nil
 }
 
-// SendEvent sends an event to discord
+// SendEvent sends an event to discord.
 func (sh *Shard) SendEvent(op structs.GatewayOp, data interface{}) (err error) {
 	packet := sh.rp.Get().(*structs.SentPayload)
 	defer sh.rp.Put(packet)
@@ -790,16 +942,19 @@ func (sh *Shard) SendEvent(op structs.GatewayOp, data interface{}) (err error) {
 	return
 }
 
-// WriteJSON writes json data to the websocket
+// WriteJSON writes json data to the websocket.
 func (sh *Shard) WriteJSON(i interface{}) (err error) {
 	res, err := json.Marshal(i)
 	if err != nil {
 		return xerrors.Errorf("writeJSON marshal: %w", err)
 	}
 
-	sh.Manager.Buckets.WaitForBucket(
+	err = sh.Manager.Buckets.WaitForBucket(
 		fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount),
 	)
+	if err != nil {
+		sh.Logger.Warn().Err(err).Msg("Tried to wait for websocket bucket but it does not exist")
+	}
 
 	sh.Manager.Sandwich.ConfigurationMu.RLock()
 	sh.Logger.Trace().Msg(strings.ReplaceAll(gotils.B2S(res), sh.Manager.Configuration.Token, "..."))
@@ -815,18 +970,20 @@ func (sh *Shard) WriteJSON(i interface{}) (err error) {
 	return
 }
 
-// WaitForReady waits until the shard is ready
+// WaitForReady waits until the shard is ready.
 func (sh *Shard) WaitForReady() {
 	since := time.Now().UTC()
-	t := time.NewTicker(time.Second * 10)
+	t := time.NewTicker(waitForReadyTimeout)
 
 	for {
 		select {
 		case <-sh.ready:
 			sh.Logger.Debug().Msg("Shard ready due to channel closure")
+
 			return
 		case <-sh.ctx.Done():
 			sh.Logger.Debug().Msg("Shard ready due to context done")
+
 			return
 		case <-t.C:
 			sh.StatusMu.RLock()
@@ -835,20 +992,27 @@ func (sh *Shard) WaitForReady() {
 
 			if status == structs.ShardReady {
 				sh.Logger.Warn().Msg("Shard ready due to status change")
+
 				return
 			}
 
-			sh.Logger.Debug().Err(sh.ctx.Err()).Dur("since", time.Now().UTC().Sub(since).Round(time.Second)).Msg("Still waiting for shard to be ready")
+			sh.Logger.Debug().
+				Err(sh.ctx.Err()).
+				Dur("since", time.Now().UTC().Sub(since).Round(time.Second)).
+				Msg("Still waiting for shard to be ready")
 		}
 	}
 }
 
-// Reconnect attempts to reconnect to the gateway
+// Reconnect attempts to reconnect to the gateway.
 func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 	wait := time.Second
 
 	sh.Close(code)
-	sh.SetStatus(structs.ShardReconnecting)
+
+	if err := sh.SetStatus(structs.ShardReconnecting); err != nil {
+		sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+	}
 
 	for {
 		sh.Logger.Info().Msg("Trying to reconnect to gateway")
@@ -857,6 +1021,7 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 		if err == nil {
 			atomic.StoreInt32(sh.Retries, sh.Manager.Configuration.Bot.Retries)
 			sh.Logger.Info().Msg("Successfully reconnected to gateway")
+
 			return nil
 		}
 
@@ -865,6 +1030,7 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 			sh.Logger.Warn().Msg("Ran out of retries whilst connecting. Attempting to reconnect client.")
 			sh.Close(code)
 			err = sh.Connect()
+
 			return err
 		}
 
@@ -872,32 +1038,40 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 		<-time.After(wait)
 
 		wait *= 2
-		if wait > 600 {
-			wait = 600
+		if wait > maxReconnectWait {
+			wait = maxReconnectWait
 		}
 	}
 }
 
-// SetStatus changes the Shard status
-func (sh *Shard) SetStatus(status structs.ShardStatus) {
+// SetStatus changes the Shard status.
+func (sh *Shard) SetStatus(status structs.ShardStatus) (err error) {
 	sh.StatusMu.Lock()
 	sh.Status = status
 	sh.StatusMu.Unlock()
-	sh.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{ShardID: sh.ShardID, Status: int32(status)})
+
+	err = sh.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{ShardID: sh.ShardID, Status: int32(status)})
+
+	return
 }
 
-// Close closes the shard connection
+// Close closes the shard connection.
 func (sh *Shard) Close(code websocket.StatusCode) {
 	// Ensure that if we close during shardgroup connecting, it will not
 	// feedback loop.
-
 	// cancel is only defined when Connect() has been ran on a shard.
 	// If the ShardGroup was closed before this happens, it would segfault.
 	if sh.ctx != nil && sh.cancel != nil {
 		sh.cancel()
 	}
+
 	if sh.wsConn != nil {
-		sh.CloseWS(code)
+		if err := sh.CloseWS(code); err != nil {
+			sh.Logger.Error().Err(err).Msg("Encountered error closing websocket")
+		}
 	}
-	sh.SetStatus(structs.ShardClosed)
+
+	if err := sh.SetStatus(structs.ShardClosed); err != nil {
+		sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+	}
 }

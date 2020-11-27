@@ -2,32 +2,34 @@ package gateway
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
 
-const sessionName = "session"
-const discordUsersMe = "https://discord.com/api/users/@me"
-const discordRefreshDuration = time.Hour
+const (
+	sessionName    = "session"
+	discordUsersMe = "https://discord.com/api/users/@me"
+)
 
-// NewMethodRouter creates a new method router
+// NewMethodRouter creates a new method router.
 func NewMethodRouter() *MethodRouter {
 	return &MethodRouter{mux.NewRouter()}
 }
 
-// MethodRouter beepboop
+// MethodRouter beepboop.
 type MethodRouter struct {
 	*mux.Router
 }
 
-// HandleFunc registers a route that handles both paths and methods
-func (mr *MethodRouter) HandleFunc(path string, f func(http.ResponseWriter, *http.Request), methods ...string) *mux.Route {
+// HandleFunc registers a route that handles both paths and methods.
+func (mr *MethodRouter) HandleFunc(path string, f func(http.ResponseWriter,
+	*http.Request), methods ...string) *mux.Route {
 	if len(methods) == 0 {
 		methods = []string{"GET"}
 	}
+
 	return mr.NewRoute().Path(path).Methods(methods...).HandlerFunc(f)
 }
 
@@ -35,24 +37,22 @@ func (mr *MethodRouter) HandleFunc(path string, f func(http.ResponseWriter, *htt
 // in the session. There are 100% better ways to do this but for our case this is
 // good enough. If HTTP.Public is enabled, it will not require authentication.
 // Please only use this if its on a private IP but regardless, you shouldn't have
-// this enabled
+// this enabled.
 func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool, user *structs.DiscordUser) {
 	if sg.Configuration.HTTP.Public {
-		auth = true
-		return
+		return true, user
 	}
 
 	userBody, ok := session.Values["user"].([]byte)
 	if !ok {
-		auth = false
-		return
+		return false, user
 	}
 
 	err := json.Unmarshal(userBody, &user)
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to unmarshal user")
-		auth = false
-		return
+
+		return false, user
 	}
 
 	for _, userID := range sg.Configuration.ElevatedUsers {
@@ -61,8 +61,7 @@ func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool, u
 		}
 	}
 
-	auth = false
-	return
+	return false, user
 }
 
 func createEndpoints(sg *Sandwich) (router *MethodRouter) {

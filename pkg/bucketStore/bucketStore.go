@@ -10,7 +10,7 @@ import (
 
 // ErrNoSuchBucket is when a Bucket was requested that does not exist.
 // Use CreateWaitForBucket to create a bucket if it does not exist.
-var ErrNoSuchBucket = errors.New("Bucket does not exist. Use CreateWaitForBucket instead")
+var ErrNoSuchBucket = errors.New("bucket does not exist. Use CreateWaitForBucket instead")
 
 // BucketStore is used for managing various limiters.
 type BucketStore struct {
@@ -31,6 +31,7 @@ func (bs *BucketStore) CreateBucket(name string, limit int32, duration time.Dura
 	bs.BucketsMu.RLock()
 	bucket, exists := bs.Buckets[name]
 	bs.BucketsMu.RUnlock()
+
 	if exists {
 		return bucket
 	}
@@ -51,7 +52,9 @@ func (bs *BucketStore) WaitForBucket(name string) (err error) {
 	if !exists {
 		return ErrNoSuchBucket
 	}
+
 	bucket.Lock()
+
 	return
 }
 
@@ -66,6 +69,7 @@ func (bs *BucketStore) ResetBucket(name string) bool {
 	}
 
 	bucket.Reset()
+
 	return true
 }
 
@@ -85,5 +89,6 @@ func (bs *BucketStore) CreateWaitForBucket(name string, limit int32, duration ti
 	}
 
 	bucket.Lock()
+
 	return
 }

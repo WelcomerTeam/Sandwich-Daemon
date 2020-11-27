@@ -2,10 +2,10 @@ package structs
 
 import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 
-// ChannelType represents a channel's type
+// ChannelType represents a channel's type.
 type ChannelType int
 
-// Channel types
+// Channel types.
 const (
 	ChannelTypeGuildText ChannelType = iota
 	ChannelTypeDM
@@ -14,7 +14,7 @@ const (
 	ChannelTypeGuildCategory
 )
 
-// Channel represents a Discord channel
+// Channel represents a Discord channel.
 type Channel struct {
 	ID                   snowflake.ID `json:"id" msgpack:"id"`
 	Type                 ChannelType  `json:"type" msgpack:"type"`
@@ -36,7 +36,7 @@ type Channel struct {
 	LastPinTimestamp     string       `json:"last_pin_timestamp,omitempty" msgpack:"last_pin_timestamp,omitempty"`
 }
 
-// Overwrite represents a permission overwrite
+// Overwrite represents a permission overwrite.
 type Overwrite struct {
 	ID    string `json:"id" msgpack:"id"`
 	Type  string `json:"type" msgpack:"type"`
@@ -44,22 +44,22 @@ type Overwrite struct {
 	Deny  int    `json:"deny" msgpack:"deny"`
 }
 
-// ChannelCreate represents a channel create packet
+// ChannelCreate represents a channel create packet.
 type ChannelCreate struct {
 	*Channel
 }
 
-// ChannelUpdate represents a channel update packet
+// ChannelUpdate represents a channel update packet.
 type ChannelUpdate struct {
 	*Channel
 }
 
-// ChannelDelete represents a channel delete packet
+// ChannelDelete represents a channel delete packet.
 type ChannelDelete struct {
 	*Channel
 }
 
-// ChannelPinsUpdate represents a channel pins update packet
+// ChannelPinsUpdate represents a channel pins update packet.
 type ChannelPinsUpdate struct {
 	ChannelID        snowflake.ID `json:"channel_id" msgpack:"channel_id"`
 	LastPinTimestamp string       `json:"last_pin_timestamp,omitempty" msgpack:"last_pin_timestamp,omitempty"`

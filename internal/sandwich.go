@@ -32,7 +32,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// VERSION respects semantic versioning
+// VERSION respects semantic versioning.
 const VERSION = "0.2"
 
 // ErrOnConfigurationFailure will return errors when loading configuration.
@@ -44,13 +44,17 @@ const ErrOnConfigurationFailure = true
 // at.
 const ConfigurationPath = "sandwich.yaml"
 
-// Interval between each analytic sample
+// Interval between each analytic sample.
 const Interval = time.Second * 15
 
-// Samples to hold. 5 seconds and 720 samples is 1 hour
+// Samples to hold. 5 seconds and 720 samples is 1 hour.
 const Samples = 720
 
-// SandwichConfiguration represents the configuration of the program
+// distCacheDuration is the amount of hours to cache dist files.
+// This is 720 (1 month) by default.
+const distCacheDuration = 720
+
+// SandwichConfiguration represents the configuration of the program.
 type SandwichConfiguration struct {
 	Logging struct {
 		ConsoleLoggingEnabled bool `json:"console_logging" yaml:"console_logging"`
@@ -58,11 +62,11 @@ type SandwichConfiguration struct {
 
 		EncodeAsJSON bool `json:"encode_as_json" yaml:"encode_as_json"` // Make the framework log as json
 
-		Directory  string `json:"directory" yaml:"directory"`     // Directory to log into
-		Filename   string `json:"filename" yaml:"filename"`       // Name of logfile
-		MaxSize    int    `json:"max_size" yaml:"max_size"`       /// Size in MB before a new file
-		MaxBackups int    `json:"max_backups" yaml:"max_backups"` // Number of files to keep
-		MaxAge     int    `json:"max_age" yaml:"max_age"`         // Number of days to keep a logfile
+		Directory  string `json:"directory" yaml:"directory"`     // Directory to log into.
+		Filename   string `json:"filename" yaml:"filename"`       // Name of logfile.
+		MaxSize    int    `json:"max_size" yaml:"max_size"`       // Size in MB before a new file.
+		MaxBackups int    `json:"max_backups" yaml:"max_backups"` // Number of files to keep.
+		MaxAge     int    `json:"max_age" yaml:"max_age"`         // Number of days to keep a logfile.
 	} `json:"logging" yaml:"logging"`
 
 	RestTunnel struct {
@@ -86,9 +90,9 @@ type SandwichConfiguration struct {
 	} `json:"nats" yaml:"nats"`
 
 	HTTP struct {
-		Enabled       bool   `json:"enabled" yaml:"enabled"`
 		Host          string `json:"host" yaml:"host"`
 		SessionSecret string `json:"secret" yaml:"secret"`
+		Enabled       bool   `json:"enabled" yaml:"enabled"`
 		Public        bool   `json:"public" yaml:"public"`
 	} `json:"http" yaml:"http"`
 
@@ -98,7 +102,7 @@ type SandwichConfiguration struct {
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
 }
 
-// Sandwich represents the global application state
+// Sandwich represents the global application state.
 type Sandwich struct {
 	sync.RWMutex // used to block important functions
 
@@ -134,9 +138,8 @@ type Sandwich struct {
 	ConsolePump *ConsolePump `json:"-"`
 }
 
-// NewSandwich creates the application state and initializes it
+// NewSandwich creates the application state and initializes it.
 func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
-
 	sg = &Sandwich{
 		Logger:          zerolog.New(logger).With().Timestamp().Logger(),
 		ConfigurationMu: sync.RWMutex{},
@@ -154,17 +157,20 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	if err != nil {
 		return nil, xerrors.Errorf("new sandwich: %w", err)
 	}
+
 	sg.ConfigurationMu.Lock()
 	sg.Configuration = configuration
 	sg.ConfigurationMu.Unlock()
 
 	var writers []io.Writer
+
 	sg.ConfigurationMu.RLock()
 	if sg.Configuration.Logging.ConsoleLoggingEnabled {
 		writers = append(writers, logger)
 	}
+
 	if sg.Configuration.Logging.FileLoggingEnabled {
-		if err := os.MkdirAll(sg.Configuration.Logging.Directory, 0744); err != nil {
+		if err := os.MkdirAll(sg.Configuration.Logging.Directory, 0o744); err != nil {
 			log.Error().Err(err).Str("path", sg.Configuration.Logging.Directory).Msg("Unable to create log directory")
 		} else {
 			lumber := &lumberjack.Logger{
@@ -173,6 +179,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 				MaxSize:    sg.Configuration.Logging.MaxSize,
 				MaxAge:     sg.Configuration.Logging.MaxAge,
 			}
+
 			if sg.Configuration.Logging.EncodeAsJSON {
 				writers = append(writers, lumber)
 			} else {
@@ -197,19 +204,21 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
 	sg.Logger.Info().Msg("Logging configured")
 
-	return
+	return sg, err
 }
 
-// HandleRequest handles incoming HTTP requests
+// HandleRequest handles incoming HTTP requests.
 func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
-	start := time.Now()
 	var processingMS int64
 
+	start := time.Now()
 	path := gotils.B2S(ctx.Path())
 
 	defer func() {
 		var log *zerolog.Event
+
 		statusCode := ctx.Response.StatusCode()
+
 		switch {
 		case (statusCode >= 400 && statusCode <= 499):
 			log = sg.Logger.Warn()
@@ -237,25 +246,27 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	switch path {
 	case "/api/ws":
 		APISubscribe(sg, ctx)
+
 		return
 	case "/api/console":
 		APIConsole(sg, ctx)
+
 		return
 	}
 
 	fasthttp.CompressHandlerBrotliLevel(func(ctx *fasthttp.RequestCtx) {
 		fasthttpadaptor.NewFastHTTPHandler(sg.Router)(ctx)
-		if ctx.Response.StatusCode() != 404 {
+		if ctx.Response.StatusCode() != http.StatusNotFound {
 			ctx.SetContentType("application/json;charset=utf8")
 		}
 		// If there is no URL in router then try serving from the dist
 		// folder.
-		if ctx.Response.StatusCode() == 404 && path != "/" {
+		if ctx.Response.StatusCode() == http.StatusNotFound && path != "/" {
 			ctx.Response.Reset()
 			sg.distHandler(ctx)
 		}
 		// If there is no URL in router or in dist then send index.html
-		if ctx.Response.StatusCode() == 404 {
+		if ctx.Response.StatusCode() == http.StatusNotFound {
 			ctx.Response.Reset()
 			ctx.SendFile("web/dist/index.html")
 		}
@@ -265,9 +276,10 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	ctx.Response.Header.Set("X-Elapsed", strconv.FormatInt(processingMS, 10))
 }
 
-// LoadConfiguration loads the sandwich configuration
+// LoadConfiguration loads the sandwich configuration.
 func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfiguration, err error) {
 	sg.Logger.Debug().Msg("Loading configuration")
+
 	defer func() {
 		if err == nil {
 			sg.Logger.Info().Msg("Configuration loaded")
@@ -279,32 +291,38 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 		if ErrOnConfigurationFailure {
 			return configuration, xerrors.Errorf("load configuration readfile: %w", err)
 		}
+
 		sg.Logger.Warn().Msg("Failed to read configuration but ErrOnConfigurationFailure is disabled")
 	}
 
 	configuration = &SandwichConfiguration{}
 	err = yaml.Unmarshal(file, &configuration)
+
 	if err != nil {
 		if ErrOnConfigurationFailure {
 			return configuration, xerrors.Errorf("load configuration unmarshal: %w", err)
 		}
+
 		sg.Logger.Warn().Msg("Failed to unmarshal configuration but ErrOnConfigurationFailure is disabled")
 	}
 
 	err = sg.NormalizeConfiguration(configuration)
+
 	if err != nil {
 		if ErrOnConfigurationFailure {
 			return configuration, xerrors.Errorf("load configuration normalize: %w", err)
 		}
+
 		sg.Logger.Warn().Msg("Failed to normalize configuration but ErrOnConfigurationFailure is disabled")
 	}
 
-	return
+	return configuration, err
 }
 
-// SaveConfiguration saves the sandwich configuration
+// SaveConfiguration saves the sandwich configuration.
 func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path string) (err error) {
 	sg.Logger.Debug().Msg("Saving configuration")
+
 	defer func() {
 		if err == nil {
 			sg.Logger.Info().Msg("Flushed configuration to disk")
@@ -313,14 +331,17 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 
 	// Load old configuration only if necessary
 	var config *SandwichConfiguration
+
 	oldmanagers := make(map[string]*ManagerConfiguration)
 
 	for _, manager := range configuration.Managers {
 		if !manager.Persist {
 			config, err = sg.LoadConfiguration(path)
+
 			if err != nil {
 				return err
 			}
+
 			for _, mg := range config.Managers {
 				oldmanagers[mg.Identifier] = mg
 			}
@@ -328,6 +349,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 	}
 
 	storedManagers := []*ManagerConfiguration{}
+
 	for _, manager := range configuration.Managers {
 		if !manager.Persist {
 			oldmanager, ok := oldmanagers[manager.Identifier]
@@ -338,8 +360,10 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 				continue
 			}
 		}
+
 		storedManagers = append(storedManagers, manager)
 	}
+
 	configuration.Managers = storedManagers
 
 	data, err := yaml.Marshal(configuration)
@@ -347,15 +371,16 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return xerrors.Errorf("save configuration marshal: %w", err)
 	}
 
-	err = ioutil.WriteFile(path, data, 0644)
+	err = ioutil.WriteFile(path, data, 0o600)
+
 	if err != nil {
 		return xerrors.Errorf("save configuration write: %w", err)
 	}
 
-	return
+	return nil
 }
 
-// NormalizeConfiguration fills in any defaults within the configuration
+// NormalizeConfiguration fills in any defaults within the configuration.
 func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration) (err error) {
 	// We will trim the password just incase
 	sg.ConfigurationMu.Lock()
@@ -368,15 +393,19 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 	if configuration.Redis.Address == "" {
 		return xerrors.Errorf("Configuration missing Redis Address. Try 127.0.0.1:6379")
 	}
+
 	if configuration.NATS.Address == "" {
 		return xerrors.New("Configuration missing NATS address. Try 127.0.0.1:4222")
 	}
+
 	if configuration.NATS.Channel == "" {
 		return xerrors.Errorf("Configuration missing NATS channel. Try sandwich")
 	}
+
 	if configuration.NATS.Cluster == "" {
 		return xerrors.Errorf("Configuration missing NATS cluster. Try cluster")
 	}
+
 	if configuration.HTTP.Host == "" {
 		return xerrors.Errorf("Configuration missing HTTP host. Try 127.0.0.1:5469")
 	}
@@ -384,9 +413,9 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 	return
 }
 
-// Open starts up the application
+// Open starts up sandwich and loads the configuration, starts up the HTTP server and
+// managers who have autostart enabled.
 func (sg *Sandwich) Open() (err error) {
-
 	//          _-**--__
 	//      _--*         *--__         Sandwich Daemon 0
 	//  _-**                  **-_
@@ -395,17 +424,27 @@ func (sg *Sandwich) Open() (err error) {
 	//  *-_ *--__ *****  __---* _*
 	//     *--__ *-----** ___--*       placeholder
 	//          **-____-**
-
 	sg.ConfigurationMu.RLock()
 	defer sg.ConfigurationMu.RUnlock()
 
 	sg.Start = time.Now().UTC()
-	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n     _--*         *--__         Sandwich Daemon %s\n _-**                  **-_\n|_*--_                _-* _|    HTTP: %s\n| *-_ *---_     _----* _-* |    Managers: %d\n *-_ *--__ *****  __---* _*\n     *--__ *-----** ___--*      %s\n         **-____-**\n",
+	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n"+
+		"     _--*         *--__         Sandwich Daemon %s\n"+
+		" _-**                  **-_\n"+
+		"|_*--_                _-* _|    HTTP: %s\n"+
+		"| *-_ *---_     _----* _-* |    Managers: %d\n"+
+		" *-_ *--__ *****  __---* _*\n"+
+		"     *--__ *-----** ___--*      %s\n"+
+		"         **-____-**\n",
 		VERSION, sg.Configuration.HTTP.Host, len(sg.Configuration.Managers), "┬─┬ ノ( ゜-゜ノ)")
 
+	// Check if HTTP is enabled and if it is, set it up.
 	if sg.Configuration.HTTP.Enabled {
 		if sg.Configuration.HTTP.Public {
-			sg.Logger.Warn().Msg("Public mode is enabled on the HTTP API. This can allow anyone to get bot credentials if exposed publicly. It is recommended you disable this and add trusted user ids in sandwich.yaml under \"elevated_users\"")
+			sg.Logger.Warn().Msg(
+				"Public mode is enabled on the HTTP API. This can allow anyone to" +
+					"get bot credentials if exposed publicly. It is recommended you disable" +
+					"this and add trusted user ids in sandwich.yaml under \"elevated_users\"")
 		}
 
 		sg.Logger.Info().Msg("Starting up http server")
@@ -414,8 +453,8 @@ func (sg *Sandwich) Open() (err error) {
 			Compress:        true,
 			CompressBrotli:  true,
 			AcceptByteRange: true,
-			CacheDuration:   time.Hour * 24 * 30,
-			PathNotFound:    fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) { return }),
+			CacheDuration:   time.Hour * distCacheDuration,
+			PathNotFound:    fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) {}),
 		}
 		sg.distHandler = sg.fs.NewRequestHandler()
 
@@ -427,6 +466,7 @@ func (sg *Sandwich) Open() (err error) {
 		go func() {
 			fmt.Printf("Serving on %s (Press CTRL+C to quit)\n", sg.Configuration.HTTP.Host)
 			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
+
 			if err != nil {
 				sg.Logger.Error().Err(err).Msg("Failed to start up http server")
 			}
@@ -442,12 +482,15 @@ func (sg *Sandwich) Open() (err error) {
 		DB:       sg.Configuration.Redis.DB,
 	})
 
+	// Configure RestTunnel
 	sg.Logger.Info().Msg("Configuring RestTunnel")
+
 	if sg.Configuration.RestTunnel.Enabled {
 		enabled, reverse, err := sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 		if err != nil {
 			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
 		}
+
 		sg.RestTunnelReverse.SetTo(reverse)
 		sg.RestTunnelEnabled.SetTo(enabled)
 	} else {
@@ -455,115 +498,145 @@ func (sg *Sandwich) Open() (err error) {
 	}
 
 	sg.Logger.Info().Msg("Creating managers")
-	sg.ManagersMu.Lock()
-	for _, managerConfiguration := range sg.Configuration.Managers {
 
+	sg.startManagers()
+
+	go sg.gatherAnalytics()
+	go sg.analyticsRunner()
+
+	return nil
+}
+
+func (sg *Sandwich) startManagers() {
+	sg.ManagersMu.Lock()
+
+	for _, managerConfiguration := range sg.Configuration.Managers {
 		manager, err := sg.NewManager(managerConfiguration)
 		if err != nil {
 			sg.Logger.Error().Err(err).Msg("Could not create manager")
 
 			continue
 		}
+
 		if _, ok := sg.Managers[managerConfiguration.Identifier]; ok {
-			sg.Logger.Warn().Str("identifier", managerConfiguration.Identifier).Msg("Found conflicting manager identifiers. Ignoring!")
+			sg.Logger.Warn().
+				Str("identifier", managerConfiguration.Identifier).
+				Msg("Found conflicting manager identifiers. Ignoring!")
 
 			continue
 		}
-		sg.Managers[managerConfiguration.Identifier] = manager
 
+		sg.Managers[managerConfiguration.Identifier] = manager
 		err = manager.Open()
+
 		if err != nil {
 			manager.ErrorMu.Lock()
 			manager.Error = err.Error()
 			manager.ErrorMu.Unlock()
+
 			sg.Logger.Error().Err(err).Msg("Failed to start up manager")
-		} else {
-			if manager.Configuration.AutoStart {
-				go func() {
-					manager.Gateway, err = manager.GetGateway()
-					if err != nil {
-						manager.Logger.Error().Err(err).Msg("Failed to start up manager")
-						return
-					}
+		} else if manager.Configuration.AutoStart {
+			go func() {
+				manager.Gateway, err = manager.GetGateway()
+				if err != nil {
+					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
 
-					manager.GatewayMu.RLock()
-					manager.Logger.Info().Int("sessions", manager.Gateway.SessionStartLimit.Remaining).Msg("Retrieved gateway information")
+					return
+				}
 
-					shardCount := manager.GatherShardCount()
-					if shardCount >= manager.Gateway.SessionStartLimit.Remaining {
-						manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
-						manager.GatewayMu.RUnlock()
-						return
-					}
+				manager.GatewayMu.RLock()
+				manager.Logger.Info().
+					Int("sessions", manager.Gateway.SessionStartLimit.Remaining).
+					Msg("Retrieved gateway information")
+
+				shardCount := manager.GatherShardCount()
+				if shardCount >= manager.Gateway.SessionStartLimit.Remaining {
+					manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
 					manager.GatewayMu.RUnlock()
 
-					ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
-					if err != nil {
-						manager.Logger.Error().Err(err).Msg("Failed to start up manager")
-						return
-					}
+					return
+				}
 
-					// Wait for all shards in ShardGroup to be ready
-					<-ready
-				}()
-			}
+				manager.GatewayMu.RUnlock()
+
+				ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
+				if err != nil {
+					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+
+					return
+				}
+
+				// Wait for all shards in ShardGroup to be ready
+				<-ready
+			}()
 		}
 	}
+
 	sg.ManagersMu.Unlock()
-
-	go func() {
-		var events int64
-		var managerEvents int64
-		t := time.NewTicker(time.Second * 1)
-		for {
-			<-t.C
-			events = 0
-			sg.ManagersMu.RLock()
-			for _, mg := range sg.Managers {
-				managerEvents = 0
-
-				mg.ShardGroupsMu.RLock()
-				for _, sg := range mg.ShardGroups {
-					sg.ShardsMu.RLock()
-					for _, sh := range sg.Shards {
-						managerEvents += atomic.SwapInt64(sh.events, 0)
-					}
-					sg.ShardsMu.RUnlock()
-				}
-				mg.ShardGroupsMu.RUnlock()
-
-				if mg.Analytics != nil {
-					mg.Analytics.IncrementBy(managerEvents)
-				}
-				events += managerEvents
-			}
-			sg.ManagersMu.RUnlock()
-			atomic.AddInt64(sg.TotalEvents, events)
-			now := time.Now().UTC()
-			uptime := now.Sub(sg.Start).Round(time.Second)
-			sg.Logger.Debug().Str("Elapsed", uptime.String()).Msgf("%d/s", events)
-		}
-	}()
-
-	go func() {
-		e := time.NewTicker(Interval)
-		for {
-			<-e.C
-			now := time.Now().UTC().Round(time.Second)
-			sg.ManagersMu.RLock()
-			for _, mg := range sg.Managers {
-				if mg.Analytics != nil {
-					go mg.Analytics.RunOnce(now)
-				}
-			}
-			sg.ManagersMu.RUnlock()
-		}
-	}()
-
-	return
 }
 
-// VerifyRestTunnel returns a boolean if RestTunnel can be found and is alive
+func (sg *Sandwich) gatherAnalytics() {
+	var events int64
+
+	var managerEvents int64
+
+	t := time.NewTicker(time.Second * 1)
+
+	for {
+		<-t.C
+
+		events = 0
+
+		sg.ManagersMu.RLock()
+
+		for _, mg := range sg.Managers {
+			managerEvents = 0
+
+			mg.ShardGroupsMu.RLock()
+			for _, sg := range mg.ShardGroups {
+				sg.ShardsMu.RLock()
+				for _, sh := range sg.Shards {
+					managerEvents += atomic.SwapInt64(sh.events, 0)
+				}
+				sg.ShardsMu.RUnlock()
+			}
+			mg.ShardGroupsMu.RUnlock()
+
+			if mg.Analytics != nil {
+				mg.Analytics.IncrementBy(managerEvents)
+			}
+
+			events += managerEvents
+		}
+		sg.ManagersMu.RUnlock()
+		atomic.AddInt64(sg.TotalEvents, events)
+
+		now := time.Now().UTC()
+		uptime := now.Sub(sg.Start).Round(time.Second)
+		sg.Logger.Debug().Str("Elapsed", uptime.String()).Msgf("%d/s", events)
+	}
+}
+
+func (sg *Sandwich) analyticsRunner() {
+	e := time.NewTicker(Interval)
+
+	for {
+		<-e.C
+
+		now := time.Now().UTC().Round(time.Second)
+
+		sg.ManagersMu.RLock()
+
+		for _, mg := range sg.Managers {
+			if mg.Analytics != nil {
+				go mg.Analytics.RunOnce(now)
+			}
+		}
+		sg.ManagersMu.RUnlock()
+	}
+}
+
+// VerifyRestTunnel returns a boolean if RestTunnel can be found and is alive.
 func (sg *Sandwich) VerifyRestTunnel(restTunnelURL string) (enabled bool, reverse bool, err error) {
 	if restTunnelURL == "" {
 		return
@@ -572,12 +645,14 @@ func (sg *Sandwich) VerifyRestTunnel(restTunnelURL string) (enabled bool, revers
 	_url, err := url.Parse(restTunnelURL)
 	if err != nil {
 		sg.Logger.Error().Err(err).Msgf("Failed to parse RestTunnel URL %s", restTunnelURL)
+
 		return
 	}
 
-	resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/resttunnel")
+	resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/resttunnel") //nolint:noctx
 	if err != nil {
 		sg.Logger.Error().Err(err).Msgf("Failed to connect to RestTunnel")
+
 		return
 	}
 
@@ -585,16 +660,21 @@ func (sg *Sandwich) VerifyRestTunnel(restTunnelURL string) (enabled bool, revers
 
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&baseResponse)
+
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to parse RestTunnel alive response")
 	}
 
 	aliveResponse := baseResponse.Data
-	sg.Logger.Info().Msgf("\\o/ Detected RestTunnel version %s. Running in reverse mode: %t", aliveResponse.Version, aliveResponse.Reverse)
+
+	sg.Logger.Info().Msgf(
+		"\\o/ Detected RestTunnel version %s. Running in reverse mode: %t",
+		aliveResponse.Version, aliveResponse.Reverse)
+
 	return true, aliveResponse.Reverse, nil
 }
 
-// Close will gracefully close the application
+// Close will gracefully close the application.
 func (sg *Sandwich) Close() (err error) {
 	sg.Logger.Info().Msg("Closing sandwich")
 

@@ -7,53 +7,52 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/vmihailenco/msgpack"
+	"golang.org/x/xerrors"
 )
 
-// StateGuild represents a guild in the state
+// StateGuild represents a guild in the state.
 type StateGuild struct {
 	ID                          snowflake.ID                       `json:"id" msgpack:"id"`
+	OwnerID                     snowflake.ID                       `json:"owner_id" msgpack:"owner_id"`
+	AFKChannelID                snowflake.ID                       `json:"afk_channel_id" msgpack:"afk_channel_id"`
+	EmbedChannelID              snowflake.ID                       `json:"embed_channel_id,omitempty" msgpack:"embed_channel_id,omitempty"`
 	Name                        string                             `json:"name" msgpack:"name"`
 	Icon                        string                             `json:"icon" msgpack:"icon"`
 	Splash                      string                             `json:"splash" msgpack:"splash"`
-	Owner                       bool                               `json:"owner,omitempty" msgpack:"owner,omitempty"`
-	OwnerID                     snowflake.ID                       `json:"owner_id" msgpack:"owner_id"`
-	Permissions                 int                                `json:"permissions,omitempty" msgpack:"permissions,omitempty"`
 	Region                      string                             `json:"region" msgpack:"region"`
-	AFKChannelID                snowflake.ID                       `json:"afk_channel_id" msgpack:"afk_channel_id"`
+	Permissions                 int                                `json:"permissions,omitempty" msgpack:"permissions,omitempty"`
 	AFKTimeout                  int                                `json:"afk_timeout" msgpack:"afk_timeout"`
-	EmbedEnabled                bool                               `json:"embed_enabled,omitempty" msgpack:"embed_enabled,omitempty"`
-	EmbedChannelID              snowflake.ID                       `json:"embed_channel_id,omitempty" msgpack:"embed_channel_id,omitempty"`
 	VerificationLevel           structs.VerificationLevel          `json:"verification_level" msgpack:"verification_level"`
 	DefaultMessageNotifications structs.MessageNotificationLevel   `json:"default_message_notifications" msgpack:"default_message_notifications"`
 	ExplicitContentFilter       structs.ExplicitContentFilterLevel `json:"explicit_content_filter" msgpack:"explicit_content_filter"`
-	Roles                       []snowflake.ID                     `json:"roles" msgpack:"roles"`
-	Emojis                      []snowflake.ID                     `json:"emojis" msgpack:"emojis"`
-	Features                    []string                           `json:"features" msgpack:"features"`
 	MFALevel                    structs.MFALevel                   `json:"mfa_level" msgpack:"mfa_level"`
 	ApplicationID               snowflake.ID                       `json:"application_id" msgpack:"application_id"`
-	WidgetEnabled               bool                               `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
 	WidgetChannelID             snowflake.ID                       `json:"widget_channel_id,omitempty" msgpack:"widget_channel_id,omitempty"`
 	SystemChannelID             snowflake.ID                       `json:"system_channel_id" msgpack:"system_channel_id"`
 	JoinedAt                    string                             `json:"joined_at,omitempty" msgpack:"joined_at,omitempty"`
+	Owner                       bool                               `json:"owner,omitempty" msgpack:"owner,omitempty"`
+	WidgetEnabled               bool                               `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
+	EmbedEnabled                bool                               `json:"embed_enabled,omitempty" msgpack:"embed_enabled,omitempty"`
 	Large                       bool                               `json:"large,omitempty" msgpack:"large,omitempty"`
 	Unavailable                 bool                               `json:"unavailable,omitempty" msgpack:"unavailable,omitempty"`
 	MemberCount                 int                                `json:"member_count,omitempty" msgpack:"member_count,omitempty"`
+	Roles                       []snowflake.ID                     `json:"roles" msgpack:"roles"`
+	Emojis                      []snowflake.ID                     `json:"emojis" msgpack:"emojis"`
+	Features                    []string                           `json:"features" msgpack:"features"`
 	VoiceStates                 []*structs.VoiceState              `json:"voice_states,omitempty" msgpack:"voice_states,omitempty"`
 	Channels                    []snowflake.ID                     `json:"channels,omitempty" msgpack:"channels,omitempty"`
 	Presences                   []*structs.Activity                `json:"presences,omitempty" msgpack:"presences,omitempty"`
 }
 
-// FromDiscord converts the discord object into the StateGuild form and returns appropriate maps
+// FromDiscord converts the discord object into the StateGuild form and returns appropriate maps.
 func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	roles map[string]interface{},
 	emojis map[string]interface{},
 	channels map[string]interface{}) {
-
 	// (
 	// 	roles map[snowflake.ID]*structs.Role,
 	// 	emojis map[snowflake.ID]*structs.Emoji,
 	// 	channels map[snowflake.ID]*structs.Channel)
-
 	// Im sorry for committing war crimes
 	sg.ID = guild.ID
 	sg.Name = guild.Name
@@ -103,6 +102,7 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	// }
 
 	var ma interface{}
+
 	var err error
 
 	roles = make(map[string]interface{})
@@ -112,6 +112,7 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	for _, role := range guild.Roles {
 		if ma, err = msgpack.Marshal(role); err == nil {
 			roles[role.ID.String()] = ma
+
 			sg.Roles = append(sg.Roles, role.ID)
 		}
 	}
@@ -119,6 +120,7 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	for _, emoji := range guild.Emojis {
 		if ma, err = msgpack.Marshal(emoji); err == nil {
 			emojis[emoji.ID.String()] = ma
+
 			sg.Emojis = append(sg.Emojis, emoji.ID)
 		}
 	}
@@ -126,14 +128,15 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	for _, channel := range guild.Channels {
 		if ma, err = msgpack.Marshal(channel); err == nil {
 			channels[channel.ID.String()] = ma
+
 			sg.Channels = append(sg.Channels, channel.ID)
 		}
 	}
 
-	return
+	return roles, emojis, channels
 }
 
-// StateGuildMember represents a guild member in the state
+// StateGuildMember represents a guild member in the state.
 type StateGuildMember struct {
 	User     snowflake.ID   `json:"user" msgpack:"user"`
 	Nick     string         `json:"nick,omitempty" msgpack:"nick,omitempty"`
@@ -143,7 +146,7 @@ type StateGuildMember struct {
 	Mute     bool           `json:"mute" msgpack:"mute"`
 }
 
-// FromDiscord converts from the discord object into the StateGuild form and returns the user object
+// FromDiscord converts from the discord object into the StateGuild form and returns the user object.
 func (sgm *StateGuildMember) FromDiscord(member structs.GuildMember) (user *structs.User) {
 	sgm.User = member.User.ID
 	sgm.Nick = member.Nick
@@ -155,19 +158,19 @@ func (sgm *StateGuildMember) FromDiscord(member structs.GuildMember) (user *stru
 	return member.User
 }
 
-// CreateKey creates a redis key from a format and values
+// CreateKey creates a redis key from a format and values.
 func (mg *Manager) CreateKey(key string, values ...interface{}) string {
 	return mg.Configuration.Caching.RedisPrefix + ":" + fmt.Sprintf(key, values...)
 }
 
-// StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event
+// StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event.
 func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err error) {
-
 	if !mg.Configuration.Caching.CacheMembers {
 		return
 	}
 
 	members := make([]interface{}, 0, len(packet.Members))
+
 	for _, member := range packet.Members {
 		if ma, err := msgpack.Marshal(member); err == nil {
 			members = append(members, ma)
@@ -222,13 +225,19 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 		members,
 	).Err()
 
-	return
+	if err != nil {
+		return xerrors.Errorf("Failed to process guild member chunks: %w", err)
+	}
+
+	return nil
 }
 
-// StateGuildCreate handles the GUILD_CREATE event
+// StateGuildCreate handles the GUILD_CREATE event.
 func (mg *Manager) StateGuildCreate(packet structs.GuildCreate) (ok bool, err error) {
 	var k []byte
+
 	sg := StateGuild{}
+
 	roles, emojis, channels := sg.FromDiscord(packet.Guild)
 
 	if k, err = msgpack.Marshal(sg); err == nil {
@@ -271,5 +280,5 @@ func (mg *Manager) StateGuildCreate(packet structs.GuildCreate) (ok bool, err er
 	// ok, err = mg.StoreInterface(channels, "channels")
 	// println("channels", len(channels), ok, err.Error())
 
-	return
+	return ok, err
 }

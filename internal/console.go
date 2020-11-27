@@ -1,13 +1,14 @@
 package gateway
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
 	websocket "github.com/fasthttp/websocket"
 )
 
-// ConsolePump handles serving the current logs on the dashboard through Websocket
+// ConsolePump handles serving the current logs on the dashboard through Websocket.
 type ConsolePump struct {
 	ConnsMu sync.RWMutex              `json:"-"`
 	Conns   map[int64]*websocket.Conn `json:"-"`
@@ -21,7 +22,7 @@ type ConsolePump struct {
 	iter *int64
 }
 
-// NewConsolePump creates a new console pump
+// NewConsolePump creates a new console pump.
 func NewConsolePump() *ConsolePump {
 	return &ConsolePump{
 		ConnsMu: sync.RWMutex{},
@@ -37,12 +38,11 @@ func NewConsolePump() *ConsolePump {
 	}
 }
 
-// Write implements io.Writer
+// Write implements io.Writer.
 func (cp *ConsolePump) Write(p []byte) (n int, err error) {
-
 	message, err := websocket.NewPreparedMessage(websocket.TextMessage, p)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to create prapred message: %w", err)
 	}
 
 	cp.ConnsMu.RLock()
@@ -59,10 +59,10 @@ func (cp *ConsolePump) Write(p []byte) (n int, err error) {
 	cp.ConnMuMu.RUnlock()
 	cp.ConnsMu.RUnlock()
 
-	return len(p), err
+	return len(p), nil
 }
 
-// RegisterConnection will take the already established websocket and add it to the pump
+// RegisterConnection will take the already established websocket and add it to the pump.
 func (cp *ConsolePump) RegisterConnection(conn *websocket.Conn) (id int64) {
 	id = atomic.AddInt64(cp.iter, 1)
 
@@ -78,10 +78,11 @@ func (cp *ConsolePump) RegisterConnection(conn *websocket.Conn) (id int64) {
 	cp.Conns[id] = conn
 	cp.Dead[id] = make(chan bool, 1)
 	cp.ConnMu[id] = &sync.Mutex{}
+
 	return
 }
 
-// DeregisterConnection removes a connection from the pump. Returns boolean if it was removed
+// DeregisterConnection removes a connection from the pump. Returns boolean if it was removed.
 func (cp *ConsolePump) DeregisterConnection(id int64) (ok bool) {
 	cp.ConnsMu.Lock()
 	defer cp.ConnsMu.Unlock()
@@ -99,5 +100,6 @@ func (cp *ConsolePump) DeregisterConnection(id int64) (ok bool) {
 
 	delete(cp.Dead, id)
 	delete(cp.ConnMu, id)
+
 	return
 }
