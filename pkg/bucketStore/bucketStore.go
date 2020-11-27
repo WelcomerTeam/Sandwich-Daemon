@@ -12,13 +12,13 @@ import (
 // Use CreateWaitForBucket to create a bucket if it does not exist.
 var ErrNoSuchBucket = errors.New("Bucket does not exist. Use CreateWaitForBucket instead")
 
-// BucketStore is used for managing various limiters
+// BucketStore is used for managing various limiters.
 type BucketStore struct {
 	Buckets   map[string]*limiter.DurationLimiter
 	BucketsMu sync.RWMutex
 }
 
-// NewBucketStore creates a new Buckets map to store different limits
+// NewBucketStore creates a new Buckets map to store different limits.
 func NewBucketStore() (bs *BucketStore) {
 	return &BucketStore{
 		Buckets:   make(map[string]*limiter.DurationLimiter),
@@ -26,7 +26,7 @@ func NewBucketStore() (bs *BucketStore) {
 	}
 }
 
-// CreateBucket will create a new bucket or overwrite
+// CreateBucket will create a new bucket or overwrite.
 func (bs *BucketStore) CreateBucket(name string, limit int32, duration time.Duration) *limiter.DurationLimiter {
 	bs.BucketsMu.RLock()
 	bucket, exists := bs.Buckets[name]
@@ -42,7 +42,7 @@ func (bs *BucketStore) CreateBucket(name string, limit int32, duration time.Dura
 	return bs.Buckets[name]
 }
 
-// WaitForBucket will wait for a bucket to be ready
+// WaitForBucket will wait for a bucket to be ready.
 func (bs *BucketStore) WaitForBucket(name string) (err error) {
 	bs.BucketsMu.RLock()
 	bucket, exists := bs.Buckets[name]
@@ -55,7 +55,7 @@ func (bs *BucketStore) WaitForBucket(name string) (err error) {
 	return
 }
 
-// ResetBucket resets the bucket
+// ResetBucket resets the bucket.
 func (bs *BucketStore) ResetBucket(name string) bool {
 	bs.BucketsMu.RLock()
 	bucket, exists := bs.Buckets[name]

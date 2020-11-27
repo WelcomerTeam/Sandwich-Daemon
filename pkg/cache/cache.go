@@ -32,6 +32,7 @@ func (c *Cache) Get(key int64) interface{} {
 		c.store[key] = &StorePair{val, time.Now().Add(c.ttl)}
 		return val
 	}
+
 	return pair.value
 }
 
@@ -43,6 +44,7 @@ func (c *Cache) Run() {
 	for {
 		<-t.C
 		now := time.Now()
+
 		for {
 			keys := reflect.ValueOf(c.store).MapKeys()
 			key := keys[rand.Intn(len(c.store))].Int()

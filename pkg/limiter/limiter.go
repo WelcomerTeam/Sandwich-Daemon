@@ -26,6 +26,7 @@ func NewConcurrencyLimiter(name string, limit int) *ConcurrencyLimiter {
 	for i := 0; i < c.limit; i++ {
 		c.tickets <- i
 	}
+
 	return c
 }
 
@@ -34,6 +35,7 @@ func NewConcurrencyLimiter(name string, limit int) *ConcurrencyLimiter {
 func (c *ConcurrencyLimiter) Wait() (ticket int) {
 	ticket = <-c.tickets
 	atomic.AddInt32(&c.inProgress, 1)
+
 	return ticket
 }
 
@@ -41,6 +43,7 @@ func (c *ConcurrencyLimiter) Wait() (ticket int) {
 func (c *ConcurrencyLimiter) FreeTicket(ticket int) {
 	c.tickets <- ticket
 	atomic.AddInt32(&c.inProgress, -1)
+
 	return
 }
 
@@ -72,6 +75,7 @@ func NewDurationLimiter(name string, limit int32, duration time.Duration) (bs *D
 		resetsAt:  new(int64),
 		available: new(int32),
 	}
+
 	return bs
 }
 
@@ -98,6 +102,7 @@ func (l *DurationLimiter) Lock() {
 	}
 
 	atomic.AddInt32(l.available, -1)
+
 	return
 }
 

@@ -6,13 +6,17 @@ require (
 	github.com/TheRockettek/czlib v0.0.0-20200626001404-f6ab55296689
 	github.com/TheRockettek/snowflake v0.3.0
 	github.com/fasthttp/websocket v1.4.3
+	github.com/fatih/color v1.10.0 // indirect
 	github.com/go-redis/redis/v8 v8.3.4
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/json-iterator/go v1.1.10
 	github.com/klauspost/compress v1.11.3 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/nats-io/nats-streaming-server v0.19.0 // indirect
 	github.com/nats-io/nats.go v1.10.0
 	github.com/nats-io/stan.go v0.7.0
