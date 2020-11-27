@@ -105,9 +105,9 @@ func (sg *StateGuild) FromDiscord(guild structs.Guild) (
 	var ma interface{}
 	var err error
 
-	roles = make(map[string]interface{}, 0)
-	emojis = make(map[string]interface{}, 0)
-	channels = make(map[string]interface{}, 0)
+	roles = make(map[string]interface{})
+	emojis = make(map[string]interface{})
+	channels = make(map[string]interface{})
 
 	for _, role := range guild.Roles {
 		if ma, err = msgpack.Marshal(role); err == nil {

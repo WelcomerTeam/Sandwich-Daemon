@@ -139,12 +139,12 @@ type Manager struct {
 }
 
 // NewManager creates a new manager
-func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager, err error) {
-	logger := s.Logger.With().Str("manager", configuration.DisplayName).Logger()
+func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager, err error) {
+	logger := sg.Logger.With().Str("manager", configuration.DisplayName).Logger()
 	logger.Info().Msg("Creating new manager")
 
 	mg = &Manager{
-		Sandwich: s,
+		Sandwich: sg,
 		Logger:   logger,
 
 		ErrorMu: sync.RWMutex{},
@@ -170,8 +170,8 @@ func (s *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager,
 		ProduceBlacklist: make([]string, 0),
 	}
 
-	if s.RestTunnelEnabled.IsSet() {
-		mg.Client = NewClient(configuration.Token, s.Configuration.RestTunnel.URL, s.RestTunnelReverse.IsSet())
+	if sg.RestTunnelEnabled.IsSet() {
+		mg.Client = NewClient(configuration.Token, sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet())
 	} else {
 		mg.Client = NewClient(configuration.Token, "", false)
 	}
@@ -386,7 +386,7 @@ func (mg *Manager) Close() {
 
 // GetGateway returns response from /gateway/bot
 func (mg *Manager) GetGateway() (resp structs.GatewayBot, err error) {
-	err = mg.Client.FetchJSON("GET", "/gateway/bot", nil, &resp)
+	err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, &resp)
 	if err != nil {
 		return resp, xerrors.Errorf("get gateway fetchjson: %w", err)
 	}

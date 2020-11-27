@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -51,8 +52,8 @@ func NewClient(token string, restTunnelURL string, reverse bool) *Client {
 }
 
 // FetchJSON attempts to convert the response into a JSON structure
-func (c *Client) FetchJSON(method string, url string, body io.Reader, structure interface{}) (err error) {
-	req, err := http.NewRequest(method, url, body)
+func (c *Client) FetchJSON(ctx context.Context, method string, url string, body io.Reader, structure interface{}) (err error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return
 	}

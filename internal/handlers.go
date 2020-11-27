@@ -349,7 +349,7 @@ func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
 // FetchAnalytics returns the data for the /api/analytics endpoint
 func (sg *Sandwich) FetchAnalytics() (result structs.APIAnalyticsResult) {
 	managers := make([]structs.ManagerInformation, 0, len(sg.Managers))
-	guildCounts := make(map[string]int64, 0)
+	guildCounts := make(map[string]int64)
 
 	for _, manager := range sg.Managers {
 		manager.ConfigurationMu.RLock()
@@ -527,7 +527,7 @@ func APIManagersHandler(sg *Sandwich) http.HandlerFunc {
 
 // FetchManagerResponse returns the data for the /api/manager endpoint
 func (sg *Sandwich) FetchManagerResponse() (managers map[string]structs.APIConfigurationResponseManager) {
-	managers = make(map[string]structs.APIConfigurationResponseManager, 0)
+	managers = make(map[string]structs.APIConfigurationResponseManager)
 
 	sg.ManagersMu.RLock()
 	for managerID, manager := range sg.Managers {
@@ -545,7 +545,7 @@ func (sg *Sandwich) FetchManagerResponse() (managers map[string]structs.APIConfi
 		mg.Error = manager.Error
 		manager.ErrorMu.RUnlock()
 
-		mg.ShardGroups = make(map[int32]structs.APIConfigurationResponseShardGroup, 0)
+		mg.ShardGroups = make(map[int32]structs.APIConfigurationResponseShardGroup)
 
 		manager.ShardGroupsMu.RLock()
 		for shardgroupID, shardgroup := range manager.ShardGroups {
@@ -565,7 +565,7 @@ func (sg *Sandwich) FetchManagerResponse() (managers map[string]structs.APIConfi
 			shg.Error = shardgroup.Error
 			shardgroup.ErrorMu.RUnlock()
 
-			shg.Shards = make(map[int]interface{}, 0)
+			shg.Shards = make(map[int]interface{})
 
 			shardgroup.ShardsMu.RLock()
 			for shardID, shard := range shardgroup.Shards {
@@ -715,8 +715,6 @@ func APIRPCHandler(sg *Sandwich) http.HandlerFunc {
 			passResponse(rw, fmt.Sprintf("Unknown method: %s", RPCMessage.Method), false, http.StatusBadRequest)
 			return
 		}
-
-		return
 	}
 }
 

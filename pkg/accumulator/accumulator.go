@@ -74,10 +74,16 @@ func (ac *Accumulator) GetSamplesSince(t time.Time) *SampleGroup {
 	defer ac.RUnlock()
 	for index := range ac.Samples {
 		if ac.Samples[len(ac.Samples)-index].StoredAt.After(t) {
-			return &SampleGroup{ac.Label, ac.Samples[index:]}
+			return &SampleGroup{
+				Label:   ac.Label,
+				Samples: ac.Samples[index:],
+			}
 		}
 	}
-	return &SampleGroup{ac.Label, ac.Samples}
+	return &SampleGroup{
+		Label:   ac.Label,
+		Samples: ac.Samples,
+	}
 }
 
 // SampleGroup holds a group of samples
@@ -104,10 +110,16 @@ func (sg *SampleGroup) Avg() float64 {
 func (sg *SampleGroup) Since(t time.Time) *SampleGroup {
 	for index := range sg.Samples {
 		if sg.Samples[len(sg.Samples)-index].StoredAt.After(t) {
-			return &SampleGroup{"", sg.Samples[index:]}
+			return &SampleGroup{
+				Label:   "",
+				Samples: sg.Samples[index:],
+			}
 		}
 	}
-	return &SampleGroup{"", sg.Samples}
+	return &SampleGroup{
+		Label:   "",
+		Samples: sg.Samples,
+	}
 }
 
 // RunOnce allows you to manually call the accumulator task in the event you already have a task running every interval

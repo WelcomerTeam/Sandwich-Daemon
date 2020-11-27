@@ -21,7 +21,6 @@ type RateLimiter struct {
 	sync.Mutex
 	global           *int64
 	buckets          map[string]*Bucket
-	globalRateLimit  time.Duration
 	customRateLimits []*customRateLimit
 }
 
@@ -29,8 +28,9 @@ type RateLimiter struct {
 func NewRatelimiter() *RateLimiter {
 
 	return &RateLimiter{
-		buckets:          make(map[string]*Bucket),
+		Mutex:            sync.Mutex{},
 		global:           new(int64),
+		buckets:          make(map[string]*Bucket),
 		customRateLimits: []*customRateLimit{},
 	}
 }
@@ -45,8 +45,9 @@ func (r *RateLimiter) GetBucket(key string) *Bucket {
 	}
 
 	b := &Bucket{
-		Remaining: 1,
+		Mutex:     sync.Mutex{},
 		Key:       key,
+		Remaining: 1,
 		global:    r.global,
 	}
 
@@ -54,11 +55,13 @@ func (r *RateLimiter) GetBucket(key string) *Bucket {
 	for _, rl := range r.customRateLimits {
 		if strings.HasSuffix(b.Key, rl.suffix) {
 			b.customRateLimit = rl
+
 			break
 		}
 	}
 
 	r.buckets[key] = b
+
 	return b
 }
 
@@ -67,7 +70,7 @@ func (r *RateLimiter) GetWaitTime(b *Bucket, minRemaining int) time.Duration {
 	// If we ran out of calls and the reset time is still ahead of us
 	// then we need to take it easy and relax a little
 	if b.Remaining < minRemaining && b.reset.After(time.Now()) {
-		return b.reset.Sub(time.Now())
+		return time.Until(b.reset)
 	}
 
 	// Check for global ratelimits
@@ -101,7 +104,6 @@ type Bucket struct {
 	sync.Mutex
 	Key       string
 	Remaining int
-	limit     int
 	reset     time.Time
 	global    *int64
 
@@ -116,12 +118,13 @@ func (b *Bucket) Release(headers http.Header) error {
 
 	// Check if the bucket uses a custom ratelimiter
 	if rl := b.customRateLimit; rl != nil {
-		if time.Now().Sub(b.lastReset) >= rl.reset {
+		now := time.Now()
+		if now.Sub(b.lastReset) >= rl.reset {
 			b.Remaining = rl.requests - 1
-			b.lastReset = time.Now()
+			b.lastReset = now
 		}
 		if b.Remaining < 1 {
-			b.reset = time.Now().Add(rl.reset)
+			b.reset = now.Add(rl.reset)
 		}
 		return nil
 	}
@@ -154,24 +157,26 @@ func (b *Bucket) Release(headers http.Header) error {
 		} else {
 			b.reset = resetAt
 		}
-	} else if reset != "" {
-		// Calculate the reset time by using the date header returned from discord
-		discordTime, err := http.ParseTime(headers.Get("Date"))
-		if err != nil {
-			return err
-		}
+	} else {
+		if reset != "" {
+			// Calculate the reset time by using the date header returned from discord
+			discordTime, err := http.ParseTime(headers.Get("Date"))
+			if err != nil {
+				return err
+			}
 
-		unix, err := strconv.ParseInt(reset, 10, 64)
-		if err != nil {
-			return err
-		}
+			unix, err := strconv.ParseInt(reset, 10, 64)
+			if err != nil {
+				return err
+			}
 
-		// Calculate the time until reset and add it to the current local time
-		// some extra time is added because without it i still encountered 429's.
-		// The added amount is the lowest amount that gave no 429's
-		// in 1k requests
-		delta := time.Unix(unix, 0).Sub(discordTime) + time.Millisecond*250
-		b.reset = time.Now().Add(delta)
+			// Calculate the time until reset and add it to the current local time
+			// some extra time is added because without it i still encountered 429's.
+			// The added amount is the lowest amount that gave no 429's
+			// in 1k requests
+			delta := time.Unix(unix, 0).Sub(discordTime) + (time.Millisecond * 250)
+			b.reset = time.Now().Add(delta)
+		}
 	}
 
 	// Update remaining if header is present

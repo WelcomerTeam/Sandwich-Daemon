@@ -261,7 +261,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		}
 	}, fasthttp.CompressBrotliDefaultCompression, fasthttp.CompressDefaultCompression)(ctx)
 
-	processingMS = time.Now().Sub(start).Milliseconds()
+	processingMS = time.Since(start).Milliseconds()
 	ctx.Response.Header.Set("X-Elapsed", strconv.FormatInt(processingMS, 10))
 }
 
@@ -461,10 +461,12 @@ func (sg *Sandwich) Open() (err error) {
 		manager, err := sg.NewManager(managerConfiguration)
 		if err != nil {
 			sg.Logger.Error().Err(err).Msg("Could not create manager")
+
 			continue
 		}
 		if _, ok := sg.Managers[managerConfiguration.Identifier]; ok {
 			sg.Logger.Warn().Str("identifier", managerConfiguration.Identifier).Msg("Found conflicting manager identifiers. Ignoring!")
+
 			continue
 		}
 		sg.Managers[managerConfiguration.Identifier] = manager

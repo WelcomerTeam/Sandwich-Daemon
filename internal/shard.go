@@ -410,6 +410,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 					err = nil
 				} else {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
+
 					break
 				}
 				sh.Manager.Sandwich.ConfigurationMu.RLock()
