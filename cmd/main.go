@@ -2,13 +2,12 @@ package main
 
 import (
 	"flag"
+	gateway "github.com/TheRockettek/Sandwich-Daemon/internal"
+	"github.com/rs/zerolog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	gateway "github.com/TheRockettek/Sandwich-Daemon/internal"
-	"github.com/rs/zerolog"
 )
 
 func main() {

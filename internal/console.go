@@ -2,10 +2,9 @@ package gateway
 
 import (
 	"fmt"
+	websocket "github.com/fasthttp/websocket"
 	"sync"
 	"sync/atomic"
-
-	websocket "github.com/fasthttp/websocket"
 )
 
 // ConsolePump handles serving the current logs on the dashboard through Websocket.

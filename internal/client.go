@@ -3,14 +3,13 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
-
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary

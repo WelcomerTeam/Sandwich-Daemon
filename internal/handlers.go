@@ -4,13 +4,6 @@ import (
 	"compress/flate"
 	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"sort"
-	"sync/atomic"
-	"time"
-
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	websocket "github.com/fasthttp/websocket"
 	"github.com/gorilla/sessions"
@@ -19,6 +12,12 @@ import (
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"sort"
+	"sync/atomic"
+	"time"
 )
 
 const forbiddenMessage = "You are not elevated"

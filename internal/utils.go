@@ -3,13 +3,12 @@ package gateway
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"golang.org/x/xerrors"
 	"math"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/xerrors"
 )
 
 const (

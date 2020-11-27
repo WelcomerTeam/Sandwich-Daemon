@@ -4,12 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
@@ -19,6 +13,11 @@ import (
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"runtime"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const timeoutDuration = 2 * time.Second

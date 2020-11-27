@@ -2,13 +2,6 @@ package gateway
 
 import (
 	"context"
-	"math"
-	"math/rand"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/accumulator"
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
@@ -18,6 +11,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
+	"math"
+	"math/rand"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 const maxClientNumber = 9999

@@ -2,12 +2,11 @@ package gateway
 
 import (
 	"fmt"
-	"strconv"
-
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
+	"strconv"
 )
 
 // StateGuild represents a guild in the state.

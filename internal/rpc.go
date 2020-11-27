@@ -2,14 +2,13 @@ package gateway
 
 import (
 	"fmt"
+	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	"github.com/nats-io/stan.go"
 	"math/rand"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	"github.com/nats-io/stan.go"
 )
 
 var rpcHandlers = make(map[string]func(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool)

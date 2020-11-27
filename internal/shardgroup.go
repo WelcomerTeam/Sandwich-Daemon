@@ -1,16 +1,15 @@
 package gateway
 
 import (
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
 	"github.com/tevino/abool"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 // ShardGroup groups a selection of shards.
