@@ -37,7 +37,7 @@ new Vue({
   data() {
     return {
       version: "🥪"
-    }
+    };
   },
   methods: {
     fetchMe() {
