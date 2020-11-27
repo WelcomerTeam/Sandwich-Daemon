@@ -5,7 +5,7 @@
         <div class="container-fluid">
           <router-link class="navbar-brand" to="/">
             Sandwich Daemon
-            <span class="text-secondary h6">Version 🥪</span>
+            <span class="text-secondary h6">Version {{ $root.version }}</span>
           </router-link>
           <button
             class="navbar-toggler"

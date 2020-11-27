@@ -2764,6 +2764,7 @@ export default {
           if (result.status == 403) {
             clearInterval(this.fetch_task);
           }
+          this.$root.version = result.data.data.version;
           this.configuration = result.data.data.configuration;
           this.rest_tunnel_enabled = result.data.data.rest_tunnel_enabled;
           this.error = !result.data.success;

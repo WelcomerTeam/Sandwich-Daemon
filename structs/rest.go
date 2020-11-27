@@ -110,6 +110,7 @@ type APIConfigurationResponse struct {
 	Start             time.Time   `json:"uptime"`
 	Configuration     interface{} `json:"configuration"`
 	RestTunnelEnabled bool        `json:"rest_tunnel_enabled"`
+	Version           string      `json:"version"`
 }
 
 // APIConfigurationResponseManager is the structure of the manager in the /api/configuration endpoint

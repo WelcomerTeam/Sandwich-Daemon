@@ -34,6 +34,11 @@ new Vue({
   mounted() {
     this.fetchMe();
   },
+  data() {
+    return {
+      version: "🥪"
+    }
+  },
   methods: {
     fetchMe() {
       axios

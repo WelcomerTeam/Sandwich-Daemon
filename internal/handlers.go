@@ -620,6 +620,7 @@ func (sg *Sandwich) FetchConfigurationResponse() (pl structs.APIConfigurationRes
 	pl = structs.APIConfigurationResponse{
 		Start:             sg.Start,
 		RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
+		Version:           VERSION,
 	}
 
 	sg.ConfigurationMu.RLock()
