@@ -1,15 +1,16 @@
 package gateway
 
 import (
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
 	"github.com/tevino/abool"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 // ShardGroup groups a selection of shards.
@@ -115,15 +116,17 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 
 		for {
 			err = shard.Connect()
-			if index == 0 && err == nil {
-				err = shard.readMessage(shard.ctx, shard.wsConn)
-				if err == nil {
-					err = shard.OnEvent(shard.msg)
-				}
-			}
 
-			if err != nil && !xerrors.Is(err, context.Canceled) {
+			// We will only close down the entire shardgroup in the event that the first
+			// shard fails to connect. This is to ensure that others are able to properly
+			// connect and not just another generic connect issue which would be annoying
+			// if 1 of your 250 shards die whilst starting up causing all the others to
+			// also be killed.
+			if index == 0 && err != nil && !xerrors.Is(err, context.Canceled) {
 				retries := atomic.LoadInt32(shard.Retries)
+
+				// In the event shard 0 does not successfully connect, we will attempt a
+				// few more times in case it is one of those generic connection issues.
 				if retries > 0 {
 					sg.Logger.Error().Err(err).Int32("retries", retries).Msg("Failed to connect shard. Retrying...")
 				} else {

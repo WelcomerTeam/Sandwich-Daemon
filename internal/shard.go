@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
@@ -13,11 +19,6 @@ import (
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"runtime"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const timeoutDuration = 2 * time.Second
@@ -70,8 +71,8 @@ type Shard struct {
 	rp sync.Pool
 	pp sync.Pool
 
-	msg structs.ReceivedPayload
-	buf []byte
+	MessageCh chan structs.ReceivedPayload
+	ErrorCh   chan error
 
 	events *int64
 
@@ -112,8 +113,6 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		pp: sync.Pool{
 			New: func() interface{} { return new(structs.PublishEvent) },
 		},
-		msg: structs.ReceivedPayload{},
-		buf: make([]byte, 0),
 
 		events: new(int64),
 
@@ -227,17 +226,19 @@ func (sh *Shard) Connect() (err error) {
 
 	// If there is no active ws connection, create a new connection to discord.
 	if sh.wsConn == nil {
-		var conn *websocket.Conn
-		conn, _, err = websocket.Dial(sh.ctx, gatewayURL, nil)
+		var errorCh chan error
+		var messageCh chan structs.ReceivedPayload
 
+		errorCh, messageCh, err = sh.FeedWebsocket(sh.ctx, gatewayURL, nil)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to dial")
 
 			return
 		}
 
-		conn.SetReadLimit(websocketReadLimit)
-		sh.wsConn = conn
+		sh.ErrorCh = errorCh
+		sh.MessageCh = messageCh
+
 	} else {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
@@ -245,7 +246,7 @@ func (sh *Shard) Connect() (err error) {
 	sh.Logger.Trace().Msg("Reading from WS")
 
 	// Read a message from WS which we should expect to be Hello
-	err = sh.readMessage(sh.ctx, sh.wsConn)
+	msg, err := sh.readMessage(sh.ctx)
 
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to read message")
@@ -254,7 +255,7 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	hello := structs.Hello{}
-	err = sh.decodeContent(&hello)
+	err = sh.decodeContent(msg, &hello)
 
 	sh.LastHeartbeatMu.Lock()
 	sh.LastHeartbeatAck = time.Now().UTC()
@@ -315,13 +316,83 @@ func (sh *Shard) Connect() (err error) {
 	sh.Manager.Buckets.ResetBucket(bucket)
 	sh.Manager.ConfigurationMu.RUnlock()
 
+	t := time.NewTicker(time.Second * 5)
+
+	// Wait 5 seconds for the first event or errors in websocket to
+	// ensure there are no error messages such as disallowed intents.
+
 	if sh.HeartbeatActive.IsNotSet() {
 		go sh.Heartbeat()
+	}
+
+	sh.Logger.Trace().Msg("Waiting for first event")
+	select {
+	case err = <-sh.ErrorCh:
+		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
+		return xerrors.Errorf("encountered error whilst connecting: %w", err)
+	case msg = <-sh.MessageCh:
+		if err = sh.OnEvent(msg); err != nil {
+			sh.Logger.Error().Err(err).Msg("Encountered error dispatching event")
+			return xerrors.Errorf("encountered error handling event: %w", err)
+		}
+	case <-t.C:
 	}
 
 	sh.Logger.Trace().Msg("Finished connecting")
 
 	return err
+}
+
+// FeedWebsocket reads websocket events and feeds them through a channel.
+func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
+	opts *websocket.DialOptions) (errorCh chan error, messageCh chan structs.ReceivedPayload, err error) {
+	messageCh = make(chan structs.ReceivedPayload, 64)
+	errorCh = make(chan error, 1)
+
+	conn, _, err := websocket.Dial(ctx, u, opts)
+
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to dial websocket")
+
+		return errorCh, messageCh, xerrors.Errorf("failed to connect to websocket: %w", err)
+	}
+
+	conn.SetReadLimit(websocketReadLimit)
+	sh.wsConn = conn
+
+	go func() {
+		var msg structs.ReceivedPayload
+
+		for {
+			mt, buf, err := conn.Read(ctx)
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			if err != nil {
+				errorCh <- xerrors.Errorf("readMessage read: %w", err)
+				return
+			}
+
+			if mt == websocket.MessageBinary {
+				buf, err = czlib.Decompress(buf)
+				if err != nil {
+					errorCh <- xerrors.Errorf("readMessage decompress: %w", err)
+					return
+				}
+			}
+
+			err = json.Unmarshal(buf, &msg)
+			atomic.AddInt64(sh.events, 1)
+
+			messageCh <- msg
+		}
+	}()
+
+	return errorCh, messageCh, err
 }
 
 // OnEvent processes an event.
@@ -385,7 +456,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		}
 	case structs.GatewayOpHello:
 		hello := structs.Hello{}
-		err = sh.decodeContent(&hello)
+		err = sh.decodeContent(msg, &hello)
 
 		sh.LastHeartbeatMu.Lock()
 		sh.LastHeartbeatAck = time.Now().UTC()
@@ -457,7 +528,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	switch msg.Type {
 	case "READY":
 		readyPayload := structs.Ready{}
-		if err = sh.decodeContent(&readyPayload); err != nil {
+		if err = sh.decodeContent(msg, &readyPayload); err != nil {
 			return
 		}
 
@@ -480,38 +551,43 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		// Todo: Add to sandwich configuration.
 		preemptiveEvents := false
 
-		// I planned on using a context with timeout here to timeout reading messages however it seems the parent
-		// as also inheriting it. This means in its current configuration it may get stuck getting READY until it
-		// receives another event which should not be a problem on larger bots however it will be a problem when
-		// you excessively shard on smaller bots that may have a shard only receive a single event every few
-		// seconds, in which it will have to wait for to recognize it has passed the timeout limit. At the moment
-		// we just have a warning message if you excessively shard. This also does mean if your bot never receives
-		// any events it will never ready.
+		t := time.NewTicker(waitForReadyTimeout)
 
-		wait := time.Now().UTC().Add(timeoutDuration)
-
+	ready:
 		for {
-			timedout := time.Now().UTC().Sub(wait) > (timeoutDuration)
-
-			if !timedout {
-				err = sh.readMessage(sh.ctx, sh.wsConn)
-			}
-
-			if err != nil || timedout {
-				if xerrors.Is(err, context.Canceled) {
-					break
-				}
-
-				if timedout {
-					sh.Logger.Debug().Int("guildEvents", guildCreateEvents).Msg("Shard has finished lazy loading")
-
-					err = nil
-				} else {
+			select {
+			case err := <-sh.ErrorCh:
+				if !xerrors.Is(err, context.Canceled) {
 					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
-
-					break
 				}
 
+				break ready
+			case msg := <-sh.MessageCh:
+				switch msg.Type {
+				case "GUILD_CREATE":
+					guildCreateEvents++
+
+					guildPayload := structs.GuildCreate{}
+
+					if err = sh.decodeContent(msg, &guildPayload); err != nil {
+						sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
+					} else {
+						guildIDs = append(guildIDs, guildPayload.ID.Int64())
+					}
+
+					if _, err = sh.Manager.StateGuildCreate(guildPayload); err != nil {
+						sh.Logger.Error().Err(err).Msg("Failed to handle GUILD_CREATE event")
+					}
+
+					t.Reset(waitForReadyTimeout)
+				default:
+					if preemptiveEvents {
+						events = append(events, msg)
+					} else if err = sh.OnDispatch(msg); err != nil {
+						sh.Logger.Error().Err(err).Msg("Failed dispatching event")
+					}
+				}
+			case <-t.C:
 				sh.Manager.Sandwich.ConfigurationMu.RLock()
 
 				if sh.Manager.Configuration.Caching.RequestMembers {
@@ -547,31 +623,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 				}
 				sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 
-				break
-			}
-
-			if sh.msg.Type == "GUILD_CREATE" {
-				guildCreateEvents++
-
-				guildPayload := structs.GuildCreate{}
-
-				if err = sh.decodeContent(&guildPayload); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
-				} else {
-					guildIDs = append(guildIDs, guildPayload.ID.Int64())
-				}
-
-				if _, err = sh.Manager.StateGuildCreate(guildPayload); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to handle GUILD_CREATE event")
-				}
-
-				wait = time.Now().UTC().Add(timeoutDuration)
-			} else {
-				if preemptiveEvents {
-					events = append(events, sh.msg)
-				} else if err = sh.OnDispatch(sh.msg); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed dispatching event")
-				}
+				break ready
 			}
 		}
 
@@ -598,7 +650,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 	case "GUILD_CREATE":
 		guildPayload := structs.GuildCreate{}
-		if err = sh.decodeContent(&guildPayload); err != nil {
+		if err = sh.decodeContent(msg, &guildPayload); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
 		} else if err = sh.HandleGuildCreate(guildPayload, false); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to process guild create")
@@ -608,7 +660,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 	case "GUILD_MEMBERS_CHUNK":
 		guildMembersPayload := structs.GuildMembersChunk{}
-		if err = sh.decodeContent(&guildMembersPayload); err != nil {
+		if err = sh.decodeContent(msg, &guildMembersPayload); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK")
 		} else if err = sh.Manager.StateGuildMembersChunk(guildMembersPayload); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to process state")
@@ -636,19 +688,14 @@ func (sh *Shard) Latency() (latency int64) {
 
 // HandleGuildCreate handles the guild create event.
 func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err error) {
-	guildPayload := structs.GuildCreate{}
-	if err = sh.decodeContent(&guildPayload); err != nil {
-		sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE whilst lazy loading")
-	} else {
-		if ok, unavailable := sh.Unavailable[guildPayload.ID]; ok && unavailable {
-			// Guild has been lazy loaded
-			sh.Logger.Trace().Msgf("Lazy loaded guild ID %d", guildPayload.ID)
-			guildPayload.Lazy = true || lazy
-		}
-		delete(sh.Unavailable, guildPayload.ID)
-
-		_, err = sh.Manager.StateGuildCreate(guildPayload)
+	if ok, unavailable := sh.Unavailable[payload.ID]; ok && unavailable {
+		// Guild has been lazy loaded
+		sh.Logger.Trace().Msgf("Lazy loaded guild ID %d", payload.ID)
+		payload.Lazy = true || lazy
 	}
+	delete(sh.Unavailable, payload.ID)
+
+	_, err = sh.Manager.StateGuildCreate(payload)
 
 	return
 }
@@ -664,7 +711,7 @@ func (sh *Shard) Listen() (err error) {
 		default:
 		}
 
-		err = sh.readMessage(sh.ctx, wsConn)
+		msg, err := sh.readMessage(sh.ctx)
 		if err != nil {
 			if xerrors.Is(err, context.Canceled) || xerrors.Is(err, context.DeadlineExceeded) {
 				break
@@ -698,7 +745,7 @@ func (sh *Shard) Listen() (err error) {
 						sh.ShardGroup.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
 					}
 
-					return
+					return err
 				default:
 					sh.Logger.Warn().Msgf("Websocket was closed with code %d", closeError.Code)
 				}
@@ -713,13 +760,13 @@ func (sh *Shard) Listen() (err error) {
 					return err
 				}
 
-				return
+				return nil
 			}
 
 			wsConn = sh.wsConn
 		}
 
-		err = sh.OnEvent(sh.msg)
+		err = sh.OnEvent(msg)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Encountered error dispatching event")
 		}
@@ -781,37 +828,27 @@ func (sh *Shard) Heartbeat() {
 }
 
 // decodeContent converts the stored msg into the passed interface.
-func (sh *Shard) decodeContent(out interface{}) (err error) {
-	err = json.Unmarshal(sh.msg.Data, &out)
+func (sh *Shard) decodeContent(msg structs.ReceivedPayload, out interface{}) (err error) {
+	err = json.Unmarshal(msg.Data, &out)
 
 	return
 }
 
 // readMessage fills the shard msg buffer from a websocket message.
-func (sh *Shard) readMessage(ctx context.Context, wsConn *websocket.Conn) (err error) {
-	var mt websocket.MessageType
-	mt, sh.buf, err = wsConn.Read(ctx)
+func (sh *Shard) readMessage(ctx context.Context) (msg structs.ReceivedPayload, err error) {
+	// Prioritize errors
 	select {
-	case <-ctx.Done():
-		return context.Canceled
+	case err = <-sh.ErrorCh:
+		return msg, err
 	default:
 	}
 
-	if err != nil {
-		return xerrors.Errorf("readMessage read: %w", err)
+	select {
+	case err = <-sh.ErrorCh:
+		return msg, err
+	case msg = <-sh.MessageCh:
+		return msg, nil
 	}
-
-	if mt == websocket.MessageBinary {
-		sh.buf, err = czlib.Decompress(sh.buf)
-		if err != nil {
-			return xerrors.Errorf("readMessage decompress: %w", err)
-		}
-	}
-
-	err = json.Unmarshal(sh.buf, &sh.msg)
-	atomic.AddInt64(sh.events, 1)
-
-	return
 }
 
 // CloseWS closes the websocket.
@@ -1059,14 +1096,18 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 	// Ensure that if we close during shardgroup connecting, it will not
 	// feedback loop.
 	// cancel is only defined when Connect() has been ran on a shard.
-	// If the ShardGroup was closed before this happens, it would segfault.
+	// If the ShardGroup was closed before this happens, it would segmentation fault.
 	if sh.ctx != nil && sh.cancel != nil {
 		sh.cancel()
 	}
 
 	if sh.wsConn != nil {
 		if err := sh.CloseWS(code); err != nil {
-			sh.Logger.Error().Err(err).Msg("Encountered error closing websocket")
+			// It is highly common we are closing an already closed websocket
+			// and at this point if we error closing it, its fair game. It would
+			// be nice if the errAlreadyWroteClose error was public in the websocket
+			// library so we could only suppress that error but what can you do.
+			sh.Logger.Debug().Err(err).Msg("Encountered error closing websocket")
 		}
 	}
 

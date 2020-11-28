@@ -81,6 +81,7 @@ export default {
   data() {
     return {
       ws: undefined,
+      ping_interval: undefined,
       connected: false,
       autoscroll: true,
       line_limit: this.limit,
@@ -151,6 +152,12 @@ export default {
     onopen() {
       this.connected = true;
       this.addentry({ message: "Connected to console websocket" });
+
+      this.ping_interval = setInterval(() => {
+        this.ws.send(JSON.stringify({
+          op: 1,
+        }));
+      }, 15000);
     },
     onmessage(event) {
       this.addentry(JSON.parse(event.data));
@@ -158,6 +165,8 @@ export default {
     onclose() {
       this.addentry({ message: "Connection was closed" });
       this.connected = false;
+      
+      clearInterval(this.ping_interval);
     },
     onerror() {}
   }
