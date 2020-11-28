@@ -4,6 +4,13 @@ import (
 	"compress/flate"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"sort"
+	"sync/atomic"
+	"time"
+
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	websocket "github.com/fasthttp/websocket"
 	"github.com/gorilla/sessions"
@@ -12,12 +19,6 @@ import (
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"sort"
-	"sync/atomic"
-	"time"
 )
 
 const forbiddenMessage = "You are not elevated"
@@ -28,7 +29,7 @@ const apiSubscribeDuration = 15
 var upgrader = websocket.FastHTTPUpgrader{
 	EnableCompression: true,
 	CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
-		origins := []string{"http://127.0.0.1:8081", "http://127.0.0.1:5469", "https://sandwich.welcomer.gg/"}
+		origins := []string{"http://127.0.0.1:8081", "http://127.0.0.1:5469", "https://sandwich.welcomer.gg"}
 		origin := gotils.B2S(ctx.Request.Header.Peek("Origin"))
 
 		return gotils.StringSliceInclude(origins, origin)
