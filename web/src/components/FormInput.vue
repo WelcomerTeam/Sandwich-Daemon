@@ -92,7 +92,7 @@
         <option
           v-for="(item, index) in values"
           v-bind:key="index"
-          selected="item == value"
+          :selected="item == value"
           >{{ item }}</option
         >
       </select>

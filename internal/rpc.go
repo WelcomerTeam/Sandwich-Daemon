@@ -2,13 +2,15 @@ package gateway
 
 import (
 	"fmt"
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	"github.com/nats-io/stan.go"
 	"math/rand"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	"github.com/nats-io/stan.go"
+	"github.com/rs/zerolog"
 )
 
 var rpcHandlers = make(map[string]func(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWriter) bool)
@@ -621,6 +623,18 @@ func RPCDaemonUpdate(sg *Sandwich, req structs.RPCRequest, rw http.ResponseWrite
 	sg.ConfigurationMu.Lock()
 	sg.Configuration = &event
 	sg.ConfigurationMu.Unlock()
+
+	zlLevel, err := zerolog.ParseLevel(sg.Configuration.Logging.Level)
+	if err != nil {
+		sg.Logger.Warn().
+			Str("lvl", sg.Configuration.Logging.Level).
+			Msg("Current zerolog level provided is not valid")
+	} else {
+		sg.Logger.Info().
+			Str("lvl", sg.Configuration.Logging.Level).
+			Msg("Changed logging level")
+		zerolog.SetGlobalLevel(zlLevel)
+	}
 
 	passResponse(rw, true, true, http.StatusOK)
 

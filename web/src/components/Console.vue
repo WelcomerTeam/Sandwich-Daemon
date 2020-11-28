@@ -110,7 +110,11 @@ export default {
       this.addentry({ message: "Cleared logs" });
     },
     connect() {
-      this.ws = new WebSocket((window.location.protocol == 'http:' ? 'ws://' : 'wss://') + window.location.host + this.wsurl);
+      this.ws = new WebSocket(
+        (window.location.protocol == "http:" ? "ws://" : "wss://") +
+          window.location.host +
+          this.wsurl
+      );
       // this.ws = new WebSocket("ws://127.0.0.1:5469/api/console");
       this.ws.onopen = this.onopen;
       this.ws.onmessage = this.onmessage;
@@ -154,9 +158,11 @@ export default {
       this.addentry({ message: "Connected to console websocket" });
 
       this.ping_interval = setInterval(() => {
-        this.ws.send(JSON.stringify({
-          op: 1,
-        }));
+        this.ws.send(
+          JSON.stringify({
+            op: 1
+          })
+        );
       }, 15000);
     },
     onmessage(event) {
@@ -165,7 +171,7 @@ export default {
     onclose() {
       this.addentry({ message: "Connection was closed" });
       this.connected = false;
-      
+
       clearInterval(this.ping_interval);
     },
     onerror() {}

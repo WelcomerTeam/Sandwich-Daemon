@@ -1828,6 +1828,21 @@
                   </p>
                 </div>
                 <form-input
+                  v-model="configuration.logging.level"
+                  :type="'select'"
+                  :id="'loggingLevel'"
+                  :label="'Logging Level'"
+                  :values="[
+                    'trace',
+                    'debug',
+                    'info',
+                    'warn',
+                    'error',
+                    'fatal',
+                    'panic'
+                  ]"
+                />
+                <form-input
                   v-model="configuration.logging.directory"
                   :type="'text'"
                   :id="'loggingDirectory'"

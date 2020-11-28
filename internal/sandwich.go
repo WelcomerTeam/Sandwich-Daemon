@@ -2,6 +2,18 @@ package gateway
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/go-redis/redis/v8"
@@ -18,17 +30,6 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 // VERSION respects semantic versioning.
@@ -56,8 +57,9 @@ const distCacheDuration = 720
 // SandwichConfiguration represents the configuration of the program.
 type SandwichConfiguration struct {
 	Logging struct {
-		ConsoleLoggingEnabled bool `json:"console_logging" yaml:"console_logging"`
-		FileLoggingEnabled    bool `json:"file_logging" yaml:"file_logging"`
+		Level                 string `json:"level" yaml:"level"`
+		ConsoleLoggingEnabled bool   `json:"console_logging" yaml:"console_logging"`
+		FileLoggingEnabled    bool   `json:"file_logging" yaml:"file_logging"`
 
 		EncodeAsJSON bool `json:"encode_as_json" yaml:"encode_as_json"` // Make the framework log as json
 
@@ -164,6 +166,19 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	var writers []io.Writer
 
 	sg.ConfigurationMu.RLock()
+
+	zlLevel, err := zerolog.ParseLevel(sg.Configuration.Logging.Level)
+	if err != nil {
+		sg.Logger.Warn().
+			Str("lvl", sg.Configuration.Logging.Level).
+			Msg("Current zerolog level provided is not valid")
+	} else {
+		sg.Logger.Info().
+			Str("lvl", sg.Configuration.Logging.Level).
+			Msg("Changed logging level")
+		zerolog.SetGlobalLevel(zlLevel)
+	}
+
 	if sg.Configuration.Logging.ConsoleLoggingEnabled {
 		writers = append(writers, logger)
 	}
