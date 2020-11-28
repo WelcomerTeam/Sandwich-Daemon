@@ -109,8 +109,8 @@ export default {
       this.addentry({ message: "Cleared logs" });
     },
     connect() {
-      // this.ws = new WebSocket((window.location.protocol == 'http:' ? 'ws://' : 'wss://') + window.location.host + this.wsurl);
-      this.ws = new WebSocket("ws://127.0.0.1:5469/api/console");
+      this.ws = new WebSocket((window.location.protocol == 'http:' ? 'ws://' : 'wss://') + window.location.host + this.wsurl);
+      // this.ws = new WebSocket("ws://127.0.0.1:5469/api/console");
       this.ws.onopen = this.onopen;
       this.ws.onmessage = this.onmessage;
       this.ws.onclose = this.onclose;
