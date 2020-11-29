@@ -1,10 +1,11 @@
 package gateway
 
 import (
+	"net/http"
+
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"net/http"
 )
 
 const (

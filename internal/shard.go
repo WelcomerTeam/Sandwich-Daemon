@@ -551,7 +551,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		// Todo: Add to sandwich configuration.
 		preemptiveEvents := false
 
-		t := time.NewTicker(waitForReadyTimeout)
+		t := time.NewTicker(timeoutDuration)
 
 	ready:
 		for {
@@ -579,7 +579,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 						sh.Logger.Error().Err(err).Msg("Failed to handle GUILD_CREATE event")
 					}
 
-					t.Reset(waitForReadyTimeout)
+					t.Reset(timeoutDuration)
 				default:
 					if preemptiveEvents {
 						events = append(events, msg)
