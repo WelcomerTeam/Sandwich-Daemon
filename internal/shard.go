@@ -386,6 +386,11 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 			}
 
 			err = json.Unmarshal(buf, &msg)
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to unmarshal message")
+				continue
+			}
+
 			atomic.AddInt64(sh.events, 1)
 
 			messageCh <- msg
