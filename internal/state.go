@@ -1,12 +1,15 @@
 package gateway
 
 import (
+	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
-	"strconv"
 )
 
 // StateGuild represents a guild in the state.
@@ -231,6 +234,125 @@ func (mg *Manager) StateGuildMembersChunk(packet structs.GuildMembersChunk) (err
 	return nil
 }
 
+// DispatchReady handles the READY dispatch event.
+func (sh *Shard) DispatchReady(packet structs.Ready) (err error) {
+	sh.User = packet.User
+	sh.sessionID = packet.SessionID
+	sh.Logger.Info().Msg("Received READY payload")
+
+	sh.Unavailable = make(map[snowflake.ID]bool)
+	events := make([]structs.ReceivedPayload, 0)
+
+	guildIDs := make([]int64, 0)
+
+	for _, guild := range packet.Guilds {
+		sh.Unavailable[guild.ID] = guild.Unavailable
+	}
+
+	guildCreateEvents := 0
+
+	// If true will only run events once finished loading.
+	// Todo: Add to sandwich configuration.
+	preemptiveEvents := false
+
+	t := time.NewTicker(timeoutDuration)
+
+ready:
+	for {
+		select {
+		case err := <-sh.ErrorCh:
+			if !xerrors.Is(err, context.Canceled) {
+				sh.Logger.Error().Err(err).Msg("Encountered error whilst waiting lazy loading")
+			}
+
+			break ready
+		case msg := <-sh.MessageCh:
+			switch msg.Type {
+			case "GUILD_CREATE":
+				guildCreateEvents++
+
+				guildPayload := structs.GuildCreate{}
+
+				if err = sh.decodeContent(msg, &guildPayload); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
+				} else {
+					guildIDs = append(guildIDs, guildPayload.ID.Int64())
+				}
+
+				if _, err = sh.Manager.StateGuildCreate(guildPayload); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to handle GUILD_CREATE event")
+				}
+
+				t.Reset(timeoutDuration)
+			default:
+				if preemptiveEvents {
+					events = append(events, msg)
+				} else if err = sh.OnDispatch(msg); err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed dispatching event")
+				}
+			}
+		case <-t.C:
+			sh.Manager.Sandwich.ConfigurationMu.RLock()
+
+			if sh.Manager.Configuration.Caching.RequestMembers {
+				var chunk []int64
+
+				chunkSize := sh.Manager.Configuration.Caching.RequestChunkSize
+
+				for len(guildIDs) >= chunkSize {
+					chunk, guildIDs = guildIDs[:chunkSize], guildIDs[chunkSize:]
+
+					sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
+
+					if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
+						GuildID: chunk,
+						Query:   "",
+						Limit:   0,
+					}); err != nil {
+						sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
+					}
+				}
+
+				if len(guildIDs) > 0 {
+					sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
+
+					if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
+						GuildID: guildIDs,
+						Query:   "",
+						Limit:   0,
+					}); err != nil {
+						sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
+					}
+				}
+			}
+			sh.Manager.Sandwich.ConfigurationMu.RUnlock()
+
+			break ready
+		}
+	}
+
+	sh.ready <- void{}
+	if err := sh.SetStatus(structs.ShardReady); err != nil {
+		sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
+	}
+
+	if preemptiveEvents {
+		sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemptive events")
+
+		for _, event := range events {
+			sh.Logger.Debug().Str("type", event.Type).Send()
+
+			if err = sh.OnDispatch(event); err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemptive events")
+			}
+		}
+
+		sh.Logger.Debug().Msg("Finished dispatching events")
+	}
+
+	return
+}
+
 // StateGuildCreate handles the GUILD_CREATE event.
 func (mg *Manager) StateGuildCreate(packet structs.GuildCreate) (ok bool, err error) {
 	var k []byte
@@ -279,5 +401,5 @@ func (mg *Manager) StateGuildCreate(packet structs.GuildCreate) (ok bool, err er
 	// ok, err = mg.StoreInterface(channels, "channels")
 	// println("channels", len(channels), ok, err.Error())
 
-	return ok, err
+	return ok, nil
 }

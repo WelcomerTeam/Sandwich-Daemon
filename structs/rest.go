@@ -1,9 +1,10 @@
 package structs
 
 import (
+	"time"
+
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	jsoniter "github.com/json-iterator/go"
-	"time"
 )
 
 // BaseResponse is the response when returning REST requests and RPC calls.

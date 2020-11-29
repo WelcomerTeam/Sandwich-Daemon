@@ -218,7 +218,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
 	sg.Logger.Info().Msg("Logging configured")
 
-	return sg, err
+	return sg, nil
 }
 
 // HandleRequest handles incoming HTTP requests.
@@ -396,7 +396,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 
 // NormalizeConfiguration fills in any defaults within the configuration.
 func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration) (err error) {
-	// We will trim the password just incase
+	// We will trim the password just in case.
 	sg.ConfigurationMu.Lock()
 	configuration.Redis.Password = strings.TrimSpace(sg.Configuration.Redis.Password)
 	sg.ConfigurationMu.Unlock()

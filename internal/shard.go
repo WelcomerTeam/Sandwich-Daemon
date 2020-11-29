@@ -227,6 +227,7 @@ func (sh *Shard) Connect() (err error) {
 	// If there is no active ws connection, create a new connection to discord.
 	if sh.wsConn == nil {
 		var errorCh chan error
+
 		var messageCh chan structs.ReceivedPayload
 
 		errorCh, messageCh, err = sh.FeedWebsocket(sh.ctx, gatewayURL, nil)
@@ -238,7 +239,6 @@ func (sh *Shard) Connect() (err error) {
 
 		sh.ErrorCh = errorCh
 		sh.MessageCh = messageCh
-
 	} else {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
@@ -246,7 +246,7 @@ func (sh *Shard) Connect() (err error) {
 	sh.Logger.Trace().Msg("Reading from WS")
 
 	// Read a message from WS which we should expect to be Hello
-	msg, err := sh.readMessage(sh.ctx)
+	msg, err := sh.readMessage()
 
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to read message")
@@ -329,10 +329,12 @@ func (sh *Shard) Connect() (err error) {
 	select {
 	case err = <-sh.ErrorCh:
 		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
+
 		return xerrors.Errorf("encountered error whilst connecting: %w", err)
 	case msg = <-sh.MessageCh:
 		if err = sh.OnEvent(msg); err != nil {
 			sh.Logger.Error().Err(err).Msg("Encountered error dispatching event")
+
 			return xerrors.Errorf("encountered error handling event: %w", err)
 		}
 	case <-t.C:
@@ -374,6 +376,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 
 			if err != nil {
 				errorCh <- xerrors.Errorf("readMessage read: %w", err)
+
 				return
 			}
 
@@ -381,6 +384,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 				buf, err = czlib.Decompress(buf)
 				if err != nil {
 					errorCh <- xerrors.Errorf("readMessage decompress: %w", err)
+
 					return
 				}
 			}
@@ -388,6 +392,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 			err = json.Unmarshal(buf, &msg)
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to unmarshal message")
+
 				continue
 			}
 
@@ -397,7 +402,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 		}
 	}()
 
-	return errorCh, messageCh, err
+	return errorCh, messageCh, nil
 }
 
 // OnEvent processes an event.
@@ -505,6 +510,8 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		sh.LastHeartbeatMu.Unlock()
 
 		return
+	case structs.GatewayOpVoiceStateUpdate:
+		// Todo: handle
 	default:
 		sh.Logger.Warn().
 			Int("op", int(msg.Op)).
@@ -530,149 +537,36 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		}
 	}()
 
+	sh.Logger.Debug().Str("type", msg.Type).Msg("Event dispatched")
+
 	switch msg.Type {
 	case "READY":
 		readyPayload := structs.Ready{}
 		if err = sh.decodeContent(msg, &readyPayload); err != nil {
 			return
-		}
-
-		sh.User = readyPayload.User
-		sh.sessionID = readyPayload.SessionID
-		sh.Logger.Info().Msg("Received READY payload")
-
-		sh.Unavailable = make(map[snowflake.ID]bool)
-		events := make([]structs.ReceivedPayload, 0)
-
-		guildIDs := make([]int64, 0)
-
-		for _, guild := range readyPayload.Guilds {
-			sh.Unavailable[guild.ID] = guild.Unavailable
-		}
-
-		guildCreateEvents := 0
-
-		// If true will only run events once finished loading.
-		// Todo: Add to sandwich configuration.
-		preemptiveEvents := false
-
-		t := time.NewTicker(timeoutDuration)
-
-	ready:
-		for {
-			select {
-			case err := <-sh.ErrorCh:
-				if !xerrors.Is(err, context.Canceled) {
-					sh.Logger.Error().Err(err).Msg("Errored whilst waiting lazy loading")
-				}
-
-				break ready
-			case msg := <-sh.MessageCh:
-				switch msg.Type {
-				case "GUILD_CREATE":
-					guildCreateEvents++
-
-					guildPayload := structs.GuildCreate{}
-
-					if err = sh.decodeContent(msg, &guildPayload); err != nil {
-						sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
-					} else {
-						guildIDs = append(guildIDs, guildPayload.ID.Int64())
-					}
-
-					if _, err = sh.Manager.StateGuildCreate(guildPayload); err != nil {
-						sh.Logger.Error().Err(err).Msg("Failed to handle GUILD_CREATE event")
-					}
-
-					t.Reset(timeoutDuration)
-				default:
-					if preemptiveEvents {
-						events = append(events, msg)
-					} else if err = sh.OnDispatch(msg); err != nil {
-						sh.Logger.Error().Err(err).Msg("Failed dispatching event")
-					}
-				}
-			case <-t.C:
-				sh.Manager.Sandwich.ConfigurationMu.RLock()
-
-				if sh.Manager.Configuration.Caching.RequestMembers {
-					var chunk []int64
-
-					chunkSize := sh.Manager.Configuration.Caching.RequestChunkSize
-
-					for len(guildIDs) >= chunkSize {
-						chunk, guildIDs = guildIDs[:chunkSize], guildIDs[chunkSize:]
-
-						sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
-
-						if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
-							GuildID: chunk,
-							Query:   "",
-							Limit:   0,
-						}); err != nil {
-							sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
-						}
-					}
-
-					if len(guildIDs) > 0 {
-						sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
-
-						if err := sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
-							GuildID: guildIDs,
-							Query:   "",
-							Limit:   0,
-						}); err != nil {
-							sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
-						}
-					}
-				}
-				sh.Manager.Sandwich.ConfigurationMu.RUnlock()
-
-				break ready
-			}
-		}
-
-		sh.ready <- void{}
-		if err := sh.SetStatus(structs.ShardReady); err != nil {
-			sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
-		}
-
-		if preemptiveEvents {
-			sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemptive events")
-
-			for _, event := range events {
-				sh.Logger.Debug().Str("type", event.Type).Send()
-
-				if err = sh.OnDispatch(event); err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemptive events")
-				}
-			}
-
-			sh.Logger.Debug().Msg("Finished dispatching events")
+		} else if err = sh.DispatchReady(readyPayload); err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to process READY event")
 		}
 
 		return
-
 	case "GUILD_CREATE":
 		guildPayload := structs.GuildCreate{}
 		if err = sh.decodeContent(msg, &guildPayload); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
 		} else if err = sh.HandleGuildCreate(guildPayload, false); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to process guild create")
+			sh.Logger.Error().Err(err).Msg("Failed to process GUILD_CREATE event")
 		}
 
 		return
-
 	case "GUILD_MEMBERS_CHUNK":
 		guildMembersPayload := structs.GuildMembersChunk{}
 		if err = sh.decodeContent(msg, &guildMembersPayload); err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK")
 		} else if err = sh.Manager.StateGuildMembersChunk(guildMembersPayload); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to process state")
+			sh.Logger.Error().Err(err).Msg("Failed to process GUILD_MEMBERS_CHUNK event")
 		}
 
 		return
-
 	default:
 	}
 
@@ -698,6 +592,7 @@ func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err 
 		sh.Logger.Trace().Msgf("Lazy loaded guild ID %d", payload.ID)
 		payload.Lazy = true || lazy
 	}
+
 	delete(sh.Unavailable, payload.ID)
 
 	_, err = sh.Manager.StateGuildCreate(payload)
@@ -716,7 +611,7 @@ func (sh *Shard) Listen() (err error) {
 		default:
 		}
 
-		msg, err := sh.readMessage(sh.ctx)
+		msg, err := sh.readMessage()
 		if err != nil {
 			if xerrors.Is(err, context.Canceled) || xerrors.Is(err, context.DeadlineExceeded) {
 				break
@@ -840,7 +735,7 @@ func (sh *Shard) decodeContent(msg structs.ReceivedPayload, out interface{}) (er
 }
 
 // readMessage fills the shard msg buffer from a websocket message.
-func (sh *Shard) readMessage(ctx context.Context) (msg structs.ReceivedPayload, err error) {
+func (sh *Shard) readMessage() (msg structs.ReceivedPayload, err error) {
 	// Prioritize errors
 	select {
 	case err = <-sh.ErrorCh:

@@ -2,8 +2,9 @@ package structs
 
 import (
 	"encoding/json"
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"time"
+
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 )
 
 // Gateway represents a GET /gateway response.
