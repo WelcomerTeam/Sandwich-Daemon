@@ -185,6 +185,11 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 			sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
 		}
 
+		// If a shardgroup has successfully started up, we can remove any manager errors.
+		sg.Manager.ErrorMu.Lock()
+		sg.Manager.Error = ""
+		sg.Manager.ErrorMu.Unlock()
+
 		sg.Manager.ShardGroupsMu.RLock()
 		for index, _sg := range sg.Manager.ShardGroups {
 			if _sg != sg {
