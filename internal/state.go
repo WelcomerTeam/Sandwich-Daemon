@@ -14,36 +14,43 @@ import (
 
 // StateGuild represents a guild in the state.
 type StateGuild struct {
-	ID                          snowflake.ID                       `json:"id" msgpack:"id"`
-	OwnerID                     snowflake.ID                       `json:"owner_id" msgpack:"owner_id"`
-	AFKChannelID                snowflake.ID                       `json:"afk_channel_id" msgpack:"afk_channel_id"`
-	EmbedChannelID              snowflake.ID                       `json:"embed_channel_id,omitempty" msgpack:"embed_channel_id,omitempty"`
-	Name                        string                             `json:"name" msgpack:"name"`
-	Icon                        string                             `json:"icon" msgpack:"icon"`
-	Splash                      string                             `json:"splash" msgpack:"splash"`
-	Region                      string                             `json:"region" msgpack:"region"`
-	Permissions                 int                                `json:"permissions,omitempty" msgpack:"permissions,omitempty"`
-	AFKTimeout                  int                                `json:"afk_timeout" msgpack:"afk_timeout"`
+	ID             snowflake.ID `json:"id" msgpack:"id"`
+	OwnerID        snowflake.ID `json:"owner_id" msgpack:"owner_id"`
+	AFKChannelID   snowflake.ID `json:"afk_channel_id" msgpack:"afk_channel_id"`
+	EmbedChannelID snowflake.ID `json:"embed_channel_id,omitempty" msgpack:"embed_channel_id,omitempty"`
+
+	Name   string `json:"name" msgpack:"name"`
+	Icon   string `json:"icon" msgpack:"icon"`
+	Splash string `json:"splash" msgpack:"splash"`
+	Region string `json:"region" msgpack:"region"`
+
+	Permissions int `json:"permissions,omitempty" msgpack:"permissions,omitempty"`
+	AFKTimeout  int `json:"afk_timeout" msgpack:"afk_timeout"`
+
 	VerificationLevel           structs.VerificationLevel          `json:"verification_level" msgpack:"verification_level"`
-	DefaultMessageNotifications structs.MessageNotificationLevel   `json:"default_message_notifications" msgpack:"default_message_notifications"`
-	ExplicitContentFilter       structs.ExplicitContentFilterLevel `json:"explicit_content_filter" msgpack:"explicit_content_filter"`
+	DefaultMessageNotifications structs.MessageNotificationLevel   `json:"default_message_notifications" msgpack:"default_message_notifications"` // nolint:lll
+	ExplicitContentFilter       structs.ExplicitContentFilterLevel `json:"explicit_content_filter" msgpack:"explicit_content_filter"`             // nolint:lll
 	MFALevel                    structs.MFALevel                   `json:"mfa_level" msgpack:"mfa_level"`
-	ApplicationID               snowflake.ID                       `json:"application_id" msgpack:"application_id"`
-	WidgetChannelID             snowflake.ID                       `json:"widget_channel_id,omitempty" msgpack:"widget_channel_id,omitempty"`
-	SystemChannelID             snowflake.ID                       `json:"system_channel_id" msgpack:"system_channel_id"`
-	JoinedAt                    string                             `json:"joined_at,omitempty" msgpack:"joined_at,omitempty"`
-	Owner                       bool                               `json:"owner,omitempty" msgpack:"owner,omitempty"`
-	WidgetEnabled               bool                               `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
-	EmbedEnabled                bool                               `json:"embed_enabled,omitempty" msgpack:"embed_enabled,omitempty"`
-	Large                       bool                               `json:"large,omitempty" msgpack:"large,omitempty"`
-	Unavailable                 bool                               `json:"unavailable,omitempty" msgpack:"unavailable,omitempty"`
-	MemberCount                 int                                `json:"member_count,omitempty" msgpack:"member_count,omitempty"`
-	Roles                       []snowflake.ID                     `json:"roles" msgpack:"roles"`
-	Emojis                      []snowflake.ID                     `json:"emojis" msgpack:"emojis"`
-	Features                    []string                           `json:"features" msgpack:"features"`
-	VoiceStates                 []*structs.VoiceState              `json:"voice_states,omitempty" msgpack:"voice_states,omitempty"`
-	Channels                    []snowflake.ID                     `json:"channels,omitempty" msgpack:"channels,omitempty"`
-	Presences                   []*structs.Activity                `json:"presences,omitempty" msgpack:"presences,omitempty"`
+
+	ApplicationID   snowflake.ID `json:"application_id" msgpack:"application_id"`
+	WidgetChannelID snowflake.ID `json:"widget_channel_id,omitempty" msgpack:"widget_channel_id,omitempty"`
+	SystemChannelID snowflake.ID `json:"system_channel_id" msgpack:"system_channel_id"`
+
+	JoinedAt string `json:"joined_at,omitempty" msgpack:"joined_at,omitempty"`
+
+	Owner         bool `json:"owner,omitempty" msgpack:"owner,omitempty"`
+	WidgetEnabled bool `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
+	EmbedEnabled  bool `json:"embed_enabled,omitempty" msgpack:"embed_enabled,omitempty"`
+	Large         bool `json:"large,omitempty" msgpack:"large,omitempty"`
+	Unavailable   bool `json:"unavailable,omitempty" msgpack:"unavailable,omitempty"`
+	MemberCount   int  `json:"member_count,omitempty" msgpack:"member_count,omitempty"`
+
+	Roles       []snowflake.ID        `json:"roles" msgpack:"roles"`
+	Emojis      []snowflake.ID        `json:"emojis" msgpack:"emojis"`
+	Features    []string              `json:"features" msgpack:"features"`
+	VoiceStates []*structs.VoiceState `json:"voice_states,omitempty" msgpack:"voice_states,omitempty"`
+	Channels    []snowflake.ID        `json:"channels,omitempty" msgpack:"channels,omitempty"`
+	Presences   []*structs.Activity   `json:"presences,omitempty" msgpack:"presences,omitempty"`
 }
 
 // FromDiscord converts the discord object into the StateGuild form and returns appropriate maps.
@@ -350,7 +357,7 @@ ready:
 		sh.Logger.Debug().Msg("Finished dispatching events")
 	}
 
-	return
+	return nil
 }
 
 // StateGuildCreate handles the GUILD_CREATE event.

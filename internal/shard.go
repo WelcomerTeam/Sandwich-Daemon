@@ -751,15 +751,19 @@ func (sh *Shard) readMessage() (msg structs.ReceivedPayload, err error) {
 	}
 }
 
-// CloseWS closes the websocket.
+// CloseWS closes the websocket. This will always return 0 as the error is suppressed.
 func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 	if sh.wsConn != nil {
 		sh.Logger.Debug().Str("code", statusCode.String()).Msg("Closing websocket connection")
 		err = sh.wsConn.Close(statusCode, "")
+		if err != nil {
+			sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
+		}
+
 		sh.wsConn = nil
 	}
 
-	return
+	return nil
 }
 
 // Resume sends the resume packet to gateway.

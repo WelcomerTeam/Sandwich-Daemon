@@ -391,6 +391,39 @@
         </div>
       </div>
 
+
+      <ul class="list-group mb-4">
+        <li
+          class="list-group-item list-group-item-action list-group-item-danger"
+          v-for="(manager, index) in erroredManagers()"
+          v-bind:key="index"
+        >
+          Manager {{ manager.configuration.display_name }} encountered an error
+        </li>
+        <li
+          class="list-group-item list-group-item-action list-group-item-danger"
+          v-for="(shardgroup, index) in erroredShardGroups()"
+          v-bind:key="index"
+        >
+          {{ shardgroup.manager }} ShardGroup {{ shardgroup.id }} encountered an error
+        </li>
+        <li
+          class="list-group-item d-flex justify-content-between align-items-center"
+          v-for="(shardgroup, index) in loadingShardGroups()"
+          v-bind:key="index"
+        >
+          <span>
+            Starting {{ shardgroup.manager }} ShardGroup {{ shardgroup.id }}
+          </span>
+          <status-graph
+            :value="shardgroup"
+            :colours="colourShard"
+            style="width: 50%"
+          >
+          </status-graph>
+        </li>
+      </ul>
+
       <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
         <li class="nav-item" role="presentation">
           <a
@@ -2150,7 +2183,7 @@
           class="tab-pane fade"
           id="pills-console"
           role="tabpanel"
-          aria-labelledby="pills-settings-tab"
+          aria-labelledby="pills-console-tab"
         >
           <console wsurl="/api/console" :limit="0"></console>
         </div>
@@ -2507,7 +2540,7 @@ export default {
   filters: {
     pretty: function(value) {
       return JSON.stringify(value, null, 2);
-    }
+    },
   },
   mounted() {
     this.toastModal = new Toast(document.getElementById("toast"), {
@@ -2540,6 +2573,65 @@ export default {
         .catch(error => {
           this.showToast("Exception sending RPC", error);
         });
+    },
+
+    erroredManagers() {
+      var managers = [];
+      for (var mindex in this.managers) {
+        var manager = JSON.parse(JSON.stringify(this.managers[mindex]));
+      
+        manager.status = 0;
+        if (manager.shard_groups.length > 0) {
+          manager.status = manager.shard_groups.slice(-1)[0].status;
+        }
+        if (manager.error != "") {
+          manager.status = 7;
+        }
+
+        if (manager.status == 7) {
+          managers.push(manager);
+          break
+        }
+      }
+      return managers
+    },
+
+    erroredShardGroups() {
+      var shard_groups = [];
+      for (var mindex in this.managers) {
+        var manager = this.managers[mindex];
+        for (var sgindex in manager.shard_groups) {
+          var shard_group = JSON.parse(JSON.stringify(manager.shard_groups[sgindex]));
+          shard_group.manager = manager.configuration.display_name;
+          for (var sindex in shard_group.shards) {
+            var shard = shard_group.shards[sindex];
+            if (shard.status == 7) {
+              shard_groups.push(shard_group);
+              break
+            }
+          }
+        }
+      }
+      return shard_groups
+    },
+    
+    loadingShardGroups() {
+      var shard_groups = [];
+      for (var mindex in this.managers) {
+        var manager = this.managers[mindex];
+        for (var sgindex in manager.shard_groups) {
+          var shard_group = JSON.parse(JSON.stringify(manager.shard_groups[sgindex]));
+          shard_group.manager = manager.configuration.display_name;
+          for (var sindex in shard_group.shards) {
+            var shard = shard_group.shards[sindex];
+            if (shard.status == 0) {
+              shard_groups.push(shard_group);
+              break
+            }
+          } 
+        }
+      }
+      return shard_groups
     },
 
     showToast(title, body) {
