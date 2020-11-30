@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,13 +42,15 @@ type Client struct {
 	URLScheme string
 	UserAgent string
 
+	isBot bool
+
 	// Will use RestTunnel if not empty
 	restTunnelURL string
 	reverse       bool
 }
 
 // NewClient makes a new client.
-func NewClient(token string, restTunnelURL string, reverse bool) *Client {
+func NewClient(token string, restTunnelURL string, reverse bool, isBot bool) *Client {
 	return &Client{
 		mu:            sync.RWMutex{},
 		Token:         token,
@@ -54,17 +58,23 @@ func NewClient(token string, restTunnelURL string, reverse bool) *Client {
 		APIVersion:    "6",
 		URLHost:       "discord.com",
 		URLScheme:     "https",
+		isBot:         isBot,
 		restTunnelURL: restTunnelURL,
 		reverse:       reverse,
 	}
 }
 
-// FetchJSON attempts to convert the response into a JSON structure.
-func (c *Client) FetchJSON(ctx context.Context, method string, url string,
-	body io.Reader, structure interface{}) (err error) {
+// Fetch returns the response. Passing any headers will be sent to the request however
+// Authorization will be overwrote.
+func (c *Client) Fetch(ctx context.Context, method string, url string,
+	body io.Reader, headers map[string]string) (_body []byte, err error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return
+	}
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 
 	res, err := c.HandleRequest(req, false)
@@ -73,8 +83,20 @@ func (c *Client) FetchJSON(ctx context.Context, method string, url string,
 	}
 
 	defer res.Body.Close()
-	err = json.NewDecoder(res.Body).Decode(structure)
+	return ioutil.ReadAll(res.Body)
+}
 
+// FetchJSON attempts to convert the response into a JSON structure. Passing any headers
+// will be sent to the request however Authorization will be overwrote.
+func (c *Client) FetchJSON(ctx context.Context, method string, url string,
+	body io.Reader, headers map[string]string, structure interface{}) (err error) {
+
+	_body, err := c.Fetch(ctx, method, url, body, headers)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(_body, &structure)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal body: %w", err)
 	}
@@ -87,8 +109,8 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if !retry {
-		// If we are trying the request, do not add again
+	// Add the /api and version prefix when we did not include one
+	if !strings.HasPrefix(req.URL.Path, "/api") {
 		req.URL.Path = "/api/v" + c.APIVersion + req.URL.Path
 	}
 
@@ -96,7 +118,14 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 	req.URL.Scheme = replaceIfEmpty(req.URL.Scheme, c.URLScheme)
 
 	req.Header.Set("User-Agent", replaceIfEmpty(req.Header.Get("User-Agent"), c.UserAgent))
-	req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), ("Bot "+c.Token)))
+
+	if c.Token != "" {
+		if c.isBot {
+			req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), ("Bot "+c.Token)))
+		} else {
+			req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), c.Token))
+		}
+	}
 
 	if c.restTunnelURL == "" {
 		if res, err = c.HTTP.Do(req); err != nil {
@@ -140,3 +169,29 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 
 	return res, nil
 }
+
+// Sending webhook example
+// c := NewClient("", sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet(), false)
+// ctx := context.Background()
+
+// res, err := json.Marshal(structs.Message{
+// 	Content: "Hello World!",
+// 	Embeds: []structs.Embed{
+// 		{
+// 			Title:       "Test Embed",
+// 			Description: "Welcomer 7.0 webhook testing",
+// 		},
+// 	},
+// })
+// if err != nil {
+// 	sg.Logger.Error().Err(err).Msg("Failed to marshal event")
+// }
+
+// headers := map[string]string{
+// 	"content-type": "application/json",
+// }
+
+// b, err := c.Fetch(ctx, "POST", "/api/webhooks/.../...", bytes.NewBuffer(res), headers)
+// if err != nil {
+// 	sg.Logger.Error().Err(err).Msg("Failed to send webhook")
+// }

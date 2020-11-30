@@ -175,9 +175,9 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 	}
 
 	if sg.RestTunnelEnabled.IsSet() {
-		mg.Client = NewClient(configuration.Token, sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet())
+		mg.Client = NewClient(configuration.Token, sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet(), true)
 	} else {
-		mg.Client = NewClient(configuration.Token, "", false)
+		mg.Client = NewClient(configuration.Token, "", false, true)
 	}
 
 	err = mg.NormalizeConfiguration()
@@ -402,7 +402,7 @@ func (mg *Manager) Close() {
 
 // GetGateway returns response from /gateway/bot.
 func (mg *Manager) GetGateway() (resp structs.GatewayBot, err error) {
-	err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, &resp)
+	err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
 	if err != nil {
 		return resp, xerrors.Errorf("get gateway fetchjson: %w", err)
 	}
