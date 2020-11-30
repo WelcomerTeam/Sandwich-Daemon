@@ -756,7 +756,7 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 	if sh.wsConn != nil {
 		sh.Logger.Debug().Str("code", statusCode.String()).Msg("Closing websocket connection")
 		err = sh.wsConn.Close(statusCode, "")
-		if err != nil {
+		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
 		}
 
