@@ -394,27 +394,31 @@
 
       <ul class="list-group mb-4">
         <li
-          class="list-group-item list-group-item-action list-group-item-danger"
+          class="list-group-item list-group-item-action border-danger text-danger"
           v-for="(manager, index) in erroredManagers()"
           v-bind:key="index"
         >
+          <svg-icon type="mdi" :path="mdiAlertCircle" />
           Manager {{ manager.configuration.display_name }} encountered an error
         </li>
         <li
-          class="list-group-item list-group-item-action list-group-item-danger"
+          class="list-group-item list-group-item-action border-danger text-danger"
           v-for="(shardgroup, index) in erroredShardGroups()"
           v-bind:key="index"
         >
           {{ shardgroup.manager }} ShardGroup {{ shardgroup.id }} encountered an error
         </li>
         <li
-          class="list-group-item d-flex justify-content-between align-items-center"
+          class="list-group-item d-flex justify-content-between align-items-center border-info text-info"
           v-for="(shardgroup, index) in loadingShardGroups()"
           v-bind:key="index"
         >
-          <span>
-            Starting {{ shardgroup.manager }} ShardGroup {{ shardgroup.id }}
-          </span>
+          <div>
+            <svg-icon type="mdi" :path="mdiConnection" />
+            <span>
+              Starting {{ shardgroup.manager }} ShardGroup {{ shardgroup.id }}
+            </span>
+          </div>
           <status-graph
             :value="shardgroup"
             :colours="colourShard"
@@ -2251,7 +2255,7 @@
 <script>
 import axios from "axios";
 import SvgIcon from "@jamescoyle/vue-icon";
-import { mdiAlertCircle } from "@mdi/js";
+import { mdiAlertCircle, mdiConnection } from "@mdi/js";
 
 import { Toast, Modal } from "bootstrap";
 
@@ -2277,6 +2281,7 @@ export default {
     return {
       fetch_task: undefined,
       mdiAlertCircle: mdiAlertCircle,
+      mdiConnection: mdiConnection,
       version: "...",
       loading: true,
       error: false,
