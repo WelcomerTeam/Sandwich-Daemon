@@ -391,7 +391,6 @@
         </div>
       </div>
 
-
       <ul class="list-group mb-4">
         <li
           class="list-group-item list-group-item-action border-danger text-danger"
@@ -406,7 +405,8 @@
           v-for="(shardgroup, index) in erroredShardGroups()"
           v-bind:key="index"
         >
-          {{ shardgroup.manager }} ShardGroup {{ shardgroup.id }} encountered an error
+          {{ shardgroup.manager }} ShardGroup {{ shardgroup.id }} encountered an
+          error
         </li>
         <li
           class="list-group-item d-flex justify-content-between align-items-center border-info text-info"
@@ -1755,8 +1755,33 @@
                   href="#daemonSettings-logging"
                   role="tab"
                   aria-selected="true"
-                  >Logging</a
                 >
+                  <svg-icon
+                    type="mdi"
+                    width="20"
+                    height="20"
+                    :path="mdiTextBoxMultiple"
+                  />
+                  Logging
+                </a>
+              </li>
+              <li class="nav-item" role="presentation">
+                <a
+                  class="nav-link"
+                  id="webhooks-tab"
+                  data-toggle="tab"
+                  href="#daemonSettings-webhooks"
+                  role="tab"
+                  aria-selected="false"
+                >
+                  <svg-icon
+                    type="mdi"
+                    width="20"
+                    height="20"
+                    :path="mdiWebhook"
+                  />
+                  Webhooks
+                </a>
               </li>
               <li class="nav-item" role="presentation">
                 <a
@@ -1767,6 +1792,12 @@
                   role="tab"
                   aria-selected="false"
                 >
+                  <svg-icon
+                    type="mdi"
+                    width="20"
+                    height="20"
+                    :path="mdiDoorOpen"
+                  />
                   Access
                 </a>
               </li>
@@ -1778,7 +1809,14 @@
                   href="#daemonSettings-redis"
                   role="tab"
                   aria-selected="false"
-                  >Redis</a
+                >
+                  <svg-icon
+                    type="mdi"
+                    width="20"
+                    height="20"
+                    :path="mdiDatabase"
+                  />
+                  Redis</a
                 >
               </li>
               <li class="nav-item" role="presentation">
@@ -1789,7 +1827,14 @@
                   href="#daemonSettings-nats"
                   role="tab"
                   aria-selected="false"
-                  >NATs</a
+                >
+                  <svg-icon
+                    type="mdi"
+                    width="20"
+                    height="20"
+                    :path="mdiMessageProcessing"
+                  />
+                  NATs</a
                 >
               </li>
               <li class="nav-item" role="presentation">
@@ -1800,7 +1845,9 @@
                   href="#daemonSettings-http"
                   role="tab"
                   aria-selected="false"
-                  >HTTP</a
+                >
+                  <svg-icon type="mdi" width="20" height="20" :path="mdiWeb" />
+                  HTTP</a
                 >
               </li>
               <li class="nav-item" role="presentation">
@@ -1811,7 +1858,14 @@
                   href="#daemonSettings-resttunnel"
                   role="tab"
                   aria-selected="false"
-                  ><b>RestTunnel</b></a
+                >
+                  <svg-icon
+                    type="mdi"
+                    width="20"
+                    height="20"
+                    :path="mdiFilter"
+                  />
+                  RestTunnel</a
                 >
               </li>
               <li class="nav-item" role="presentation">
@@ -1920,6 +1974,60 @@
                   Number of days that a log file can exist before it is removed.
                 </p>
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="daemonSettings-webhooks"
+                role="tabpanel"
+                aria-labelledby="webhooks-tab"
+              >
+                <!-- Webhooks -->
+                <div class="d-flex pb-3 border-bottom border-muted">
+                  <input
+                    v-model="webhook_url"
+                    class="form-control flex-grow-1"
+                    type="text"
+                    id="webhookName"
+                    placeholder="Webhook URL"
+                    style="width: fit-content;"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-dark ml-3"
+                    :disabled="!validURL(webhook_url)"
+                    @click="addWebhook(webhook_url)"
+                  >
+                    Add Webhook
+                  </button>
+                </div>
+
+                <div
+                  v-for="(webhook, index) in configuration.webhooks"
+                  v-bind:key="index"
+                  class="card text-left py-3 border-bottom border-muted border-top-0 border-left-0 border-right-0 flex-column flex-sm-row"
+                >
+                  <div class="my-auto" style="width: fit-content;">
+                    <small class="text-dark" style="overflow-wrap: anywhere;">{{
+                      webhook
+                    }}</small>
+                  </div>
+                  <div class="text-center ml-3">
+                    <button
+                      type="button"
+                      class="m-1 btn btn-info"
+                      @click="testWebhook(webhook)"
+                    >
+                      Test Webhook
+                    </button>
+                    <button
+                      type="button"
+                      class="m-1 btn btn-danger"
+                      @click="removeWebhook(webhook)"
+                    >
+                      Remove Webhook
+                    </button>
+                  </div>
+                </div>
               </div>
               <div
                 class="tab-pane fade"
@@ -2255,7 +2363,17 @@
 <script>
 import axios from "axios";
 import SvgIcon from "@jamescoyle/vue-icon";
-import { mdiAlertCircle, mdiConnection } from "@mdi/js";
+import {
+  mdiAlertCircle,
+  mdiConnection,
+  mdiTextBoxMultiple,
+  mdiWebhook,
+  mdiDoorOpen,
+  mdiDatabase,
+  mdiMessageProcessing,
+  mdiWeb,
+  mdiFilter
+} from "@mdi/js";
 
 import { Toast, Modal } from "bootstrap";
 
@@ -2279,9 +2397,19 @@ export default {
   name: "Dashboard",
   data() {
     return {
+      mdiAlertCircle,
+      mdiConnection,
+      mdiTextBoxMultiple,
+      mdiWebhook,
+      mdiDoorOpen,
+      mdiDatabase,
+      mdiMessageProcessing,
+      mdiWeb,
+      mdiFilter,
+
+      webhook_url: "",
+
       fetch_task: undefined,
-      mdiAlertCircle: mdiAlertCircle,
-      mdiConnection: mdiConnection,
       version: "...",
       loading: true,
       error: false,
@@ -2545,7 +2673,7 @@ export default {
   filters: {
     pretty: function(value) {
       return JSON.stringify(value, null, 2);
-    },
+    }
   },
   mounted() {
     this.toastModal = new Toast(document.getElementById("toast"), {
@@ -2559,6 +2687,15 @@ export default {
     this.pollData();
   },
   methods: {
+    validURL(url) {
+      try {
+        new URL(url);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+
     sendRPC(method, data, id) {
       axios
         .post("/api/rpc", {
@@ -2584,7 +2721,7 @@ export default {
       var managers = [];
       for (var mindex in this.managers) {
         var manager = JSON.parse(JSON.stringify(this.managers[mindex]));
-      
+
         manager.status = 0;
         if (manager.shard_groups.length > 0) {
           manager.status = manager.shard_groups.slice(-1)[0].status;
@@ -2595,10 +2732,10 @@ export default {
 
         if (manager.status == 7) {
           managers.push(manager);
-          break
+          break;
         }
       }
-      return managers
+      return managers;
     },
 
     erroredShardGroups() {
@@ -2606,43 +2743,61 @@ export default {
       for (var mindex in this.managers) {
         var manager = this.managers[mindex];
         for (var sgindex in manager.shard_groups) {
-          var shard_group = JSON.parse(JSON.stringify(manager.shard_groups[sgindex]));
+          var shard_group = JSON.parse(
+            JSON.stringify(manager.shard_groups[sgindex])
+          );
           shard_group.manager = manager.configuration.display_name;
           for (var sindex in shard_group.shards) {
             var shard = shard_group.shards[sindex];
             if (shard.status == 7) {
               shard_groups.push(shard_group);
-              break
+              break;
             }
           }
         }
       }
-      return shard_groups
+      return shard_groups;
     },
-    
+
     loadingShardGroups() {
       var shard_groups = [];
       for (var mindex in this.managers) {
         var manager = this.managers[mindex];
         for (var sgindex in manager.shard_groups) {
-          var shard_group = JSON.parse(JSON.stringify(manager.shard_groups[sgindex]));
+          var shard_group = JSON.parse(
+            JSON.stringify(manager.shard_groups[sgindex])
+          );
           shard_group.manager = manager.configuration.display_name;
           for (var sindex in shard_group.shards) {
             var shard = shard_group.shards[sindex];
             if (shard.status == 0) {
               shard_groups.push(shard_group);
-              break
+              break;
             }
-          } 
+          }
         }
       }
-      return shard_groups
+      return shard_groups;
     },
 
     showToast(title, body) {
       this.toast.title = title;
       this.toast.body = body;
       this.toastModal.show();
+    },
+
+    addWebhook(url) {
+      this.sendRPC("daemon:add_webhook", url);
+      setTimeout(() => this.fetchConfiguration(), 1000);
+    },
+
+    testWebhook(url) {
+      this.sendRPC("daemon:test_webhook", url);
+    },
+
+    removeWebhook(url) {
+      this.sendRPC("daemon:remove_webhook", url);
+      setTimeout(() => this.fetchConfiguration(), 1000);
     },
 
     verifyRestTunnel() {

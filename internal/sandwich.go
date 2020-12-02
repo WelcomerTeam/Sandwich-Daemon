@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -97,6 +99,7 @@ type SandwichConfiguration struct {
 		Public        bool   `json:"public" yaml:"public"`
 	} `json:"http" yaml:"http"`
 
+	Webhooks      []string       `json:"webhooks" yaml:"webhooks"`
 	ElevatedUsers []string       `json:"elevated_users" yaml:"elevated_users"`
 	OAuth         *oauth2.Config `json:"oauth" yaml:"oauth"`
 
@@ -511,6 +514,18 @@ func (sg *Sandwich) Open() (err error) {
 		sg.RestTunnelEnabled.UnSet()
 	}
 
+	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+		Embeds: []structs.Embed{
+			{
+				Title:       "Starting up Sandwich-Daemon",
+				URL:         "https://github.com/TheRockettek/Sandwich-Daemon",
+				Description: fmt.Sprintf("Version %s", VERSION),
+				Color:       16701571,
+				Timestamp:   WebhookTime(time.Now().UTC()),
+			},
+		},
+	})
+
 	sg.Logger.Info().Msg("Creating managers")
 
 	sg.startManagers()
@@ -536,6 +551,20 @@ func (sg *Sandwich) startManagers() {
 			sg.Logger.Warn().
 				Str("identifier", managerConfiguration.Identifier).
 				Msg("Found conflicting manager identifiers. Ignoring!")
+
+			go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+				Embeds: []structs.Embed{
+					{
+						Title:     fmt.Sprintf("Found conflicting manager identifiers. Ignoring!"),
+						Color:     16760839,
+						Timestamp: WebhookTime(time.Now().UTC()),
+						Footer: &structs.EmbedFooter{
+							Text: fmt.Sprintf("Manager %s",
+								manager.Configuration.DisplayName),
+						},
+					},
+				},
+			})
 
 			continue
 		}
@@ -568,6 +597,21 @@ func (sg *Sandwich) startManagers() {
 					manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
 					manager.GatewayMu.RUnlock()
 
+					go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+						Embeds: []structs.Embed{
+							{
+								Title: fmt.Sprintf("Failed to start up manager as not enough sessions to start %d shard(s). %d remain",
+									shardCount, manager.Gateway.SessionStartLimit.Remaining),
+								Color:     14431557,
+								Timestamp: WebhookTime(time.Now().UTC()),
+								Footer: &structs.EmbedFooter{
+									Text: fmt.Sprintf("Manager %s",
+										manager.Configuration.DisplayName),
+								},
+							},
+						},
+					})
+
 					return
 				}
 
@@ -576,6 +620,21 @@ func (sg *Sandwich) startManagers() {
 				ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
 				if err != nil {
 					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+
+					go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+						Embeds: []structs.Embed{
+							{
+								Title:       fmt.Sprintf("Failed to start up manager"),
+								Description: err.Error(),
+								Color:       14431557,
+								Timestamp:   WebhookTime(time.Now().UTC()),
+								Footer: &structs.EmbedFooter{
+									Text: fmt.Sprintf("Manager %s",
+										manager.Configuration.DisplayName),
+								},
+							},
+						},
+					})
 
 					return
 				}
@@ -692,6 +751,16 @@ func (sg *Sandwich) VerifyRestTunnel(restTunnelURL string) (enabled bool, revers
 func (sg *Sandwich) Close() (err error) {
 	sg.Logger.Info().Msg("Closing sandwich")
 
+	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+		Embeds: []structs.Embed{
+			{
+				Title:     "Shutting down sandwich",
+				Color:     16701571,
+				Timestamp: WebhookTime(time.Now().UTC()),
+			},
+		},
+	})
+
 	// Close all managers
 	sg.ManagersMu.RLock()
 	for _, manager := range sg.Managers {
@@ -700,4 +769,70 @@ func (sg *Sandwich) Close() (err error) {
 	sg.ManagersMu.RUnlock()
 
 	return
+}
+
+// PublishWebhook sends a webhook message to all added webhooks in the configuration
+func (sg *Sandwich) PublishWebhook(ctx context.Context, message structs.WebhookMessage) {
+	for _, webhook := range sg.Configuration.Webhooks {
+		err, _ := sg.SendWebhook(ctx, webhook, message)
+		if err != nil && !xerrors.Is(err, context.Canceled) {
+			sg.Logger.Warn().Err(err).Str("url", webhook).Msg("Failed to send webhook")
+		}
+	}
+}
+
+// SendWebhook executes a webhook request. This does not currently support sending
+// files.
+func (sg *Sandwich) SendWebhook(ctx context.Context, _url string, message structs.WebhookMessage) (err error, status int) {
+	var c *Client
+
+	// We will trim whitespace just incase.
+	_url = strings.TrimSpace(_url)
+
+	_, err = url.Parse(_url)
+	if err != nil {
+		return xerrors.Errorf("failed to parse webhook URL: %w", err), -1
+	}
+
+	if sg.RestTunnelEnabled.IsSet() {
+		c = NewClient("", sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet(), false)
+	} else {
+		c = NewClient("", "", false, false)
+	}
+
+	res, err := json.Marshal(message)
+	if err != nil {
+		return xerrors.Errorf("failed to marshal webhook message: %w", err), -1
+	}
+
+	_, err, status = c.Fetch(ctx, "POST", _url, bytes.NewBuffer(res), map[string]string{
+		"Content-Type": "application/json",
+	})
+	return err, status
+}
+
+// TestWebhook tests a URL to see if it is valid
+func (sg *Sandwich) TestWebhook(ctx context.Context, _url string) (err error, status int) {
+	_, err = url.Parse(_url)
+	if err != nil {
+		return xerrors.Errorf("failed to parse webhook URL: %w", err), -1
+	}
+
+	message := structs.WebhookMessage{
+		Content: "Test Webhook",
+		Embeds: []structs.Embed{
+			{
+				Title:       "This is a test webhook",
+				Description: "This is the description",
+				URL:         "https://github.com/TheRockettek/Sandwich-Daemon",
+				Thumbnail: &structs.EmbedThumbnail{
+					URL: "https://raw.githubusercontent.com/TheRockettek/Sandwich-Daemon/master/web/dist/img/icons/favicon-96x96.png",
+				},
+				Color:     16701571,
+				Timestamp: WebhookTime(time.Now().UTC()),
+			},
+		},
+	}
+
+	return sg.SendWebhook(ctx, _url, message)
 }

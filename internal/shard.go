@@ -234,6 +234,8 @@ func (sh *Shard) Connect() (err error) {
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to dial")
 
+			go sh.PublishWebhook(fmt.Sprintf("Failed to dial `%s`", gatewayURL), err.Error(), 14431557, false)
+
 			return
 		}
 
@@ -285,6 +287,8 @@ func (sh *Shard) Connect() (err error) {
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to identify")
 
+			go sh.PublishWebhook(fmt.Sprintf("Gateway `IDENTIFY` failed"), err.Error(), 14431557, false)
+
 			return
 		}
 	} else {
@@ -296,6 +300,8 @@ func (sh *Shard) Connect() (err error) {
 
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to resume")
+
+			go sh.PublishWebhook(fmt.Sprintf("Gateway `RESUME` failed"), err.Error(), 14431557, false)
 
 			return
 		}
@@ -329,6 +335,8 @@ func (sh *Shard) Connect() (err error) {
 	select {
 	case err = <-sh.ErrorCh:
 		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
+
+		go sh.PublishWebhook(fmt.Sprintf("Encountered error during connection"), err.Error(), 14431557, false)
 
 		return xerrors.Errorf("encountered error whilst connecting: %w", err)
 	case msg = <-sh.MessageCh:
@@ -442,6 +450,8 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
 
 		if err != nil {
+			go sh.PublishWebhook(fmt.Sprintf("Failed to send heartbeat to gateway"), err.Error(), 16760839, false)
+
 			sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
 			err = sh.Reconnect(websocket.StatusNormalClosure)
 
@@ -457,6 +467,8 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 			sh.sessionID = ""
 			atomic.StoreInt64(sh.seq, 0)
 		}
+
+		go sh.PublishWebhook(fmt.Sprintf("Received invalid session from gateway"), "", 16760839, false)
 
 		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
 		err = sh.Reconnect(reconnectCloseCode)
@@ -534,6 +546,10 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		change := time.Now().UTC().Sub(start)
 		if change > time.Second {
 			sh.Logger.Warn().Msgf("%s took %d ms", msg.Type, change.Milliseconds())
+		}
+
+		if change > 10*time.Second {
+			go sh.PublishWebhook(fmt.Sprintf("Packet `%s` took too long. Took `%dms`", msg.Type, change.Milliseconds()), "", 16760839, false)
 		}
 	}()
 
@@ -635,6 +651,8 @@ func (sh *Shard) Listen() (err error) {
 						closeError.Code,
 					)
 
+					go sh.PublishWebhook(fmt.Sprintf("ShardGroup is closing due to invalid token being passed"), "", 16760839, false)
+
 					// We cannot continue so we will kill the ShardGroup
 					sh.ShardGroup.ErrorMu.Lock()
 					sh.ShardGroup.Error = err.Error()
@@ -707,12 +725,19 @@ func (sh *Shard) Heartbeat() {
 			if err != nil || _time.Sub(lastAck) > sh.MaxHeartbeatFailures {
 				if err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
+
+					go sh.PublishWebhook(fmt.Sprintf("Failed to heartbeat. Reconnecting"), "", 16760839, false)
 				} else {
 					sh.Manager.Sandwich.ConfigurationMu.RLock()
 					sh.Logger.Warn().Err(err).
 						Msgf(
 							"Gateway failed to ACK and has passed MaxHeartbeatFailures of %d. Reconnecting",
 							sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+
+					go sh.PublishWebhook(fmt.Sprintf(
+						"Gateway failed to ACK and has passed MaxHeartbeatFailures of %d. Reconnecting",
+						sh.Manager.Configuration.Bot.MaxHeartbeatFailures), "", 1548214, false)
+
 					sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 				}
 
@@ -971,6 +996,8 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 			sh.Close(code)
 			err = sh.Connect()
 
+			go sh.PublishWebhook(fmt.Sprintf("Failed to reconnect to gateway"), err.Error(), 14431557, false)
+
 			return err
 		}
 
@@ -989,6 +1016,8 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) (err error) {
 	sh.StatusMu.Lock()
 	sh.Status = status
 	sh.StatusMu.Unlock()
+
+	go sh.PublishWebhook(fmt.Sprintf("Shard is now **%s**", status.String()), "", status.Colour(), false)
 
 	err = sh.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{ShardID: sh.ShardID, Status: int32(status)})
 
@@ -1018,4 +1047,48 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 	if err := sh.SetStatus(structs.ShardClosed); err != nil {
 		sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
 	}
+}
+
+// PublishWebhook is the same as sg.PublishWebhook but has extra sugar for
+// displaying information about the shard
+func (sh *Shard) PublishWebhook(title string, description string, colour int, raw bool) {
+	var message structs.WebhookMessage
+
+	if raw {
+		message = structs.WebhookMessage{
+			Content: fmt.Sprintf("[**%s - %d/%d**] %s %s",
+				sh.Manager.Configuration.DisplayName,
+				sh.ShardGroup.ID, sh.ShardID, title, description),
+		}
+
+		if sh.User != nil && message.AvatarURL == "" && message.Username == "" {
+			message.AvatarURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
+				sh.User.ID.String(), sh.User.Avatar)
+			message.Username = sh.User.Username
+		}
+	} else {
+		message = structs.WebhookMessage{
+			Embeds: []structs.Embed{
+				{
+					Title:       title,
+					Description: description,
+					Color:       colour,
+					Timestamp:   WebhookTime(time.Now().UTC()),
+					Footer: &structs.EmbedFooter{
+						Text: fmt.Sprintf("Manager %s | ShardGroup %d | Shard %d",
+							sh.Manager.Configuration.DisplayName,
+							sh.ShardGroup.ID, sh.ShardID),
+					},
+				},
+			},
+		}
+
+		if sh.User != nil && message.AvatarURL == "" && message.Username == "" {
+			message.AvatarURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
+				sh.User.ID.String(), sh.User.Avatar)
+			message.Username = sh.User.Username
+		}
+	}
+
+	sh.Manager.Sandwich.PublishWebhook(sh.ctx, message)
 }

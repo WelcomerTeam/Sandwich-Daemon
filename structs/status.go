@@ -14,6 +14,48 @@ const (
 	ShardClosed                          // Represents a Shard that has been closed
 )
 
+func (ss *ShardStatus) String() string {
+	switch *ss {
+	case ShardIdle:
+		return "Idle"
+	case ShardWaiting:
+		return "Waiting"
+	case ShardConnecting:
+		return "Connecting"
+	case ShardConnected:
+		return "Connected"
+	case ShardReady:
+		return "Ready"
+	case ShardReconnecting:
+		return "Reconnecting"
+	case ShardClosed:
+		return "Closed"
+	default:
+		return "Unknown"
+	}
+}
+
+func (ss *ShardStatus) Colour() int {
+	switch *ss {
+	case ShardIdle:
+		return 0
+	case ShardWaiting:
+		return 1548214
+	case ShardConnecting:
+		return 1548214
+	case ShardConnected:
+		return 1548214
+	case ShardReady:
+		return 2664005
+	case ShardReconnecting:
+		return 16760839
+	case ShardClosed:
+		return 0
+	default:
+		return 16701571
+	}
+}
+
 // ShardGroupStatus represents a shardgroups status.
 type ShardGroupStatus int32
 

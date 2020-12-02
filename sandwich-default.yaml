@@ -25,6 +25,7 @@ http:
   host: 127.0.0.1:5469
   secret: changeTheSecretToA32LetterString
   public: false
+webhooks:
 oauth:
   clientid: 0
   clientsecret: 0

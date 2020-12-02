@@ -770,7 +770,9 @@ func (sg *Sandwich) FetchRestTunnelResponse() (body []byte, resp *http.Response,
 func APIRPCHandler(sg *Sandwich) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		session, _ := sg.Store.Get(r, sessionName)
-		if auth, _ := sg.AuthenticateSession(session); !auth {
+
+		auth, user := sg.AuthenticateSession(session)
+		if !auth {
 			passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
 
 			return
@@ -792,7 +794,7 @@ func APIRPCHandler(sg *Sandwich) http.HandlerFunc {
 			return
 		}
 
-		ok := executeRequest(sg, RPCMessage, rw)
+		ok := executeRequest(sg, user, RPCMessage, rw)
 		if !ok {
 			passResponse(rw, fmt.Sprintf("Unknown method: %s", RPCMessage.Method), false, http.StatusBadRequest)
 

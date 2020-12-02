@@ -402,7 +402,7 @@ func (mg *Manager) Close() {
 
 // GetGateway returns response from /gateway/bot.
 func (mg *Manager) GetGateway() (resp structs.GatewayBot, err error) {
-	err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
+	err, _ = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
 	if err != nil {
 		return resp, xerrors.Errorf("get gateway fetchjson: %w", err)
 	}

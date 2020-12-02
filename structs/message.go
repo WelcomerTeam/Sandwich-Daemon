@@ -1,6 +1,10 @@
 package structs
 
-import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+import (
+	"encoding/json"
+
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+)
 
 // Message represents a message on Discord.
 type Message struct {
@@ -25,6 +29,18 @@ type Message struct {
 	TTS             bool               `json:"tts" msgpack:"tts"`
 	MentionEveryone bool               `json:"mention_everyone" msgpack:"mention_everyone"`
 	Pinned          bool               `json:"pinned" msgpack:"pinned"`
+	// Todo: allowed mentions support
+}
+
+// WebhookMessage represents a message on Discord for webhooks.
+type WebhookMessage struct {
+	Content     string          `json:"content,omitempty" msgpack:"content,omitempty"`
+	Username    string          `json:"username,omitempty" msgpack:"username,omitempty"`
+	AvatarURL   string          `json:"avatar_url,omitempty" msgpack:"avatar_url,omitempty"`
+	TTS         bool            `json:"tts,omitempty" msgpack:"tts,omitempty"`
+	Embeds      []Embed         `json:"embeds,omitempty" msgpack:"embeds,omitempty"`
+	PayloadJSON json.RawMessage `json:"payload_json,omitempty" msgpack:"payload_json,omitempty"`
+	// Todo: allowed mentions and file support
 }
 
 // message types.
@@ -82,19 +98,19 @@ type Attachment struct {
 
 // Embed represents a message embed on Discord.
 type Embed struct {
-	Title       string         `json:"title,omitempty" msgpack:"title,omitempty"`
-	Type        string         `json:"type,omitempty" msgpack:"type,omitempty"`
-	Description string         `json:"description,omitempty" msgpack:"description,omitempty"`
-	URL         string         `json:"url,omitempty" msgpack:"url,omitempty"`
-	Timestamp   string         `json:"timestamp,omitempty" msgpack:"timestamp,omitempty"`
-	Color       int            `json:"color,omitempty" msgpack:"color,omitempty"`
-	Footer      EmbedFooter    `json:"footer,omitempty" msgpack:"footer,omitempty"`
-	Image       EmbedImage     `json:"image,omitempty" msgpack:"image,omitempty"`
-	Thumbnail   EmbedThumbnail `json:"thumbnail,omitempty" msgpack:"thumbnail,omitempty"`
-	Video       EmbedVideo     `json:"video,omitempty" msgpack:"video,omitempty"`
-	Provider    EmbedProvider  `json:"provider,omitempty" msgpack:"provider,omitempty"`
-	Author      EmbedAuthor    `json:"author,omitempty" msgpack:"author,omitempty"`
-	Fields      []EmbedField   `json:"fields,omitempty" msgpack:"fields,omitempty"`
+	Title       string          `json:"title,omitempty" msgpack:"title,omitempty"`
+	Type        string          `json:"type,omitempty" msgpack:"type,omitempty"`
+	Description string          `json:"description,omitempty" msgpack:"description,omitempty"`
+	URL         string          `json:"url,omitempty" msgpack:"url,omitempty"`
+	Timestamp   string          `json:"timestamp,omitempty" msgpack:"timestamp,omitempty"`
+	Color       int             `json:"color,omitempty" msgpack:"color,omitempty"`
+	Footer      *EmbedFooter    `json:"footer,omitempty" msgpack:"footer,omitempty"`
+	Image       *EmbedImage     `json:"image,omitempty" msgpack:"image,omitempty"`
+	Thumbnail   *EmbedThumbnail `json:"thumbnail,omitempty" msgpack:"thumbnail,omitempty"`
+	Video       *EmbedVideo     `json:"video,omitempty" msgpack:"video,omitempty"`
+	Provider    *EmbedProvider  `json:"provider,omitempty" msgpack:"provider,omitempty"`
+	Author      *EmbedAuthor    `json:"author,omitempty" msgpack:"author,omitempty"`
+	Fields      []*EmbedField   `json:"fields,omitempty" msgpack:"fields,omitempty"`
 }
 
 // EmbedFooter represents the footer of an embed.

@@ -67,7 +67,7 @@ func NewClient(token string, restTunnelURL string, reverse bool, isBot bool) *Cl
 // Fetch returns the response. Passing any headers will be sent to the request however
 // Authorization will be overwrote.
 func (c *Client) Fetch(ctx context.Context, method string, url string,
-	body io.Reader, headers map[string]string) (_body []byte, err error) {
+	body io.Reader, headers map[string]string) (_body []byte, err error, status int) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return
@@ -83,22 +83,24 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 	}
 
 	defer res.Body.Close()
-	return ioutil.ReadAll(res.Body)
+	_body, err = ioutil.ReadAll(res.Body)
+
+	return _body, err, res.StatusCode
 }
 
 // FetchJSON attempts to convert the response into a JSON structure. Passing any headers
 // will be sent to the request however Authorization will be overwrote.
 func (c *Client) FetchJSON(ctx context.Context, method string, url string,
-	body io.Reader, headers map[string]string, structure interface{}) (err error) {
+	body io.Reader, headers map[string]string, structure interface{}) (err error, status int) {
 
-	_body, err := c.Fetch(ctx, method, url, body, headers)
+	_body, err, status := c.Fetch(ctx, method, url, body, headers)
 	if err != nil {
 		return
 	}
 
 	err = json.Unmarshal(_body, &structure)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal body: %w", err)
+		return fmt.Errorf("failed to unmarshal body: %w", err), -1
 	}
 
 	return
