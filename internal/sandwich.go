@@ -786,7 +786,7 @@ func (sg *Sandwich) PublishWebhook(ctx context.Context, message structs.WebhookM
 func (sg *Sandwich) SendWebhook(ctx context.Context, _url string, message structs.WebhookMessage) (err error, status int) {
 	var c *Client
 
-	// We will trim whitespace just incase.
+	// We will trim whitespace just in case.
 	_url = strings.TrimSpace(_url)
 
 	_, err = url.Parse(_url)

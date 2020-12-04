@@ -280,10 +280,6 @@ func (sh *Shard) Connect() (err error) {
 	// of resuming.
 	if sh.sessionID == "" || seq == 0 {
 		err = sh.Identify()
-		if err := sh.SetStatus(structs.ShardConnecting); err != nil {
-			sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
-		}
-
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to identify")
 
@@ -293,17 +289,17 @@ func (sh *Shard) Connect() (err error) {
 		}
 	} else {
 		err = sh.Resume()
-		// We will assume the bot is ready.
-		if err := sh.SetStatus(structs.ShardReady); err != nil {
-			sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
-		}
-
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to resume")
 
 			go sh.PublishWebhook(fmt.Sprintf("Gateway `RESUME` failed"), err.Error(), 14431557, false)
 
 			return
+		}
+
+		// We will assume the bot is ready.
+		if err := sh.SetStatus(structs.ShardReady); err != nil {
+			sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
 		}
 	}
 
@@ -553,7 +549,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		}
 	}()
 
-	sh.Logger.Debug().Str("type", msg.Type).Msg("Event dispatched")
+	sh.Logger.Trace().Str("type", msg.Type).Msg("Event dispatched")
 
 	switch msg.Type {
 	case "READY":
@@ -1016,6 +1012,12 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) (err error) {
 	sh.StatusMu.Lock()
 	sh.Status = status
 	sh.StatusMu.Unlock()
+
+	sh.Logger.Debug().
+		Str("manager", sh.Manager.Configuration.Identifier).
+		Int32("shardgroup", sh.ShardGroup.ID).
+		Int("shard", sh.ShardID).
+		Msgf("Status changed to %s (%d)", status.String(), status)
 
 	go sh.PublishWebhook(fmt.Sprintf("Shard is now **%s**", status.String()), "", status.Colour(), false)
 
