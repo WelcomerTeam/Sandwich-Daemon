@@ -8,6 +8,7 @@ logging:
   max_size: 1024
   max_backups: 16
   max_age: 14
+  minimal_webhooks: false
 resttunnel:
   enabled: false
   url: "http://127.0.0.1:8000"

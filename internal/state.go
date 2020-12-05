@@ -274,8 +274,7 @@ ready:
 
 			break ready
 		case msg := <-sh.MessageCh:
-			switch msg.Type {
-			case "GUILD_CREATE":
+			if msg.Type == "GUILD_CREATE" {
 				guildCreateEvents++
 
 				guildPayload := structs.GuildCreate{}
@@ -291,7 +290,7 @@ ready:
 				}
 
 				t.Reset(timeoutDuration)
-			default:
+			} else {
 				if preemptiveEvents {
 					events = append(events, msg)
 				} else if err = sh.OnDispatch(msg); err != nil {

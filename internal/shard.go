@@ -642,12 +642,12 @@ func (sh *Shard) Listen() (err error) {
 			if errors.As(err, &closeError) {
 				// If possible, we will check the close error to determine if we can continue
 				switch closeError.Code {
-				case structs.CloseNotAuthenticated: // Not authenticated
-				case structs.CloseInvalidShard: // Invalid shard
-				case structs.CloseShardingRequired: // Sharding required
-				case structs.CloseInvalidAPIVersion: // Invalid API version
-				case structs.CloseInvalidIntents: // Invalid Intent(s)
-				case structs.CloseDisallowedIntents: // Disallowed intent(s)
+				case structs.CloseNotAuthenticated, // Not authenticated
+					structs.CloseInvalidShard,      // Invalid shard
+					structs.CloseShardingRequired,  // Sharding required
+					structs.CloseInvalidAPIVersion, // Invalid API version
+					structs.CloseInvalidIntents,    // Invalid Intent(s)
+					structs.CloseDisallowedIntents: // Disallowed intent(s)
 					sh.Logger.Warn().Msgf(
 						"Closing ShardGroup as cannot continue without valid token. Received code %d",
 						closeError.Code,
@@ -1023,14 +1023,17 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) (err error) {
 		Msgf("Status changed to %s (%d)", status.String(), status)
 
 	switch status {
-	case structs.ShardReady:
-	case structs.ShardReconnecting:
-		go sh.PublishWebhook(fmt.Sprintf("Shard is now **%s**", status.String()), "", status.Colour(), false)
-	case structs.ShardIdle:
-	case structs.ShardWaiting:
-	case structs.ShardConnecting:
-	case structs.ShardConnected:
-	case structs.ShardClosed:
+	case structs.ShardReady, structs.ShardReconnecting:
+		sh.Manager.ConfigurationMu.RLock()
+		isMinimal := sh.Manager.Sandwich.Configuration.Logging.MinimalWebhooks
+		sh.Manager.ConfigurationMu.RUnlock()
+
+		go sh.PublishWebhook(fmt.Sprintf("Shard is now **%s**", status.String()), "", status.Colour(), isMinimal)
+	case structs.ShardIdle,
+		structs.ShardWaiting,
+		structs.ShardConnecting,
+		structs.ShardConnected,
+		structs.ShardClosed:
 	}
 
 	err = sh.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{ShardID: sh.ShardID, Status: int32(status)})

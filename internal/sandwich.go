@@ -70,6 +70,8 @@ type SandwichConfiguration struct {
 		MaxSize    int    `json:"max_size" yaml:"max_size"`       // Size in MB before a new file.
 		MaxBackups int    `json:"max_backups" yaml:"max_backups"` // Number of files to keep.
 		MaxAge     int    `json:"max_age" yaml:"max_age"`         // Number of days to keep a logfile.
+
+		MinimalWebhooks bool `json:"minimal_webhooks" yaml:"minimal_webhooks"` // If enabled, webhooks for status changes will use one liners instead of an embed.
 	} `json:"logging" yaml:"logging"`
 
 	RestTunnel struct {
