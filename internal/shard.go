@@ -163,15 +163,22 @@ func (sh *Shard) Connect() (err error) {
 	// Fetch the current bucket we should be using for concurrency.
 	concurrencyBucket := sh.ShardID % sh.Manager.Gateway.SessionStartLimit.MaxConcurrency
 
-	if _, ok := sh.ShardGroup.IdentifyBucket[concurrencyBucket]; !ok {
-		sh.ShardGroup.IdentifyBucket[concurrencyBucket] = &sync.Mutex{}
-	}
+	sh.Logger.Trace().Msgf("Using concurrency bucket %d", concurrencyBucket)
+
+	// if _, ok := sh.ShardGroup.IdentifyBucket[concurrencyBucket]; !ok {
+	// 	sh.Logger.Trace().Msgf("Creating new concurrency bucket %d", concurrencyBucket)
+	// 	sh.ShardGroup.IdentifyBucket[concurrencyBucket] = &sync.Mutex{}
+	// }
+
+	sh.Manager.GatewayMu.RUnlock()
 
 	// If the context has canceled, create new context.
 	select {
 	case <-sh.ctx.Done():
+		sh.Logger.Trace().Msg("Creating new context")
 		sh.ctx, sh.cancel = context.WithCancel(context.Background())
 	default:
+		sh.Logger.Trace().Msg("No need for new context")
 	}
 
 	// Create and wait for the websocket bucket.
@@ -186,7 +193,6 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	sh.Manager.Sandwich.Buckets.CreateBucket(fmt.Sprintf("gw:%s:%d", hash, concurrencyBucket), 1, identifyRatelimit)
-	sh.Manager.GatewayMu.RUnlock()
 
 	// When an error occurs and we have to reconnect, we make a ready channel by default
 	// which seems to cause a problem with WaitForReady. To circumvent this, we will
@@ -214,9 +220,9 @@ func (sh *Shard) Connect() (err error) {
 	// Currently just uses a mutex to allow for only one per maxconcurrency.
 	sh.Logger.Trace().Msg("Waiting for identify mutex")
 
-	// Lock the identification bucket
-	sh.ShardGroup.IdentifyBucket[concurrencyBucket].Lock()
-	defer sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
+	// // Lock the identification bucket
+	// sh.ShardGroup.IdentifyBucket[concurrencyBucket].Lock()
+	// defer sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
 
 	sh.Logger.Trace().Msg("Starting connecting")
 
@@ -549,7 +555,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		}
 	}()
 
-	sh.Logger.Trace().Str("type", msg.Type).Msg("Event dispatched")
+	// sh.Logger.Trace().Str("type", msg.Type).Msg("Event dispatched")
 
 	switch msg.Type {
 	case "READY":
@@ -817,25 +823,22 @@ func (sh *Shard) Identify() (err error) {
 	sh.Manager.ConfigurationMu.RLock()
 	defer sh.Manager.ConfigurationMu.RUnlock()
 
-	sh.Manager.GatewayMu.RLock()
-
 	hash, err := QuickHash(sh.Manager.Configuration.Token)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to generate token hash")
-		sh.Manager.GatewayMu.RUnlock()
 
 		return err
 	}
 
+	sh.Manager.GatewayMu.RLock()
 	err = sh.Manager.Sandwich.Buckets.WaitForBucket(
 		fmt.Sprintf("gw:%s:%d", hash, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency),
 	)
+	sh.Manager.GatewayMu.RUnlock()
 
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to wait for bucket")
 	}
-
-	sh.Manager.GatewayMu.RUnlock()
 
 	err = sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
 		Token: sh.Manager.Configuration.Token,
@@ -1019,7 +1022,16 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) (err error) {
 		Int("shard", sh.ShardID).
 		Msgf("Status changed to %s (%d)", status.String(), status)
 
-	go sh.PublishWebhook(fmt.Sprintf("Shard is now **%s**", status.String()), "", status.Colour(), false)
+	switch status {
+	case structs.ShardReady:
+	case structs.ShardReconnecting:
+		go sh.PublishWebhook(fmt.Sprintf("Shard is now **%s**", status.String()), "", status.Colour(), false)
+	case structs.ShardIdle:
+	case structs.ShardWaiting:
+	case structs.ShardConnecting:
+	case structs.ShardConnected:
+	case structs.ShardClosed:
+	}
 
 	err = sh.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{ShardID: sh.ShardID, Status: int32(status)})
 
@@ -1092,5 +1104,5 @@ func (sh *Shard) PublishWebhook(title string, description string, colour int, ra
 		}
 	}
 
-	sh.Manager.Sandwich.PublishWebhook(sh.ctx, message)
+	sh.Manager.Sandwich.PublishWebhook(context.Background(), message)
 }
