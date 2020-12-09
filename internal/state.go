@@ -224,6 +224,7 @@ func StateGuildCreate(ctx *StateCtx, msg structs.ReceivedPayload) (result struct
 	if ok {
 		if unavailable {
 			ctx.Sh.Logger.Trace().Str("id", sg.ID.String()).Msg("Lazy loaded guild")
+
 			lazy = true || lazy
 		}
 

@@ -446,7 +446,6 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 	atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, -1)
 
 	go func(ticket int) {
-
 		// This goroutine shows events that are taking too long.
 		fin := make(chan void)
 
@@ -475,6 +474,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 		defer func() {
 			close(fin)
 			sh.Manager.Sandwich.Pool.FreeTicket(ticket)
+
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to handle event")
 			}
@@ -571,7 +571,6 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 
 			return
 		}
-
 	}(ticket)
 
 	atomic.StoreInt64(sh.seq, msg.Sequence)
@@ -674,7 +673,7 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 	// Compression testing of large payloads. In the future this *may* be
 	// added however in its current state it is uncertain. With using a 1mb
 	// msgpack payload, compression can be brought down to 48kb using brotli
-	// level 11 however will take arround 1.5 seconds. However, it is likely
+	// level 11 however will take around 1.5 seconds. However, it is likely
 	// level 0 or 6 will be used which produce 95kb in 3ms and 54kb in 20ms
 	// respectively. It is likely the actual data portion of the payload will
 	// be compressed so the metadata and the rest of the data can be preserved
@@ -914,6 +913,7 @@ func (sh *Shard) readMessage() (msg structs.ReceivedPayload, err error) {
 		return msg, err
 	case msg = <-sh.MessageCh:
 		msg.AddTrace("read", time.Now().UTC())
+
 		return msg, nil
 	}
 }
