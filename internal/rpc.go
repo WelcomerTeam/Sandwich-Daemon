@@ -15,13 +15,16 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var rpcHandlers = make(map[string]func(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool)
+var rpcHandlers = make(map[string]func(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool)
 
-func registerHandler(method string, f func(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool) {
+func registerHandler(method string, f func(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool) {
 	rpcHandlers[method] = f
 }
 
-func executeRequest(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) (ok bool) {
+func executeRequest(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) (ok bool) {
 	if f, ok := rpcHandlers[req.Method]; ok {
 		f(sg, user, req, rw)
 
@@ -32,7 +35,8 @@ func executeRequest(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequ
 }
 
 // RPCManagerShardGroupCreate handles the creation of a new shardgroup.
-func RPCManagerShardGroupCreate(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCManagerShardGroupCreate(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerShardGroupCreateEvent{}
 
 	err := json.Unmarshal(req.Data, &event)
@@ -127,9 +131,9 @@ func RPCManagerShardGroupCreate(sg *Sandwich, user *structs.DiscordUser, req str
 			passResponse(rw, err.Error(), false, http.StatusInternalServerError)
 
 			return false
-		} else {
-			passResponse(rw, true, true, http.StatusOK)
 		}
+
+		passResponse(rw, true, true, http.StatusOK)
 	} else {
 		passResponse(rw, fmt.Sprintf(
 			"Not enough sessions to start %d shard(s). %d remain",
@@ -143,7 +147,8 @@ func RPCManagerShardGroupCreate(sg *Sandwich, user *structs.DiscordUser, req str
 }
 
 // RPCManagerShardGroupStop handles stopping a shardgroup.
-func RPCManagerShardGroupStop(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCManagerShardGroupStop(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerShardGroupStopEvent{}
 
 	err := json.Unmarshal(req.Data, &event)
@@ -197,7 +202,8 @@ func RPCManagerShardGroupStop(sg *Sandwich, user *structs.DiscordUser, req struc
 }
 
 // RPCManagerShardGroupDelete handles deleting a shardgroup.
-func RPCManagerShardGroupDelete(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCManagerShardGroupDelete(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerShardGroupDeleteEvent{}
 
 	err := json.Unmarshal(req.Data, &event)
@@ -243,7 +249,8 @@ func RPCManagerShardGroupDelete(sg *Sandwich, user *structs.DiscordUser, req str
 }
 
 // RPCManagerUpdate handles updating a managers configuration.
-func RPCManagerUpdate(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCManagerUpdate(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := ManagerConfiguration{}
 
 	err := json.Unmarshal(req.Data, &event)
@@ -343,7 +350,8 @@ func RPCManagerUpdate(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRe
 }
 
 // RPCManagerCreate handles the creation of new managers.
-func RPCManagerCreate(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCManagerCreate(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerCreateEvent{}
 
 	err := json.Unmarshal(req.Data, &event)
@@ -608,7 +616,8 @@ func RPCManagerRestart(sg *Sandwich, user *structs.DiscordUser, req structs.RPCR
 }
 
 // RPCManagerRefreshGateway handles refreshing the gateway.
-func RPCManagerRefreshGateway(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCManagerRefreshGateway(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := structs.RPCManagerRefreshGatewayEvent{}
 
 	err := json.Unmarshal(req.Data, &event)
@@ -645,7 +654,8 @@ func RPCManagerRefreshGateway(sg *Sandwich, user *structs.DiscordUser, req struc
 }
 
 // RPCDaemonVerifyRestTunnel checks if RestTunnel is active.
-func RPCDaemonVerifyRestTunnel(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCDaemonVerifyRestTunnel(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	var restTunnelEnabled bool
 
 	var reverse bool
@@ -672,7 +682,8 @@ func RPCDaemonVerifyRestTunnel(sg *Sandwich, user *structs.DiscordUser, req stru
 }
 
 // RPCDaemonUpdate updates the daemon settings.
-func RPCDaemonUpdate(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+func RPCDaemonUpdate(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	event := SandwichConfiguration{}
 
 	err := json.Unmarshal(req.Data, &event)
@@ -768,8 +779,9 @@ func RPCDaemonUpdate(sg *Sandwich, user *structs.DiscordUser, req structs.RPCReq
 	return true
 }
 
-// RPCDaemonAddWebhook tests a webhook then adds it to the daemon
-func RPCDaemonAddWebhook(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+// RPCDaemonAddWebhook tests a webhook then adds it to the daemon.
+func RPCDaemonAddWebhook(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	var webhookURL string
 
 	err := json.Unmarshal(req.Data, &webhookURL)
@@ -795,7 +807,7 @@ func RPCDaemonAddWebhook(sg *Sandwich, user *structs.DiscordUser, req structs.RP
 	}
 	sg.ConfigurationMu.RUnlock()
 
-	err, _ = sg.TestWebhook(context.Background(), webhookURL)
+	_, err = sg.TestWebhook(context.Background(), webhookURL)
 	if err != nil {
 		sg.Logger.Warn().Err(err).Str("url", webhookURL).Msg("Failed to test webhook")
 
@@ -826,8 +838,9 @@ func RPCDaemonAddWebhook(sg *Sandwich, user *structs.DiscordUser, req structs.RP
 	return true
 }
 
-// RPCDaemonTestWebhook sends a test webhook message
-func RPCDaemonTestWebhook(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+// RPCDaemonTestWebhook sends a test webhook message.
+func RPCDaemonTestWebhook(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	var webhookURL string
 
 	err := json.Unmarshal(req.Data, &webhookURL)
@@ -839,7 +852,7 @@ func RPCDaemonTestWebhook(sg *Sandwich, user *structs.DiscordUser, req structs.R
 		return false
 	}
 
-	err, _ = sg.TestWebhook(context.Background(), webhookURL)
+	_, err = sg.TestWebhook(context.Background(), webhookURL)
 	if err != nil {
 		sg.Logger.Warn().Err(err).Str("url", webhookURL).Msg("Failed to test webhook")
 
@@ -853,8 +866,9 @@ func RPCDaemonTestWebhook(sg *Sandwich, user *structs.DiscordUser, req structs.R
 	return true
 }
 
-// RPCDaemonRemoveWebhook removes a webhook from the configuration
-func RPCDaemonRemoveWebhook(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRequest, rw http.ResponseWriter) bool {
+// RPCDaemonRemoveWebhook removes a webhook from the configuration.
+func RPCDaemonRemoveWebhook(sg *Sandwich, user *structs.DiscordUser,
+	req structs.RPCRequest, rw http.ResponseWriter) bool {
 	var webhookURL string
 
 	err := json.Unmarshal(req.Data, &webhookURL)

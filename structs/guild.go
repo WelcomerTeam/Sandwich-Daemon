@@ -174,6 +174,7 @@ type GuildRoleDelete struct {
 type GuildMember struct {
 	User     *User          `json:"user" msgpack:"user"`
 	Nick     string         `json:"nick,omitempty" msgpack:"nick,omitempty"`
+
 	Roles    []snowflake.ID `json:"roles" msgpack:"roles"`
 	JoinedAt string         `json:"joined_at" msgpack:"joined_at"`
 	Deaf     bool           `json:"deaf" msgpack:"deaf"`

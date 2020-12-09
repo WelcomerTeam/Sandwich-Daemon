@@ -16,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/savsgio/gotils"
 	"github.com/tevino/abool"
-	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
@@ -61,13 +60,15 @@ type Shard struct {
 	HeartbeatInterval    time.Duration `json:"heartbeat_interval"`
 	MaxHeartbeatFailures time.Duration `json:"max_heartbeat_failures"`
 
-	Unavailable map[snowflake.ID]bool `json:"-"`
+	UnavailableMu sync.RWMutex          `json:"-"`
+	Unavailable   map[snowflake.ID]bool `json:"-"`
 
 	Start   time.Time `json:"start"`
 	Retries *int32    `json:"retries"` // When erroring, how many times to retry connecting until shardgroup is stopped.
 
 	wsConn *websocket.Conn
 
+	mp sync.Pool
 	rp sync.Pool
 	pp sync.Pool
 
@@ -104,14 +105,24 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		LastHeartbeatAck:  time.Now().UTC(),
 		LastHeartbeatSent: time.Now().UTC(),
 
+		UnavailableMu: sync.RWMutex{},
+
 		Start:   time.Now().UTC(),
 		Retries: new(int32),
 
+		// Pool of payloads from discord
+		mp: sync.Pool{
+			New: func() interface{} { return new(structs.ReceivedPayload) },
+		},
+
+		// Pool of payloads sent to discord
 		rp: sync.Pool{
 			New: func() interface{} { return new(structs.SentPayload) },
 		},
+
+		// Pool of payloads sent to consumers
 		pp: sync.Pool{
-			New: func() interface{} { return new(structs.PublishEvent) },
+			New: func() interface{} { return new(structs.SandwichPayload) },
 		},
 
 		events: new(int64),
@@ -289,7 +300,7 @@ func (sh *Shard) Connect() (err error) {
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to identify")
 
-			go sh.PublishWebhook(fmt.Sprintf("Gateway `IDENTIFY` failed"), err.Error(), 14431557, false)
+			go sh.PublishWebhook("Gateway `IDENTIFY` failed", err.Error(), 14431557, false)
 
 			return
 		}
@@ -298,7 +309,7 @@ func (sh *Shard) Connect() (err error) {
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to resume")
 
-			go sh.PublishWebhook(fmt.Sprintf("Gateway `RESUME` failed"), err.Error(), 14431557, false)
+			go sh.PublishWebhook("Gateway `RESUME` failed", err.Error(), 14431557, false)
 
 			return
 		}
@@ -338,7 +349,7 @@ func (sh *Shard) Connect() (err error) {
 	case err = <-sh.ErrorCh:
 		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
 
-		go sh.PublishWebhook(fmt.Sprintf("Encountered error during connection"), err.Error(), 14431557, false)
+		go sh.PublishWebhook("Encountered error during connection", err.Error(), 14431557, false)
 
 		return xerrors.Errorf("encountered error whilst connecting: %w", err)
 	case msg = <-sh.MessageCh:
@@ -373,8 +384,6 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 	sh.wsConn = conn
 
 	go func() {
-		var msg structs.ReceivedPayload
-
 		for {
 			mt, buf, err := conn.Read(ctx)
 
@@ -399,12 +408,21 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 				}
 			}
 
+			now := time.Now().UTC()
+			msg := structs.ReceivedPayload{
+				TraceTime: now,
+				Trace:     make(map[string]int),
+			}
+
 			err = json.Unmarshal(buf, &msg)
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to unmarshal message")
 
 				continue
 			}
+
+			now = time.Now().UTC()
+			msg.AddTrace("unmarshal", now)
 
 			atomic.AddInt64(sh.events, 1)
 
@@ -452,7 +470,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
 
 		if err != nil {
-			go sh.PublishWebhook(fmt.Sprintf("Failed to send heartbeat to gateway"), err.Error(), 16760839, false)
+			go sh.PublishWebhook("Failed to send heartbeat to gateway", err.Error(), 16760839, false)
 
 			sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
 			err = sh.Reconnect(websocket.StatusNormalClosure)
@@ -470,7 +488,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 			atomic.StoreInt64(sh.seq, 0)
 		}
 
-		go sh.PublishWebhook(fmt.Sprintf("Received invalid session from gateway"), "", 16760839, false)
+		go sh.PublishWebhook("Received invalid session from gateway", "", 16760839, false)
 
 		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
 		err = sh.Reconnect(reconnectCloseCode)
@@ -510,8 +528,6 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 	case structs.GatewayOpDispatch:
 		err = sh.OnDispatch(msg)
 		if err != nil {
-			sh.Logger.Error().Err(err).Msg("Error whilst dispatch event")
-
 			return
 		}
 	case structs.GatewayOpHeartbeatACK:
@@ -526,6 +542,10 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 		return
 	case structs.GatewayOpVoiceStateUpdate:
 		// Todo: handle
+	case structs.GatewayOpIdentify,
+		structs.GatewayOpRequestGuildMembers,
+		structs.GatewayOpResume,
+		structs.GatewayOpStatusUpdate:
 	default:
 		sh.Logger.Warn().
 			Int("op", int(msg.Op)).
@@ -541,6 +561,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
 }
 
 // OnDispatch handles a dispatch event.
+// TODO: Add RWMutexes for EventBlacklist and ProduceBlacklist.
 func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	start := time.Now().UTC()
 
@@ -551,71 +572,84 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		}
 
 		if change > 10*time.Second {
-			go sh.PublishWebhook(fmt.Sprintf("Packet `%s` took too long. Took `%dms`", msg.Type, change.Milliseconds()), "", 16760839, false)
+			go sh.PublishWebhook(
+				fmt.Sprintf("Packet `%s` took too long. Took `%dms`", msg.Type,
+					change.Milliseconds()), "", 16760839, false)
 		}
 	}()
 
-	// sh.Logger.Trace().Str("type", msg.Type).Msg("Event dispatched")
-
-	switch msg.Type {
-	case "READY":
-		readyPayload := structs.Ready{}
-		if err = sh.decodeContent(msg, &readyPayload); err != nil {
-			return
-		} else if err = sh.DispatchReady(readyPayload); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to process READY event")
-		}
-
-		return
-	case "GUILD_CREATE":
-		guildPayload := structs.GuildCreate{}
-		if err = sh.decodeContent(msg, &guildPayload); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
-		} else if err = sh.HandleGuildCreate(guildPayload, false); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to process GUILD_CREATE event")
-		}
-
-		return
-	case "GUILD_MEMBERS_CHUNK":
-		guildMembersPayload := structs.GuildMembersChunk{}
-		if err = sh.decodeContent(msg, &guildMembersPayload); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_MEMBERS_CHUNK")
-		} else if err = sh.Manager.StateGuildMembersChunk(guildMembersPayload); err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to process GUILD_MEMBERS_CHUNK event")
-		}
-
-		return
-	default:
+	if sh.Manager.StanClient == nil {
+		return xerrors.Errorf("no stan client found")
 	}
 
-	// Todo: Uncomment this when we have proper event handling
-	// default:
-	// 	sh.Logger.Warn().Str("type", msg.Type).Msg("No handler for dispatch message")
-
-	return err
-}
-
-// Latency returns the heartbeat latency in milliseconds.
-func (sh *Shard) Latency() (latency int64) {
-	sh.LastHeartbeatMu.RLock()
-	defer sh.LastHeartbeatMu.RUnlock()
-
-	return sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Round(time.Millisecond).Milliseconds()
-}
-
-// HandleGuildCreate handles the guild create event.
-func (sh *Shard) HandleGuildCreate(payload structs.GuildCreate, lazy bool) (err error) {
-	if ok, unavailable := sh.Unavailable[payload.ID]; ok && unavailable {
-		// Guild has been lazy loaded
-		sh.Logger.Trace().Msgf("Lazy loaded guild ID %d", payload.ID)
-		payload.Lazy = true || lazy
+	// Ignore events that are in the event blacklist.
+	if gotils.StringSliceInclude(sh.Manager.EventBlacklist, msg.Type) {
+		return
 	}
 
-	delete(sh.Unavailable, payload.ID)
+	now := time.Now().UTC()
+	msg.AddTrace("dispatch", now)
 
-	_, err = sh.Manager.StateGuildCreate(payload)
+	results, ok, err := sh.Manager.Sandwich.StateDispatch(&StateCtx{
+		Sg: sh.Manager.Sandwich,
+		Mg: sh.Manager,
+		Sh: sh,
+	}, msg)
+	if err != nil {
+		return xerrors.Errorf("on dispatch failure for %s: %w", msg.Type, err)
+	}
 
-	return
+	if !ok {
+		return
+	}
+
+	// Do not publish the event if it is in the produce blacklist,
+	// regardless if it has been marked ok.
+	if gotils.StringSliceInclude(sh.Manager.ProduceBlacklist, msg.Type) {
+		return
+	}
+
+	now = time.Now().UTC()
+	msg.AddTrace("state", now)
+
+	packet := sh.pp.Get().(*structs.SandwichPayload)
+	defer sh.pp.Put(packet)
+
+	packet.ReceivedPayload = msg
+	packet.Trace = msg.Trace
+	packet.Data = results.Data
+	packet.Extra = results.Extra
+
+	return sh.PublishEvent(packet)
+}
+
+// PublishEvent publishes a SandwichPayload.
+func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
+	packet.Metadata = structs.SandwichMetadata{
+		Identifier: sh.Manager.Configuration.Identifier,
+		Shard: [3]int{
+			int(sh.ShardGroup.ID),
+			sh.ShardID,
+			sh.ShardGroup.ShardCount,
+		},
+	}
+
+	payload, err := json.Marshal(packet)
+	if err != nil {
+		return xerrors.Errorf("failed to marshal payload: %w", err)
+	}
+
+	sh.Logger.Trace().Str("event", gotils.B2S(payload)).Msgf("Processed %s event", packet.Type)
+
+	err = sh.Manager.StanClient.Publish(
+		sh.Manager.Configuration.Messaging.ChannelName,
+		payload,
+	)
+	if err != nil {
+		return xerrors.Errorf("publishEvent publish: %w", err)
+	}
+
+	return nil
 }
 
 // Listen to gateway and process accordingly.
@@ -653,7 +687,7 @@ func (sh *Shard) Listen() (err error) {
 						closeError.Code,
 					)
 
-					go sh.PublishWebhook(fmt.Sprintf("ShardGroup is closing due to invalid token being passed"), "", 16760839, false)
+					go sh.PublishWebhook("ShardGroup is closing due to invalid token being passed", "", 16760839, false)
 
 					// We cannot continue so we will kill the ShardGroup
 					sh.ShardGroup.ErrorMu.Lock()
@@ -728,7 +762,7 @@ func (sh *Shard) Heartbeat() {
 				if err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
 
-					go sh.PublishWebhook(fmt.Sprintf("Failed to heartbeat. Reconnecting"), "", 16760839, false)
+					go sh.PublishWebhook("Failed to heartbeat. Reconnecting", "", 16760839, false)
 				} else {
 					sh.Manager.Sandwich.ConfigurationMu.RLock()
 					sh.Logger.Warn().Err(err).
@@ -782,6 +816,7 @@ func (sh *Shard) readMessage() (msg structs.ReceivedPayload, err error) {
 func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 	if sh.wsConn != nil {
 		sh.Logger.Debug().Str("code", statusCode.String()).Msg("Closing websocket connection")
+
 		err = sh.wsConn.Close(statusCode, "")
 		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
@@ -856,38 +891,6 @@ func (sh *Shard) Identify() (err error) {
 	})
 
 	return err
-}
-
-// PublishEvent sends an event to consumers.
-func (sh *Shard) PublishEvent(eventType string, eventData interface{}) (err error) {
-	packet := sh.pp.Get().(*structs.PublishEvent)
-	defer sh.pp.Put(packet)
-
-	sh.Manager.Sandwich.ConfigurationMu.RLock()
-	defer sh.Manager.Sandwich.ConfigurationMu.RUnlock()
-
-	packet.Data = eventData
-	packet.From = sh.Manager.Configuration.Identifier
-	packet.Type = eventType
-
-	data, err := msgpack.Marshal(packet)
-	if err != nil {
-		return xerrors.Errorf("publishEvent marshal: %w", err)
-	}
-
-	if sh.Manager.StanClient != nil {
-		err = sh.Manager.StanClient.Publish(
-			sh.Manager.Configuration.Messaging.ChannelName,
-			data,
-		)
-		if err != nil {
-			return xerrors.Errorf("publishEvent publish: %w", err)
-		}
-	} else {
-		return xerrors.New("publishEvent publish: No active stanClient")
-	}
-
-	return nil
 }
 
 // SendEvent sends an event to discord.
@@ -995,7 +998,7 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 			sh.Close(code)
 			err = sh.Connect()
 
-			go sh.PublishWebhook(fmt.Sprintf("Failed to reconnect to gateway"), err.Error(), 14431557, false)
+			go sh.PublishWebhook("Failed to reconnect to gateway", err.Error(), 14431557, false)
 
 			return err
 		}
@@ -1036,9 +1039,27 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) (err error) {
 		structs.ShardClosed:
 	}
 
-	err = sh.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{ShardID: sh.ShardID, Status: int32(status)})
+	packet := sh.pp.Get().(*structs.SandwichPayload)
+	defer sh.pp.Put(packet)
 
-	return
+	packet.ReceivedPayload = structs.ReceivedPayload{
+		Type: "SHARD_STATUS",
+	}
+
+	packet.Data = structs.MessagingStatusUpdate{
+		ShardID: sh.ShardID,
+		Status:  int32(status),
+	}
+
+	return sh.PublishEvent(packet)
+}
+
+// Latency returns the heartbeat latency in milliseconds.
+func (sh *Shard) Latency() (latency int64) {
+	sh.LastHeartbeatMu.RLock()
+	defer sh.LastHeartbeatMu.RUnlock()
+
+	return sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Round(time.Millisecond).Milliseconds()
 }
 
 // Close closes the shard connection.
@@ -1067,7 +1088,7 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 }
 
 // PublishWebhook is the same as sg.PublishWebhook but has extra sugar for
-// displaying information about the shard
+// displaying information about the shard.
 func (sh *Shard) PublishWebhook(title string, description string, colour int, raw bool) {
 	var message structs.WebhookMessage
 

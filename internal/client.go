@@ -13,6 +13,7 @@ import (
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -67,7 +68,7 @@ func NewClient(token string, restTunnelURL string, reverse bool, isBot bool) *Cl
 // Fetch returns the response. Passing any headers will be sent to the request however
 // Authorization will be overwrote.
 func (c *Client) Fetch(ctx context.Context, method string, url string,
-	body io.Reader, headers map[string]string) (_body []byte, err error, status int) {
+	body io.Reader, headers map[string]string) (_body []byte, status int, err error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return
@@ -83,24 +84,27 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 	}
 
 	defer res.Body.Close()
-	_body, err = ioutil.ReadAll(res.Body)
 
-	return _body, err, res.StatusCode
+	_body, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, res.StatusCode, xerrors.Errorf("failed to read request body: %w", err)
+	}
+
+	return _body, res.StatusCode, nil
 }
 
 // FetchJSON attempts to convert the response into a JSON structure. Passing any headers
 // will be sent to the request however Authorization will be overwrote.
-func (c *Client) FetchJSON(ctx context.Context, method string, url string,
-	body io.Reader, headers map[string]string, structure interface{}) (err error, status int) {
-
-	_body, err, status := c.Fetch(ctx, method, url, body, headers)
+func (c *Client) FetchJSON(ctx context.Context, method string, url string, body io.Reader,
+	headers map[string]string, structure interface{}) (status int, err error) {
+	_body, status, err := c.Fetch(ctx, method, url, body, headers)
 	if err != nil {
 		return
 	}
 
 	err = json.Unmarshal(_body, &structure)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal body: %w", err), -1
+		return -1, fmt.Errorf("failed to unmarshal body: %w", err)
 	}
 
 	return

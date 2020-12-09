@@ -2,6 +2,7 @@ package structs
 
 import (
 	"encoding/json"
+	"math"
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
@@ -27,7 +28,7 @@ type GatewayBot struct {
 // GatewayOp represents a packets operation.
 type GatewayOp uint8
 
-// Operation Codes for gateway messagess.
+// Operation Codes for gateway messages.
 const (
 	GatewayOpDispatch GatewayOp = iota
 	GatewayOpHeartbeat
@@ -81,12 +82,46 @@ const (
 	CloseDisallowedIntents
 )
 
+// StateResult represents the data a state handler would return which would be converted to
+// a sandwich payload
+type StateResult struct {
+	Data  interface{}
+	Extra map[string]interface{}
+}
+
+// SandwichPayload represents the data that is sent to consumers
+type SandwichPayload struct {
+	ReceivedPayload
+
+	Data  interface{}            `json:"d,omitempty" msgpack:"d,omitempty"`
+	Extra map[string]interface{} `json:"e,omitempty" msgpack:"e,omitempty"`
+
+	Metadata SandwichMetadata `json:"_sandwich" msgpack:"_sandwich"`
+	Trace    map[string]int   `json:"trace" msgpack:"trace"`
+}
+
+// SandwichMetadata represents the identification information that consumers will use
+type SandwichMetadata struct {
+	Identifier string `json:"identifier" msgpack:"identifier"`
+	Shard      [3]int `json:"s" msgpack:"s"` // ShardGroup ID, Shard ID, Shard Count
+}
+
 // ReceivedPayload is the base of a JSON packet received from discord.
 type ReceivedPayload struct {
 	Op       GatewayOp       `json:"op" msgpack:"op"`
 	Data     json.RawMessage `json:"d,omitempty" msgpack:"d,omitempty"`
 	Sequence int64           `json:"s,omitempty" msgpack:"s,omitempty"`
 	Type     string          `json:"t,omitempty" msgpack:"t,omitempty"`
+
+	// Used for trace tracking
+	TraceTime time.Time      `json:"-"`
+	Trace     map[string]int `json:"-"`
+}
+
+// ReceivedPayload adds a trace entry and overwrites the current trace time.
+func (rp *ReceivedPayload) AddTrace(name string, now time.Time) {
+	rp.Trace[name] = int(math.Ceil(float64(now.Sub(rp.TraceTime).Milliseconds())))
+	rp.TraceTime = now
 }
 
 // SentPayload is the base of a JSON packet we sent to discord.

@@ -108,7 +108,7 @@ func ReturnRange(_range string, max int) (result []int) {
 	return result
 }
 
-// WebhookTime returns a formatted time.Time as a time accepted by webhooks
+// WebhookTime returns a formatted time.Time as a time accepted by webhooks.
 func WebhookTime(_time time.Time) string {
 	return _time.Format("2006-01-02T03:04:05Z")
 }

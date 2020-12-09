@@ -35,7 +35,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.4.0"
+const VERSION = "0.4.1"
 
 // ErrOnConfigurationFailure will return errors when loading configuration.
 // If this is false, these errors are suppressed. There is no reason for this
@@ -71,7 +71,8 @@ type SandwichConfiguration struct {
 		MaxBackups int    `json:"max_backups" yaml:"max_backups"` // Number of files to keep.
 		MaxAge     int    `json:"max_age" yaml:"max_age"`         // Number of days to keep a logfile.
 
-		MinimalWebhooks bool `json:"minimal_webhooks" yaml:"minimal_webhooks"` // If enabled, webhooks for status changes will use one liners instead of an embed.
+		MinimalWebhooks bool `json:"minimal_webhooks" yaml:"minimal_webhooks"`
+		// If enabled, webhooks for status changes will use one liners instead of an embed.
 	} `json:"logging" yaml:"logging"`
 
 	RestTunnel struct {
@@ -557,7 +558,7 @@ func (sg *Sandwich) startManagers() {
 			go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
 				Embeds: []structs.Embed{
 					{
-						Title:     fmt.Sprintf("Found conflicting manager identifiers. Ignoring!"),
+						Title:     "Found conflicting manager identifiers. Ignoring!",
 						Color:     16760839,
 						Timestamp: WebhookTime(time.Now().UTC()),
 						Footer: &structs.EmbedFooter{
@@ -626,7 +627,7 @@ func (sg *Sandwich) startManagers() {
 					go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
 						Embeds: []structs.Embed{
 							{
-								Title:       fmt.Sprintf("Failed to start up manager"),
+								Title:       "Failed to start up manager",
 								Description: err.Error(),
 								Color:       14431557,
 								Timestamp:   WebhookTime(time.Now().UTC()),
@@ -773,19 +774,20 @@ func (sg *Sandwich) Close() (err error) {
 	return
 }
 
-// PublishWebhook sends a webhook message to all added webhooks in the configuration
+// PublishWebhook sends a webhook message to all added webhooks in the configuration.
 func (sg *Sandwich) PublishWebhook(ctx context.Context, message structs.WebhookMessage) {
 	for _, webhook := range sg.Configuration.Webhooks {
-		err, _ := sg.SendWebhook(ctx, webhook, message)
+		_, err := sg.SendWebhook(ctx, webhook, message)
 		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sg.Logger.Warn().Err(err).Str("url", webhook).Msg("Failed to send webhook")
 		}
 	}
 }
 
-// SendWebhook executes a webhook request. This does not currently support sending
+// SendWebhook executes a webhook request. This does not currently support sending.
 // files.
-func (sg *Sandwich) SendWebhook(ctx context.Context, _url string, message structs.WebhookMessage) (err error, status int) {
+func (sg *Sandwich) SendWebhook(ctx context.Context, _url string,
+	message structs.WebhookMessage) (status int, err error) {
 	var c *Client
 
 	// We will trim whitespace just in case.
@@ -793,7 +795,7 @@ func (sg *Sandwich) SendWebhook(ctx context.Context, _url string, message struct
 
 	_, err = url.Parse(_url)
 	if err != nil {
-		return xerrors.Errorf("failed to parse webhook URL: %w", err), -1
+		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
 	}
 
 	if sg.RestTunnelEnabled.IsSet() {
@@ -804,20 +806,22 @@ func (sg *Sandwich) SendWebhook(ctx context.Context, _url string, message struct
 
 	res, err := json.Marshal(message)
 	if err != nil {
-		return xerrors.Errorf("failed to marshal webhook message: %w", err), -1
+		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
 	}
 
-	_, err, status = c.Fetch(ctx, "POST", _url, bytes.NewBuffer(res), map[string]string{
+	_, status, err = c.Fetch(ctx, "POST", _url, bytes.NewBuffer(res), map[string]string{
 		"Content-Type": "application/json",
 	})
-	return err, status
+
+	return status, err
 }
 
-// TestWebhook tests a URL to see if it is valid
-func (sg *Sandwich) TestWebhook(ctx context.Context, _url string) (err error, status int) {
+// TestWebhook tests a URL to see if it is valid.
+func (sg *Sandwich) TestWebhook(ctx context.Context,
+	_url string) (status int, err error) {
 	_, err = url.Parse(_url)
 	if err != nil {
-		return xerrors.Errorf("failed to parse webhook URL: %w", err), -1
+		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
 	}
 
 	message := structs.WebhookMessage{
