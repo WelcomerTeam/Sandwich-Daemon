@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/savsgio/gotils"
 	"github.com/tevino/abool"
+	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
@@ -36,6 +37,8 @@ const maxReconnectWait = 600
 
 // Shard represents the shard object.
 type Shard struct {
+	sync.RWMutex // used to lock less common variables such as the user
+
 	Status   structs.ShardStatus `json:"status"`
 	StatusMu sync.RWMutex        `json:"-"`
 
@@ -281,17 +284,18 @@ func (sh *Shard) Connect() (err error) {
 	sh.LastHeartbeatSent = time.Now().UTC()
 	sh.LastHeartbeatMu.Unlock()
 
+	sh.Lock()
 	sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
-
 	sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
+	sh.Unlock()
+
+	seq := atomic.LoadInt64(sh.seq)
 
 	sh.Logger.Debug().
 		Dur("interval", sh.HeartbeatInterval).
 		Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).
 		Msg("Retrieved HELLO event from discord")
-
-	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
-	seq := atomic.LoadInt64(sh.seq)
 
 	// If we have no session ID or the sequence is 0, we can identify instead
 	// of resuming.
@@ -353,11 +357,7 @@ func (sh *Shard) Connect() (err error) {
 
 		return xerrors.Errorf("encountered error whilst connecting: %w", err)
 	case msg = <-sh.MessageCh:
-		if err = sh.OnEvent(msg); err != nil {
-			sh.Logger.Error().Err(err).Msg("Encountered error dispatching event")
-
-			return xerrors.Errorf("encountered error handling event: %w", err)
-		}
+		sh.OnEvent(msg)
 	case <-t.C:
 	}
 
@@ -434,130 +434,147 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 }
 
 // OnEvent processes an event.
-func (sh *Shard) OnEvent(msg structs.ReceivedPayload) (err error) {
-	// This goroutine shows events that are taking too long.
-	fin := make(chan void)
+func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
+	var err error
 
-	go func() {
-		since := time.Now()
-		t := time.NewTimer(dispatchTimeout)
+	atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, 1)
 
-		for {
-			select {
-			case <-fin:
-				return
-			case <-t.C:
-				sh.Logger.Warn().
-					Str("type", msg.Type).
-					Int("op", int(msg.Op)).
-					Str("data", gotils.B2S(msg.Data)).
-					Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?",
-						msg.Type, time.Since(since).
-							Round(time.Second).Seconds(),
-					)
-				t.Reset(dispatchTimeout)
+	ticket := sh.Manager.Sandwich.Pool.Wait()
+
+	msg.AddTrace("ticket", time.Now().UTC())
+
+	atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, -1)
+
+	go func(ticket int) {
+
+		// This goroutine shows events that are taking too long.
+		fin := make(chan void)
+
+		go func() {
+			since := time.Now()
+			t := time.NewTimer(dispatchTimeout)
+
+			for {
+				select {
+				case <-fin:
+					return
+				case <-t.C:
+					sh.Logger.Warn().
+						Str("type", msg.Type).
+						Int("op", int(msg.Op)).
+						Str("data", gotils.B2S(msg.Data)).
+						Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?",
+							msg.Type, time.Since(since).
+								Round(time.Second).Seconds(),
+						)
+					t.Reset(dispatchTimeout)
+				}
 			}
-		}
-	}()
+		}()
 
-	defer func() {
-		close(fin)
-	}()
+		defer func() {
+			close(fin)
+			sh.Manager.Sandwich.Pool.FreeTicket(ticket)
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to handle event")
+			}
+		}()
 
-	switch msg.Op {
-	case structs.GatewayOpHeartbeat:
-		sh.Logger.Debug().Msg("Received heartbeat request")
-		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
+		switch msg.Op {
+		case structs.GatewayOpHeartbeat:
+			sh.Logger.Debug().Msg("Received heartbeat request")
+			err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
 
-		if err != nil {
-			go sh.PublishWebhook("Failed to send heartbeat to gateway", err.Error(), 16760839, false)
+			if err != nil {
+				go sh.PublishWebhook("Failed to send heartbeat to gateway", err.Error(), 16760839, false)
 
-			sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
-			err = sh.Reconnect(websocket.StatusNormalClosure)
+				sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
+				err = sh.Reconnect(websocket.StatusNormalClosure)
+
+				if err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+				}
+
+				return
+			}
+		case structs.GatewayOpInvalidSession:
+			resumable := json.Get(msg.Data, "d").ToBool()
+			if !resumable {
+				sh.sessionID = ""
+				atomic.StoreInt64(sh.seq, 0)
+			}
+
+			go sh.PublishWebhook("Received invalid session from gateway", "", 16760839, false)
+
+			sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
+			err = sh.Reconnect(reconnectCloseCode)
+
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+			}
+		case structs.GatewayOpHello:
+			hello := structs.Hello{}
+			err = sh.decodeContent(msg, &hello)
+
+			sh.LastHeartbeatMu.Lock()
+			sh.LastHeartbeatAck = time.Now().UTC()
+			sh.LastHeartbeatSent = time.Now().UTC()
+			sh.LastHeartbeatMu.Unlock()
+
+			sh.Lock()
+			sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
+			sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+			sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
+			sh.Unlock()
+
+			sh.Logger.Debug().
+				Dur("interval", sh.HeartbeatInterval).
+				Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).
+				Msg("Retrieved HELLO event from discord")
+
+			return
+		case structs.GatewayOpReconnect:
+			sh.Logger.Info().Msg("Reconnecting in response to gateway")
+			err = sh.Reconnect(reconnectCloseCode)
 
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 			}
 
 			return
-		}
-	case structs.GatewayOpInvalidSession:
-		resumable := json.Get(msg.Data, "d").ToBool()
-		if !resumable {
-			sh.sessionID = ""
-			atomic.StoreInt64(sh.seq, 0)
-		}
+		case structs.GatewayOpDispatch:
+			err = sh.OnDispatch(msg)
+			if err != nil {
+				return
+			}
+		case structs.GatewayOpHeartbeatACK:
+			sh.LastHeartbeatMu.Lock()
+			sh.LastHeartbeatAck = time.Now().UTC()
+			sh.Logger.Debug().
+				Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).
+				Msg("Received heartbeat ACK")
 
-		go sh.PublishWebhook("Received invalid session from gateway", "", 16760839, false)
+			sh.LastHeartbeatMu.Unlock()
 
-		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
-		err = sh.Reconnect(reconnectCloseCode)
+			return
+		case structs.GatewayOpVoiceStateUpdate:
+			// Todo: handle
+		case structs.GatewayOpIdentify,
+			structs.GatewayOpRequestGuildMembers,
+			structs.GatewayOpResume,
+			structs.GatewayOpStatusUpdate:
+		default:
+			sh.Logger.Warn().
+				Int("op", int(msg.Op)).
+				Str("type", msg.Type).
+				Msg("Gateway sent unknown packet")
 
-		if err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-		}
-	case structs.GatewayOpHello:
-		hello := structs.Hello{}
-		err = sh.decodeContent(msg, &hello)
-
-		sh.LastHeartbeatMu.Lock()
-		sh.LastHeartbeatAck = time.Now().UTC()
-		sh.LastHeartbeatSent = time.Now().UTC()
-		sh.LastHeartbeatMu.Unlock()
-
-		sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
-		sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
-
-		sh.Logger.Debug().
-			Dur("interval", sh.HeartbeatInterval).
-			Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).
-			Msg("Retrieved HELLO event from discord")
-
-		sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
-
-		return
-	case structs.GatewayOpReconnect:
-		sh.Logger.Info().Msg("Reconnecting in response to gateway")
-		err = sh.Reconnect(reconnectCloseCode)
-
-		if err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-		}
-
-		return
-	case structs.GatewayOpDispatch:
-		err = sh.OnDispatch(msg)
-		if err != nil {
 			return
 		}
-	case structs.GatewayOpHeartbeatACK:
-		sh.LastHeartbeatMu.Lock()
-		sh.LastHeartbeatAck = time.Now().UTC()
-		sh.Logger.Debug().
-			Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).
-			Msg("Received heartbeat ACK")
 
-		sh.LastHeartbeatMu.Unlock()
-
-		return
-	case structs.GatewayOpVoiceStateUpdate:
-		// Todo: handle
-	case structs.GatewayOpIdentify,
-		structs.GatewayOpRequestGuildMembers,
-		structs.GatewayOpResume,
-		structs.GatewayOpStatusUpdate:
-	default:
-		sh.Logger.Warn().
-			Int("op", int(msg.Op)).
-			Str("type", msg.Type).
-			Msg("Gateway sent unknown packet")
-
-		return
-	}
+	}(ticket)
 
 	atomic.StoreInt64(sh.seq, msg.Sequence)
-
-	return err
 }
 
 // OnDispatch handles a dispatch event.
@@ -583,11 +600,16 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	}
 
 	// Ignore events that are in the event blacklist.
-	if gotils.StringSliceInclude(sh.Manager.EventBlacklist, msg.Type) {
+	sh.Manager.EventBlacklistMu.RLock()
+	contains := gotils.StringSliceInclude(sh.Manager.EventBlacklist, msg.Type)
+	sh.Manager.EventBlacklistMu.RUnlock()
+
+	if contains {
 		return
 	}
 
 	now := time.Now().UTC()
+
 	msg.AddTrace("dispatch", now)
 
 	results, ok, err := sh.Manager.Sandwich.StateDispatch(&StateCtx{
@@ -605,7 +627,11 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 	// Do not publish the event if it is in the produce blacklist,
 	// regardless if it has been marked ok.
-	if gotils.StringSliceInclude(sh.Manager.ProduceBlacklist, msg.Type) {
+	sh.Manager.ProduceBlacklistMu.RLock()
+	contains = gotils.StringSliceInclude(sh.Manager.ProduceBlacklist, msg.Type)
+	sh.Manager.ProduceBlacklistMu.RUnlock()
+
+	if contains {
 		return
 	}
 
@@ -625,7 +651,11 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 
 // PublishEvent publishes a SandwichPayload.
 func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
+	sh.Manager.ConfigurationMu.RLock()
+	defer sh.Manager.ConfigurationMu.RUnlock()
+
 	packet.Metadata = structs.SandwichMetadata{
+		Version:    VERSION,
 		Identifier: sh.Manager.Configuration.Identifier,
 		Shard: [3]int{
 			int(sh.ShardGroup.ID),
@@ -634,12 +664,90 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 		},
 	}
 
-	payload, err := json.Marshal(packet)
+	payload, err := msgpack.Marshal(packet)
 	if err != nil {
 		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}
 
 	sh.Logger.Trace().Str("event", gotils.B2S(payload)).Msgf("Processed %s event", packet.Type)
+
+	// Compression testing of large payloads. In the future this *may* be
+	// added however in its current state it is uncertain. With using a 1mb
+	// msgpack payload, compression can be brought down to 48kb using brotli
+	// level 11 however will take arround 1.5 seconds. However, it is likely
+	// level 0 or 6 will be used which produce 95kb in 3ms and 54kb in 20ms
+	// respectively. It is likely the actual data portion of the payload will
+	// be compressed so the metadata and the rest of the data can be preserved
+	// then pass in the metadata it is compressed instead of using magic bytes
+	// or guessing by consumers.
+
+	// Whilst compression can prove a benefit, having it enabled for all events
+	// do not provide any benefit and only affect larger payloads which is
+	// not common apart from GUILD_CREATE events.
+
+	// Sample testing of a GUILD_CREATE event:
+
+	// METHOD | Level        | Ms   | Resulting Payload Size
+	// -------|--------------|------|-----------------------
+	// NONE   |              |      | 1011967
+	// BROTLI | 0  (speed)   | 3    | 95908   ( 9.5%)
+	// BROTLI | 6  (default) | 20   | 54545   ( 5.4%)
+	// BROTLI | 11 (best)    | 1245 | 47044   ( 4.6%)
+	// GZIP   | 1  (speed)   | 3    | 115799  (11.5%)
+	// GZIP   | -1 (default) | 8    | 82336   ( 8.1%)
+	// GZIP   | 9  (best)    | 19   | 78253   ( 7.7%)
+
+	// This may not be the most efficient way but it was useful for testing many
+	// payloads. More cohesive benchmarking will take place if this is ever properly
+	// implemented and may be a 1.0 feature however it is unlikely to be necessary..
+
+	// if len(payload) > 100000 {
+	// 	println("NONE", len(payload))
+
+	// 	var b bytes.Buffer
+
+	// 	br := brotli.NewWriterLevel(&b, brotli.BestSpeed)
+	// 	a := time.Now()
+	// 	br.Write(payload)
+	// 	br.Close()
+	// 	println("BROTLI", brotli.BestSpeed, time.Now().Sub(a).Milliseconds(), b.Len())
+	// 	b.Reset()
+
+	// 	br = brotli.NewWriterLevel(&b, brotli.DefaultCompression)
+	// 	a = time.Now()
+	// 	br.Write(payload)
+	// 	br.Close()
+	// 	println("BROTLI", brotli.DefaultCompression, time.Now().Sub(a).Milliseconds(), b.Len())
+	// 	b.Reset()
+
+	// 	br = brotli.NewWriterLevel(&b, brotli.BestCompression)
+	// 	a = time.Now()
+	// 	br.Write(payload)
+	// 	br.Close()
+	// 	println("BROTLI", brotli.BestCompression, time.Now().Sub(a).Milliseconds(), b.Len())
+	// 	b.Reset()
+
+	// 	gz, _ := gzip.NewWriterLevel(&b, gzip.BestSpeed)
+	// 	a = time.Now()
+	// 	gz.Write(payload)
+	// 	gz.Close()
+	// 	println("GZIP  ", gzip.BestSpeed, time.Now().Sub(a).Milliseconds(), b.Len())
+	// 	b.Reset()
+
+	// 	gz, _ = gzip.NewWriterLevel(&b, gzip.DefaultCompression)
+	// 	a = time.Now()
+	// 	gz.Write(payload)
+	// 	gz.Close()
+	// 	println("GZIP  ", gzip.DefaultCompression, time.Now().Sub(a).Milliseconds(), b.Len())
+	// 	b.Reset()
+
+	// 	gz, _ = gzip.NewWriterLevel(&b, gzip.BestCompression)
+	// 	a = time.Now()
+	// 	gz.Write(payload)
+	// 	gz.Close()
+	// 	println("GZIP  ", gzip.BestCompression, time.Now().Sub(a).Milliseconds(), b.Len())
+	// 	b.Reset()
+	// }
 
 	err = sh.Manager.StanClient.Publish(
 		sh.Manager.Configuration.Messaging.ChannelName,
@@ -720,10 +828,7 @@ func (sh *Shard) Listen() (err error) {
 			wsConn = sh.wsConn
 		}
 
-		err = sh.OnEvent(msg)
-		if err != nil {
-			sh.Logger.Error().Err(err).Msg("Encountered error dispatching event")
-		}
+		sh.OnEvent(msg)
 
 		// In the event we have reconnected, the wsConn could have changed,
 		// we will use the new wsConn if this is the case
@@ -808,6 +913,7 @@ func (sh *Shard) readMessage() (msg structs.ReceivedPayload, err error) {
 	case err = <-sh.ErrorCh:
 		return msg, err
 	case msg = <-sh.MessageCh:
+		msg.AddTrace("read", time.Now().UTC())
 		return msg, nil
 	}
 }
@@ -1099,11 +1205,13 @@ func (sh *Shard) PublishWebhook(title string, description string, colour int, ra
 				sh.ShardGroup.ID, sh.ShardID, title, description),
 		}
 
+		sh.RLock()
 		if sh.User != nil && message.AvatarURL == "" && message.Username == "" {
 			message.AvatarURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 				sh.User.ID.String(), sh.User.Avatar)
 			message.Username = sh.User.Username
 		}
+		sh.RUnlock()
 	} else {
 		message = structs.WebhookMessage{
 			Embeds: []structs.Embed{
@@ -1121,11 +1229,13 @@ func (sh *Shard) PublishWebhook(title string, description string, colour int, ra
 			},
 		}
 
+		sh.RLock()
 		if sh.User != nil && message.AvatarURL == "" && message.Username == "" {
 			message.AvatarURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 				sh.User.ID.String(), sh.User.Avatar)
 			message.Username = sh.User.Username
 		}
+		sh.RUnlock()
 	}
 
 	sh.Manager.Sandwich.PublishWebhook(context.Background(), message)

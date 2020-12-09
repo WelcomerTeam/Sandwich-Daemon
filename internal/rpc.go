@@ -233,7 +233,11 @@ func RPCManagerShardGroupDelete(sg *Sandwich, user *structs.DiscordUser,
 		return false
 	}
 
-	if shardgroup.Status != structs.ShardGroupClosed {
+	shardgroup.StatusMu.RLock()
+	shardgroupNotClosed := shardgroup.Status != structs.ShardGroupClosed
+	shardgroup.StatusMu.RUnlock()
+
+	if shardgroupNotClosed {
 		passResponse(rw, "ShardGroup is not closed", false, http.StatusBadRequest)
 
 		return false
@@ -295,13 +299,17 @@ func RPCManagerUpdate(sg *Sandwich, user *structs.DiscordUser,
 		}
 	}
 
+	manager.EventBlacklistMu.Lock()
 	if !reflect.DeepEqual(event.Events.EventBlacklist, manager.Configuration.Events.EventBlacklist) {
 		manager.EventBlacklist = manager.Configuration.Events.EventBlacklist
 	}
+	manager.EventBlacklistMu.Unlock()
 
+	manager.ProduceBlacklistMu.Lock()
 	if !reflect.DeepEqual(event.Events.ProduceBlacklist, manager.Configuration.Events.ProduceBlacklist) {
 		manager.ProduceBlacklist = manager.Configuration.Events.ProduceBlacklist
 	}
+	manager.ProduceBlacklistMu.Unlock()
 
 	manager.Configuration = &event
 	manager.Client.Token = manager.Configuration.Token

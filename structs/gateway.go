@@ -82,30 +82,6 @@ const (
 	CloseDisallowedIntents
 )
 
-// StateResult represents the data a state handler would return which would be converted to
-// a sandwich payload
-type StateResult struct {
-	Data  interface{}
-	Extra map[string]interface{}
-}
-
-// SandwichPayload represents the data that is sent to consumers
-type SandwichPayload struct {
-	ReceivedPayload
-
-	Data  interface{}            `json:"d,omitempty" msgpack:"d,omitempty"`
-	Extra map[string]interface{} `json:"e,omitempty" msgpack:"e,omitempty"`
-
-	Metadata SandwichMetadata `json:"_sandwich" msgpack:"_sandwich"`
-	Trace    map[string]int   `json:"trace" msgpack:"trace"`
-}
-
-// SandwichMetadata represents the identification information that consumers will use
-type SandwichMetadata struct {
-	Identifier string `json:"identifier" msgpack:"identifier"`
-	Shard      [3]int `json:"s" msgpack:"s"` // ShardGroup ID, Shard ID, Shard Count
-}
-
 // ReceivedPayload is the base of a JSON packet received from discord.
 type ReceivedPayload struct {
 	Op       GatewayOp       `json:"op" msgpack:"op"`
@@ -114,8 +90,8 @@ type ReceivedPayload struct {
 	Type     string          `json:"t,omitempty" msgpack:"t,omitempty"`
 
 	// Used for trace tracking
-	TraceTime time.Time      `json:"-"`
-	Trace     map[string]int `json:"-"`
+	TraceTime time.Time      `json:"-" msgpack:"-"`
+	Trace     map[string]int `json:"-" msgpack:"-"`
 }
 
 // ReceivedPayload adds a trace entry and overwrites the current trace time.

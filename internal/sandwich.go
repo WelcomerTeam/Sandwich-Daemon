@@ -17,6 +17,7 @@ import (
 	"time"
 
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/sessions"
@@ -35,7 +36,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.4.1"
+const VERSION = "0.5"
 
 // ErrOnConfigurationFailure will return errors when loading configuration.
 // If this is false, these errors are suppressed. There is no reason for this
@@ -143,6 +144,9 @@ type Sandwich struct {
 	fs          *fasthttp.FS
 
 	ConsolePump *ConsolePump `json:"-"`
+
+	Pool        *limiter.ConcurrencyLimiter `json:"-"`
+	PoolWaiting *int64                      `json:"-"`
 }
 
 // NewSandwich creates the application state and initializes it.
@@ -155,6 +159,8 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		Managers:        make(map[string]*Manager),
 		TotalEvents:     new(int64),
 		Buckets:         bucketstore.NewBucketStore(),
+		Pool:            limiter.NewConcurrencyLimiter("eventPool", 512),
+		PoolWaiting:     new(int64),
 	}
 
 	sg.Lock()
@@ -689,7 +695,7 @@ func (sg *Sandwich) gatherAnalytics() {
 
 		now := time.Now().UTC()
 		uptime := now.Sub(sg.Start).Round(time.Second)
-		sg.Logger.Debug().Str("Elapsed", uptime.String()).Msgf("%d/s", events)
+		sg.Logger.Debug().Str("Elapsed", uptime.String()).Int64("q", atomic.LoadInt64(sg.PoolWaiting)).Msgf("%d/s", events)
 	}
 }
 

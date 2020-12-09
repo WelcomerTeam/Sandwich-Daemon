@@ -138,8 +138,11 @@ type Manager struct {
 	ShardGroupIter    *int32                `json:"-"`
 	ShardGroupCounter sync.WaitGroup        `json:"-"`
 
-	EventBlacklist   []string `json:"-"`
-	ProduceBlacklist []string `json:"-"`
+	EventBlacklistMu sync.RWMutex `json:"-"`
+	EventBlacklist   []string     `json:"-"`
+
+	ProduceBlacklistMu sync.RWMutex `json:"-"`
+	ProduceBlacklist   []string     `json:"-"`
 }
 
 // NewManager creates a new manager.
@@ -162,7 +165,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		Gateway:   structs.GatewayBot{},
 
 		pp: sync.Pool{
-			New: func() interface{} { return new(structs.PublishEvent) },
+			New: func() interface{} { return new(structs.SandwichPayload) },
 		},
 
 		ShardGroups:       make(map[int32]*ShardGroup),
@@ -170,8 +173,11 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		ShardGroupIter:    new(int32),
 		ShardGroupCounter: sync.WaitGroup{},
 
+		EventBlacklistMu: sync.RWMutex{},
 		EventBlacklist:   make([]string, 0),
-		ProduceBlacklist: make([]string, 0),
+
+		ProduceBlacklistMu: sync.RWMutex{},
+		ProduceBlacklist:   make([]string, 0),
 	}
 
 	if sg.RestTunnelEnabled.IsSet() {
@@ -292,8 +298,13 @@ func (mg *Manager) Open() (err error) {
 		return xerrors.Errorf("manager open stan connect: %w", err)
 	}
 
+	mg.EventBlacklistMu.Lock()
 	mg.EventBlacklist = mg.Configuration.Events.EventBlacklist
+	mg.EventBlacklistMu.Unlock()
+
+	mg.ProduceBlacklistMu.Lock()
 	mg.ProduceBlacklist = mg.Configuration.Events.ProduceBlacklist
+	mg.ProduceBlacklistMu.Unlock()
 
 	mg.Gateway, err = mg.GetGateway()
 
@@ -338,15 +349,25 @@ func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan
 
 // PublishEvent sends an event to consumers.
 func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err error) {
-	packet := mg.pp.Get().(*structs.PublishEvent)
+	packet := mg.pp.Get().(*structs.SandwichPayload)
 	defer mg.pp.Put(packet)
 
 	mg.ConfigurationMu.RLock()
 	defer mg.ConfigurationMu.RUnlock()
 
-	packet.Data = eventData
-	packet.From = mg.Configuration.Identifier
 	packet.Type = eventType
+	packet.Op = structs.GatewayOpDispatch
+	packet.Data = eventData
+
+	packet.Metadata = structs.SandwichMetadata{
+		Version:    VERSION,
+		Identifier: mg.Configuration.Identifier,
+	}
+
+	// Clear extra values
+	packet.Sequence = 0
+	packet.Extra = nil
+	packet.Trace = nil
 
 	data, err := msgpack.Marshal(packet)
 	if err != nil {

@@ -83,7 +83,11 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 	sg.Manager.ShardGroupsMu.Lock()
 	for _, _sg := range sg.Manager.ShardGroups {
 		// We preferably do not want to mark an erroring shardgroup as replaced as it overwrites how it is displayed.
-		if _sg.Status != structs.ShardGroupError {
+		_sg.StatusMu.RLock()
+		shardNotErroring := _sg.Status != structs.ShardGroupError
+		_sg.StatusMu.RUnlock()
+
+		if shardNotErroring {
 			if err := _sg.SetStatus(structs.ShardGroupReplaced); err != nil {
 				_sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
 			}

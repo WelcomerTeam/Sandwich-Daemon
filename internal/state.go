@@ -57,8 +57,10 @@ func StateReady(ctx *StateCtx, msg structs.ReceivedPayload) (result structs.Stat
 
 	ctx.Sh.Logger.Info().Msg("Received READY payload")
 
+	ctx.Sh.Lock()
 	ctx.Sh.sessionID = packet.SessionID
 	ctx.Sh.User = packet.User
+	ctx.Sh.Unlock()
 
 	events := make([]structs.ReceivedPayload, 0)
 
@@ -102,12 +104,12 @@ ready:
 				}
 
 				t.Reset(timeoutDuration)
-			} else {
-				if preemptiveEvents {
-					events = append(events, msg)
-				} else if err = ctx.Sh.OnDispatch(msg); err != nil {
-					ctx.Sh.Logger.Error().Err(err).Msg("Failed dispatching event")
-				}
+			}
+
+			if preemptiveEvents {
+				events = append(events, msg)
+			} else if err = ctx.Sh.OnDispatch(msg); err != nil {
+				ctx.Sh.Logger.Error().Err(err).Msg("Failed dispatching event")
 			}
 		case <-t.C:
 			ctx.Sh.Manager.Sandwich.ConfigurationMu.RLock()
@@ -215,19 +217,20 @@ func StateGuildCreate(ctx *StateCtx, msg structs.ReceivedPayload) (result struct
 	lazy, _ := ctx.Vars["lazy"].(bool)
 
 	ctx.Sh.UnavailableMu.RLock()
+	ok, unavailable := ctx.Sh.Unavailable[sg.ID]
+	ctx.Sh.UnavailableMu.RUnlock()
 
 	// Check if the guild is unavailable.
-	if ok, unavailable := ctx.Sh.Unavailable[sg.ID]; ok {
+	if ok {
 		if unavailable {
 			ctx.Sh.Logger.Trace().Str("id", sg.ID.String()).Msg("Lazy loaded guild")
-
 			lazy = true || lazy
 		}
 
+		ctx.Sh.UnavailableMu.Lock()
 		delete(ctx.Sh.Unavailable, sg.ID)
+		ctx.Sh.UnavailableMu.Unlock()
 	}
-
-	ctx.Sh.UnavailableMu.RUnlock()
 
 	return structs.StateResult{
 		Data: sg,

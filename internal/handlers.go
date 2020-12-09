@@ -409,7 +409,9 @@ func (sg *Sandwich) FetchAnalytics() (result structs.APIAnalyticsResult) {
 
 		manager.ShardGroupsMu.RLock()
 		for i, sg := range manager.ShardGroups {
+			sg.StatusMu.RLock()
 			statuses[i] = sg.Status
+			sg.StatusMu.RUnlock()
 		}
 		manager.ShardGroupsMu.RUnlock()
 
@@ -637,6 +639,7 @@ func (sg *Sandwich) FetchManagerResponse() (managers map[string]structs.APIConfi
 
 			shardgroup.ShardsMu.RLock()
 			for shardID, shard := range shardgroup.Shards {
+				shard.RLock()
 				shd := structs.APIConfigurationResponseShard{
 					ShardID:              shard.ShardID,
 					User:                 shard.User,
@@ -645,6 +648,7 @@ func (sg *Sandwich) FetchManagerResponse() (managers map[string]structs.APIConfi
 					Start:                shard.Start,
 					Retries:              atomic.LoadInt32(shard.Retries),
 				}
+				shard.RUnlock()
 
 				shard.StatusMu.RLock()
 				shd.Status = shard.Status
