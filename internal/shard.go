@@ -595,9 +595,15 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		}
 
 		if change > 10*time.Second {
+			trcrslt := ""
+
+			for tracer, tracetime := range msg.Trace {
+				trcrslt += fmt.Sprintf("%s: **%d**ms\n", tracer, tracetime)
+			}
+
 			go sh.PublishWebhook(
 				fmt.Sprintf("Packet `%s` took too long. Took `%dms`", msg.Type,
-					change.Milliseconds()), "", 16760839, false)
+					change.Milliseconds()), trcrslt, 16760839, false)
 		}
 	}()
 
