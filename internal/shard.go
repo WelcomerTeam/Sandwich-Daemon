@@ -437,141 +437,138 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 	var err error
 
-	atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, 1)
+	// This goroutine shows events that are taking too long.
+	fin := make(chan void)
 
-	ticket := sh.Manager.Sandwich.Pool.Wait()
+	go func() {
+		since := time.Now()
+		t := time.NewTimer(dispatchTimeout)
 
-	msg.AddTrace("ticket", time.Now().UTC())
-
-	atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, -1)
-
-	go func(ticket int) {
-		// This goroutine shows events that are taking too long.
-		fin := make(chan void)
-
-		go func() {
-			since := time.Now()
-			t := time.NewTimer(dispatchTimeout)
-
-			for {
-				select {
-				case <-fin:
-					return
-				case <-t.C:
-					sh.Logger.Warn().
-						Str("type", msg.Type).
-						Int("op", int(msg.Op)).
-						Str("data", gotils.B2S(msg.Data)).
-						Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?",
-							msg.Type, time.Since(since).
-								Round(time.Second).Seconds(),
-						)
-					t.Reset(dispatchTimeout)
-				}
+		for {
+			select {
+			case <-fin:
+				return
+			case <-t.C:
+				sh.Logger.Warn().
+					Str("type", msg.Type).
+					Int("op", int(msg.Op)).
+					Str("data", gotils.B2S(msg.Data)).
+					Msgf("Event %s is taking too long. Been executing for %f seconds. Possible deadlock?",
+						msg.Type, time.Since(since).
+							Round(time.Second).Seconds(),
+					)
+				t.Reset(dispatchTimeout)
 			}
-		}()
+		}
+	}()
 
-		defer func() {
-			close(fin)
-			sh.Manager.Sandwich.Pool.FreeTicket(ticket)
+	defer close(fin)
 
+	switch msg.Op {
+	case structs.GatewayOpHeartbeat:
+		sh.Logger.Debug().Msg("Received heartbeat request")
+		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
+
+		if err != nil {
+			go sh.PublishWebhook("Failed to send heartbeat to gateway", err.Error(), 16760839, false)
+
+			sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
+			err = sh.Reconnect(websocket.StatusNormalClosure)
+
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+			}
+
+			return
+		}
+	case structs.GatewayOpInvalidSession:
+		resumable := json.Get(msg.Data, "d").ToBool()
+		if !resumable {
+			sh.sessionID = ""
+			atomic.StoreInt64(sh.seq, 0)
+		}
+
+		go sh.PublishWebhook("Received invalid session from gateway", "", 16760839, false)
+
+		sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
+		err = sh.Reconnect(reconnectCloseCode)
+
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+		}
+	case structs.GatewayOpHello:
+		hello := structs.Hello{}
+		err = sh.decodeContent(msg, &hello)
+
+		sh.LastHeartbeatMu.Lock()
+		sh.LastHeartbeatAck = time.Now().UTC()
+		sh.LastHeartbeatSent = time.Now().UTC()
+		sh.LastHeartbeatMu.Unlock()
+
+		sh.Lock()
+		sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
+		sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
+		sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
+		sh.Unlock()
+
+		sh.Logger.Debug().
+			Dur("interval", sh.HeartbeatInterval).
+			Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).
+			Msg("Retrieved HELLO event from discord")
+
+		return
+	case structs.GatewayOpReconnect:
+		sh.Logger.Info().Msg("Reconnecting in response to gateway")
+		err = sh.Reconnect(reconnectCloseCode)
+
+		if err != nil {
+			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+		}
+
+		return
+	case structs.GatewayOpDispatch:
+		go func() {
+			var ticket int
+
+			defer sh.Manager.Sandwich.Pool.FreeTicket(ticket)
+
+			atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, 1)
+
+			ticket = sh.Manager.Sandwich.Pool.Wait()
+
+			msg.AddTrace("ticket", time.Now().UTC())
+
+			atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, -1)
+
+			err = sh.OnDispatch(msg)
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to handle event")
 			}
 		}()
+	case structs.GatewayOpHeartbeatACK:
+		sh.LastHeartbeatMu.Lock()
+		sh.LastHeartbeatAck = time.Now().UTC()
+		sh.Logger.Debug().
+			Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).
+			Msg("Received heartbeat ACK")
 
-		switch msg.Op {
-		case structs.GatewayOpHeartbeat:
-			sh.Logger.Debug().Msg("Received heartbeat request")
-			err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
+		sh.LastHeartbeatMu.Unlock()
 
-			if err != nil {
-				go sh.PublishWebhook("Failed to send heartbeat to gateway", err.Error(), 16760839, false)
+		return
+	case structs.GatewayOpVoiceStateUpdate:
+		// Todo: handle
+	case structs.GatewayOpIdentify,
+		structs.GatewayOpRequestGuildMembers,
+		structs.GatewayOpResume,
+		structs.GatewayOpStatusUpdate:
+	default:
+		sh.Logger.Warn().
+			Int("op", int(msg.Op)).
+			Str("type", msg.Type).
+			Msg("Gateway sent unknown packet")
 
-				sh.Logger.Error().Err(err).Msg("Failed to send heartbeat in response to gateway, reconnecting...")
-				err = sh.Reconnect(websocket.StatusNormalClosure)
-
-				if err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-				}
-
-				return
-			}
-		case structs.GatewayOpInvalidSession:
-			resumable := json.Get(msg.Data, "d").ToBool()
-			if !resumable {
-				sh.sessionID = ""
-				atomic.StoreInt64(sh.seq, 0)
-			}
-
-			go sh.PublishWebhook("Received invalid session from gateway", "", 16760839, false)
-
-			sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session from gateway")
-			err = sh.Reconnect(reconnectCloseCode)
-
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-			}
-		case structs.GatewayOpHello:
-			hello := structs.Hello{}
-			err = sh.decodeContent(msg, &hello)
-
-			sh.LastHeartbeatMu.Lock()
-			sh.LastHeartbeatAck = time.Now().UTC()
-			sh.LastHeartbeatSent = time.Now().UTC()
-			sh.LastHeartbeatMu.Unlock()
-
-			sh.Lock()
-			sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
-			sh.MaxHeartbeatFailures = sh.HeartbeatInterval * time.Duration(sh.Manager.Configuration.Bot.MaxHeartbeatFailures)
-			sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
-			sh.Unlock()
-
-			sh.Logger.Debug().
-				Dur("interval", sh.HeartbeatInterval).
-				Int("maxfails", sh.Manager.Configuration.Bot.MaxHeartbeatFailures).
-				Msg("Retrieved HELLO event from discord")
-
-			return
-		case structs.GatewayOpReconnect:
-			sh.Logger.Info().Msg("Reconnecting in response to gateway")
-			err = sh.Reconnect(reconnectCloseCode)
-
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-			}
-
-			return
-		case structs.GatewayOpDispatch:
-			err = sh.OnDispatch(msg)
-			if err != nil {
-				return
-			}
-		case structs.GatewayOpHeartbeatACK:
-			sh.LastHeartbeatMu.Lock()
-			sh.LastHeartbeatAck = time.Now().UTC()
-			sh.Logger.Debug().
-				Int64("RTT", sh.LastHeartbeatAck.Sub(sh.LastHeartbeatSent).Milliseconds()).
-				Msg("Received heartbeat ACK")
-
-			sh.LastHeartbeatMu.Unlock()
-
-			return
-		case structs.GatewayOpVoiceStateUpdate:
-			// Todo: handle
-		case structs.GatewayOpIdentify,
-			structs.GatewayOpRequestGuildMembers,
-			structs.GatewayOpResume,
-			structs.GatewayOpStatusUpdate:
-		default:
-			sh.Logger.Warn().
-				Int("op", int(msg.Op)).
-				Str("type", msg.Type).
-				Msg("Gateway sent unknown packet")
-
-			return
-		}
-	}(ticket)
+		return
+	}
 
 	atomic.StoreInt64(sh.seq, msg.Sequence)
 }
@@ -582,9 +579,19 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	start := time.Now().UTC()
 
 	defer func() {
-		change := time.Now().UTC().Sub(start)
+		now := time.Now().UTC()
+		change := now.Sub(start)
+
+		msg.AddTrace("publish", now)
+
 		if change > time.Second {
-			sh.Logger.Warn().Msgf("%s took %d ms", msg.Type, change.Milliseconds())
+			l := sh.Logger.Warn()
+
+			if trcrslt, err := json.MarshalToString(msg.Trace); err == nil {
+				l = l.Str("trace", trcrslt)
+			}
+
+			l.Msgf("%s took %d ms", msg.Type, change.Milliseconds())
 		}
 
 		if change > 10*time.Second {
@@ -1102,9 +1109,11 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 		if retries <= 0 {
 			sh.Logger.Warn().Msg("Ran out of retries whilst connecting. Attempting to reconnect client.")
 			sh.Close(code)
-			err = sh.Connect()
 
-			go sh.PublishWebhook("Failed to reconnect to gateway", err.Error(), 14431557, false)
+			err = sh.Connect()
+			if err != nil {
+				go sh.PublishWebhook("Failed to reconnect to gateway", err.Error(), 14431557, false)
+			}
 
 			return err
 		}
