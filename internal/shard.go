@@ -574,7 +574,6 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 }
 
 // OnDispatch handles a dispatch event.
-// TODO: Add RWMutexes for EventBlacklist and ProduceBlacklist.
 func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	start := time.Now().UTC()
 

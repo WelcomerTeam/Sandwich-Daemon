@@ -1,51 +1,44 @@
 package structs
 
 import (
-	"encoding/json"
-
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 )
 
 // Message represents a message on Discord.
 type Message struct {
-	ID              snowflake.ID       `json:"id" msgpack:"id"`
-	ChannelID       snowflake.ID       `json:"channel_id" msgpack:"channel_id"`
-	GuildID         snowflake.ID       `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-	Nonce           snowflake.ID       `json:"nonce,omitempty" msgpack:"nonce,omitempty"`
-	WebhookID       snowflake.ID       `json:"webhook_id,omitempty" msgpack:"webhook_id,omitempty"`
-	Content         string             `json:"content" msgpack:"content"`
-	Timestamp       string             `json:"timestamp" msgpack:"timestamp"`
-	EditedTimestamp string             `json:"edited_timestamp" msgpack:"edited_timestamp"`
-	Type            int                `json:"type" msgpack:"type"`
-	Author          *User              `json:"author" msgpack:"author"`
-	Member          *GuildMember       `json:"member,omitempty" msgpack:"member,omitempty"`
-	Mentions        []*User            `json:"mentions" msgpack:"mentions"`
-	MentionRoles    []snowflake.ID     `json:"mention_roles" msgpack:"mention_roles"`
-	Attachments     []Attachment       `json:"attachments" msgpack:"attachments"`
-	Embeds          []Embed            `json:"embeds" msgpack:"embeds"`
-	Reactions       []Reaction         `json:"reactions" msgpack:"reactions"`
-	Activity        MessageActivity    `json:"activity" msgpack:"activity"`
-	Application     MessageApplication `json:"application" msgpack:"application"`
-	TTS             bool               `json:"tts" msgpack:"tts"`
-	MentionEveryone bool               `json:"mention_everyone" msgpack:"mention_everyone"`
-	Pinned          bool               `json:"pinned" msgpack:"pinned"`
+	ID                snowflake.ID       `json:"id" msgpack:"id"`
+	ChannelID         snowflake.ID       `json:"channel_id" msgpack:"channel_id"`
+	GuildID           snowflake.ID       `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
+	Nonce             snowflake.ID       `json:"nonce,omitempty" msgpack:"nonce,omitempty"`
+	WebhookID         snowflake.ID       `json:"webhook_id,omitempty" msgpack:"webhook_id,omitempty"`
+	Content           string             `json:"content" msgpack:"content"`
+	Timestamp         string             `json:"timestamp" msgpack:"timestamp"`
+	EditedTimestamp   string             `json:"edited_timestamp" msgpack:"edited_timestamp"`
+	Type              MessageType        `json:"type" msgpack:"type"`
+	Author            *User              `json:"author" msgpack:"author"`
+	Member            *GuildMember       `json:"member,omitempty" msgpack:"member,omitempty"`
+	Mentions          []*User            `json:"mentions" msgpack:"mentions"`
+	MentionRoles      []snowflake.ID     `json:"mention_roles" msgpack:"mention_roles"`
+	Attachments       []Attachment       `json:"attachments" msgpack:"attachments"`
+	Embeds            []Embed            `json:"embeds" msgpack:"embeds"`
+	Reactions         []Reaction         `json:"reactions" msgpack:"reactions"`
+	Activity          MessageActivity    `json:"activity" msgpack:"activity"`
+	Application       MessageApplication `json:"application" msgpack:"application"`
+	TTS               bool               `json:"tts" msgpack:"tts"`
+	MentionEveryone   bool               `json:"mention_everyone" msgpack:"mention_everyone"`
+	Pinned            bool               `json:"pinned" msgpack:"pinned"`
+	MessageReference  []MessageReference `json:"message_referenced,omitempty" msgpack:"message_referenced,omitempty"`
+	Flags             MessageFlag        `json:"flags,omitempty" msgpack:"flags,omitempty"`
+	Stickers          []Sticker          `json:"stickers,omitempty" msgpack:"stickers,omitempty"`
+	ReferencedMessage *Message           `json:"referenced_message,omitempty" msgpack:"referenced_message,omitempty"`
 	// Todo: allowed mentions support
 }
 
-// WebhookMessage represents a message on Discord for webhooks.
-type WebhookMessage struct {
-	Content     string          `json:"content,omitempty" msgpack:"content,omitempty"`
-	Username    string          `json:"username,omitempty" msgpack:"username,omitempty"`
-	AvatarURL   string          `json:"avatar_url,omitempty" msgpack:"avatar_url,omitempty"`
-	TTS         bool            `json:"tts,omitempty" msgpack:"tts,omitempty"`
-	Embeds      []Embed         `json:"embeds,omitempty" msgpack:"embeds,omitempty"`
-	PayloadJSON json.RawMessage `json:"payload_json,omitempty" msgpack:"payload_json,omitempty"`
-	// Todo: allowed mentions and file support
-}
+type MessageType int64
 
 // message types.
 const (
-	MessageTypeDefault = iota
+	MessageTypeDefault MessageType = iota
 	MessageTypeRecipientAdd
 	MessageTypeRecipientRemove
 	MessageTypeCall
@@ -54,6 +47,24 @@ const (
 	MessageTypeChannelPinnedMessage
 	MessageTypeGuildMemberJoin
 )
+
+type MessageFlag int64
+
+// message flags.
+const (
+	MessageFlagCrossposted MessageFlag = 1 << iota
+	MessageFlagIsCrosspost
+	MessageFlagSuppressEmbeds
+	MessageFlagSourceMessageDeleted
+	MessageFlagUrgent
+)
+
+// MessageReference represents crossposted messages or replys
+type MessageReference struct {
+	ID        int64 `json:"message_id,omitempty" msgpack:"message_id,omitempty"`
+	ChannelID int64 `json:"channel_id,omitempty" msgpack:"channel_id,omitempty"`
+	GuildID   int64 `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
+}
 
 // MessageActivity represents a message activity on Discord.
 type MessageActivity struct {
@@ -82,7 +93,7 @@ const (
 type Reaction struct {
 	Count int    `json:"count" msgpack:"count"`
 	Me    bool   `json:"me" msgpack:"me"`
-	Emoji *Emoji `json:"emoji" msgpack:"emoji"` // TODO: type
+	Emoji *Emoji `json:"emoji" msgpack:"emoji"`
 }
 
 // Attachment represents a message attachment on discord.
@@ -194,7 +205,7 @@ type MessageReactionAdd struct {
 	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
 	MessageID snowflake.ID `json:"message_id" msgpack:"message_id"`
 	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-	Emoji     interface{}  `json:"emoji" msgpack:"emoji"` // TODO: type
+	Emoji     *Emoji       `json:"emoji" msgpack:"emoji"`
 }
 
 // MessageReactionRemove represents a message reaction remove packet.
@@ -203,7 +214,7 @@ type MessageReactionRemove struct {
 	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
 	MessageID snowflake.ID `json:"message_id" msgpack:"message_id"`
 	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-	Emoji     *Emoji       `json:"emoji" msgpack:"emoji"` // TODO: type
+	Emoji     *Emoji       `json:"emoji" msgpack:"emoji"`
 }
 
 // MessageReactionRemoveAll represents a message reaction remove all packet.

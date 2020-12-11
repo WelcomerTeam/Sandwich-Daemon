@@ -1,6 +1,10 @@
 package structs
 
-import "github.com/TheRockettek/snowflake"
+import (
+	"encoding/json"
+
+	"github.com/TheRockettek/snowflake"
+)
 
 // Webhook represents a webhook on Discord.
 type Webhook struct {
@@ -11,6 +15,17 @@ type Webhook struct {
 	Name      string       `json:"name" msgpack:"name"`
 	Avatar    string       `json:"avatar" msgpack:"avatar"`
 	Token     string       `json:"token" msgpack:"token"`
+}
+
+// WebhookMessage represents a message on Discord for webhooks.
+type WebhookMessage struct {
+	Content     string          `json:"content,omitempty" msgpack:"content,omitempty"`
+	Username    string          `json:"username,omitempty" msgpack:"username,omitempty"`
+	AvatarURL   string          `json:"avatar_url,omitempty" msgpack:"avatar_url,omitempty"`
+	TTS         bool            `json:"tts,omitempty" msgpack:"tts,omitempty"`
+	Embeds      []Embed         `json:"embeds,omitempty" msgpack:"embeds,omitempty"`
+	PayloadJSON json.RawMessage `json:"payload_json,omitempty" msgpack:"payload_json,omitempty"`
+	// Todo: allowed mentions and file support
 }
 
 // WebhookUpdate represents a webhook update packet.
