@@ -10,7 +10,6 @@ type Guild struct {
 	ID                          snowflake.ID               `json:"id" msgpack:"id"`
 	OwnerID                     snowflake.ID               `json:"owner_id,omitempty" msgpack:"owner_id,omitempty"`
 	AFKChannelID                snowflake.ID               `json:"afk_channel_id,omitempty" msgpack:"afk_channel_id,omitempty"`
-	EmbedChannelID              snowflake.ID               `json:"embed_channel_id,omitempty" msgpack:"embed_channel_id,omitempty"`
 	ApplicationID               snowflake.ID               `json:"application_id,omitempty" msgpack:"application_id,omitempty"`
 	WidgetChannelID             snowflake.ID               `json:"widget_channel_id,omitempty" msgpack:"widget_channel_id,omitempty"`
 	SystemChannelID             snowflake.ID               `json:"system_channel_id,omitempty" msgpack:"system_channel_id,omitempty"`
@@ -27,7 +26,6 @@ type Guild struct {
 	Icon                        string                     `json:"icon" msgpack:"icon"`
 	Splash                      string                     `json:"splash" msgpack:"splash"`
 	Owner                       bool                       `json:"owner,omitempty" msgpack:"owner,omitempty"`
-	EmbedEnabled                bool                       `json:"embed_enabled,omitempty" msgpack:"embed_enabled,omitempty"`
 	WidgetEnabled               bool                       `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
 	Large                       bool                       `json:"large,omitempty" msgpack:"large,omitempty"`
 	Unavailable                 bool                       `json:"unavailable,omitempty" msgpack:"unavailable,omitempty"`
@@ -172,8 +170,8 @@ type GuildRoleDelete struct {
 
 // GuildMember represents a guild member on Discord.
 type GuildMember struct {
-	User     *User          `json:"user" msgpack:"user"`
-	Nick     string         `json:"nick,omitempty" msgpack:"nick,omitempty"`
+	User *User  `json:"user" msgpack:"user"`
+	Nick string `json:"nick,omitempty" msgpack:"nick,omitempty"`
 
 	Roles    []snowflake.ID `json:"roles" msgpack:"roles"`
 	JoinedAt string         `json:"joined_at" msgpack:"joined_at"`

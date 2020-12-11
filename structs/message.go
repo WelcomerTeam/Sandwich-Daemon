@@ -175,6 +175,15 @@ type EmbedField struct {
 	Inline bool   `json:"inline,omitempty" msgpack:"inline,omitempty"`
 }
 
+// MessageAllowedMentions is the structure of the allowed mentions entry.
+type MessageAllowedMentions struct {
+	// Allowed values are: roles, users, everyone.
+	Parse       []string       `json:"parse" msgpack:"parse"`
+	Roles       []snowflake.ID `json:"roles" msgpack:"roles"`
+	Users       []snowflake.ID `json:"users" msgpack:"users"`
+	RepliedUser bool           `json:"replied_user" msgpack:"replied_user"`
+}
+
 // MessageCreate represents a message create packet.
 type MessageCreate struct {
 	*Message

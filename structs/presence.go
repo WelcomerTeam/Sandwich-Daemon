@@ -16,7 +16,6 @@ const (
 // PresenceUpdate represents a presence update packet.
 type PresenceUpdate struct {
 	User       *User          `json:"user"`
-	Roles      []snowflake.ID `json:"roles"`
 	Game       Activity       `json:"activity"`
 	GuildID    snowflake.ID   `json:"guild_id"`
 	Status     PresenceStatus `json:"status"`
