@@ -87,16 +87,3 @@ type Secrets struct {
 	Spectate string `json:"spectate,omitempty"`
 	Match    string `json:"match,omitempty"`
 }
-
-// TypingStart represents a typing start packet.
-type TypingStart struct {
-	ChannelID snowflake.ID `json:"channel_id"`
-	GuildID   snowflake.ID `json:"guild_id,omitempty"`
-	UserID    snowflake.ID `json:"user_id"`
-	Timestamp int          `json:"timestamp"`
-}
-
-// UserUpdate represents a user update packet.
-type UserUpdate struct {
-	*User
-}

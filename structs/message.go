@@ -6,32 +6,35 @@ import (
 
 // Message represents a message on Discord.
 type Message struct {
-	ID                snowflake.ID       `json:"id" msgpack:"id"`
-	ChannelID         snowflake.ID       `json:"channel_id" msgpack:"channel_id"`
-	GuildID           snowflake.ID       `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-	Nonce             snowflake.ID       `json:"nonce,omitempty" msgpack:"nonce,omitempty"`
-	WebhookID         snowflake.ID       `json:"webhook_id,omitempty" msgpack:"webhook_id,omitempty"`
-	Content           string             `json:"content" msgpack:"content"`
-	Timestamp         string             `json:"timestamp" msgpack:"timestamp"`
-	EditedTimestamp   string             `json:"edited_timestamp" msgpack:"edited_timestamp"`
-	Type              MessageType        `json:"type" msgpack:"type"`
-	Author            *User              `json:"author" msgpack:"author"`
-	Member            *GuildMember       `json:"member,omitempty" msgpack:"member,omitempty"`
-	Mentions          []*User            `json:"mentions" msgpack:"mentions"`
-	MentionRoles      []snowflake.ID     `json:"mention_roles" msgpack:"mention_roles"`
+	ID        snowflake.ID `json:"id" msgpack:"id"`
+	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
+	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
+	Author    *User        `json:"author" msgpack:"author"`
+	Member    *GuildMember `json:"member,omitempty" msgpack:"member,omitempty"`
+
+	Content         string `json:"content" msgpack:"content"`
+	Timestamp       string `json:"timestamp" msgpack:"timestamp"`
+	EditedTimestamp string `json:"edited_timestamp" msgpack:"edited_timestamp"`
+	TTS             bool   `json:"tts" msgpack:"tts"`
+
+	MentionEveryone bool                    `json:"mention_everyone" msgpack:"mention_everyone"`
+	Mentions        []*User                 `json:"mentions" msgpack:"mentions"`
+	MentionRoles    []snowflake.ID          `json:"mention_roles" msgpack:"mention_roles"`
+	MentionChannels []MessageChannelMention `json:"mention_channels,omitempty" msgpack:"mention_channels,omitempty"`
+
 	Attachments       []Attachment       `json:"attachments" msgpack:"attachments"`
 	Embeds            []Embed            `json:"embeds" msgpack:"embeds"`
-	Reactions         []Reaction         `json:"reactions" msgpack:"reactions"`
+	Reactions         []MessageReaction  `json:"reactions" msgpack:"reactions"`
+	Nonce             snowflake.ID       `json:"nonce,omitempty" msgpack:"nonce,omitempty"`
+	Pinned            bool               `json:"pinned" msgpack:"pinned"`
+	WebhookID         snowflake.ID       `json:"webhook_id,omitempty" msgpack:"webhook_id,omitempty"`
+	Type              MessageType        `json:"type" msgpack:"type"`
 	Activity          MessageActivity    `json:"activity" msgpack:"activity"`
 	Application       MessageApplication `json:"application" msgpack:"application"`
-	TTS               bool               `json:"tts" msgpack:"tts"`
-	MentionEveryone   bool               `json:"mention_everyone" msgpack:"mention_everyone"`
-	Pinned            bool               `json:"pinned" msgpack:"pinned"`
 	MessageReference  []MessageReference `json:"message_referenced,omitempty" msgpack:"message_referenced,omitempty"`
 	Flags             MessageFlag        `json:"flags,omitempty" msgpack:"flags,omitempty"`
 	Stickers          []Sticker          `json:"stickers,omitempty" msgpack:"stickers,omitempty"`
 	ReferencedMessage *Message           `json:"referenced_message,omitempty" msgpack:"referenced_message,omitempty"`
-	// Todo: allowed mentions support
 }
 
 type MessageType int64
@@ -46,6 +49,14 @@ const (
 	MessageTypeChannelIconChange
 	MessageTypeChannelPinnedMessage
 	MessageTypeGuildMemberJoin
+	MessageTypeUserPremiumGuildSubscription
+	MessageTypeUserPremiumGuildSubscriptionTier1
+	MessageTypeUserPremiumGuildSubscriptionTier2
+	MessageTypeUserPremiumGuildSubscriptionTier3
+	MessageTypeChannelFollowAdd
+	MessageTypeGuildDiscoveryDisqualified
+	MessageTypeGuildDiscoveryRequalified
+	MessageTypeReply
 )
 
 type MessageFlag int64
@@ -59,7 +70,15 @@ const (
 	MessageFlagUrgent
 )
 
-// MessageReference represents crossposted messages or replys
+// MessageChannelMention represents a mentioned channel.
+type MessageChannelMention struct {
+	ID      snowflake.ID `json:"id" msgpack:"id"`
+	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
+	Type    ChannelType  `json:"type" msgpack:"type"`
+	Name    string       `json:"name" msgpack:"name"`
+}
+
+// MessageReference represents crossposted messages or replys.
 type MessageReference struct {
 	ID        int64 `json:"message_id,omitempty" msgpack:"message_id,omitempty"`
 	ChannelID int64 `json:"channel_id,omitempty" msgpack:"channel_id,omitempty"`
@@ -89,8 +108,8 @@ const (
 	MessageActivityTypeJoinRequest
 )
 
-// Reaction represents a reaction to a message on Discord.
-type Reaction struct {
+// MessageReaction represents a reaction to a message on Discord.
+type MessageReaction struct {
 	Count int    `json:"count" msgpack:"count"`
 	Me    bool   `json:"me" msgpack:"me"`
 	Emoji *Emoji `json:"emoji" msgpack:"emoji"`
@@ -107,74 +126,6 @@ type Attachment struct {
 	Width    int          `json:"width" msgpack:"width"`
 }
 
-// Embed represents a message embed on Discord.
-type Embed struct {
-	Title       string          `json:"title,omitempty" msgpack:"title,omitempty"`
-	Type        string          `json:"type,omitempty" msgpack:"type,omitempty"`
-	Description string          `json:"description,omitempty" msgpack:"description,omitempty"`
-	URL         string          `json:"url,omitempty" msgpack:"url,omitempty"`
-	Timestamp   string          `json:"timestamp,omitempty" msgpack:"timestamp,omitempty"`
-	Color       int             `json:"color,omitempty" msgpack:"color,omitempty"`
-	Footer      *EmbedFooter    `json:"footer,omitempty" msgpack:"footer,omitempty"`
-	Image       *EmbedImage     `json:"image,omitempty" msgpack:"image,omitempty"`
-	Thumbnail   *EmbedThumbnail `json:"thumbnail,omitempty" msgpack:"thumbnail,omitempty"`
-	Video       *EmbedVideo     `json:"video,omitempty" msgpack:"video,omitempty"`
-	Provider    *EmbedProvider  `json:"provider,omitempty" msgpack:"provider,omitempty"`
-	Author      *EmbedAuthor    `json:"author,omitempty" msgpack:"author,omitempty"`
-	Fields      []*EmbedField   `json:"fields,omitempty" msgpack:"fields,omitempty"`
-}
-
-// EmbedFooter represents the footer of an embed.
-type EmbedFooter struct {
-	Text         string `json:"text" msgpack:"text"`
-	IconURL      string `json:"icon_url,omitempty" msgpack:"icon_url,omitempty"`
-	ProxyIconURL string `json:"proxy_icon_url,omitempty" msgpack:"proxy_icon_url,omitempty"`
-}
-
-// EmbedImage represents an image in an embed.
-type EmbedImage struct {
-	URL      string `json:"url,omitempty" msgpack:"url,omitempty"`
-	ProxyURL string `json:"proxy_url,omitempty" msgpack:"proxy_url,omitempty"`
-	Height   int    `json:"height,omitempty" msgpack:"height,omitempty"`
-	Width    int    `json:"width,omitempty" msgpack:"width,omitempty"`
-}
-
-// EmbedThumbnail represents the thumbnail of an embed.
-type EmbedThumbnail struct {
-	URL      string `json:"url,omitempty" msgpack:"url,omitempty"`
-	ProxyURL string `json:"proxy_url,omitempty" msgpack:"proxy_url,omitempty"`
-	Height   int    `json:"height,omitempty" msgpack:"height,omitempty"`
-	Width    int    `json:"width,omitempty" msgpack:"width,omitempty"`
-}
-
-// EmbedVideo represents the video of an embed.
-type EmbedVideo struct {
-	URL    string `json:"url,omitempty" msgpack:"url,omitempty"`
-	Height int    `json:"height,omitempty" msgpack:"height,omitempty"`
-	Width  int    `json:"width,omitempty" msgpack:"width,omitempty"`
-}
-
-// EmbedProvider represents the provider of an embed.
-type EmbedProvider struct {
-	Name string `json:"name,omitempty" msgpack:"name,omitempty"`
-	URL  string `json:"url,omitempty" msgpack:"url,omitempty"`
-}
-
-// EmbedAuthor represents the author of an embed.
-type EmbedAuthor struct {
-	Name         string `json:"name,omitempty" msgpack:"name,omitempty"`
-	URL          string `json:"url,omitempty" msgpack:"url,omitempty"`
-	IconURL      string `json:"icon_url,omitempty" msgpack:"icon_url,omitempty"`
-	ProxyIconURL string `json:"proxy_icon_url,omitempty" msgpack:"proxy_icon_url,omitempty"`
-}
-
-// EmbedField represents a field in an embed.
-type EmbedField struct {
-	Name   string `json:"name" msgpack:"name"`
-	Value  string `json:"value" msgpack:"value"`
-	Inline bool   `json:"inline,omitempty" msgpack:"inline,omitempty"`
-}
-
 // MessageAllowedMentions is the structure of the allowed mentions entry.
 type MessageAllowedMentions struct {
 	// Allowed values are: roles, users, everyone.
@@ -182,53 +133,4 @@ type MessageAllowedMentions struct {
 	Roles       []snowflake.ID `json:"roles" msgpack:"roles"`
 	Users       []snowflake.ID `json:"users" msgpack:"users"`
 	RepliedUser bool           `json:"replied_user" msgpack:"replied_user"`
-}
-
-// MessageCreate represents a message create packet.
-type MessageCreate struct {
-	*Message
-}
-
-// MessageUpdate represents a message update packet.
-type MessageUpdate struct {
-	*Message
-}
-
-// MessageDelete represents a message delete packet.
-type MessageDelete struct {
-	ID        snowflake.ID `json:"id" msgpack:"id"`
-	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
-	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-}
-
-// MessageDeleteBulk represents a message delete bulk packet.
-type MessageDeleteBulk struct {
-	IDs       []snowflake.ID `json:"ids" msgpack:"ids"`
-	ChannelID snowflake.ID   `json:"channel_id" msgpack:"channel_id"`
-	GuildID   snowflake.ID   `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-}
-
-// MessageReactionAdd represents a message reaction add packet.
-type MessageReactionAdd struct {
-	UserID    snowflake.ID `json:"user_id" msgpack:"user_id"`
-	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
-	MessageID snowflake.ID `json:"message_id" msgpack:"message_id"`
-	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-	Emoji     *Emoji       `json:"emoji" msgpack:"emoji"`
-}
-
-// MessageReactionRemove represents a message reaction remove packet.
-type MessageReactionRemove struct {
-	UserID    snowflake.ID `json:"user_id" msgpack:"user_id"`
-	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
-	MessageID snowflake.ID `json:"message_id" msgpack:"message_id"`
-	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
-	Emoji     *Emoji       `json:"emoji" msgpack:"emoji"`
-}
-
-// MessageReactionRemoveAll represents a message reaction remove all packet.
-type MessageReactionRemoveAll struct {
-	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
-	MessageID snowflake.ID `json:"message_id" msgpack:"message_id"`
-	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
 }

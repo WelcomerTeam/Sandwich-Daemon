@@ -2,7 +2,7 @@ package structs
 
 import "github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 
-// Sticker represents a sticker object
+// Sticker represents a sticker object.
 type Sticker struct {
 	ID           snowflake.ID `json:"id" msgpack:"id"`
 	PackID       snowflake.ID `json:"pack_id" msgpack:"pack_id"`

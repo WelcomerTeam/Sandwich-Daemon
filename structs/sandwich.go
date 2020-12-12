@@ -1,13 +1,13 @@
 package structs
 
 // StateResult represents the data a state handler would return which would be converted to
-// a sandwich payload
+// a sandwich payload.
 type StateResult struct {
 	Data  interface{}
 	Extra map[string]interface{}
 }
 
-// SandwichPayload represents the data that is sent to consumers
+// SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
 	ReceivedPayload
 
@@ -18,7 +18,7 @@ type SandwichPayload struct {
 	Trace    map[string]int   `json:"__trace,omitempty" msgpack:"__trace,omitempty"`
 }
 
-// SandwichMetadata represents the identification information that consumers will use
+// SandwichMetadata represents the identification information that consumers will use.
 type SandwichMetadata struct {
 	Version    string `json:"v" msgpack:"v"`
 	Identifier string `json:"i" msgpack:"i"`

@@ -5,45 +5,6 @@ import (
 	"github.com/vmihailenco/msgpack"
 )
 
-// Guild represents a guild on Discord.
-type Guild struct {
-	ID                          snowflake.ID               `json:"id" msgpack:"id"`
-	OwnerID                     snowflake.ID               `json:"owner_id,omitempty" msgpack:"owner_id,omitempty"`
-	AFKChannelID                snowflake.ID               `json:"afk_channel_id,omitempty" msgpack:"afk_channel_id,omitempty"`
-	ApplicationID               snowflake.ID               `json:"application_id,omitempty" msgpack:"application_id,omitempty"`
-	WidgetChannelID             snowflake.ID               `json:"widget_channel_id,omitempty" msgpack:"widget_channel_id,omitempty"`
-	SystemChannelID             snowflake.ID               `json:"system_channel_id,omitempty" msgpack:"system_channel_id,omitempty"`
-	Permissions                 int                        `json:"permissions,omitempty" msgpack:"permissions,omitempty"`
-	AFKTimeout                  int                        `json:"afk_timeout" msgpack:"afk_timeout"`
-	MemberCount                 int                        `json:"member_count,omitempty" msgpack:"member_count,omitempty"`
-	VerificationLevel           VerificationLevel          `json:"verification_level" msgpack:"verification_level"`
-	DefaultMessageNotifications MessageNotificationLevel   `json:"default_message_notifications" msgpack:"default_message_notifications"`
-	ExplicitContentFilter       ExplicitContentFilterLevel `json:"explicit_content_filter" msgpack:"explicit_content_filter"`
-	MFALevel                    MFALevel                   `json:"mfa_level" msgpack:"mfa_level"`
-	JoinedAt                    string                     `json:"joined_at,omitempty" msgpack:"joined_at,omitempty"`
-	Region                      string                     `json:"region" msgpack:"region"`
-	Name                        string                     `json:"name" msgpack:"name"`
-	Icon                        string                     `json:"icon" msgpack:"icon"`
-	Splash                      string                     `json:"splash" msgpack:"splash"`
-	Owner                       bool                       `json:"owner,omitempty" msgpack:"owner,omitempty"`
-	WidgetEnabled               bool                       `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
-	Large                       bool                       `json:"large,omitempty" msgpack:"large,omitempty"`
-	Unavailable                 bool                       `json:"unavailable,omitempty" msgpack:"unavailable,omitempty"`
-	Features                    []string                   `json:"features" msgpack:"features"`
-	Roles                       []*Role                    `json:"roles" msgpack:"roles"`
-	Emojis                      []*Emoji                   `json:"emojis" msgpack:"emojis"`
-	VoiceStates                 []*VoiceState              `json:"voice_states,omitempty" msgpack:"voice_states,omitempty"`
-	Members                     []*GuildMember             `json:"members,omitempty" msgpack:"members,omitempty"`
-	Channels                    []*Channel                 `json:"channels,omitempty" msgpack:"channels,omitempty"`
-	Presences                   []*Activity                `json:"presences,omitempty" msgpack:"presences,omitempty"`
-}
-
-// UnavailableGuild represents an unavailable guild.
-type UnavailableGuild struct {
-	ID          snowflake.ID `json:"id" msgpack:"id"`
-	Unavailable bool         `json:"unavailable" msgpack:"unavailable"`
-}
-
 // MessageNotificationLevel represents a guild's message notification level.
 type MessageNotificationLevel int
 
@@ -84,88 +45,89 @@ const (
 	VerificationLevelVeryHigh
 )
 
-// GuildCreate represents a guild create packet.
-type GuildCreate struct {
-	Guild
-	Lazy bool `json:"-" msgpack:"-"` // Internal use only.
+// SystemChannelFlags represents the flags of a system channel.
+type SystemChannelFlags int
+
+// System channel flags.
+const (
+	SystemChannelFlagsSuppressJoin SystemChannelFlags = 1 << iota
+	SystemChannelFlagsPremiumSubscriptions
+)
+
+// PremiumTier represents the current boosting tier of a guild.
+type PremiumTier int
+
+// Premium tier.
+const (
+	PremiumTierNone PremiumTier = iota
+	PremiumTier1
+	PremiumTier2
+	PremiumTier3
+)
+
+// Guild represents a guild on Discord.
+type Guild struct {
+	ID              snowflake.ID `json:"id" msgpack:"id"`
+	Name            string       `json:"name" msgpack:"name"`
+	Icon            string       `json:"icon" msgpack:"icon"`
+	IconHash        string       `json:"icon_hash,omitempty" msgpack:"icon_hash,omitempty"`
+	Splash          string       `json:"splash" msgpack:"splash"`
+	DiscoverySplash string       `json:"discovery_splash" msgpack:"discovery_splash"`
+
+	Owner       bool         `json:"owner,omitempty" msgpack:"owner,omitempty"`
+	OwnerID     snowflake.ID `json:"owner_id,omitempty" msgpack:"owner_id,omitempty"`
+	Permissions int          `json:"permissions,omitempty" msgpack:"permissions,omitempty"`
+	Region      string       `json:"region" msgpack:"region"`
+
+	AFKChannelID snowflake.ID `json:"afk_channel_id,omitempty" msgpack:"afk_channel_id,omitempty"`
+	AFKTimeout   int          `json:"afk_timeout" msgpack:"afk_timeout"`
+
+	WidgetEnabled   bool         `json:"widget_enabled,omitempty" msgpack:"widget_enabled,omitempty"`
+	WidgetChannelID snowflake.ID `json:"widget_channel_id,omitempty" msgpack:"widget_channel_id,omitempty"`
+
+	VerificationLevel           VerificationLevel          `json:"verification_level" msgpack:"verification_level"`
+	DefaultMessageNotifications MessageNotificationLevel   `json:"default_message_notifications" msgpack:"default_message_notifications"`
+	ExplicitContentFilter       ExplicitContentFilterLevel `json:"explicit_content_filter" msgpack:"explicit_content_filter"`
+
+	Roles    []*Role  `json:"roles" msgpack:"roles"`
+	Emojis   []*Emoji `json:"emojis" msgpack:"emojis"`
+	Features []string `json:"features" msgpack:"features"`
+
+	MFALevel           MFALevel           `json:"mfa_level" msgpack:"mfa_level"`
+	ApplicationID      snowflake.ID       `json:"application_id,omitempty" msgpack:"application_id,omitempty"`
+	SystemChannelID    snowflake.ID       `json:"system_channel_id,omitempty" msgpack:"system_channel_id,omitempty"`
+	SystemChannelFlags SystemChannelFlags `json:"system_channel_flags,omitempty" msgpack:"system_channel_flags,omitempty"`
+	RulesChannelID     snowflake.ID       `json:"rules_channel_id,omitempty" msgpack:"rules_channel_id,omitempty"`
+
+	JoinedAt    string `json:"joined_at,omitempty" msgpack:"joined_at,omitempty"`
+	Large       bool   `json:"large,omitempty" msgpack:"large,omitempty"`
+	Unavailable bool   `json:"unavailable,omitempty" msgpack:"unavailable,omitempty"`
+	MemberCount int    `json:"member_count,omitempty" msgpack:"member_count,omitempty"`
+
+	VoiceStates []*VoiceState  `json:"voice_states,omitempty" msgpack:"voice_states,omitempty"`
+	Members     []*GuildMember `json:"members,omitempty" msgpack:"members,omitempty"`
+	Channels    []*Channel     `json:"channels,omitempty" msgpack:"channels,omitempty"`
+	Presences   []*Activity    `json:"presences,omitempty" msgpack:"presences,omitempty"`
+
+	MaxPresences  int         `json:"max_presences,omitempty" msgpack:"max_presences,omitempty"`
+	MaxMembers    int         `json:"max_members,omitempty" msgpack:"max_members,omitempty"`
+	VanityURLCode string      `json:"vanity_url_code,omitempty" msgpack:"vanity_url_code,omitempty"`
+	Description   string      `json:"description,omitempty" msgpack:"description,omitempty"`
+	Banner        string      `json:"banner,omitempty" msgpack:"banner,omitempty"`
+	PremiumTier   PremiumTier `json:"premium_tier,omitempty" msgpack:"premium_tier,omitempty"`
+
+	PremiumSubscriptionCount int          `json:"premium_subscription_count,omitempty" msgpack:"premium_subscription_count,omitempty"`
+	PreferredLocale          string       `json:"preferred_locale,omitempty" msgpack:"preferred_locale,omitempty"`
+	PublicUpdatesChannelID   snowflake.ID `json:"public_updates_channel_id,omitempty" msgpack:"public_updates_channel_id,omitempty"`
+	MaxVideoChannelUsers     int          `json:"max_video_channel_users,omitempty" msgpack:"max_video_channel_users,omitempty"`
+	ApproximateMemberCount   int          `json:"approximate_member_count,omitempty" msgpack:"approximate_member_count,omitempty"`
+	ApproximatePresenceCount int          `json:"approximate_presence_count,omitempty" msgpack:"approximate_presence_count,omitempty"`
 }
 
-// GuildUpdate represents a guild update packet.
-type GuildUpdate Guild
-
-// GuildDelete represents a guild delete packet.
-type GuildDelete UnavailableGuild
-
-// GuildBanAdd represents a guild ban add packet.
-type GuildBanAdd struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	User    *User        `json:"user" msgpack:"user"`
-}
-
-// GuildBanRemove represents a guild ban remove packet.
-type GuildBanRemove struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	User    *User        `json:"user" msgpack:"user"`
-}
-
-// GuildEmojisUpdate represents a guild emojis update packet.
-type GuildEmojisUpdate struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	Emojis  []*Emoji     `json:"emojis" msgpack:"emojis"` // TODO: type
-}
-
-// GuildIntegrationsUpdate represents a guild integrations update packet.
-type GuildIntegrationsUpdate struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-}
-
-// GuildMemberAdd represents a guild member add packet.
-type GuildMemberAdd struct {
-	*GuildMember
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-}
-
-// GuildMemberRemove represents a guild member remove packet.
-type GuildMemberRemove struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	User    *User        `json:"user" msgpack:"user"`
-}
-
-// GuildMemberUpdate represents a guild member update packet.
-type GuildMemberUpdate struct {
-	GuildID snowflake.ID   `json:"guild_id" msgpack:"guild_id"`
-	Roles   []snowflake.ID `json:"roles" msgpack:"roles"`
-	User    *User          `json:"user" msgpack:"user"`
-	Nick    string         `json:"nick" msgpack:"nick"`
-}
-
-// GuildMembersChunk represents a guild members chunk packet.
-type GuildMembersChunk struct {
-	GuildID    snowflake.ID     `json:"guild_id" msgpack:"guild_id"`
-	Members    []*GuildMember   `json:"members" msgpack:"members"`
-	ChunkIndex int              `json:"chunk_index" msgpack:"chunk_index"`
-	ChunkCount int              `json:"chunk_count" msgpack:"chunk_count"`
-	NotFound   []snowflake.ID   `json:"not_found" msgpack:"not_found"`
-	Presences  []PresenceStatus `json:"presences" msgpack:"presences"`
-	Nonce      string           `json:"nonce" msgpack:"nonce"`
-}
-
-// GuildRoleCreate represents a guild role create packet.
-type GuildRoleCreate struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	Role    interface{}  `json:"role" msgpack:"role"` // TODO: type
-}
-
-// GuildRoleUpdate represents a guild role update packet.
-type GuildRoleUpdate struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	Role    *Role        `json:"role" msgpack:"role"` // TODO: type
-}
-
-// GuildRoleDelete represents a guild role delete packet.
-type GuildRoleDelete struct {
-	GuildID snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	RoleID  snowflake.ID `json:"role_id" msgpack:"role_id"`
+// UnavailableGuild represents an unavailable guild.
+type UnavailableGuild struct {
+	ID          snowflake.ID `json:"id" msgpack:"id"`
+	Unavailable bool         `json:"unavailable" msgpack:"unavailable"`
 }
 
 // GuildMember represents a guild member on Discord.
@@ -177,6 +139,20 @@ type GuildMember struct {
 	JoinedAt string         `json:"joined_at" msgpack:"joined_at"`
 	Deaf     bool           `json:"deaf" msgpack:"deaf"`
 	Mute     bool           `json:"mute" msgpack:"mute"`
+}
+
+// VoiceState represents the voice state on Discord.
+type VoiceState struct {
+	GuildID   snowflake.ID `json:"guild_id,omitempty" msgpack:"guild_id,omitempty"`
+	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
+	UserID    snowflake.ID `json:"user_id" msgpack:"user_id"`
+	Member    GuildMember  `json:"member,omitempty" msgpack:"member,omitempty"`
+	SessionID string       `json:"session_id" msgpack:"session_id"`
+	Deaf      bool         `json:"deaf" msgpack:"deaf"`
+	Mute      bool         `json:"mute" msgpack:"mute"`
+	SelfDeaf  bool         `json:"self_deaf" msgpack:"self_deaf"`
+	SelfMute  bool         `json:"self_mute" msgpack:"self_mute"`
+	Suppress  bool         `json:"suppress" msgpack:"suppress"`
 }
 
 // MarshalBinary converts the GuildMember into a format usable for redis.
