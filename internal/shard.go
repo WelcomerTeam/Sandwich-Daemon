@@ -530,13 +530,13 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 		go func() {
 			var ticket int
 
-			defer sh.Manager.Sandwich.Pool.FreeTicket(ticket)
-
 			atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, 1)
 
 			ticket = sh.Manager.Sandwich.Pool.Wait()
+			defer sh.Manager.Sandwich.Pool.FreeTicket(ticket)
 
 			msg.AddTrace("ticket", time.Now().UTC())
+			msg.Trace["ticket_id"] = ticket
 
 			atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, -1)
 
