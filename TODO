@@ -3,4 +3,3 @@
 - Prometheus Analytics Support
 - Auto Scaling
 - Create Cache Handlers
-- Implement a goroutine pool

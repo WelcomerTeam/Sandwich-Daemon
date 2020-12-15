@@ -108,7 +108,7 @@ ready:
 
 			if preemptiveEvents {
 				events = append(events, msg)
-			} else if err = ctx.Sh.OnDispatch(msg); err != nil {
+			} else if err = ctx.Sh.OnDispatch(msg); err != nil && !xerrors.Is(err, NoHandler) {
 				ctx.Sh.Logger.Error().Err(err).Msg("Failed dispatching event")
 			}
 		case <-t.C:

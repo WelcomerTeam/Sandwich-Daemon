@@ -259,8 +259,10 @@ func (sh *Shard) Connect() (err error) {
 			return
 		}
 
+		sh.Lock()
 		sh.ErrorCh = errorCh
 		sh.MessageCh = messageCh
+		sh.Unlock()
 	} else {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
@@ -349,14 +351,20 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	sh.Logger.Trace().Msg("Waiting for first event")
+
+	sh.RLock()
+	errorch := sh.ErrorCh
+	messagech := sh.MessageCh
+	sh.RUnlock()
+
 	select {
-	case err = <-sh.ErrorCh:
+	case err = <-errorch:
 		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
 
 		go sh.PublishWebhook("Encountered error during connection", err.Error(), 14431557, false)
 
 		return xerrors.Errorf("encountered error whilst connecting: %w", err)
-	case msg = <-sh.MessageCh:
+	case msg = <-messagech:
 		sh.OnEvent(msg)
 	case <-t.C:
 	}
@@ -541,7 +549,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 			atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, -1)
 
 			err = sh.OnDispatch(msg)
-			if err != nil {
+			if err != nil && !xerrors.Is(err, NoHandler) {
 				sh.Logger.Error().Err(err).Msg("Failed to handle event")
 			}
 		}()
@@ -593,7 +601,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 			l.Msgf("%s took %d ms", msg.Type, change.Milliseconds())
 		}
 
-		if change > 10*time.Second {
+		if change > 15*time.Second {
 			trcrslt := ""
 
 			for tracer, tracetime := range msg.Trace {
@@ -859,10 +867,14 @@ func (sh *Shard) Heartbeat() {
 	defer sh.HeartbeatActive.UnSet()
 
 	for {
+		sh.RLock()
+		heartbeater := sh.Heartbeater
+		sh.RUnlock()
+
 		select {
 		case <-sh.ctx.Done():
 			return
-		case <-sh.Heartbeater.C:
+		case <-heartbeater.C:
 			sh.Logger.Debug().Msg("Heartbeating")
 			seq := atomic.LoadInt64(sh.seq)
 
@@ -920,10 +932,15 @@ func (sh *Shard) readMessage() (msg structs.ReceivedPayload, err error) {
 	default:
 	}
 
+	sh.RLock()
+	errorch := sh.ErrorCh
+	messagech := sh.MessageCh
+	sh.RUnlock()
+
 	select {
-	case err = <-sh.ErrorCh:
+	case err = <-errorch:
 		return msg, err
-	case msg = <-sh.MessageCh:
+	case msg = <-messagech:
 		msg.AddTrace("read", time.Now().UTC())
 
 		return msg, nil
