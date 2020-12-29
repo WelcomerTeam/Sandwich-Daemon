@@ -479,6 +479,7 @@ func APIPollHandler(sg *Sandwich) http.HandlerFunc {
 			Analytics:         sg.FetchAnalytics(),
 			Start:             sg.Start,
 			RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
+			Waiting:           atomic.LoadInt64(sg.PoolWaiting),
 		}, true, http.StatusOK)
 	}
 }
@@ -490,6 +491,7 @@ type APISubscribeResult struct {
 	Analytics         structs.APIAnalyticsResult                         `json:"analytics"`
 	Start             time.Time                                          `json:"uptime"`
 	RestTunnelEnabled bool                                               `json:"rest_tunnel_enabled"`
+	Waiting           int64                                              `json:"waiting"`
 }
 
 // APIConsole is a websocket that relays the stdout to clients.

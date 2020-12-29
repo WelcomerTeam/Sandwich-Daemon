@@ -36,7 +36,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.5.4"
+const VERSION = "0.5.5"
 
 // ErrOnConfigurationFailure will return errors when loading configuration.
 // If this is false, these errors are suppressed. There is no reason for this
@@ -56,6 +56,10 @@ const Samples = 720
 // distCacheDuration is the amount of hours to cache dist files.
 // This is 720 (1 month) by default.
 const distCacheDuration = 720
+
+// Limit of how many events sandwich daemon can process concurrently on all
+// managers.
+const poolConcurrency = 512
 
 // SandwichConfiguration represents the configuration of the program.
 type SandwichConfiguration struct {
@@ -159,7 +163,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		Managers:        make(map[string]*Manager),
 		TotalEvents:     new(int64),
 		Buckets:         bucketstore.NewBucketStore(),
-		Pool:            limiter.NewConcurrencyLimiter("eventPool", 512),
+		Pool:            limiter.NewConcurrencyLimiter("eventPool", poolConcurrency),
 		PoolWaiting:     new(int64),
 	}
 

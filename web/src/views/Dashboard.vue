@@ -510,6 +510,11 @@
                 :value="analytics.events"
                 bg="bg-dark"
               />
+              <card-display
+                :title="'Events queued'"
+                :value="waiting"
+                :bg="waiting > 0 ? 'bg-danger' : 'bg-dark'"
+              />
             </div>
             <div>
               <line-chart
@@ -2961,6 +2966,7 @@ export default {
 
           this.rest_tunnel_enabled = result.data.data.rest_tunnel_enabled;
           this.uptime = result.data.data.uptime;
+          this.waiting = result.data.data.waiting;
 
           // managers
 
