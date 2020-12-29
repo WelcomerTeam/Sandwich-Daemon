@@ -627,15 +627,16 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		return
 	}
 
-	now := time.Now().UTC()
-
-	msg.AddTrace("dispatch", now)
+	msg.AddTrace("dispatch", time.Now().UTC())
 
 	results, ok, err := sh.Manager.Sandwich.StateDispatch(&StateCtx{
 		Sg: sh.Manager.Sandwich,
 		Mg: sh.Manager,
 		Sh: sh,
 	}, msg)
+
+	msg.AddTrace("state", time.Now().UTC())
+
 	if err != nil {
 		return xerrors.Errorf("on dispatch failure for %s: %w", msg.Type, err)
 	}
@@ -654,9 +655,6 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 		return
 	}
 
-	now = time.Now().UTC()
-	msg.AddTrace("state", now)
-
 	packet := sh.pp.Get().(*structs.SandwichPayload)
 	defer sh.pp.Put(packet)
 
@@ -665,7 +663,8 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	packet.Data = results.Data
 	packet.Extra = results.Extra
 
-	return sh.PublishEvent(packet)
+	err = sh.PublishEvent(packet)
+	return err
 }
 
 // PublishEvent publishes a SandwichPayload.
@@ -772,6 +771,7 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 		sh.Manager.Configuration.Messaging.ChannelName,
 		payload,
 	)
+
 	if err != nil {
 		return xerrors.Errorf("publishEvent publish: %w", err)
 	}
