@@ -223,8 +223,8 @@ func (sh *Shard) Connect() (err error) {
 
 	defer func() {
 		if err != nil && sh.wsConn != nil {
-			if err = sh.CloseWS(websocket.StatusNormalClosure); err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to close websocket")
+			if _err := sh.CloseWS(websocket.StatusNormalClosure); _err != nil {
+				sh.Logger.Error().Err(_err).Msg("Failed to close websocket")
 			}
 		}
 	}()

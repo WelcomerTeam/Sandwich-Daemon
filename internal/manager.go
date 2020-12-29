@@ -106,7 +106,8 @@ type Manager struct {
 	ErrorMu sync.RWMutex `json:"-"`
 	Error   string       `json:"error"`
 
-	Analytics *accumulator.Accumulator `json:"-"`
+	AnalyticsMu sync.RWMutex             `json:"-"`
+	Analytics   *accumulator.Accumulator `json:"-"`
 
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
@@ -195,6 +196,8 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		return nil, err
 	}
 
+	mg.ctx, mg.cancel = context.WithCancel(context.Background())
+
 	return mg, err
 }
 
@@ -249,7 +252,10 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 // Open starts up the manager, initializes the config and will create a shardgroup.
 func (mg *Manager) Open() (err error) {
 	mg.Logger.Info().Msg("Starting up manager")
-	mg.ctx, mg.cancel = context.WithCancel(context.Background())
+
+	if mg.ctx == nil {
+		mg.ctx, mg.cancel = context.WithCancel(context.Background())
+	}
 
 	mg.Sandwich.ConfigurationMu.RLock()
 	defer mg.Sandwich.ConfigurationMu.RUnlock()
@@ -266,11 +272,13 @@ func (mg *Manager) Open() (err error) {
 		mg.RedisClient = mg.Sandwich.RedisClient
 	}
 
+	mg.AnalyticsMu.Lock()
 	mg.Analytics = accumulator.NewAccumulator(
 		mg.ctx,
 		Samples,
 		Interval,
 	)
+	mg.AnalyticsMu.Unlock()
 
 	err = mg.RedisClient.Ping(mg.ctx).Err()
 	if err != nil {

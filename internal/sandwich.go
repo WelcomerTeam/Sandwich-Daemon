@@ -172,12 +172,11 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	}
 
 	sg.ConfigurationMu.Lock()
+	defer sg.ConfigurationMu.Unlock()
+
 	sg.Configuration = configuration
-	sg.ConfigurationMu.Unlock()
 
 	var writers []io.Writer
-
-	sg.ConfigurationMu.RLock()
 
 	zlLevel, err := zerolog.ParseLevel(sg.Configuration.Logging.Level)
 	if err != nil {
@@ -223,8 +222,6 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		sg.ConsolePump = NewConsolePump()
 		writers = append(writers, sg.ConsolePump)
 	}
-
-	sg.ConfigurationMu.RUnlock()
 
 	mw := io.MultiWriter(writers...)
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
@@ -409,12 +406,10 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 // NormalizeConfiguration fills in any defaults within the configuration.
 func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration) (err error) {
 	// We will trim the password just in case.
-	sg.ConfigurationMu.Lock()
-	configuration.Redis.Password = strings.TrimSpace(sg.Configuration.Redis.Password)
-	sg.ConfigurationMu.Unlock()
+	// sg.ConfigurationMu.Lock()
+	// defer sg.ConfigurationMu.Unlock()
 
-	sg.ConfigurationMu.RLock()
-	defer sg.ConfigurationMu.RUnlock()
+	configuration.Redis.Password = strings.TrimSpace(configuration.Redis.Password)
 
 	if configuration.Redis.Address == "" {
 		return xerrors.Errorf("Configuration missing Redis Address. Try 127.0.0.1:6379")
@@ -684,9 +679,11 @@ func (sg *Sandwich) gatherAnalytics() {
 			}
 			mg.ShardGroupsMu.RUnlock()
 
+			mg.AnalyticsMu.RLock()
 			if mg.Analytics != nil {
 				mg.Analytics.IncrementBy(managerEvents)
 			}
+			mg.AnalyticsMu.RUnlock()
 
 			events += managerEvents
 		}
@@ -710,9 +707,11 @@ func (sg *Sandwich) analyticsRunner() {
 		sg.ManagersMu.RLock()
 
 		for _, mg := range sg.Managers {
+			mg.AnalyticsMu.RLock()
 			if mg.Analytics != nil {
 				go mg.Analytics.RunOnce(now)
 			}
+			mg.AnalyticsMu.RUnlock()
 		}
 		sg.ManagersMu.RUnlock()
 	}

@@ -275,8 +275,9 @@ func RPCManagerUpdate(sg *Sandwich, user *structs.DiscordUser,
 	}
 
 	sg.ConfigurationMu.Lock()
-	manager.ConfigurationMu.Lock()
 	defer sg.ConfigurationMu.Unlock()
+
+	manager.ConfigurationMu.Lock()
 	defer manager.ConfigurationMu.Unlock()
 
 	if event.Messaging.UseRandomSuffix != manager.Configuration.Messaging.UseRandomSuffix {
@@ -405,11 +406,9 @@ func RPCManagerCreate(sg *Sandwich, user *structs.DiscordUser,
 
 	sg.ConfigurationMu.Lock()
 	sg.Configuration.Managers = append(sg.Configuration.Managers, config)
-	sg.ConfigurationMu.Unlock()
 
-	sg.ConfigurationMu.RLock()
 	err = sg.SaveConfiguration(sg.Configuration, ConfigurationPath)
-	sg.ConfigurationMu.RUnlock()
+	sg.ConfigurationMu.Unlock()
 
 	if err != nil {
 		passResponse(rw, err.Error(), false, http.StatusInternalServerError)
@@ -671,6 +670,8 @@ func RPCDaemonVerifyRestTunnel(sg *Sandwich, user *structs.DiscordUser,
 	var err error
 
 	sg.ConfigurationMu.Lock()
+	defer sg.ConfigurationMu.Unlock()
+
 	if sg.Configuration.RestTunnel.Enabled {
 		restTunnelEnabled, reverse, err = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
 		if err != nil {
@@ -682,7 +683,6 @@ func RPCDaemonVerifyRestTunnel(sg *Sandwich, user *structs.DiscordUser,
 
 	sg.RestTunnelReverse.SetTo(reverse)
 	sg.RestTunnelEnabled.SetTo(restTunnelEnabled)
-	sg.ConfigurationMu.Unlock()
 
 	passResponse(rw, restTunnelEnabled, true, http.StatusOK)
 
@@ -721,6 +721,7 @@ func RPCDaemonUpdate(sg *Sandwich, user *structs.DiscordUser,
 	var reverse bool
 
 	sg.ConfigurationMu.Lock()
+	defer sg.ConfigurationMu.Unlock()
 
 	if sg.Configuration.RestTunnel.Enabled {
 		restTunnelEnabled, reverse, err = sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
@@ -750,12 +751,9 @@ func RPCDaemonUpdate(sg *Sandwich, user *structs.DiscordUser,
 	}
 
 	sg.RestTunnelEnabled.SetTo(restTunnelEnabled)
-	sg.ConfigurationMu.Unlock()
 
 	event.Managers = sg.Configuration.Managers
-	sg.ConfigurationMu.Lock()
 	sg.Configuration = &event
-	sg.ConfigurationMu.Unlock()
 
 	zlLevel, err := zerolog.ParseLevel(sg.Configuration.Logging.Level)
 	if err != nil {

@@ -355,7 +355,10 @@ func (sg *Sandwich) ConstructAnalytics() structs.LineChart {
 
 	for i, ident := range mankeys {
 		mg := sg.Managers[ident]
+
+		mg.AnalyticsMu.RLock()
 		if mg.Analytics == nil {
+			mg.AnalyticsMu.RUnlock()
 			continue
 		}
 
@@ -366,6 +369,7 @@ func (sg *Sandwich) ConstructAnalytics() structs.LineChart {
 			data = append(data, structs.DataStamp{Time: sample.StoredAt, Value: sample.Value})
 		}
 		mg.Analytics.RUnlock()
+		mg.AnalyticsMu.RUnlock()
 
 		colour := colours[i%len(colours)]
 
