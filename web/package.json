@@ -10,7 +10,7 @@
   "dependencies": {
     "@jamescoyle/vue-icon": "^0.1.0",
     "@mdi/js": "^5.8.55",
-    "axios": "^0.21.0",
+    "axios": "^0.21.1",
     "bootstrap": "5.0.0-alpha1",
     "chart.js": "^2.9.4",
     "chartjs": "^0.3.24",
