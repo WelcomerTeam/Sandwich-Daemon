@@ -2,7 +2,7 @@
   <div>
     <ul class="console mt-4 p-3 rounded-lg">
       <li class="text-center" v-if="!this.connected">
-        <button class="btn btn-light mt-5 position-absolute" @click="connect()">Connect</button>
+        <button class="btn btn-light mt-5 connect-button" @click="connect()">Connect</button>
       </li>
       <li
         class="d-flex font-monospace text-white"
@@ -73,8 +73,9 @@
   margin-right: 8px;
 }
 
-.position-absolute {
+.connect-button {
   position: absolute;
+  height: 0;
 }
 </style>
 
@@ -112,8 +113,7 @@ export default {
   methods: {
     disconnect() {
       this.ws.close();
-      this.addentry({ message: "Disconnected" });
-      this.onclose();
+      this.addentry({ message: "Disconnecting" });
     },
     clear() {
       this.entries = [];
