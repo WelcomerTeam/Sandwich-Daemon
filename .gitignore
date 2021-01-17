@@ -4,3 +4,4 @@ sandwich
 *.fasthttp.br
 *.fasthttp.gz
 checktags.py
+.vscode/settings.json
