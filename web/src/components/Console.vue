@@ -2,7 +2,7 @@
   <div>
     <ul class="console mt-4 p-3 rounded-lg">
       <li class="text-center" v-if="!this.connected">
-        <button class="btn btn-light mt-5" @click="connect()">Connect</button>
+        <button class="btn btn-light mt-5 position-absolute" @click="connect()">Connect</button>
       </li>
       <li
         class="d-flex font-monospace text-white"
@@ -31,6 +31,7 @@
       </li>
     </ul>
     <div class="d-flex">
+      <button class="btn btn-dark mr-2" @click="disconnect()">Disconnect</button>
       <button class="btn btn-dark mr-2" @click="clear()">Clear</button>
       <div class="my-auto mr-2">
         <input
@@ -71,6 +72,10 @@
 .console > li > div > span {
   margin-right: 8px;
 }
+
+.position-absolute {
+  position: absolute;
+}
 </style>
 
 <script>
@@ -105,6 +110,11 @@ export default {
     }
   },
   methods: {
+    disconnect() {
+      this.ws.close();
+      this.addentry({ message: "Disconnected" });
+      this.onclose();
+    },
     clear() {
       this.entries = [];
       this.addentry({ message: "Cleared logs" });
