@@ -519,8 +519,12 @@ func APIConsole(sg *Sandwich, ctx *fasthttp.RequestCtx) {
 		id := sg.ConsolePump.RegisterConnection(conn)
 		defer sg.ConsolePump.DeregisterConnection(id)
 
-		// Wait for closed/erroring websocket.
-		<-sg.ConsolePump.Dead[id]
+		for {
+			msgType, _, _ := conn.ReadMessage()
+			if msgType == -1 {
+				return
+			}
+		}
 	})
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to upgrade connection")
