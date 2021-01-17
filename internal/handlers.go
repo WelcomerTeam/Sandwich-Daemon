@@ -359,6 +359,7 @@ func (sg *Sandwich) ConstructAnalytics() structs.LineChart {
 		mg.AnalyticsMu.RLock()
 		if mg.Analytics == nil {
 			mg.AnalyticsMu.RUnlock()
+
 			continue
 		}
 

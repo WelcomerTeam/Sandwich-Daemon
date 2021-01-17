@@ -672,6 +672,7 @@ func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
 	packet.Extra = results.Extra
 
 	err = sh.PublishEvent(packet)
+
 	return err
 }
 
@@ -751,7 +752,12 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 	compressedPayload := sh.cp.Get().(*bytes.Buffer)
 
 	br := brotli.NewWriterLevel(compressedPayload, compressionLevel)
-	br.Write(payload)
+
+	_, err = br.Write(payload)
+	if err != nil {
+		sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
+	}
+
 	br.Close()
 
 	// packet.AddTrace("compress-"+strconv.Itoa(compressionLevel), time.Now())

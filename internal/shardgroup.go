@@ -218,6 +218,7 @@ func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) (err error) {
 	// If we have set the status already, do not do it again.
 	if status == sg.Status {
 		sg.StatusMu.Unlock()
+
 		return
 	}
 

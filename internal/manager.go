@@ -394,7 +394,7 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 		return xerrors.New("publishEvent publish: No active stanClient")
 	}
 
-	return err
+	return nil
 }
 
 // GenerateShardIDs returns a slice of shard ids the bot will use and accounts for clusters.

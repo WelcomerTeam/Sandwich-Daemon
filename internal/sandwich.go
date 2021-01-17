@@ -36,7 +36,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.5.6"
+const VERSION = "0.5.7"
 
 // ErrOnConfigurationFailure will return errors when loading configuration.
 // If this is false, these errors are suppressed. There is no reason for this
@@ -412,7 +412,6 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 	// We will trim the password just in case.
 	// sg.ConfigurationMu.Lock()
 	// defer sg.ConfigurationMu.Unlock()
-
 	configuration.Redis.Password = strings.TrimSpace(configuration.Redis.Password)
 
 	if configuration.Redis.Address == "" {
