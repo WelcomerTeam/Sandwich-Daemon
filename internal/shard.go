@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/TheRockettek/czlib"
+	"github.com/andybalholm/brotli"
 	"github.com/rs/zerolog"
 	"github.com/savsgio/gotils"
 	"github.com/tevino/abool"
@@ -74,6 +76,7 @@ type Shard struct {
 	mp sync.Pool
 	rp sync.Pool
 	pp sync.Pool
+	cp sync.Pool
 
 	MessageCh chan structs.ReceivedPayload
 	ErrorCh   chan error
@@ -126,6 +129,11 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		// Pool of payloads sent to consumers
 		pp: sync.Pool{
 			New: func() interface{} { return new(structs.SandwichPayload) },
+		},
+
+		// Pool for storing Buffers
+		cp: sync.Pool{
+			New: func() interface{} { return new(bytes.Buffer) },
 		},
 
 		events: new(int64),
@@ -715,62 +723,51 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 	// GZIP   | -1 (default) | 8    | 82336   ( 8.1%)
 	// GZIP   | 9  (best)    | 19   | 78253   ( 7.7%)
 
+	// Compression stats
+
+	// RAW      |  1.12Mbit
+	// BROTLI 0 | 64.33Kbit | 152ms
+	// BROTLI 6 | 31.04Kbit | 841ms
+	// BROTLI 9 | 30.71KBit | 695ms
+	// GZIP   1 | 92.40KBit | 92ms
+	// GZIP  -1 | 64.52KBit | 290ms
+	// GZIP   9 | 61.01KBit | 720ms
+
 	// This may not be the most efficient way but it was useful for testing many
 	// payloads. More cohesive benchmarking will take place if this is ever properly
 	// implemented and may be a 1.0 feature however it is unlikely to be necessary..
 
-	// if len(payload) > 100000 {
-	// 	println("NONE", len(payload))
+	// Payloads larger than 1MB will default to using Level 6 brotli compression.
+	// For consistency sake, we also compress smaller payloads on the lowest level
+	// which should not affect performance too much as they are still fairly fast.
 
-	// 	var b bytes.Buffer
+	// a := time.Now()
 
-	// 	br := brotli.NewWriterLevel(&b, brotli.BestSpeed)
-	// 	a := time.Now()
-	// 	br.Write(payload)
-	// 	br.Close()
-	// 	println("BROTLI", brotli.BestSpeed, time.Now().Sub(a).Milliseconds(), b.Len())
-	// 	b.Reset()
+	compressionLevel := brotli.BestSpeed
+	if len(payload) > 1000000 {
+		compressionLevel = brotli.DefaultCompression
+	}
 
-	// 	br = brotli.NewWriterLevel(&b, brotli.DefaultCompression)
-	// 	a = time.Now()
-	// 	br.Write(payload)
-	// 	br.Close()
-	// 	println("BROTLI", brotli.DefaultCompression, time.Now().Sub(a).Milliseconds(), b.Len())
-	// 	b.Reset()
+	compressedPayload := sh.cp.Get().(*bytes.Buffer)
 
-	// 	br = brotli.NewWriterLevel(&b, brotli.BestCompression)
-	// 	a = time.Now()
-	// 	br.Write(payload)
-	// 	br.Close()
-	// 	println("BROTLI", brotli.BestCompression, time.Now().Sub(a).Milliseconds(), b.Len())
-	// 	b.Reset()
+	br := brotli.NewWriterLevel(compressedPayload, compressionLevel)
+	br.Write(payload)
+	br.Close()
 
-	// 	gz, _ := gzip.NewWriterLevel(&b, gzip.BestSpeed)
-	// 	a = time.Now()
-	// 	gz.Write(payload)
-	// 	gz.Close()
-	// 	println("GZIP  ", gzip.BestSpeed, time.Now().Sub(a).Milliseconds(), b.Len())
-	// 	b.Reset()
+	// packet.AddTrace("compress-"+strconv.Itoa(compressionLevel), time.Now())
 
-	// 	gz, _ = gzip.NewWriterLevel(&b, gzip.DefaultCompression)
-	// 	a = time.Now()
-	// 	gz.Write(payload)
-	// 	gz.Close()
-	// 	println("GZIP  ", gzip.DefaultCompression, time.Now().Sub(a).Milliseconds(), b.Len())
-	// 	b.Reset()
-
-	// 	gz, _ = gzip.NewWriterLevel(&b, gzip.BestCompression)
-	// 	a = time.Now()
-	// 	gz.Write(payload)
-	// 	gz.Close()
-	// 	println("GZIP  ", gzip.BestCompression, time.Now().Sub(a).Milliseconds(), b.Len())
-	// 	b.Reset()
-	// }
+	// compressedPayloadLen := compressedPayload.Len()
+	// proc := time.Now().Sub(a).Round(time.Millisecond).Milliseconds()
 
 	err = sh.Manager.StanClient.Publish(
 		sh.Manager.Configuration.Messaging.ChannelName,
-		payload,
+		compressedPayload.Bytes(),
 	)
+
+	compressedPayload.Reset()
+	sh.cp.Put(compressedPayload)
+
+	// println(len(payload), compressedPayloadLen, "(", int(math.Ceil((float64(compressedPayloadLen)/float64(len(payload)))*10000)/100), "%)", proc, "ms")
 
 	if err != nil {
 		return xerrors.Errorf("publishEvent publish: %w", err)
