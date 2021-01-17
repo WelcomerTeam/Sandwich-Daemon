@@ -214,6 +214,13 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 // SetStatus changes the ShardGroup status.
 func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) (err error) {
 	sg.StatusMu.Lock()
+
+	// If we have set the status already, do not do it again.
+	if status == sg.Status {
+		sg.StatusMu.Unlock()
+		return
+	}
+
 	sg.Status = status
 	sg.StatusMu.Unlock()
 
