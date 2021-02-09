@@ -2140,7 +2140,7 @@
                 />
                 <form-submit
                   v-on:click="
-                    if (userid == $store.state.user.id) {
+                    if ($store.state.user && userid == $store.state.user.id) {
                       return;
                     }
                     configuration.elevated_users = configuration.elevated_users.filter(
@@ -2148,7 +2148,7 @@
                     );
                     userid = undefined;
                   "
-                  :disabled="userid == $store.state.user.id"
+                  :disabled="$store.state.user && userid == $store.state.user.id"
                   :label="'Remove User'"
                 />
                 <form-submit

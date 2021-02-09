@@ -39,10 +39,6 @@ func (mr *MethodRouter) HandleFunc(path string, f func(http.ResponseWriter,
 // Please only use this if its on a private IP but regardless, you shouldn't have
 // this enabled.
 func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool, user *structs.DiscordUser) {
-	if sg.Configuration.HTTP.Public {
-		return true, user
-	}
-
 	userBody, ok := session.Values["user"].([]byte)
 	if !ok {
 		return false, user
@@ -53,6 +49,10 @@ func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool, u
 		sg.Logger.Error().Err(err).Msg("Failed to unmarshal user")
 
 		return false, user
+	}
+
+	if sg.Configuration.HTTP.Public {
+		return true, user
 	}
 
 	for _, userID := range sg.Configuration.ElevatedUsers {
