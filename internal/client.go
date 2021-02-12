@@ -18,14 +18,6 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func replaceIfEmpty(v string, s string) string {
-	if v == "" {
-		return s
-	}
-
-	return v
-}
-
 // Client represents the REST client.
 type Client struct {
 	mu sync.RWMutex

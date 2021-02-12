@@ -4,8 +4,22 @@ import (
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
 	jsoniter "github.com/json-iterator/go"
 )
+
+var LineChartColours = [][]string{
+	{"rgba(149, 165, 165, 0.5)", "#7E8C8D"},
+	{"rgba(236, 240, 241, 0.5)", "#BEC3C7"},
+	{"rgba(232, 76, 61, 0.5)", "#C1392B"},
+	{"rgba(231, 126, 35, 0.5)", "#D25400"},
+	{"rgba(241, 196, 15, 0.5)", "#F39C11"},
+	{"rgba(52, 73, 94, 0.5)", "#2D3E50"},
+	{"rgba(155, 88, 181, 0.5)", "#8F44AD"},
+	{"rgba(53, 152, 219, 0.5)", "#2A80B9"},
+	{"rgba(45, 204, 112, 0.5)", "#27AE61"},
+	{"rgba(27, 188, 155, 0.5)", "#16A086"},
+}
 
 // BaseResponse is the response when returning REST requests and RPC calls.
 type BaseResponse struct {
@@ -52,6 +66,16 @@ type DiscordUser struct {
 	PremiumType   int          `json:"premium_type" msgpack:"premium_type"`
 	MFAEnabled    bool         `json:"mfa_enabled,omitempty" msgpack:"mfa_enabled,omitempty"`
 	Verified      bool         `json:"verified,omitempty" msgpack:"verified,omitempty"`
+}
+
+// APISubscribeResult is the structure of the websocket payloads.
+type APISubscribeResult struct {
+	Managers          map[string]APIConfigurationResponseManager `json:"managers"`
+	RestTunnel        jsoniter.RawMessage                        `json:"resttunnel"`
+	Analytics         APIAnalyticsResult                         `json:"analytics"`
+	Start             time.Time                                  `json:"uptime"`
+	RestTunnelEnabled bool                                       `json:"rest_tunnel_enabled"`
+	Waiting           int64                                      `json:"waiting"`
 }
 
 // APIMe is the response payload for a /api/me request.
@@ -143,5 +167,5 @@ type APIConfigurationResponseShard struct {
 	LastHeartbeatAck     time.Time     `json:"last_heartbeat_ack"`
 	LastHeartbeatSent    time.Time     `json:"last_heartbeat_sent"`
 	Start                time.Time     `json:"start"`
-	User                 *User         `json:"user"`
+	User                 *discord.User `json:"user"`
 }

@@ -8,23 +8,31 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"sync/atomic"
 	"time"
 
+	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	websocket "github.com/fasthttp/websocket"
+
+	"github.com/fasthttp/websocket"
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/go-uuid"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog"
 	"github.com/savsgio/gotils"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
 
-const forbiddenMessage = "You are not elevated"
+const (
+	// apiSubscribeDuration is the time in seconds between each API Subscribe WS message.
+	apiSubscribeDuration = 15
 
-// apiSubscribeDuration is the time in seconds between each API Subscribe WS message.
-const apiSubscribeDuration = 15
+	sessionName      = "session"
+	forbiddenMessage = "You are not elevated"
+
+	discordUsersMe = "https://discord.com/api/users/@me"
+)
 
 var upgrader = websocket.FastHTTPUpgrader{
 	EnableCompression: true,
@@ -34,29 +42,6 @@ var upgrader = websocket.FastHTTPUpgrader{
 
 		return gotils.StringSliceInclude(origins, origin)
 	},
-}
-
-// func init() {
-// 	upgrader.CheckOrigin = func(ctx *fasthttp.RequestCtx) bool {
-// 		// Todo: Add origins and add to config.
-// 		origins := []string{"http://127.0.0.1:8081", "http://127.0.0.1:5469", "https://sandwich.welcomer.gg/"}
-// 		origin := gotils.B2S(ctx.Request.Header.Peek("Origin"))
-
-// 		return gotils.StringSliceInclude(origins, origin)
-// 	}
-// }
-
-var colours = [][]string{
-	{"rgba(149, 165, 165, 0.5)", "#7E8C8D"},
-	{"rgba(236, 240, 241, 0.5)", "#BEC3C7"},
-	{"rgba(232, 76, 61, 0.5)", "#C1392B"},
-	{"rgba(231, 126, 35, 0.5)", "#D25400"},
-	{"rgba(241, 196, 15, 0.5)", "#F39C11"},
-	{"rgba(52, 73, 94, 0.5)", "#2D3E50"},
-	{"rgba(155, 88, 181, 0.5)", "#8F44AD"},
-	{"rgba(53, 152, 219, 0.5)", "#2A80B9"},
-	{"rgba(45, 204, 112, 0.5)", "#27AE61"},
-	{"rgba(27, 188, 155, 0.5)", "#16A086"},
 }
 
 func passFastHTTPResponse(ctx *fasthttp.RequestCtx, data interface{}, success bool, status int) {
@@ -136,6 +121,106 @@ func passResponse(rw http.ResponseWriter, data interface{}, success bool, status
 	} else {
 		http.Error(rw, gotils.B2S(resp), status)
 	}
+}
+
+// HandleRequest handles incoming HTTP requests.
+func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
+	var processingMS int64
+
+	start := time.Now()
+	path := gotils.B2S(ctx.Path())
+
+	defer func() {
+		var log *zerolog.Event
+
+		statusCode := ctx.Response.StatusCode()
+
+		switch {
+		case (statusCode >= 400 && statusCode <= 499):
+			log = sg.Logger.Warn()
+		case (statusCode >= 500 && statusCode <= 599):
+			log = sg.Logger.Error()
+		default:
+			log = sg.Logger.Info()
+		}
+
+		// Suppress /api/poll messages
+		if path == "/api/poll" && statusCode == 200 {
+			return
+		}
+
+		log.Msgf("%s %s %s %d %d %dms",
+			ctx.RemoteAddr(),
+			ctx.Request.Header.Method(),
+			ctx.Request.URI().PathOriginal(),
+			statusCode,
+			len(ctx.Response.Body()),
+			processingMS,
+		)
+	}()
+
+	switch path {
+	case "/api/ws":
+		APISubscribe(sg, ctx)
+
+		return
+	case "/api/console":
+		APIConsole(sg, ctx)
+
+		return
+	}
+
+	fasthttp.CompressHandlerBrotliLevel(func(ctx *fasthttp.RequestCtx) {
+		fasthttpadaptor.NewFastHTTPHandler(sg.Router)(ctx)
+		if ctx.Response.StatusCode() != http.StatusNotFound {
+			ctx.SetContentType("application/json;charset=utf8")
+		}
+		// If there is no URL in router then try serving from the dist
+		// folder.
+		if ctx.Response.StatusCode() == http.StatusNotFound && path != "/" {
+			ctx.Response.Reset()
+			sg.distHandler(ctx)
+		}
+		// If there is no URL in router or in dist then send index.html
+		if ctx.Response.StatusCode() == http.StatusNotFound {
+			ctx.Response.Reset()
+			ctx.SendFile(webRootPath + "/index.html")
+		}
+	}, fasthttp.CompressBrotliDefaultCompression, fasthttp.CompressDefaultCompression)(ctx)
+
+	processingMS = time.Since(start).Milliseconds()
+	ctx.Response.Header.Set("X-Elapsed", strconv.FormatInt(processingMS, 10))
+}
+
+// AuthenticateSession verifies the session is valid. We simply store the user object
+// in the session. There are 100% better ways to do this but for our case this is
+// good enough. If HTTP.Public is enabled, it will not require authentication.
+// Please only use this if its on a private IP but regardless, you shouldn't have
+// this enabled.
+func (sg *Sandwich) AuthenticateSession(session *sessions.Session) (auth bool, user *structs.DiscordUser) {
+	userBody, ok := session.Values["user"].([]byte)
+	if !ok {
+		return false, user
+	}
+
+	err := json.Unmarshal(userBody, &user)
+	if err != nil {
+		sg.Logger.Error().Err(err).Msg("Failed to unmarshal user")
+
+		return false, user
+	}
+
+	if sg.Configuration.HTTP.Public {
+		return true, user
+	}
+
+	for _, userID := range sg.Configuration.ElevatedUsers {
+		if userID == user.ID.String() {
+			return true, user
+		}
+	}
+
+	return false, user
 }
 
 // SaveSession should be used as a defer when handling requests.
@@ -372,7 +457,7 @@ func (sg *Sandwich) ConstructAnalytics() structs.LineChart {
 		mg.Analytics.RUnlock()
 		mg.AnalyticsMu.RUnlock()
 
-		colour := colours[i%len(colours)]
+		colour := structs.LineChartColours[i%len(structs.LineChartColours)]
 
 		datasets = append(datasets, structs.Dataset{
 			Label:            mg.Configuration.DisplayName,
@@ -474,7 +559,7 @@ func APIPollHandler(sg *Sandwich) http.HandlerFunc {
 
 		resttunnel, _, _, _, _ := sg.FetchRestTunnelResponse() //nolint:bodyclose
 
-		passResponse(rw, APISubscribeResult{
+		passResponse(rw, structs.APISubscribeResult{
 			Managers:          sg.FetchManagerResponse(),
 			RestTunnel:        resttunnel,
 			Analytics:         sg.FetchAnalytics(),
@@ -483,16 +568,6 @@ func APIPollHandler(sg *Sandwich) http.HandlerFunc {
 			Waiting:           atomic.LoadInt64(sg.PoolWaiting),
 		}, true, http.StatusOK)
 	}
-}
-
-// APISubscribeResult is the structure of the websocket payloads.
-type APISubscribeResult struct {
-	Managers          map[string]structs.APIConfigurationResponseManager `json:"managers"`
-	RestTunnel        jsoniter.RawMessage                                `json:"resttunnel"`
-	Analytics         structs.APIAnalyticsResult                         `json:"analytics"`
-	Start             time.Time                                          `json:"uptime"`
-	RestTunnelEnabled bool                                               `json:"rest_tunnel_enabled"`
-	Waiting           int64                                              `json:"waiting"`
 }
 
 // APIConsole is a websocket that relays the stdout to clients.
@@ -560,7 +635,7 @@ func APISubscribe(sg *Sandwich, ctx *fasthttp.RequestCtx) {
 
 		t := time.NewTicker(time.Second * apiSubscribeDuration)
 		for {
-			result := APISubscribeResult{}
+			result := structs.APISubscribeResult{}
 			result.Managers = sg.FetchManagerResponse()
 			result.Analytics = sg.FetchAnalytics()
 
@@ -588,9 +663,6 @@ func APISubscribe(sg *Sandwich, ctx *fasthttp.RequestCtx) {
 		return
 	}
 }
-
-// APIManagersResult is the structure of the /api/managers endpoint.
-type APIManagersResult map[string]map[int32]*ShardGroup
 
 // APIManagersHandler handles the /api/managers endpoint.
 func APIManagersHandler(sg *Sandwich) http.HandlerFunc {
@@ -818,18 +890,24 @@ func APIRPCHandler(sg *Sandwich) http.HandlerFunc {
 	}
 }
 
-// session, _ := sg.Store.Get(r, sessionName)
-// if auth, _ := sg.AuthenticateSession(session); !auth {
-// 	passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
-// 	return
-// }
+func createEndpoints(sg *Sandwich) (router *methodrouter.MethodRouter) {
+	router = methodrouter.NewMethodRouter()
 
-// return func(rw http.ResponseWriter, r *http.Request) {
-// 	session, _ := sg.Store.Get(r, sessionName)
-// 	if auth, _ := sg.AuthenticateSession(session); !auth {
-// 		passResponse(rw, forbiddenMessage, false, http.StatusForbidden)
-// 		return
-// 	}
+	router.HandleFunc("/login", LoginHandler(sg), "GET")
+	router.HandleFunc("/logout", LogoutHandler(sg), "GET")
+	router.HandleFunc("/oauth2/callback", OAuthCallbackHandler(sg), "GET")
 
-// 	passResponse(rw, "OK", true, http.StatusOK)
-// }
+	router.HandleFunc("/api/me", APIMeHandler(sg), "GET")
+
+	router.HandleFunc("/api/status", APIStatusHandler(sg), "GET")
+
+	router.HandleFunc("/api/analytics", APIAnalyticsHandler(sg), "GET")
+	router.HandleFunc("/api/managers", APIManagersHandler(sg), "GET")
+	router.HandleFunc("/api/configuration", APIConfigurationHandler(sg), "GET")
+	router.HandleFunc("/api/resttunnel", APIRestTunnelHandler(sg), "GET")
+
+	router.HandleFunc("/api/poll", APIPollHandler(sg), "GET")
+	router.HandleFunc("/api/rpc", APIRPCHandler(sg), "POST")
+
+	return
+}

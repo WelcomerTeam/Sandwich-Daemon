@@ -12,7 +12,10 @@ import (
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
+
 	"github.com/TheRockettek/czlib"
 	"github.com/andybalholm/brotli"
 	"github.com/rs/zerolog"
@@ -23,19 +26,20 @@ import (
 	"nhooyr.io/websocket"
 )
 
-const timeoutDuration = 2 * time.Second
+const (
+	timeoutDuration     = 2 * time.Second
+	dispatchTimeout     = 30 * time.Second
+	waitForReadyTimeout = 10 * time.Second
+	identifyRatelimit   = (5 * time.Second) + (500 * time.Millisecond)
 
-const dispatchTimeout = 30 * time.Second
+	websocketReadLimit    = 512 << 20
+	reconnectCloseCode    = 4000
+	maxReconnectWait      = 600
+	gatewayConnectTimeout = 5
 
-const waitForReadyTimeout = 10 * time.Second
-
-const identifyRatelimit = (5 * time.Second) + (500 * time.Millisecond)
-
-const websocketReadLimit = 512 << 20
-
-const reconnectCloseCode = 4000
-
-const maxReconnectWait = 600
+	messageChannelBuffer      = 64
+	minPayloadCompressionSize = 1000000 // Apply higher level compression to payloads >1 Mb
+)
 
 // Shard represents the shard object.
 type Shard struct {
@@ -50,7 +54,7 @@ type Shard struct {
 	ShardGroup *ShardGroup `json:"-"`
 	Manager    *Manager    `json:"-"`
 
-	User *structs.User `json:"user"`
+	User *discord.User `json:"user"`
 	// Todo: Add deque that can allow for an event queue (maybe).
 
 	ctx    context.Context
@@ -78,7 +82,7 @@ type Shard struct {
 	pp sync.Pool
 	cp sync.Pool
 
-	MessageCh chan structs.ReceivedPayload
+	MessageCh chan discord.ReceivedPayload
 	ErrorCh   chan error
 
 	events *int64
@@ -118,12 +122,12 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 
 		// Pool of payloads from discord
 		mp: sync.Pool{
-			New: func() interface{} { return new(structs.ReceivedPayload) },
+			New: func() interface{} { return new(discord.ReceivedPayload) },
 		},
 
 		// Pool of payloads sent to discord
 		rp: sync.Pool{
-			New: func() interface{} { return new(structs.SentPayload) },
+			New: func() interface{} { return new(discord.SentPayload) },
 		},
 
 		// Pool of payloads sent to consumers
@@ -256,7 +260,7 @@ func (sh *Shard) Connect() (err error) {
 	if sh.wsConn == nil {
 		var errorCh chan error
 
-		var messageCh chan structs.ReceivedPayload
+		var messageCh chan discord.ReceivedPayload
 
 		errorCh, messageCh, err = sh.FeedWebsocket(sh.ctx, gatewayURL, nil)
 		if err != nil {
@@ -286,7 +290,7 @@ func (sh *Shard) Connect() (err error) {
 		return
 	}
 
-	hello := structs.Hello{}
+	hello := discord.Hello{}
 	err = sh.decodeContent(msg, &hello)
 
 	sh.LastHeartbeatMu.Lock()
@@ -349,7 +353,7 @@ func (sh *Shard) Connect() (err error) {
 	sh.Manager.Buckets.ResetBucket(bucket)
 	sh.Manager.ConfigurationMu.RUnlock()
 
-	t := time.NewTicker(time.Second * 5)
+	t := time.NewTicker(time.Second * gatewayConnectTimeout)
 
 	// Wait 5 seconds for the first event or errors in websocket to
 	// ensure there are no error messages such as disallowed intents.
@@ -384,8 +388,8 @@ func (sh *Shard) Connect() (err error) {
 
 // FeedWebsocket reads websocket events and feeds them through a channel.
 func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
-	opts *websocket.DialOptions) (errorCh chan error, messageCh chan structs.ReceivedPayload, err error) {
-	messageCh = make(chan structs.ReceivedPayload, 64)
+	opts *websocket.DialOptions) (errorCh chan error, messageCh chan discord.ReceivedPayload, err error) {
+	messageCh = make(chan discord.ReceivedPayload, messageChannelBuffer)
 	errorCh = make(chan error, 1)
 
 	conn, _, err := websocket.Dial(ctx, u, opts)
@@ -425,7 +429,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 			}
 
 			now := time.Now().UTC()
-			msg := structs.ReceivedPayload{
+			msg := discord.ReceivedPayload{
 				TraceTime: now,
 				Trace:     make(map[string]int),
 			}
@@ -450,7 +454,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 }
 
 // OnEvent processes an event.
-func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
+func (sh *Shard) OnEvent(msg discord.ReceivedPayload) {
 	var err error
 
 	// This goroutine shows events that are taking too long.
@@ -481,9 +485,9 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 	defer close(fin)
 
 	switch msg.Op {
-	case structs.GatewayOpHeartbeat:
+	case discord.GatewayOpHeartbeat:
 		sh.Logger.Debug().Msg("Received heartbeat request")
-		err = sh.SendEvent(structs.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
+		err = sh.SendEvent(discord.GatewayOpHeartbeat, atomic.LoadInt64(sh.seq))
 
 		if err != nil {
 			go sh.PublishWebhook("Failed to send heartbeat to gateway", err.Error(), 16760839, false)
@@ -497,7 +501,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 
 			return
 		}
-	case structs.GatewayOpInvalidSession:
+	case discord.GatewayOpInvalidSession:
 		resumable := json.Get(msg.Data, "d").ToBool()
 		if !resumable {
 			sh.sessionID = ""
@@ -512,8 +516,8 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 		}
-	case structs.GatewayOpHello:
-		hello := structs.Hello{}
+	case discord.GatewayOpHello:
+		hello := discord.Hello{}
 		err = sh.decodeContent(msg, &hello)
 
 		sh.LastHeartbeatMu.Lock()
@@ -533,7 +537,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 			Msg("Retrieved HELLO event from discord")
 
 		return
-	case structs.GatewayOpReconnect:
+	case discord.GatewayOpReconnect:
 		sh.Logger.Info().Msg("Reconnecting in response to gateway")
 		err = sh.Reconnect(reconnectCloseCode)
 
@@ -542,7 +546,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 		}
 
 		return
-	case structs.GatewayOpDispatch:
+	case discord.GatewayOpDispatch:
 		go func() {
 			var ticket int
 
@@ -561,7 +565,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 				sh.Logger.Error().Err(err).Msg("Failed to handle event")
 			}
 		}()
-	case structs.GatewayOpHeartbeatACK:
+	case discord.GatewayOpHeartbeatACK:
 		sh.LastHeartbeatMu.Lock()
 		sh.LastHeartbeatAck = time.Now().UTC()
 		sh.Logger.Debug().
@@ -571,12 +575,12 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 		sh.LastHeartbeatMu.Unlock()
 
 		return
-	case structs.GatewayOpVoiceStateUpdate:
+	case discord.GatewayOpVoiceStateUpdate:
 		// Todo: handle
-	case structs.GatewayOpIdentify,
-		structs.GatewayOpRequestGuildMembers,
-		structs.GatewayOpResume,
-		structs.GatewayOpStatusUpdate:
+	case discord.GatewayOpIdentify,
+		discord.GatewayOpRequestGuildMembers,
+		discord.GatewayOpResume,
+		discord.GatewayOpStatusUpdate:
 	default:
 		sh.Logger.Warn().
 			Int("op", int(msg.Op)).
@@ -590,7 +594,7 @@ func (sh *Shard) OnEvent(msg structs.ReceivedPayload) {
 }
 
 // OnDispatch handles a dispatch event.
-func (sh *Shard) OnDispatch(msg structs.ReceivedPayload) (err error) {
+func (sh *Shard) OnDispatch(msg discord.ReceivedPayload) (err error) {
 	start := time.Now().UTC()
 
 	defer func() {
@@ -745,7 +749,7 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 	// a := time.Now()
 
 	compressionLevel := brotli.BestSpeed
-	if len(payload) > 1000000 {
+	if len(payload) > minPayloadCompressionSize {
 		compressionLevel = brotli.DefaultCompression
 	}
 
@@ -760,11 +764,6 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 
 	br.Close()
 
-	// packet.AddTrace("compress-"+strconv.Itoa(compressionLevel), time.Now())
-
-	// compressedPayloadLen := compressedPayload.Len()
-	// proc := time.Now().Sub(a).Round(time.Millisecond).Milliseconds()
-
 	err = sh.Manager.StanClient.Publish(
 		sh.Manager.Configuration.Messaging.ChannelName,
 		compressedPayload.Bytes(),
@@ -772,8 +771,6 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 
 	compressedPayload.Reset()
 	sh.cp.Put(compressedPayload)
-
-	// println(len(payload), compressedPayloadLen, "(", int(math.Ceil((float64(compressedPayloadLen)/float64(len(payload)))*10000)/100), "%)", proc, "ms")
 
 	if err != nil {
 		return xerrors.Errorf("publishEvent publish: %w", err)
@@ -806,12 +803,12 @@ func (sh *Shard) Listen() (err error) {
 			if errors.As(err, &closeError) {
 				// If possible, we will check the close error to determine if we can continue
 				switch closeError.Code {
-				case structs.CloseNotAuthenticated, // Not authenticated
-					structs.CloseInvalidShard,      // Invalid shard
-					structs.CloseShardingRequired,  // Sharding required
-					structs.CloseInvalidAPIVersion, // Invalid API version
-					structs.CloseInvalidIntents,    // Invalid Intent(s)
-					structs.CloseDisallowedIntents: // Disallowed intent(s)
+				case discord.CloseNotAuthenticated, // Not authenticated
+					discord.CloseInvalidShard,      // Invalid shard
+					discord.CloseShardingRequired,  // Sharding required
+					discord.CloseInvalidAPIVersion, // Invalid API version
+					discord.CloseInvalidIntents,    // Invalid Intent(s)
+					discord.CloseDisallowedIntents: // Disallowed intent(s)
 					sh.Logger.Warn().Msgf(
 						"Closing ShardGroup as cannot continue without valid token. Received code %d",
 						closeError.Code,
@@ -881,7 +878,7 @@ func (sh *Shard) Heartbeat() {
 			sh.Logger.Debug().Msg("Heartbeating")
 			seq := atomic.LoadInt64(sh.seq)
 
-			err := sh.SendEvent(structs.GatewayOpHeartbeat, seq)
+			err := sh.SendEvent(discord.GatewayOpHeartbeat, seq)
 
 			sh.LastHeartbeatMu.Lock()
 			_time := time.Now().UTC()
@@ -920,14 +917,14 @@ func (sh *Shard) Heartbeat() {
 }
 
 // decodeContent converts the stored msg into the passed interface.
-func (sh *Shard) decodeContent(msg structs.ReceivedPayload, out interface{}) (err error) {
+func (sh *Shard) decodeContent(msg discord.ReceivedPayload, out interface{}) (err error) {
 	err = json.Unmarshal(msg.Data, &out)
 
 	return
 }
 
 // readMessage fills the shard msg buffer from a websocket message.
-func (sh *Shard) readMessage() (msg structs.ReceivedPayload, err error) {
+func (sh *Shard) readMessage() (msg discord.ReceivedPayload, err error) {
 	// Prioritize errors
 	select {
 	case err = <-sh.ErrorCh:
@@ -976,7 +973,7 @@ func (sh *Shard) Resume() (err error) {
 	sh.Manager.ConfigurationMu.RLock()
 	defer sh.Manager.ConfigurationMu.RUnlock()
 
-	err = sh.SendEvent(structs.GatewayOpResume, structs.Resume{
+	err = sh.SendEvent(discord.GatewayOpResume, discord.Resume{
 		Token:     sh.Manager.Configuration.Token,
 		SessionID: sh.sessionID,
 		Sequence:  atomic.LoadInt64(sh.seq),
@@ -1013,9 +1010,9 @@ func (sh *Shard) Identify() (err error) {
 		sh.Logger.Error().Err(err).Msg("Failed to wait for bucket")
 	}
 
-	err = sh.SendEvent(structs.GatewayOpIdentify, structs.Identify{
+	err = sh.SendEvent(discord.GatewayOpIdentify, discord.Identify{
 		Token: sh.Manager.Configuration.Token,
-		Properties: &structs.IdentifyProperties{
+		Properties: &discord.IdentifyProperties{
 			OS:      runtime.GOOS,
 			Browser: "Sandwich " + VERSION,
 			Device:  "Sandwich " + VERSION,
@@ -1032,8 +1029,8 @@ func (sh *Shard) Identify() (err error) {
 }
 
 // SendEvent sends an event to discord.
-func (sh *Shard) SendEvent(op structs.GatewayOp, data interface{}) (err error) {
-	packet := sh.rp.Get().(*structs.SentPayload)
+func (sh *Shard) SendEvent(op discord.GatewayOp, data interface{}) (err error) {
+	packet := sh.rp.Get().(*discord.SentPayload)
 	defer sh.rp.Put(packet)
 
 	packet.Op = int(op)
@@ -1182,7 +1179,7 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) (err error) {
 	packet := sh.pp.Get().(*structs.SandwichPayload)
 	defer sh.pp.Put(packet)
 
-	packet.ReceivedPayload = structs.ReceivedPayload{
+	packet.ReceivedPayload = discord.ReceivedPayload{
 		Type: "SHARD_STATUS",
 	}
 
@@ -1230,10 +1227,10 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 // PublishWebhook is the same as sg.PublishWebhook but has extra sugar for
 // displaying information about the shard.
 func (sh *Shard) PublishWebhook(title string, description string, colour int, raw bool) {
-	var message structs.WebhookMessage
+	var message discord.WebhookMessage
 
 	if raw {
-		message = structs.WebhookMessage{
+		message = discord.WebhookMessage{
 			Content: fmt.Sprintf("[**%s - %d/%d**] %s %s",
 				sh.Manager.Configuration.DisplayName,
 				sh.ShardGroup.ID, sh.ShardID, title, description),
@@ -1247,14 +1244,14 @@ func (sh *Shard) PublishWebhook(title string, description string, colour int, ra
 		}
 		sh.RUnlock()
 	} else {
-		message = structs.WebhookMessage{
-			Embeds: []structs.Embed{
+		message = discord.WebhookMessage{
+			Embeds: []discord.Embed{
 				{
 					Title:       title,
 					Description: description,
 					Color:       colour,
 					Timestamp:   WebhookTime(time.Now().UTC()),
-					Footer: &structs.EmbedFooter{
+					Footer: &discord.EmbedFooter{
 						Text: fmt.Sprintf("Manager %s | ShardGroup %d | Shard %d",
 							sh.Manager.Configuration.DisplayName,
 							sh.ShardGroup.ID, sh.ShardID),

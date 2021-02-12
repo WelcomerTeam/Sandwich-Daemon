@@ -8,6 +8,7 @@ import (
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 )
@@ -15,7 +16,7 @@ import (
 var NoHandler = xerrors.New("No registered handler for event")
 
 var stateHandlers = make(map[string]func(ctx *StateCtx,
-	msg structs.ReceivedPayload) (result structs.StateResult, ok bool, err error))
+	msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
 	Sg *Sandwich
@@ -27,13 +28,13 @@ type StateCtx struct {
 
 // registerState registers a state handler.
 func registerState(eventType string, handler func(ctx *StateCtx,
-	msg structs.ReceivedPayload) (result structs.StateResult, ok bool, err error)) {
+	msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error)) {
 	stateHandlers[eventType] = handler
 }
 
 // StateDispatch handles selecting the proper state handler and executing it.
 func (sg *Sandwich) StateDispatch(ctx *StateCtx,
-	event structs.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
+	event discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
 	if f, ok := stateHandlers[event.Type]; ok {
 		return f(ctx, event)
 	}
@@ -47,8 +48,8 @@ func (mg *Manager) CreateKey(key string, values ...interface{}) string {
 }
 
 // StateReady handles the READY event.
-func StateReady(ctx *StateCtx, msg structs.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
-	var packet structs.Ready
+func StateReady(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
+	var packet discord.Ready
 
 	err = json.Unmarshal(msg.Data, &packet)
 	if err != nil {
@@ -62,7 +63,7 @@ func StateReady(ctx *StateCtx, msg structs.ReceivedPayload) (result structs.Stat
 	ctx.Sh.User = packet.User
 	ctx.Sh.Unlock()
 
-	events := make([]structs.ReceivedPayload, 0)
+	events := make([]discord.ReceivedPayload, 0)
 
 	guildIDs := make([]int64, 0)
 
@@ -95,7 +96,7 @@ ready:
 			if msg.Type == "GUILD_CREATE" {
 				guildCreateEvents++
 
-				guildPayload := structs.GuildCreate{}
+				guildPayload := discord.GuildCreate{}
 
 				if err = ctx.Sh.decodeContent(msg, &guildPayload); err != nil {
 					ctx.Sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
@@ -124,7 +125,7 @@ ready:
 
 					ctx.Sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
 
-					if err := ctx.Sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
+					if err := ctx.Sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
 						GuildID: chunk,
 						Query:   "",
 						Limit:   0,
@@ -136,7 +137,7 @@ ready:
 				if len(guildIDs) > 0 {
 					ctx.Sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
 
-					if err := ctx.Sh.SendEvent(structs.GatewayOpRequestGuildMembers, structs.RequestGuildMembers{
+					if err := ctx.Sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
 						GuildID: guildIDs,
 						Query:   "",
 						Limit:   0,
@@ -174,15 +175,15 @@ ready:
 }
 
 // StateGuildCreate handles the GUILD_CREATE event.
-func StateGuildCreate(ctx *StateCtx, msg structs.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
-	var packet structs.GuildCreate
+func StateGuildCreate(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
+	var packet discord.GuildCreate
 
 	err = json.Unmarshal(msg.Data, &packet)
 	if err != nil {
 		return result, false, xerrors.Errorf("Failed to unmarshal message: %w", err)
 	}
 
-	sg := structs.StateGuild{}
+	sg := discord.StateGuild{}
 
 	roles, emojis, channels := sg.FromGuild(packet.Guild)
 
@@ -243,12 +244,12 @@ func StateGuildCreate(ctx *StateCtx, msg structs.ReceivedPayload) (result struct
 
 // StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event.
 func StateGuildMembersChunk(ctx *StateCtx,
-	msg structs.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
+	msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
 	if !ctx.Mg.Configuration.Caching.CacheMembers {
 		return
 	}
 
-	var packet structs.GuildMembersChunk
+	var packet discord.GuildMembersChunk
 
 	err = json.Unmarshal(msg.Data, &packet)
 	if err != nil {

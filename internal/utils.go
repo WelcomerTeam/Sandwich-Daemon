@@ -9,14 +9,31 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"golang.org/x/xerrors"
 )
 
 const (
-	daySeconds    = 86400
-	hourSeconds   = 3600
-	minuteSeconds = 60
+	daySeconds            = 86400
+	hourSeconds           = 3600
+	minuteSeconds         = 60
+	discordSnowflakeEpoch = 1420070400000
 )
+
+// We change the default Epoch of the snowflake to match discord's.
+func init() { //nolint:gochecknoinits
+	snowflake.Epoch = discordSnowflakeEpoch
+}
+
+type void struct{}
+
+func replaceIfEmpty(v string, s string) string {
+	if v == "" {
+		return s
+	}
+
+	return v
+}
 
 // DeepEqualExports compares exported values of two interfaces based on the
 // tagName provided.

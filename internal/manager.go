@@ -10,8 +10,11 @@ import (
 	"sync/atomic"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/accumulator"
-	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
+	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketstore"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+
+	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
@@ -20,9 +23,9 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const maxClientNumber = 9999
-
-type void struct{}
+const (
+	maxClientNumber = 9999
+)
 
 // ManagerConfiguration represents the configuration for the manager.
 type ManagerConfiguration struct {
@@ -37,7 +40,7 @@ type ManagerConfiguration struct {
 
 	// Bot specific configuration
 	Bot struct {
-		DefaultPresence      *structs.UpdateStatus `json:"presence" yaml:"presence"`
+		DefaultPresence      *discord.UpdateStatus `json:"presence" yaml:"presence"`
 		Compression          bool                  `json:"compression" yaml:"compression"`
 		GuildSubscriptions   bool                  `json:"guild_subscriptions" yaml:"guild_subscriptions"`
 		Retries              int32                 `json:"retries" yaml:"retries"`
@@ -123,7 +126,7 @@ type Manager struct {
 	Client *Client `json:"-"`
 
 	GatewayMu sync.RWMutex       `json:"-"`
-	Gateway   structs.GatewayBot `json:"gateway"`
+	Gateway   discord.GatewayBot `json:"gateway"`
 
 	pp sync.Pool
 
@@ -161,9 +164,8 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		ConfigurationMu: sync.RWMutex{},
 		Configuration:   configuration,
 		Buckets:         bucketstore.NewBucketStore(),
-
-		GatewayMu: sync.RWMutex{},
-		Gateway:   structs.GatewayBot{},
+		GatewayMu:       sync.RWMutex{},
+		Gateway:         discord.GatewayBot{},
 
 		pp: sync.Pool{
 			New: func() interface{} { return new(structs.SandwichPayload) },
@@ -364,7 +366,7 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 	defer mg.ConfigurationMu.RUnlock()
 
 	packet.Type = eventType
-	packet.Op = structs.GatewayOpDispatch
+	packet.Op = discord.GatewayOpDispatch
 	packet.Data = eventData
 
 	packet.Metadata = structs.SandwichMetadata{
@@ -430,7 +432,7 @@ func (mg *Manager) Close() {
 }
 
 // GetGateway returns response from /gateway/bot.
-func (mg *Manager) GetGateway() (resp structs.GatewayBot, err error) {
+func (mg *Manager) GetGateway() (resp discord.GatewayBot, err error) {
 	_, err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
 	if err != nil {
 		return resp, xerrors.Errorf("get gateway fetchjson: %w", err)

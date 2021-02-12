@@ -1,5 +1,11 @@
 package structs
 
+const (
+	EmbedSandwich = 16701571
+	EmbedWarning = 16760839
+	EmbedDanger = 14431557
+)
+
 // Embed represents a message embed on Discord.
 type Embed struct {
 	Title       string          `json:"title,omitempty" msgpack:"title,omitempty"`

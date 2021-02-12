@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	structs "github.com/TheRockettek/Sandwich-Daemon/structs"
+	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 )
@@ -107,17 +108,17 @@ func RPCManagerShardGroupCreate(sg *Sandwich, user *structs.DiscordUser,
 			_shardIDs = append(_shardIDs, strconv.Itoa(shardID))
 		}
 
-		go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+		go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 			Username: user.Username,
 			AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 				user.ID.String(), user.Avatar),
-			Embeds: []structs.Embed{
+			Embeds: []discord.Embed{
 				{
 					Title:       "Created new shardgroup",
 					Description: "Shards: " + strings.Join(_shardIDs, ", "),
-					Color:       16701571,
+					Color:       discord.EmbedSandwich,
 					Timestamp:   WebhookTime(time.Now().UTC()),
-					Footer: &structs.EmbedFooter{
+					Footer: &discord.EmbedFooter{
 						Text: fmt.Sprintf("Manager %s | ShardCount %d",
 							manager.Configuration.DisplayName, event.ShardCount),
 					},
@@ -178,16 +179,16 @@ func RPCManagerShardGroupStop(sg *Sandwich, user *structs.DiscordUser,
 		return false
 	}
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Stopped shardgroup",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
-				Footer: &structs.EmbedFooter{
+				Footer: &discord.EmbedFooter{
 					Text: fmt.Sprintf("Manager %s | ShardGroup %d",
 						manager.Configuration.DisplayName, event.ShardGroup),
 				},
@@ -336,16 +337,16 @@ func RPCManagerUpdate(sg *Sandwich, user *structs.DiscordUser,
 		return false
 	}
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Updated manager configuration",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
-				Footer: &structs.EmbedFooter{
+				Footer: &discord.EmbedFooter{
 					Text: fmt.Sprintf("Manager %s",
 						manager.Configuration.DisplayName),
 				},
@@ -394,7 +395,7 @@ func RPCManagerCreate(sg *Sandwich, user *structs.DiscordUser,
 	config.Caching.RedisPrefix = event.Prefix
 	config.Messaging.ClientName = event.Client
 	config.Messaging.ChannelName = event.Channel
-	config.Bot.DefaultPresence = &structs.UpdateStatus{}
+	config.Bot.DefaultPresence = &discord.UpdateStatus{}
 
 	config.Messaging.UseRandomSuffix = true
 	config.Bot.Retries = 2
@@ -446,16 +447,16 @@ func RPCManagerCreate(sg *Sandwich, user *structs.DiscordUser,
 		return false
 	}
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Created new manager",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
-				Footer: &structs.EmbedFooter{
+				Footer: &discord.EmbedFooter{
 					Text: fmt.Sprintf("Manager %s",
 						manager.Configuration.DisplayName),
 				},
@@ -524,16 +525,16 @@ func RPCManagerDelete(sg *Sandwich, user *structs.DiscordUser, req structs.RPCRe
 
 	passResponse(rw, true, true, http.StatusOK)
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Deleted manager",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
-				Footer: &structs.EmbedFooter{
+				Footer: &discord.EmbedFooter{
 					Text: fmt.Sprintf("Manager %s",
 						manager.Configuration.DisplayName),
 				},
@@ -602,16 +603,16 @@ func RPCManagerRestart(sg *Sandwich, user *structs.DiscordUser, req structs.RPCR
 
 	passResponse(rw, true, true, http.StatusOK)
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Created new manager",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
-				Footer: &structs.EmbedFooter{
+				Footer: &discord.EmbedFooter{
 					Text: fmt.Sprintf("Manager %s",
 						manager.Configuration.DisplayName),
 				},
@@ -769,14 +770,14 @@ func RPCDaemonUpdate(sg *Sandwich, user *structs.DiscordUser,
 
 	passResponse(rw, true, true, http.StatusOK)
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Updated daemon configuration",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
 			},
 		},
@@ -828,14 +829,14 @@ func RPCDaemonAddWebhook(sg *Sandwich, user *structs.DiscordUser,
 
 	passResponse(rw, true, true, http.StatusOK)
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Added new webhook",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
 			},
 		},
@@ -902,14 +903,14 @@ func RPCDaemonRemoveWebhook(sg *Sandwich, user *structs.DiscordUser,
 
 	passResponse(rw, true, true, http.StatusOK)
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
 		Username: user.Username,
 		AvatarURL: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png",
 			user.ID.String(), user.Avatar),
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Removed webhook",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
 			},
 		},

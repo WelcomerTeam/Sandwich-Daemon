@@ -10,25 +10,27 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketStore"
+	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketstore"
+	consolepump "github.com/TheRockettek/Sandwich-Daemon/pkg/consolepump"
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
+	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
+
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/sessions"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/savsgio/gotils"
 	"github.com/tevino/abool"
 	"github.com/valyala/fasthttp"
-	"github.com/valyala/fasthttp/fasthttpadaptor"
 	"golang.org/x/oauth2"
 	"golang.org/x/xerrors"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -36,30 +38,35 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.5.8"
+const VERSION = "0.5.9"
 
-// ErrOnConfigurationFailure will return errors when loading configuration.
-// If this is false, these errors are suppressed. There is no reason for this
-// to be false.
-const ErrOnConfigurationFailure = true
+const (
+	// ConfigurationPath is the path to the file the configration will be located
+	// at.
+	ConfigurationPath = "sandwich.yaml"
 
-// ConfigurationPath is the path to the file the configration will be located
-// at.
-const ConfigurationPath = "sandwich.yaml"
+	// ErrOnConfigurationFailure will return errors when loading configuration.
+	// If this is false, these errors are suppressed. There is no reason for this
+	// to be false.
+	ErrOnConfigurationFailure = true
 
-// Interval between each analytic sample.
-const Interval = time.Second * 15
+	// Interval between each analytic sample.
+	Interval = time.Second * 15
 
-// Samples to hold. 5 seconds and 720 samples is 1 hour.
-const Samples = 720
+	// Samples to hold. 5 seconds and 720 samples is 1 hour.
+	Samples = 720
 
-// distCacheDuration is the amount of hours to cache dist files.
-// This is 720 (1 month) by default.
-const distCacheDuration = 720
+	// distCacheDuration is the amount of hours to cache dist files.
+	// This is 720 (1 month) by default.
+	distCacheDuration = 720
 
-// Limit of how many events sandwich daemon can process concurrently on all
-// managers.
-const poolConcurrency = 512
+	// Limit of how many events sandwich daemon can process concurrently on all
+	// managers.
+	poolConcurrency = 512
+
+	// Relative location of the distribution file for the website.
+	webRootPath = "web/dist"
+)
 
 // SandwichConfiguration represents the configuration of the program.
 type SandwichConfiguration struct {
@@ -141,13 +148,13 @@ type Sandwich struct {
 	NatsClient  *nats.Conn    `json:"-"`
 	StanClient  stan.Conn     `json:"-"`
 
-	Router *MethodRouter         `json:"-"`
-	Store  *sessions.CookieStore `json:"-"`
+	Router *methodrouter.MethodRouter `json:"-"`
+	Store  *sessions.CookieStore      `json:"-"`
 
 	distHandler fasthttp.RequestHandler
 	fs          *fasthttp.FS
 
-	ConsolePump *ConsolePump `json:"-"`
+	ConsolePump *consolepump.ConsolePump `json:"-"`
 
 	Pool        *limiter.ConcurrencyLimiter `json:"-"`
 	PoolWaiting *int64                      `json:"-"`
@@ -223,7 +230,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 
 	// We will only enable the ConsolePump if HTTP has been enabled
 	if sg.Configuration.HTTP.Enabled {
-		sg.ConsolePump = NewConsolePump()
+		sg.ConsolePump = consolepump.NewConsolePump()
 		writers = append(writers, sg.ConsolePump)
 	}
 
@@ -232,75 +239,6 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	sg.Logger.Info().Msg("Logging configured")
 
 	return sg, nil
-}
-
-// HandleRequest handles incoming HTTP requests.
-func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
-	var processingMS int64
-
-	start := time.Now()
-	path := gotils.B2S(ctx.Path())
-
-	defer func() {
-		var log *zerolog.Event
-
-		statusCode := ctx.Response.StatusCode()
-
-		switch {
-		case (statusCode >= 400 && statusCode <= 499):
-			log = sg.Logger.Warn()
-		case (statusCode >= 500 && statusCode <= 599):
-			log = sg.Logger.Error()
-		default:
-			log = sg.Logger.Info()
-		}
-
-		// Suppress /api/poll messages
-		if path == "/api/poll" && statusCode == 200 {
-			return
-		}
-
-		log.Msgf("%s %s %s %d %d %dms",
-			ctx.RemoteAddr(),
-			ctx.Request.Header.Method(),
-			ctx.Request.URI().PathOriginal(),
-			statusCode,
-			len(ctx.Response.Body()),
-			processingMS,
-		)
-	}()
-
-	switch path {
-	case "/api/ws":
-		APISubscribe(sg, ctx)
-
-		return
-	case "/api/console":
-		APIConsole(sg, ctx)
-
-		return
-	}
-
-	fasthttp.CompressHandlerBrotliLevel(func(ctx *fasthttp.RequestCtx) {
-		fasthttpadaptor.NewFastHTTPHandler(sg.Router)(ctx)
-		if ctx.Response.StatusCode() != http.StatusNotFound {
-			ctx.SetContentType("application/json;charset=utf8")
-		}
-		// If there is no URL in router then try serving from the dist
-		// folder.
-		if ctx.Response.StatusCode() == http.StatusNotFound && path != "/" {
-			ctx.Response.Reset()
-			sg.distHandler(ctx)
-		}
-		// If there is no URL in router or in dist then send index.html
-		if ctx.Response.StatusCode() == http.StatusNotFound {
-			ctx.Response.Reset()
-			ctx.SendFile("web/dist/index.html")
-		}
-	}, fasthttp.CompressBrotliDefaultCompression, fasthttp.CompressDefaultCompression)(ctx)
-
-	processingMS = time.Since(start).Milliseconds()
-	ctx.Response.Header.Set("X-Elapsed", strconv.FormatInt(processingMS, 10))
 }
 
 // LoadConfiguration loads the sandwich configuration.
@@ -473,7 +411,7 @@ func (sg *Sandwich) Open() (err error) {
 
 		sg.Logger.Info().Msg("Starting up http server")
 		sg.fs = &fasthttp.FS{
-			Root:            "web/dist",
+			Root:            webRootPath,
 			Compress:        true,
 			CompressBrotli:  true,
 			AcceptByteRange: true,
@@ -521,13 +459,13 @@ func (sg *Sandwich) Open() (err error) {
 		sg.RestTunnelEnabled.UnSet()
 	}
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
-		Embeds: []structs.Embed{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
+		Embeds: []discord.Embed{
 			{
 				Title:       "Starting up Sandwich-Daemon",
 				URL:         "https://github.com/TheRockettek/Sandwich-Daemon",
 				Description: fmt.Sprintf("Version %s", VERSION),
-				Color:       16701571,
+				Color:       discord.EmbedSandwich,
 				Timestamp:   WebhookTime(time.Now().UTC()),
 			},
 		},
@@ -559,13 +497,13 @@ func (sg *Sandwich) startManagers() {
 				Str("identifier", managerConfiguration.Identifier).
 				Msg("Found conflicting manager identifiers. Ignoring!")
 
-			go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
-				Embeds: []structs.Embed{
+			go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
+				Embeds: []discord.Embed{
 					{
 						Title:     "Found conflicting manager identifiers. Ignoring!",
-						Color:     16760839,
+						Color:     discord.EmbedWarning,
 						Timestamp: WebhookTime(time.Now().UTC()),
-						Footer: &structs.EmbedFooter{
+						Footer: &discord.EmbedFooter{
 							Text: fmt.Sprintf("Manager %s",
 								manager.Configuration.DisplayName),
 						},
@@ -604,14 +542,14 @@ func (sg *Sandwich) startManagers() {
 					manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
 					manager.GatewayMu.RUnlock()
 
-					go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
-						Embeds: []structs.Embed{
+					go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
+						Embeds: []discord.Embed{
 							{
 								Title: fmt.Sprintf("Failed to start up manager as not enough sessions to start %d shard(s). %d remain",
 									shardCount, manager.Gateway.SessionStartLimit.Remaining),
-								Color:     14431557,
+								Color:     discord.EmbedDanger,
 								Timestamp: WebhookTime(time.Now().UTC()),
-								Footer: &structs.EmbedFooter{
+								Footer: &discord.EmbedFooter{
 									Text: fmt.Sprintf("Manager %s",
 										manager.Configuration.DisplayName),
 								},
@@ -628,14 +566,14 @@ func (sg *Sandwich) startManagers() {
 				if err != nil {
 					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
 
-					go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
-						Embeds: []structs.Embed{
+					go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
+						Embeds: []discord.Embed{
 							{
 								Title:       "Failed to start up manager",
 								Description: err.Error(),
-								Color:       14431557,
+								Color:       discord.EmbedDanger,
 								Timestamp:   WebhookTime(time.Now().UTC()),
-								Footer: &structs.EmbedFooter{
+								Footer: &discord.EmbedFooter{
 									Text: fmt.Sprintf("Manager %s",
 										manager.Configuration.DisplayName),
 								},
@@ -762,11 +700,11 @@ func (sg *Sandwich) VerifyRestTunnel(restTunnelURL string) (enabled bool, revers
 func (sg *Sandwich) Close() (err error) {
 	sg.Logger.Info().Msg("Closing sandwich")
 
-	go sg.PublishWebhook(context.Background(), structs.WebhookMessage{
-		Embeds: []structs.Embed{
+	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
+		Embeds: []discord.Embed{
 			{
 				Title:     "Shutting down sandwich",
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
 			},
 		},
@@ -783,7 +721,7 @@ func (sg *Sandwich) Close() (err error) {
 }
 
 // PublishWebhook sends a webhook message to all added webhooks in the configuration.
-func (sg *Sandwich) PublishWebhook(ctx context.Context, message structs.WebhookMessage) {
+func (sg *Sandwich) PublishWebhook(ctx context.Context, message discord.WebhookMessage) {
 	for _, webhook := range sg.Configuration.Webhooks {
 		_, err := sg.SendWebhook(ctx, webhook, message)
 		if err != nil && !xerrors.Is(err, context.Canceled) {
@@ -795,7 +733,7 @@ func (sg *Sandwich) PublishWebhook(ctx context.Context, message structs.WebhookM
 // SendWebhook executes a webhook request. This does not currently support sending.
 // files.
 func (sg *Sandwich) SendWebhook(ctx context.Context, _url string,
-	message structs.WebhookMessage) (status int, err error) {
+	message discord.WebhookMessage) (status int, err error) {
 	var c *Client
 
 	// We will trim whitespace just in case.
@@ -832,17 +770,18 @@ func (sg *Sandwich) TestWebhook(ctx context.Context,
 		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
 	}
 
-	message := structs.WebhookMessage{
+	message := discord.WebhookMessage{
 		Content: "Test Webhook",
-		Embeds: []structs.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:       "This is a test webhook",
 				Description: "This is the description",
 				URL:         "https://github.com/TheRockettek/Sandwich-Daemon",
-				Thumbnail: &structs.EmbedThumbnail{
-					URL: "https://raw.githubusercontent.com/TheRockettek/Sandwich-Daemon/master/web/dist/img/icons/favicon-96x96.png",
+				Thumbnail: &discord.EmbedThumbnail{
+					URL: "https://raw.githubusercontent.com/TheRockettek/Sandwich-Daemon/master/" +
+						webRootPath + "/img/icons/favicon-96x96.png",
 				},
-				Color:     16701571,
+				Color:     discord.EmbedSandwich,
 				Timestamp: WebhookTime(time.Now().UTC()),
 			},
 		},

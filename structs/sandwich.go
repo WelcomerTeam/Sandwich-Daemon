@@ -1,5 +1,7 @@
 package structs
 
+import discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
+
 // StateResult represents the data a state handler would return which would be converted to
 // a sandwich payload.
 type StateResult struct {
@@ -9,7 +11,7 @@ type StateResult struct {
 
 // SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
-	ReceivedPayload
+	discord.ReceivedPayload
 
 	Data  interface{}            `json:"d,omitempty" msgpack:"d,omitempty"`
 	Extra map[string]interface{} `json:"e,omitempty" msgpack:"e,omitempty"`
