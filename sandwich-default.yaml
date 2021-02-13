@@ -17,10 +17,12 @@ redis:
   password: ""
   database: 0
   unique_clients: false
-nats:
-  address: 127.0.0.1:4222
-  channel: sandwich
-  cluster: cluster
+producer:
+  type: stan
+  configuration:
+    address: 127.0.0.1:4222
+    channel: sandwich
+    cluster: cluster
 http:
   enabled: true
   host: 127.0.0.1:5469

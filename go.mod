@@ -34,6 +34,7 @@ require (
 	github.com/prometheus/procfs v0.3.0 // indirect
 	github.com/rs/zerolog v1.20.0
 	github.com/savsgio/gotils v0.0.0-20210105085219-0567298fdcac
+	github.com/segmentio/kafka-go v0.4.9
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/tevino/abool v1.2.0
 	github.com/ugorji/go v1.2.3 // indirect

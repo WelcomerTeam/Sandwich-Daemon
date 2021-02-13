@@ -12,7 +12,6 @@ import (
 
 	structs "github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 )
 
@@ -290,14 +289,28 @@ func RPCManagerUpdate(sg *Sandwich, user *structs.DiscordUser,
 			clientName = manager.Configuration.Messaging.ClientName
 		}
 
-		stanClient, err := stan.Connect(
-			manager.Sandwich.Configuration.NATS.Cluster,
-			clientName,
-			stan.NatsConn(manager.NatsClient),
-		)
+		// stanClient, err := stan.Connect(
+		// 	manager.Sandwich.Configuration.NATS.Cluster,
+		// 	clientName,
+		// 	stan.NatsConn(manager.NatsClient),
+		// )
 
+		// if err == nil {
+		// 	manager.StanClient = stanClient
+		// }
+
+		producerClient, err := NewMQClient(manager.Sandwich.Configuration.Producer.Type)
+		if err != nil {
+			passResponse(rw, err.Error(), false, http.StatusBadRequest)
+		}
+
+		err = producerClient.Connect(
+			context.TODO(),
+			clientName,
+			manager.Sandwich.Configuration.Producer.Configuration,
+		)
 		if err == nil {
-			manager.StanClient = stanClient
+			manager.ProducerClient = producerClient
 		}
 	}
 

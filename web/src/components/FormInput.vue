@@ -109,14 +109,14 @@
           max="32767"
           :value="value"
           @change="
-            v => {
+            (v) => {
               v.target.value = v.target.value & 32767;
               updateValue(Number(v.target.value));
               fromIntents(v.target.value);
             }
           "
           @input="
-            v => {
+            (v) => {
               updateValue(Number(v.target.value));
               fromIntents(v.target.value);
             }
@@ -158,7 +158,7 @@
             :id="id + 'status'"
             :value="value.status"
             @input="
-              v => {
+              (v) => {
                 value.status = v.target.value;
               }
             "
@@ -170,7 +170,7 @@
                 'dnd',
                 'idle',
                 'invisible',
-                'offline'
+                'offline',
               ]"
               :key="item"
               :disabled="!item"
@@ -187,7 +187,7 @@
             :id="id + 'name'"
             :value="value.name"
             @input="
-              v => {
+              (v) => {
                 value.name = v.target.value;
               }
             "
@@ -200,12 +200,62 @@
             :id="id + 'afk'"
             :checked="value.afk"
             @input="
-              v => {
+              (v) => {
                 value.afk = v.target.checked;
               }
             "
           />
           <label class="form-check-label" :for="id + 'afk'">AFK</label>
+        </div>
+      </div>
+    </div>
+    <div class="mb-3" v-else-if="type == 'kvpair'">
+      <label :for="id" v-if="label" class="col-sm-12 form-label">{{
+        label
+      }}</label>
+      <div class="mx-2">
+        <div class="row mb-2 pb-2 border-bottom">
+          <input
+            type="text"
+            class="form-control col mx-1"
+            v-model="keyValue"
+            :disabled="disabled"
+            placeholder="Key"
+          />
+          <input
+            type="text"
+            class="form-control col mx-1"
+            v-model="valueValue"
+            :disabled="disabled"
+            placeholder="Value"
+          />
+          <button
+            class="btn btn-dark col-1 mx-1"
+            v-on:click="addKV(keyValue, valueValue)"
+          >
+            +
+          </button>
+        </div>
+
+        <div v-for="(kv, key) in kvStore" v-bind:key="key">
+          <div class="row mb-1">
+            <input
+              class="form-control col mx-1"
+              v-model="kv.key"
+              @change="updateValue(toKVdict(kvStore))"
+            />
+            <input
+              class="form-control col mx-1"
+              v-model="kv.value"
+              @change="updateValue(toKVdict(kvStore))"
+            />
+            <button
+              class="btn btn-dark col-1 mx-1"
+              v-on:click="removeKV(kv.key)"
+            >
+              -
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -235,20 +285,57 @@ export default {
         "GUILD_MESSAGE_TYPING",
         "DIRECT_MESSAGES",
         "DIRECT_MESSAGE_REACTIONS",
-        "DIRECT_MESSAGE_TYPING"
+        "DIRECT_MESSAGE_TYPING",
       ],
-      selectedIntent: []
+      selectedIntent: [],
+      kvStore: [],
+      keyValue: "",
+      valueValue: "",
     };
   },
   mounted: function() {
     if (this.type == "intent") {
       this.fromIntents(this.value);
     }
+    if (this.type == "kvpair") {
+      this.kvStore = this.fromKVdict(this.value);
+    }
   },
   methods: {
+    removeKV(key) {
+      this.kvStore = this.kvStore.filter((kv) => {
+        return kv.key != key;
+      });
+      this.updateValue(this.toKVdict(this.kvStore));
+    },
+    addKV(key, value) {
+      if (key != "" && value != "") {
+        this.kvStore.push({ key: key, value: value });
+        this.updateValue(this.toKVdict(this.kvStore));
+      }
+    },
+    fromKVdict(kvdict) {
+      var res = [];
+      Object.entries(kvdict).forEach((kv) => {
+        res.push({ key: kv[0], value: kv[1] });
+      });
+
+      console.log(kvdict, res);
+      return res;
+    },
+    toKVdict(kvstore) {
+      var res = {};
+      this.kvStore.forEach((kv) => {
+        res[kv.key] = kv.value;
+      });
+
+      console.log(kvstore, res);
+      return res;
+    },
+
     calculateIntent() {
       this.intentValue = 0;
-      this.selectedIntent.forEach(a => {
+      this.selectedIntent.forEach((a) => {
         this.intentValue += 1 << a;
       });
       this.updateValue(Number(this.intentValue));
@@ -268,7 +355,7 @@ export default {
     },
     updateValue: function(value) {
       this.$emit("input", value);
-    }
-  }
+    },
+  },
 };
 </script>

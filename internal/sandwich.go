@@ -25,8 +25,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/sessions"
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/tevino/abool"
@@ -38,7 +36,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.5.9"
+const VERSION = "0.6"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
@@ -101,11 +99,16 @@ type SandwichConfiguration struct {
 		UniqueClients bool `json:"unique_clients" yaml:"unique_clients"`
 	} `json:"redis" yaml:"redis"`
 
-	NATS struct {
-		Address string `json:"address" yaml:"address"`
-		Channel string `json:"channel" yaml:"channel"`
-		Cluster string `json:"cluster" yaml:"cluster"`
-	} `json:"nats" yaml:"nats"`
+	Producer struct {
+		Type          string                 `json:"type" yaml:"type"`
+		Configuration map[string]interface{} `json:"configuration" yaml:"configuration"`
+	} `json:"producer" yaml:"producer"`
+
+	// NATS struct {
+	// 	Address string `json:"address" yaml:"address"`
+	// 	Channel string `json:"channel" yaml:"channel"`
+	// 	Cluster string `json:"cluster" yaml:"cluster"`
+	// } `json:"nats" yaml:"nats"`
 
 	HTTP struct {
 		Host          string `json:"host" yaml:"host"`
@@ -144,9 +147,8 @@ type Sandwich struct {
 	Buckets *bucketstore.BucketStore `json:"-"`
 
 	// Used for connection sharing
-	RedisClient *redis.Client `json:"-"`
-	NatsClient  *nats.Conn    `json:"-"`
-	StanClient  stan.Conn     `json:"-"`
+	RedisClient    *redis.Client `json:"-"`
+	ProducerClient *MQClient     `json:"-"`
 
 	Router *methodrouter.MethodRouter `json:"-"`
 	Store  *sessions.CookieStore      `json:"-"`
@@ -356,17 +358,17 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 		return xerrors.Errorf("Configuration missing Redis Address. Try 127.0.0.1:6379")
 	}
 
-	if configuration.NATS.Address == "" {
-		return xerrors.New("Configuration missing NATS address. Try 127.0.0.1:4222")
-	}
+	// if configuration.NATS.Address == "" {
+	// 	return xerrors.New("Configuration missing producer address. Try 127.0.0.1:4222")
+	// }
 
-	if configuration.NATS.Channel == "" {
-		return xerrors.Errorf("Configuration missing NATS channel. Try sandwich")
-	}
+	// if configuration.NATS.Channel == "" {
+	// 	return xerrors.Errorf("Configuration missing producer channel. Try sandwich")
+	// }
 
-	if configuration.NATS.Cluster == "" {
-		return xerrors.Errorf("Configuration missing NATS cluster. Try cluster")
-	}
+	// if configuration.NATS.Cluster == "" {
+	// 	return xerrors.Errorf("Configuration missing producer cluster. Try cluster")
+	// }
 
 	if configuration.HTTP.Host == "" {
 		return xerrors.Errorf("Configuration missing HTTP host. Try 127.0.0.1:5469")

@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/internal/mqclients"
 	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 
@@ -776,6 +777,7 @@ func (sg *Sandwich) FetchConfigurationResponse() (pl structs.APIConfigurationRes
 	pl = structs.APIConfigurationResponse{
 		Start:             sg.Start,
 		RestTunnelEnabled: sg.RestTunnelEnabled.IsSet(),
+		MQDrivers:         mqclients.MQClients,
 		Version:           VERSION,
 	}
 

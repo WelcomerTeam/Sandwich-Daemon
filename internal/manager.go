@@ -16,8 +16,6 @@ import (
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/stan.go"
 	"github.com/rs/zerolog"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
@@ -119,9 +117,8 @@ type Manager struct {
 	Configuration   *ManagerConfiguration    `json:"configuration"`
 	Buckets         *bucketstore.BucketStore `json:"-"`
 
-	RedisClient *redis.Client `json:"-"`
-	NatsClient  *nats.Conn    `json:"-"`
-	StanClient  stan.Conn     `json:"-"`
+	RedisClient    *redis.Client `json:"-"`
+	ProducerClient MQClient      `json:"-"` // Used to send messages to consumers
 
 	Client *Client `json:"-"`
 
@@ -239,10 +236,10 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 		return xerrors.New("Manager missing client name. Try sandwich")
 	}
 
-	if mg.Configuration.Messaging.ChannelName == "" {
-		mg.Configuration.Messaging.ChannelName = mg.Sandwich.Configuration.NATS.Channel
-		mg.Logger.Info().Msg("Using global messaging channel")
-	}
+	// if mg.Configuration.Messaging.ChannelName == "" {
+	// 	mg.Configuration.Messaging.ChannelName = mg.Sandwich.Configuration.NATS.Channel
+	// 	mg.Logger.Info().Msg("Using global messaging channel")
+	// }
 
 	if mg.Configuration.Caching.RequestChunkSize <= 0 {
 		mg.Configuration.Caching.RequestChunkSize = 1
@@ -287,11 +284,6 @@ func (mg *Manager) Open() (err error) {
 		return xerrors.Errorf("manager open verify redis: %w", err)
 	}
 
-	mg.NatsClient, err = nats.Connect(mg.Sandwich.Configuration.NATS.Address)
-	if err != nil {
-		return xerrors.Errorf("manager open nats connect: %w", err)
-	}
-
 	var clientName string
 	if mg.Configuration.Messaging.UseRandomSuffix {
 		clientName = mg.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(maxClientNumber)) //nolint:gosec
@@ -299,13 +291,20 @@ func (mg *Manager) Open() (err error) {
 		clientName = mg.Configuration.Messaging.ClientName
 	}
 
-	mg.StanClient, err = stan.Connect(
-		mg.Sandwich.Configuration.NATS.Cluster,
+	producerClient, err := NewMQClient(mg.Sandwich.Configuration.Producer.Type)
+	if err != nil {
+		return xerrors.Errorf("manager open producer create: %w", err)
+	}
+
+	mg.ProducerClient = producerClient
+
+	err = mg.ProducerClient.Connect(
+		mg.ctx,
 		clientName,
-		stan.NatsConn(mg.NatsClient),
+		mg.Sandwich.Configuration.Producer.Configuration,
 	)
 	if err != nil {
-		return xerrors.Errorf("manager open stan connect: %w", err)
+		return xerrors.Errorf("manager open producer connect: %w", err)
 	}
 
 	mg.EventBlacklistMu.Lock()
@@ -384,8 +383,9 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 		return xerrors.Errorf("publishEvent marshal: %w", err)
 	}
 
-	if mg.StanClient != nil {
-		err = mg.StanClient.Publish(
+	if mg.ProducerClient != nil {
+		err = mg.ProducerClient.Publish(
+			mg.ctx,
 			mg.Configuration.Messaging.ChannelName,
 			data,
 		)

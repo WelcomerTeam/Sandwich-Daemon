@@ -134,6 +134,7 @@ type APIConfigurationResponse struct {
 	Start             time.Time   `json:"uptime"`
 	Configuration     interface{} `json:"configuration"`
 	RestTunnelEnabled bool        `json:"rest_tunnel_enabled"`
+	MQDrivers         []string    `json:"mq_drivers"`
 	Version           string      `json:"version"`
 }
 

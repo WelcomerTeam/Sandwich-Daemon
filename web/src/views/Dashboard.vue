@@ -212,7 +212,7 @@
                 </div>
                 <div class="mb-3">
                   <label class="col-sm-12 form-label"
-                    >NATs Client Name <span class="text-danger">*</span>
+                    >Client Name <span class="text-danger">*</span>
                   </label>
                   <input
                     class="form-control"
@@ -221,18 +221,18 @@
                     :placeholder="'eg: ' + createManagerDialogueData.identifier"
                   />
                   <p class="text-muted">
-                    Duplicate client names will not allow the manager to start
-                    however the exact name the NATs client uses does not impact
+                    Duplicate client names may not allow the manager to start
+                    however the exact name the client uses does not impact
                     anything
                   </p>
                 </div>
                 <div class="mb-3">
-                  <label class="col-sm-12 form-label">NATs Channel Name</label>
+                  <label class="col-sm-12 form-label">Channel Name</label>
                   <input
                     class="form-control"
                     type="text"
                     v-model="createManagerDialogueData.channel"
-                    :placeholder="'Defaults to ' + configuration.nats.channel"
+                    :placeholder="'Defaults to ' + configuration.producer.configuration.channel"
                   />
                   <p class="text-muted">
                     Keeping all your managers on a single channel name is useful
@@ -1166,7 +1166,7 @@
                                 possibly break many things.</b
                               >
                               The name the manager is internally referenced by.
-                              NATs packets will also include this identifier in
+                              Produced messages will also include this identifier in
                               its messages.
                             </p>
                             <form-input
@@ -1621,8 +1621,8 @@
                             <p class="text-muted">
                               Custom definition of the channel the manager will
                               use. If empty, it will use the configuration in
-                              daemon.nats.channel which managers should use by
-                              default.
+                              daemon.producer.configuration.channel which managers
+                              should use by default.
                             </p>
                             <form-submit
                               v-on:click="saveClusterSettings(manager)"
@@ -1827,9 +1827,9 @@
               <li class="nav-item" role="presentation">
                 <a
                   class="nav-link"
-                  id="nats-tab"
+                  id="producer-tab"
                   data-toggle="tab"
-                  href="#daemonSettings-nats"
+                  href="#daemonSettings-producer"
                   role="tab"
                   aria-selected="false"
                 >
@@ -1839,7 +1839,7 @@
                     height="20"
                     :path="mdiMessageProcessing"
                   />
-                  NATs</a
+                  Outbound MQ</a
                 >
               </li>
               <li class="nav-item" role="presentation">
@@ -2218,34 +2218,38 @@
               </div>
               <div
                 class="tab-pane fade"
-                id="daemonSettings-nats"
+                id="daemonSettings-producer"
                 role="tabpanel"
-                aria-labelledby="nats-tab"
+                aria-labelledby="producer-tab"
               >
-                <!-- NATs -->
+                <!-- OutboundMQ -->
                 <p class="text-muted">
-                  NATs is the driver that allows for consumers to process the
-                  messages that are sent by the Daemon. This ensures that the
-                  consumers receive their messages and they only receive it
-                  once.
+                  OutboundMQ is the driver that allows for consumers to
+                  process messages that are sent by the Daemon. This ensures
+                  that consumers receive their messages and tailer to your
+                  setup.
                 </p>
+
                 <form-input
-                  v-model="configuration.nats.address"
-                  :type="'text'"
-                  :id="'natsAddress'"
-                  :label="'Address'"
+                  v-model="configuration.producer.type"
+                  :type="'select'"
+                  :id="'outboundMQtype'"
+                  :label="'Driver'"
+                  :values="mq_drivers"
                 />
+                <p class="text-muted">
+                  Select the type of driver you would like to use to handle
+                  Outbound messaging. When changing, ensure you pass the
+                  proper arguments to the OutboundMQ Configuration. You
+                  may be required to restart sandwich-daemon when changing this
+                  or restarting managers.
+                </p>
+
                 <form-input
-                  v-model="configuration.nats.channel"
-                  :type="'text'"
-                  :id="'natsChannel'"
-                  :label="'Channel'"
-                />
-                <form-input
-                  v-model="configuration.nats.manager"
-                  :type="'text'"
-                  :id="'natsCluster'"
-                  :label="'Cluster'"
+                  v-model="configuration.producer.configuration"
+                  :type="'kvpair'"
+                  :id="'outboundMQconfiguration'"
+                  :label="'OutboundMQ Configuration'"
                 />
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
               </div>
@@ -2437,8 +2441,10 @@ export default {
       loadingAnalytics: true,
 
       rest_tunnel_enabled: true,
+      waiting: "...",
       managers: {},
       configuration: {},
+      mq_drivers: [],
 
       toast: {
         title: "",
@@ -3053,6 +3059,7 @@ export default {
           this.$root.version = result.data.data.version;
           this.configuration = result.data.data.configuration;
           this.rest_tunnel_enabled = result.data.data.rest_tunnel_enabled;
+          this.mq_drivers = result.data.data.mq_drivers;
           this.error = !result.data.success;
         })
         .catch((error) => {
