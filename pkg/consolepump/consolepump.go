@@ -49,13 +49,8 @@ func (cp *ConsolePump) Write(p []byte) (n int, err error) {
 	cp.ConnMuMu.RLock()
 	for id, conn := range cp.Conns {
 		cp.ConnMu[id].Lock()
-		// err = conn.WritePreparedMessage(message)
-		conn.WritePreparedMessage(message)
+		conn.WritePreparedMessage(message) // nolint
 		cp.ConnMu[id].Unlock()
-
-		// if err != nil {
-		// 	close(cp.Dead[id])
-		// }
 	}
 	cp.ConnMuMu.RUnlock()
 	cp.ConnsMu.RUnlock()
