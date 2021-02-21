@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
+	"github.com/andybalholm/brotli"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
@@ -73,6 +74,9 @@ type Shard struct {
 	Start   time.Time `json:"start"`
 	Retries *int32    `json:"retries"` // When erroring, how many times to retry connecting until shardgroup is stopped.
 
+	FastCompressor    sync.Pool
+	DefaultCompressor sync.Pool
+
 	wsConn *websocket.Conn
 
 	mp sync.Pool
@@ -118,6 +122,14 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 		Start:   time.Now().UTC(),
 		Retries: new(int32),
 
+		FastCompressor: sync.Pool{
+			New: func() interface{} { return brotli.NewWriterLevel(nil, brotli.BestSpeed) },
+		},
+
+		DefaultCompressor: sync.Pool{
+			New: func() interface{} { return brotli.NewWriterLevel(nil, brotli.DefaultCompression) },
+		},
+
 		// Pool of payloads from discord
 		mp: sync.Pool{
 			New: func() interface{} { return new(discord.ReceivedPayload) },
@@ -159,15 +171,23 @@ func (sg *ShardGroup) NewShard(shardID int) *Shard {
 
 // Open starts up the shard connection.
 func (sh *Shard) Open() {
+	sh.Logger.Debug().Msg("Opening Shard")
+
 	for {
+		sh.Logger.Debug().Msg("Started listening to shard")
+
 		err := sh.Listen()
 		if xerrors.Is(err, context.Canceled) {
+			sh.Logger.Debug().Msg("Shard received context Canceled")
+
 			return
 		}
 
 		// Check if context is done
 		select {
 		case <-sh.ctx.Done():
+			sh.Logger.Debug().Msg("Shard context has finished")
+
 			return
 		default:
 		}
@@ -302,6 +322,10 @@ func (sh *Shard) Connect() (err error) {
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 	sh.Unlock()
 
+	if sh.HeartbeatActive.IsNotSet() {
+		go sh.Heartbeat()
+	}
+
 	seq := atomic.LoadInt64(sh.seq)
 
 	sh.Logger.Debug().
@@ -355,10 +379,6 @@ func (sh *Shard) Connect() (err error) {
 
 	// Wait 5 seconds for the first event or errors in websocket to
 	// ensure there are no error messages such as disallowed intents.
-
-	if sh.HeartbeatActive.IsNotSet() {
-		go sh.Heartbeat()
-	}
 
 	sh.Logger.Trace().Msg("Waiting for first event")
 
@@ -883,8 +903,6 @@ func (sh *Shard) Resume() (err error) {
 
 // Identify sends the identify packet to gateway.
 func (sh *Shard) Identify() (err error) {
-	sh.Logger.Debug().Msg("Sending identify")
-
 	sh.Manager.GatewayMu.Lock()
 	sh.Manager.Gateway.SessionStartLimit.Remaining--
 	sh.Manager.GatewayMu.Unlock()
@@ -904,6 +922,8 @@ func (sh *Shard) Identify() (err error) {
 		fmt.Sprintf("gw:%s:%d", hash, sh.ShardID%sh.Manager.Gateway.SessionStartLimit.MaxConcurrency),
 	)
 	sh.Manager.GatewayMu.RUnlock()
+
+	sh.Logger.Debug().Msg("Sending identify")
 
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to wait for bucket")

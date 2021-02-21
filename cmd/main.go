@@ -2,10 +2,14 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"net/http"
+	_ "net/http/pprof"
 
 	gateway "github.com/TheRockettek/Sandwich-Daemon/internal"
 	"github.com/rs/zerolog"
@@ -19,6 +23,12 @@ func main() {
 	level, err := zerolog.ParseLevel(*lFlag)
 	if err != nil {
 		level = zerolog.InfoLevel
+	}
+
+	if level <= zerolog.DebugLevel {
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
 	}
 
 	logger := zerolog.ConsoleWriter{

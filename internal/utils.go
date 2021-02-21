@@ -35,6 +35,15 @@ func replaceIfEmpty(v string, s string) string {
 	return v
 }
 
+// Returns the error.Error() if not null else empty.
+func ReturnError(err error) string {
+	if err != nil {
+		return err.Error()
+	}
+
+	return ""
+}
+
 // DeepEqualExports compares exported values of two interfaces based on the
 // tagName provided.
 func DeepEqualExports(tagName string, a interface{}, b interface{}) bool {

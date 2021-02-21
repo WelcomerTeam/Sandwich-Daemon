@@ -104,21 +104,31 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 
 	// a := time.Now()
 
-	compressionLevel := brotli.BestSpeed
-	if len(payload) > minPayloadCompressionSize {
-		compressionLevel = brotli.DefaultCompression
-	}
-
 	compressedPayload := sh.cp.Get().(*bytes.Buffer)
 
-	br := brotli.NewWriterLevel(compressedPayload, compressionLevel)
+	if len(payload) > minPayloadCompressionSize {
+		dc := sh.DefaultCompressor.Get().(*brotli.Writer)
+		dc.Reset(compressedPayload)
 
-	_, err = br.Write(payload)
-	if err != nil {
-		sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
+		_, err = dc.Write(payload)
+		if err != nil {
+			sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
+		}
+
+		dc.Flush()
+		sh.DefaultCompressor.Put(dc)
+	} else {
+		fc := sh.FastCompressor.Get().(*brotli.Writer)
+		fc.Reset(compressedPayload)
+
+		_, err = fc.Write(payload)
+		if err != nil {
+			sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
+		}
+
+		fc.Flush()
+		sh.FastCompressor.Put(fc)
 	}
-
-	br.Close()
 
 	err = sh.Manager.ProducerClient.Publish(
 		sh.ctx,

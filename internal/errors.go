@@ -11,3 +11,7 @@ var ErrInvalidToken = errors.New("token passed is not valid")
 
 // ErrReconnect is used to distinguish if the shard simply wants to reconnect.
 var ErrReconnect = errors.New("reconnect is required")
+
+var ErrInvalidManager = errors.New("no manager with this name exists")
+var ErrInvalidShardGroup = errors.New("invalid shard group id specified")
+var ErrInvalidShard = errors.New("invalid shard id specified")

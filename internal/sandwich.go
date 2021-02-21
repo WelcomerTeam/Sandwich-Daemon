@@ -36,7 +36,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.6"
+const VERSION = "0.7"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
