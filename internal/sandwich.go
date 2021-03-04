@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +20,8 @@ import (
 	consolepump "github.com/TheRockettek/Sandwich-Daemon/pkg/consolepump"
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
 	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
+	gatewayServer "github.com/TheRockettek/Sandwich-Daemon/protobuf"
+	"google.golang.org/grpc"
 
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
@@ -36,7 +39,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.7"
+const VERSION = "0.8.0+202103040057"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
@@ -428,16 +431,36 @@ func (sg *Sandwich) Open() (err error) {
 		sg.Router = createEndpoints(sg)
 
 		go func() {
-			fmt.Printf("Serving on %s (Press CTRL+C to quit)\n", sg.Configuration.HTTP.Host)
-			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
+			fmt.Printf("Serving dashboard on %s (Press CTRL+C to quit)\n", sg.Configuration.HTTP.Host)
 
+			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
 			if err != nil {
-				sg.Logger.Error().Err(err).Msg("Failed to start up http server")
+				sg.Logger.Error().Str("host", sg.Configuration.HTTP.Host).Err(err).Msg("Failed to serve http server")
 			}
 		}()
 	} else {
 		sg.Logger.Info().Msg("The web interface will not start as HTTP is disabled in the configuration")
 	}
+
+	go func() {
+		lis, err := net.Listen("tcp", "localhost:10000")
+		if err != nil {
+			sg.Logger.Error().Str("host", "localhost:10000").Err(err).Msg("Failed to bind address for gRPC server")
+
+			return
+		}
+
+		var opts []grpc.ServerOption
+		grpcServer := grpc.NewServer(opts...)
+		gatewayServer.RegisterGatewayServer(grpcServer, sg.NewGatewayServer())
+
+		fmt.Printf("Serving gRPC on %s (Press CTRL+C to quit)\n", "localhost:10000")
+
+		err = grpcServer.Serve(lis)
+		if err != nil {
+			sg.Logger.Error().Str("host", "localhost:10000").Err(err).Msg("Failed to serve gRPC server")
+		}
+	}()
 
 	sg.Logger.Info().Msg("Creating standalone redis client")
 	sg.RedisClient = redis.NewClient(&redis.Options{

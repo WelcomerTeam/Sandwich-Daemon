@@ -5,19 +5,28 @@ import (
 
 	pb "github.com/TheRockettek/Sandwich-Daemon/protobuf"
 	structs "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
+	jsoniter "github.com/json-iterator/go"
 )
 
-type gRPCServer struct {
-	pb.GatewayServer
-	sw *Sandwich
+// Creates the gRPC Gateway Server for use in Sandwich Initialization.
+func (sg *Sandwich) NewGatewayServer() *RouteGatewayServer {
+	return &RouteGatewayServer{
+		sg: sg,
+	}
 }
 
-func (s *gRPCServer) SendEvent(ctx context.Context, event *pb.SendEventRequest) (*pb.SendEventResponse, error) {
+type RouteGatewayServer struct {
+	pb.GatewayServer
+
+	sg *Sandwich
+}
+
+func (s *RouteGatewayServer) SendEventToGateway(ctx context.Context, event *pb.SendEventRequest) (*pb.SendEventResponse, error) {
 	var err error
 
-	s.sw.ManagersMu.RLock()
-	manager, ok := s.sw.Managers[event.Manager]
-	s.sw.ManagersMu.RUnlock()
+	s.sg.ManagersMu.RLock()
+	manager, ok := s.sg.Managers[event.Manager]
+	s.sg.ManagersMu.RUnlock()
 
 	if ok {
 		manager.ShardGroupsMu.RLock()
@@ -32,7 +41,7 @@ func (s *gRPCServer) SendEvent(ctx context.Context, event *pb.SendEventRequest) 
 			if ok {
 				err = shard.SendEvent(
 					structs.GatewayOp(event.GatewayOPCode),
-					event.Data,
+					jsoniter.RawMessage(event.Data),
 				)
 
 				return &pb.SendEventResponse{
