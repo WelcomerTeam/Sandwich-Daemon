@@ -1,9 +1,6 @@
 <template>
   <div>
     <ul class="console mt-4 p-3 rounded-lg">
-      <li class="text-center" v-if="!this.connected">
-        <button class="btn btn-light mt-5 connect-button" @click="connect()">Connect</button>
-      </li>
       <li
         class="d-flex font-monospace text-white"
         v-for="(entry, index) in entries"
@@ -31,7 +28,9 @@
       </li>
     </ul>
     <div class="d-flex">
-      <button class="btn btn-dark mr-2" @click="disconnect()">Disconnect</button>
+      <button class="btn btn-dark mr-2" @click="toggle_connection()">
+        {{ this.connected ? "Disconnect" : "Connect" }}
+      </button>
       <button class="btn btn-dark mr-2" @click="clear()">Clear</button>
       <div class="my-auto mr-2">
         <input
@@ -75,7 +74,6 @@
 
 .connect-button {
   position: absolute;
-  height: 0;
 }
 </style>
 
@@ -111,9 +109,13 @@ export default {
     }
   },
   methods: {
-    disconnect() {
-      this.ws.close();
-      this.addentry({ message: "Disconnecting" });
+    toggle_connection() {
+      if (this.connected) {
+        this.ws.close();
+        this.addentry({ message: "Disconnecting" });
+      } else {
+        this.connect();
+      }
     },
     clear() {
       this.entries = [];
@@ -125,7 +127,6 @@ export default {
           window.location.host +
           this.wsurl
       );
-      // this.ws = new WebSocket("ws://127.0.0.1:5469/api/console");
       this.ws.onopen = this.onopen;
       this.ws.onmessage = this.onmessage;
       this.ws.onclose = this.onclose;
@@ -163,6 +164,7 @@ export default {
         });
       }
     },
+
     onopen() {
       this.connected = true;
       this.addentry({ message: "Connected to console websocket" });
@@ -175,16 +177,21 @@ export default {
         );
       }, 15000);
     },
+
     onmessage(event) {
       this.addentry(JSON.parse(event.data));
     },
+
     onclose() {
       this.addentry({ message: "Connection was closed" });
       this.connected = false;
 
       clearInterval(this.ping_interval);
     },
-    onerror() {}
+
+    onerror() {
+      this.addentry({ message: "Encountered error" });
+    }
   }
 };
 </script>

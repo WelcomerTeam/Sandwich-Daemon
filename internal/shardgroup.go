@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
 	"github.com/tevino/abool"
@@ -42,8 +43,24 @@ type ShardGroup struct {
 	// Mutex map to limit connections per max_concurrency connection
 	IdentifyBucket map[int]*sync.Mutex `json:"-"`
 
+	// MemberChunksCallback is used to signal when a guild is chunking.
+	MemberChunksCallbackMu sync.RWMutex                     `json:"-"`
+	MemberChunksCallback   map[snowflake.ID]*sync.WaitGroup `json:"-"`
+
+	// MemberChunksComplete is used to signal if a guild has recently
+	// been chunked. It is up to the guild task to remove this bool
+	// a few seconds after finishing chunking.
+	MemberChunksCompleteMu sync.RWMutex                       `json:"-"`
+	MemberChunksComplete   map[snowflake.ID]*abool.AtomicBool `json:"-"`
+
+	// MemberChunkCallbacks is used to signal when any MEMBER_CHUNK
+	// events are received for the specific guild.
+	MemberChunkCallbacksMu sync.RWMutex               `json:"-"`
+	MemberChunkCallbacks   map[snowflake.ID]chan bool `json:"-"`
+
 	// Used for detecting errors during shard startup
 	err chan error
+
 	// Used to close active goroutines
 	close chan void
 
@@ -71,6 +88,15 @@ func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 		IdentifyBucket: make(map[int]*sync.Mutex),
 		err:            make(chan error),
 		close:          make(chan void),
+
+		MemberChunksCallbackMu: sync.RWMutex{},
+		MemberChunksCallback:   make(map[snowflake.ID]*sync.WaitGroup),
+
+		MemberChunksCompleteMu: sync.RWMutex{},
+		MemberChunksComplete:   make(map[snowflake.ID]*abool.AtomicBool),
+
+		MemberChunkCallbacksMu: sync.RWMutex{},
+		MemberChunkCallbacks:   make(map[snowflake.ID]chan bool),
 
 		floodgate: abool.New(),
 	}

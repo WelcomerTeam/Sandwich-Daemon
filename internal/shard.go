@@ -40,6 +40,12 @@ const (
 	minPayloadCompressionSize = 1000000 // Apply higher level compression to payloads >1 Mb
 )
 
+// List of Dispatch codes that do not allow for concurrency.
+var blockingDispatch = map[string]bool{
+	"READY":                true,
+	"MEMBER_CHUNK_REQUEST": true,
+}
+
 // Shard represents the shard object.
 type Shard struct {
 	sync.RWMutex // used to lock less common variables such as the user
@@ -301,7 +307,6 @@ func (sh *Shard) Connect() (err error) {
 
 	// Read a message from WS which we should expect to be Hello
 	msg, err := sh.readMessage()
-
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to read message")
 
@@ -411,7 +416,6 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 	errorCh = make(chan error, 1)
 
 	conn, _, err := websocket.Dial(ctx, u, opts)
-
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to dial websocket")
 
@@ -565,7 +569,7 @@ func (sh *Shard) OnEvent(msg discord.ReceivedPayload) {
 
 		return
 	case discord.GatewayOpDispatch:
-		go func() {
+		exec := func() {
 			var ticket int
 
 			atomic.AddInt64(sh.Manager.Sandwich.PoolWaiting, 1)
@@ -582,7 +586,18 @@ func (sh *Shard) OnEvent(msg discord.ReceivedPayload) {
 			if err != nil && !xerrors.Is(err, NoHandler) {
 				sh.Logger.Error().Err(err).Msg("Failed to handle event")
 			}
-		}()
+		}
+
+		// To reduce the chance of race conditions, some Dispatch events block the
+		// goroutine that reads from MessageCh however this does not mean we do not
+		// handle messages whilst this is running! This essentially just means we pass
+		// control of the MessageCh to that event for its duration. Currently this is
+		// only the READY event.
+		if _, blocking := blockingDispatch[msg.Type]; blocking {
+			exec()
+		} else {
+			go exec()
+		}
 	case discord.GatewayOpHeartbeatACK:
 		sh.LastHeartbeatMu.Lock()
 		sh.LastHeartbeatAck = time.Now().UTC()
@@ -1141,6 +1156,35 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 	if err := sh.SetStatus(structs.ShardClosed); err != nil {
 		sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
 	}
+}
+
+// ChunkGuild requests guild chunks for a guild.
+func (sh *Shard) ChunkGuild(guildID snowflake.ID) (err error) {
+	sh.ShardGroup.MemberChunksCompleteMu.RLock()
+	completed, ok := sh.ShardGroup.MemberChunksComplete[guildID]
+	sh.ShardGroup.MemberChunksCompleteMu.RUnlock()
+
+	if !ok || completed.IsNotSet() {
+		// Abool so multiple processes can know if a chunk is in progress.
+		// Empty: No chunk recently, chunk
+		// False: Chunk is in progress
+		// True:  Chunk has recently finished, no need to wait.
+		sh.ShardGroup.MemberChunksCompleteMu.Lock()
+		sh.ShardGroup.MemberChunksComplete[guildID] = abool.New()
+		sh.ShardGroup.MemberChunksCompleteMu.Unlock()
+
+		// Channel to signify when chunking has completed.
+		// Broadcast() is  when initial timeout
+		// or the reduced timeout after getting the first MEMBER_CHUNK.
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+
+		sh.ShardGroup.MemberChunksCallbackMu.Lock()
+		sh.ShardGroup.MemberChunksCallback[guildID] = wg
+		sh.ShardGroup.MemberChunksCallbackMu.Unlock()
+	}
+
+	return
 }
 
 // PublishWebhook is the same as sg.PublishWebhook but has extra sugar for

@@ -7,15 +7,23 @@ package gateway;
 // Interface exported by the server.
 service Gateway {
 	rpc SendEventToGateway(SendEventRequest) returns (SendEventResponse) {}
+	rpc RequestGuildChunks(RequestGuildChunksRequest) returns (StandardResponse) {}
+}
+
+// StandardResponse contains a fairly basic response with a boolean indicating
+// success and an error message if applicable
+message StandardResponse {
+	bool Success = 1;
+	string Error = 2;
 }
 
 // SendEventRequest contains the OPCode, details about identifying the
 // specific shard and the data that will be sent to the gateway.
 message SendEventRequest {
-	uint32 GatewayOPCode = 1;
-	string Manager       = 2;
-	int32  ShardGroup    = 3;
-	int32  ShardID       = 4;
+	int64 GatewayOPCode = 1;
+	int32  ShardGroup    = 2;
+	int32  ShardID       = 3;
+	string Manager       = 4;
 	bytes  Data          = 5;
 }
 
@@ -24,4 +32,13 @@ message SendEventRequest {
 message SendEventResponse {
 	bool   FoundShard = 1;
 	string Error = 2;
+}
+
+// RequestGuildChunksRequest contains details about a specific shard and
+// data for the guild it is requesting.
+message RequestGuildChunksRequest {
+	bool Wait          = 1; // If disabled, gRPC will immediately respond.
+	int64 GuildID      = 2;
+	int32  ShardGroup  = 3;
+	string Manager     = 4;
 }

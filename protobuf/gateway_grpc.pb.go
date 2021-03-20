@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GatewayClient interface {
 	SendEventToGateway(ctx context.Context, in *SendEventRequest, opts ...grpc.CallOption) (*SendEventResponse, error)
+	RequestGuildChunks(ctx context.Context, in *RequestGuildChunksRequest, opts ...grpc.CallOption) (*StandardResponse, error)
 }
 
 type gatewayClient struct {
@@ -38,11 +39,21 @@ func (c *gatewayClient) SendEventToGateway(ctx context.Context, in *SendEventReq
 	return out, nil
 }
 
+func (c *gatewayClient) RequestGuildChunks(ctx context.Context, in *RequestGuildChunksRequest, opts ...grpc.CallOption) (*StandardResponse, error) {
+	out := new(StandardResponse)
+	err := c.cc.Invoke(ctx, "/gateway.Gateway/RequestGuildChunks", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GatewayServer is the server API for Gateway service.
 // All implementations must embed UnimplementedGatewayServer
 // for forward compatibility
 type GatewayServer interface {
 	SendEventToGateway(context.Context, *SendEventRequest) (*SendEventResponse, error)
+	RequestGuildChunks(context.Context, *RequestGuildChunksRequest) (*StandardResponse, error)
 	mustEmbedUnimplementedGatewayServer()
 }
 
@@ -52,6 +63,9 @@ type UnimplementedGatewayServer struct {
 
 func (UnimplementedGatewayServer) SendEventToGateway(context.Context, *SendEventRequest) (*SendEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendEventToGateway not implemented")
+}
+func (UnimplementedGatewayServer) RequestGuildChunks(context.Context, *RequestGuildChunksRequest) (*StandardResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestGuildChunks not implemented")
 }
 func (UnimplementedGatewayServer) mustEmbedUnimplementedGatewayServer() {}
 
@@ -84,6 +98,24 @@ func _Gateway_SendEventToGateway_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gateway_RequestGuildChunks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestGuildChunksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServer).RequestGuildChunks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gateway.Gateway/RequestGuildChunks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServer).RequestGuildChunks(ctx, req.(*RequestGuildChunksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Gateway_ServiceDesc is the grpc.ServiceDesc for Gateway service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -95,7 +127,11 @@ var Gateway_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "SendEventToGateway",
 			Handler:    _Gateway_SendEventToGateway_Handler,
 		},
+		{
+			MethodName: "RequestGuildChunks",
+			Handler:    _Gateway_RequestGuildChunks_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protobuf/gateway.proto",
+	Metadata: "gateway.proto",
 }

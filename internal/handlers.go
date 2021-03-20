@@ -38,7 +38,7 @@ const (
 var upgrader = websocket.FastHTTPUpgrader{
 	EnableCompression: true,
 	CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
-		origins := []string{"http://127.0.0.1:8081", "http://127.0.0.1:5469", "https://sandwich.welcomer.gg"}
+		origins := []string{"http://127.0.0.1:8080", "http://127.0.0.1:5469", "https://sandwich.welcomer.gg"}
 		origin := gotils.B2S(ctx.Request.Header.Peek("Origin"))
 
 		return gotils.StringSliceInclude(origins, origin)

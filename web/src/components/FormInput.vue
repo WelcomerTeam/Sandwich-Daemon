@@ -109,14 +109,14 @@
           max="32767"
           :value="value"
           @change="
-            (v) => {
+            v => {
               v.target.value = v.target.value & 32767;
               updateValue(Number(v.target.value));
               fromIntents(v.target.value);
             }
           "
           @input="
-            (v) => {
+            v => {
               updateValue(Number(v.target.value));
               fromIntents(v.target.value);
             }
@@ -158,7 +158,7 @@
             :id="id + 'status'"
             :value="value.status"
             @input="
-              (v) => {
+              v => {
                 value.status = v.target.value;
               }
             "
@@ -170,7 +170,7 @@
                 'dnd',
                 'idle',
                 'invisible',
-                'offline',
+                'offline'
               ]"
               :key="item"
               :disabled="!item"
@@ -187,7 +187,7 @@
             :id="id + 'name'"
             :value="value.name"
             @input="
-              (v) => {
+              v => {
                 value.name = v.target.value;
               }
             "
@@ -200,7 +200,7 @@
             :id="id + 'afk'"
             :checked="value.afk"
             @input="
-              (v) => {
+              v => {
                 value.afk = v.target.checked;
               }
             "
@@ -285,12 +285,12 @@ export default {
         "GUILD_MESSAGE_TYPING",
         "DIRECT_MESSAGES",
         "DIRECT_MESSAGE_REACTIONS",
-        "DIRECT_MESSAGE_TYPING",
+        "DIRECT_MESSAGE_TYPING"
       ],
       selectedIntent: [],
       kvStore: [],
       keyValue: "",
-      valueValue: "",
+      valueValue: ""
     };
   },
   mounted: function() {
@@ -303,7 +303,7 @@ export default {
   },
   methods: {
     removeKV(key) {
-      this.kvStore = this.kvStore.filter((kv) => {
+      this.kvStore = this.kvStore.filter(kv => {
         return kv.key != key;
       });
       this.updateValue(this.toKVdict(this.kvStore));
@@ -316,7 +316,7 @@ export default {
     },
     fromKVdict(kvdict) {
       var res = [];
-      Object.entries(kvdict).forEach((kv) => {
+      Object.entries(kvdict).forEach(kv => {
         res.push({ key: kv[0], value: kv[1] });
       });
 
@@ -325,7 +325,7 @@ export default {
     },
     toKVdict(kvstore) {
       var res = {};
-      this.kvStore.forEach((kv) => {
+      this.kvStore.forEach(kv => {
         res[kv.key] = kv.value;
       });
 
@@ -335,7 +335,7 @@ export default {
 
     calculateIntent() {
       this.intentValue = 0;
-      this.selectedIntent.forEach((a) => {
+      this.selectedIntent.forEach(a => {
         this.intentValue += 1 << a;
       });
       this.updateValue(Number(this.intentValue));
@@ -355,7 +355,7 @@ export default {
     },
     updateValue: function(value) {
       this.$emit("input", value);
-    },
-  },
+    }
+  }
 };
 </script>

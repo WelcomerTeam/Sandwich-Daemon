@@ -232,7 +232,10 @@
                     class="form-control"
                     type="text"
                     v-model="createManagerDialogueData.channel"
-                    :placeholder="'Defaults to ' + configuration.producer.configuration.channel"
+                    :placeholder="
+                      'Defaults to ' +
+                        configuration.producer.configuration.channel
+                    "
                   />
                   <p class="text-muted">
                     Keeping all your managers on a single channel name is useful
@@ -1166,8 +1169,8 @@
                                 possibly break many things.</b
                               >
                               The name the manager is internally referenced by.
-                              Produced messages will also include this identifier in
-                              its messages.
+                              Produced messages will also include this
+                              identifier in its messages.
                             </p>
                             <form-input
                               v-model="manager.configuration.display_name"
@@ -1621,8 +1624,8 @@
                             <p class="text-muted">
                               Custom definition of the channel the manager will
                               use. If empty, it will use the configuration in
-                              daemon.producer.configuration.channel which managers
-                              should use by default.
+                              daemon.producer.configuration.channel which
+                              managers should use by default.
                             </p>
                             <form-submit
                               v-on:click="saveClusterSettings(manager)"
@@ -1931,8 +1934,8 @@
                   />
                   <p class="text-muted">
                     When enabled, webhooks will prefer a more minimalistic one
-                    line message rather than fancier embeds. Useful when you have
-                    lots of shards.
+                    line message rather than fancier embeds. Useful when you
+                    have lots of shards.
                   </p>
                 </div>
                 <form-input
@@ -1947,7 +1950,7 @@
                     'warn',
                     'error',
                     'fatal',
-                    'panic',
+                    'panic'
                   ]"
                 />
                 <form-input
@@ -2144,11 +2147,13 @@
                       return;
                     }
                     configuration.elevated_users = configuration.elevated_users.filter(
-                      (item) => item !== userid
+                      item => item !== userid
                     );
                     userid = undefined;
                   "
-                  :disabled="$store.state.user && userid == $store.state.user.id"
+                  :disabled="
+                    $store.state.user && userid == $store.state.user.id
+                  "
                   :label="'Remove User'"
                 />
                 <form-submit
@@ -2224,10 +2229,9 @@
               >
                 <!-- OutboundMQ -->
                 <p class="text-muted">
-                  OutboundMQ is the driver that allows for consumers to
-                  process messages that are sent by the Daemon. This ensures
-                  that consumers receive their messages and tailer to your
-                  setup.
+                  OutboundMQ is the driver that allows for consumers to process
+                  messages that are sent by the Daemon. This ensures that
+                  consumers receive their messages and tailer to your setup.
                 </p>
 
                 <form-input
@@ -2239,10 +2243,10 @@
                 />
                 <p class="text-muted">
                   Select the type of driver you would like to use to handle
-                  Outbound messaging. When changing, ensure you pass the
-                  proper arguments to the OutboundMQ Configuration. You
-                  may be required to restart sandwich-daemon when changing this
-                  or restarting managers.
+                  Outbound messaging. When changing, ensure you pass the proper
+                  arguments to the OutboundMQ Configuration. You may be required
+                  to restart sandwich-daemon when changing this or restarting
+                  managers.
                 </p>
 
                 <form-input
@@ -2394,7 +2398,7 @@ import {
   mdiDatabase,
   mdiMessageProcessing,
   mdiWeb,
-  mdiFilter,
+  mdiFilter
 } from "@mdi/js";
 
 import { Toast, Modal } from "bootstrap";
@@ -2414,7 +2418,7 @@ export default {
     FormSubmit,
     LineChart,
     StatusGraph,
-    SvgIcon,
+    SvgIcon
   },
   name: "Dashboard",
   data() {
@@ -2448,7 +2452,7 @@ export default {
 
       toast: {
         title: "",
-        body: "",
+        body: ""
       },
       analytics: {
         chart: {},
@@ -2456,7 +2460,7 @@ export default {
         visible: "...",
         events: "...",
         online: "...",
-        colour: "bg-success",
+        colour: "bg-success"
       },
 
       resttunnel: {
@@ -2466,15 +2470,15 @@ export default {
           waiting: {},
           requests: {},
           callbacks: {},
-          average_response: {},
+          average_response: {}
         },
         numbers: {
           hits: 0,
           misses: 0,
           requests: 0,
-          waiting: 0,
+          waiting: 0
         },
-        uptime: "...",
+        uptime: "..."
       },
 
       createShardGroupDialogueData: {
@@ -2483,11 +2487,11 @@ export default {
         shardCount: 1,
         autoIDs: true,
         shardIDs: "",
-        startImmediately: true,
+        startImmediately: true
       },
       stopShardGroupDialogueData: {
         manager: "",
-        shardgroup: 0,
+        shardgroup: 0
       },
 
       createManagerDialogueData: {
@@ -2496,15 +2500,15 @@ export default {
         token: "",
         prefix: "",
         client: "",
-        channel: "",
+        channel: ""
       },
       deleteManagerDialogueData: {
         confirm: "",
-        manager: "",
+        manager: ""
       },
       restartManagerDialogueData: {
         confirm: "",
-        manager: "",
+        manager: ""
       },
 
       statusShard: [
@@ -2514,7 +2518,7 @@ export default {
         "Connected",
         "Ready",
         "Reconnecting",
-        "Closed",
+        "Closed"
       ],
       colourShard: [
         "dark",
@@ -2523,7 +2527,7 @@ export default {
         "info",
         "success",
         "warn",
-        "secondary",
+        "secondary"
       ],
 
       statusGroup: [
@@ -2534,7 +2538,7 @@ export default {
         "Replaced",
         "Closing",
         "Closed",
-        "Error",
+        "Error"
       ],
       colourGroup: [
         "dark",
@@ -2544,7 +2548,7 @@ export default {
         "info",
         "warn",
         "dark",
-        "danger",
+        "danger"
       ],
 
       colourCluster: [
@@ -2555,7 +2559,7 @@ export default {
         "warn",
         "warn",
         "dark",
-        "danger",
+        "danger"
       ],
 
       chartOptions: {
@@ -2563,107 +2567,107 @@ export default {
           title: { display: true, text: "Ratelimit Hits" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" },
+            line: { tension: 0.2, borderJoinStyle: "round" }
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 },
-              },
+                ticks: { fixedStepSize: 1 }
+              }
             ],
-            xAxes: [{ type: "time" }],
+            xAxes: [{ type: "time" }]
           },
-          animation: { duration: 0 },
+          animation: { duration: 0 }
         },
         ratelimitMisses: {
           title: { display: true, text: "Ratelimit Misses" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" },
+            line: { tension: 0.2, borderJoinStyle: "round" }
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 },
-              },
+                ticks: { fixedStepSize: 1 }
+              }
             ],
-            xAxes: [{ type: "time" }],
+            xAxes: [{ type: "time" }]
           },
-          animation: { duration: 0 },
+          animation: { duration: 0 }
         },
         waitingRequests: {
           title: { display: true, text: "Waiting requests" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" },
+            line: { tension: 0.2, borderJoinStyle: "round" }
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 },
-              },
+                ticks: { fixedStepSize: 1 }
+              }
             ],
-            xAxes: [{ type: "time" }],
+            xAxes: [{ type: "time" }]
           },
-          animation: { duration: 0 },
+          animation: { duration: 0 }
         },
         totalRequests: {
           title: { display: true, text: "Total requests" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" },
+            line: { tension: 0.2, borderJoinStyle: "round" }
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 },
-              },
+                ticks: { fixedStepSize: 1 }
+              }
             ],
-            xAxes: [{ type: "time" }],
+            xAxes: [{ type: "time" }]
           },
-          animation: { duration: 0 },
+          animation: { duration: 0 }
         },
         callbackBuffer: {
           title: { display: true, text: "Callback buffer" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" },
+            line: { tension: 0.2, borderJoinStyle: "round" }
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 },
-              },
+                ticks: { fixedStepSize: 1 }
+              }
             ],
-            xAxes: [{ type: "time" }],
+            xAxes: [{ type: "time" }]
           },
-          animation: { duration: 0 },
+          animation: { duration: 0 }
         },
         averageResponse: {
           title: { display: true, text: "Average response" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" },
+            line: { tension: 0.2, borderJoinStyle: "round" }
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { beginAtZero: true },
-              },
+                ticks: { beginAtZero: true }
+              }
             ],
-            xAxes: [{ type: "time" }],
+            xAxes: [{ type: "time" }]
           },
           animation: { duration: 0 },
           tooltips: {
@@ -2675,33 +2679,33 @@ export default {
                   tooltipItems.yLabel +
                   "ms"
                 );
-              },
-            },
-          },
+              }
+            }
+          }
         },
         events: {
           title: { display: true, text: "Events" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" },
+            line: { tension: 0.2, borderJoinStyle: "round" }
           },
           scales: {
             yAxes: [{ display: true, labelString: "events" }],
-            xAxes: [{ type: "time" }],
+            xAxes: [{ type: "time" }]
           },
-          animation: { duration: 0 },
-        },
-      },
+          animation: { duration: 0 }
+        }
+      }
     };
   },
   filters: {
     pretty: function(value) {
       return JSON.stringify(value, null, 2);
-    },
+    }
   },
   mounted() {
     this.toastModal = new Toast(document.getElementById("toast"), {
-      delay: 2000,
+      delay: 2000
     });
 
     this.fetchConfiguration();
@@ -2725,9 +2729,9 @@ export default {
         .post("/api/rpc", {
           method: method,
           data: data,
-          id: id,
+          id: id
         })
-        .then((result) => {
+        .then(result => {
           var err = result.data.error;
           if (!result.data.success) {
             this.showToast("Error executing " + method, err);
@@ -2736,7 +2740,7 @@ export default {
           }
           return result;
         })
-        .catch((error) => {
+        .catch(error => {
           this.showToast("Exception sending RPC", error);
         });
     },
@@ -2857,7 +2861,7 @@ export default {
     deleteShardGroup(manager, shardgroup) {
       var config = {
         manager: manager,
-        shardgroup: shardgroup,
+        shardgroup: shardgroup
       };
       this.sendRPC("manager:shardgroup:delete", config);
       setTimeout(() => this.pollData(), 1000);
@@ -2865,7 +2869,7 @@ export default {
 
     refreshGateway(manager) {
       var config = {
-        manager: manager,
+        manager: manager
       };
       this.sendRPC("manager:refresh_gateway", config);
       setTimeout(() => this.pollData(), 1000);
@@ -2899,7 +2903,7 @@ export default {
       );
       this.deleteManagerDialogueData = {
         confirm: "",
-        manager: manager,
+        manager: manager
       };
 
       this.deleteManagerDialogueModal.show();
@@ -2918,7 +2922,7 @@ export default {
       );
       this.restartManagerDialogueData = {
         confirm: "",
-        manager: manager,
+        manager: manager
       };
 
       this.restartManagerDialogueModal.show();
@@ -2957,7 +2961,7 @@ export default {
     pollData() {
       axios
         .get("/api/poll")
-        .then((result) => {
+        .then(result => {
           if (result.status == 403) {
             clearInterval(this.fetch_task);
           }
@@ -3037,7 +3041,7 @@ export default {
             this.resttunnel.numbers = result.data.data.resttunnel.data.numbers;
           }
         })
-        .catch((error) => {
+        .catch(error => {
           if (error.response?.status == 403) {
             clearInterval(this.fetch_task);
           }
@@ -3052,7 +3056,7 @@ export default {
     fetchConfiguration() {
       axios
         .get("/api/configuration")
-        .then((result) => {
+        .then(result => {
           if (result.status == 403) {
             clearInterval(this.fetch_task);
           }
@@ -3062,7 +3066,7 @@ export default {
           this.mq_drivers = result.data.data.mq_drivers;
           this.error = !result.data.success;
         })
-        .catch((error) => {
+        .catch(error => {
           if (error.response?.status == 403) {
             clearInterval(this.fetch_task);
           }
@@ -3143,8 +3147,8 @@ export default {
         }
       }
       return output;
-    },
-  },
+    }
+  }
 };
 </script>
 
