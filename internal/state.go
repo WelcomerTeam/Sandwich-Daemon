@@ -51,6 +51,8 @@ func (mg *Manager) CreateKey(key string, values ...interface{}) string {
 func StateReady(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
 	var packet discord.Ready
 
+	var guildPayload discord.GuildCreate
+
 	err = json.Unmarshal(msg.Data, &packet)
 	if err != nil {
 		return result, false, xerrors.Errorf("Failed to unmarshal message: %w", err)
@@ -64,8 +66,7 @@ func StateReady(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.Stat
 	ctx.Sh.Unlock()
 
 	events := make([]discord.ReceivedPayload, 0)
-
-	guildIDs := make([]int64, 0)
+	guildIDs := make([]snowflake.ID, 0, len(packet.Guilds))
 
 	ctx.Sh.UnavailableMu.Lock()
 	ctx.Sh.Unavailable = make(map[snowflake.ID]bool)
@@ -96,12 +97,10 @@ ready:
 			if msg.Type == "GUILD_CREATE" {
 				guildCreateEvents++
 
-				guildPayload := discord.GuildCreate{}
-
 				if err = ctx.Sh.decodeContent(msg, &guildPayload); err != nil {
 					ctx.Sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
 				} else {
-					guildIDs = append(guildIDs, guildPayload.ID.Int64())
+					guildIDs = append(guildIDs, guildPayload.ID)
 				}
 
 				t.Reset(timeoutDuration)
@@ -116,29 +115,11 @@ ready:
 			ctx.Sh.Manager.Sandwich.ConfigurationMu.RLock()
 
 			if ctx.Sh.Manager.Configuration.Caching.RequestMembers {
-				var chunk []int64
-
-				chunkSize := ctx.Sh.Manager.Configuration.Caching.RequestChunkSize
-
-				for len(guildIDs) >= chunkSize {
-					chunk, guildIDs = guildIDs[:chunkSize], guildIDs[chunkSize:]
-
-					ctx.Sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
+				for _, guildID := range guildIDs {
+					ctx.Sh.Logger.Trace().Msgf("Requesting guild members for guild %d", guildID)
 
 					if err := ctx.Sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
-						GuildID: chunk,
-						Query:   "",
-						Limit:   0,
-					}); err != nil {
-						ctx.Sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
-					}
-				}
-
-				if len(guildIDs) > 0 {
-					ctx.Sh.Logger.Trace().Msgf("Requesting guild members for %d guild(s)", len(chunk))
-
-					if err := ctx.Sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
-						GuildID: guildIDs,
+						GuildID: guildID,
 						Query:   "",
 						Limit:   0,
 					}); err != nil {
@@ -243,8 +224,7 @@ func StateGuildCreate(ctx *StateCtx, msg discord.ReceivedPayload) (result struct
 }
 
 // StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event.
-func StateGuildMembersChunk(ctx *StateCtx,
-	msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
+func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
 	if !ctx.Mg.Configuration.Caching.CacheMembers {
 		return
 	}

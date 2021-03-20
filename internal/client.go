@@ -24,8 +24,7 @@ type Client struct {
 
 	Token string
 
-	HTTP    *http.Client
-	Buckets *sync.Map
+	HTTP *http.Client
 
 	// We will manually add the API version
 	APIVersion string

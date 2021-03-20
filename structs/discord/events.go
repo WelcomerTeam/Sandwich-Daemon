@@ -47,9 +47,12 @@ type IdentifyProperties struct {
 
 // RequestGuildMembers represents a request guild members packet.
 type RequestGuildMembers struct {
-	GuildID []int64 `json:"guild_id" msgpack:"guild_id"`
-	Query   string  `json:"query" msgpack:"query"`
-	Limit   int     `json:"limit" msgpack:"limit"`
+	GuildID   snowflake.ID   `json:"guild_id" msgpack:"guild_id"`
+	Query     string         `json:"query" msgpack:"query"`
+	Limit     int            `json:"limit" msgpack:"limit"`
+	Presences bool           `json:"presences" msgpack:"presences"`
+	Nonce     string         `json:"nonce" msgpack:"nonce"`
+	UserIDs   []snowflake.ID `json:"user_ids" msgpack:"user_ids"`
 }
 
 // UpdateVoiceState represents an update voice state packet.

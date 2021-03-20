@@ -970,7 +970,7 @@ func (sh *Shard) SendEvent(op discord.GatewayOp, data interface{}) (err error) {
 	packet.Op = int(op)
 	packet.Data = data
 
-	err = sh.WriteJSON(packet)
+	err = sh.WriteJSON(op, packet)
 	if err != nil {
 		return xerrors.Errorf("sendEvent writeJson: %w", err)
 	}
@@ -979,17 +979,25 @@ func (sh *Shard) SendEvent(op discord.GatewayOp, data interface{}) (err error) {
 }
 
 // WriteJSON writes json data to the websocket.
-func (sh *Shard) WriteJSON(i interface{}) (err error) {
+func (sh *Shard) WriteJSON(op discord.GatewayOp, i interface{}) (err error) {
 	res, err := json.Marshal(i)
 	if err != nil {
 		return xerrors.Errorf("writeJSON marshal: %w", err)
 	}
 
-	err = sh.Manager.Buckets.WaitForBucket(
-		fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount),
-	)
-	if err != nil {
-		sh.Logger.Warn().Err(err).Msg("Tried to wait for websocket bucket but it does not exist")
+	// We will bypass the WS bucket when it is a heartbeat.
+	// We do this to always ensure that heartbeat is not blocked if we are fetching
+	// member chunks, for example. To still ensure we are not passing the 120 messages
+	// per minute ratelimit on the gateway, we only allow up to 115 messages a minute
+	// for non heartbeat messages. We should only really make it 118 in cases where it
+	// heartbeats twice in a minute but allowing up to 5 a minute is more safe.
+	if i != discord.GatewayOpHeartbeat {
+		err = sh.Manager.Buckets.WaitForBucket(
+			fmt.Sprintf("ws:%d:%d", sh.ShardID, sh.ShardGroup.ShardCount),
+		)
+		if err != nil {
+			sh.Logger.Warn().Err(err).Msg("Tried to wait for websocket bucket but it does not exist")
+		}
 	}
 
 	sh.Manager.Sandwich.ConfigurationMu.RLock()
@@ -1182,9 +1190,34 @@ func (sh *Shard) ChunkGuild(guildID snowflake.ID) (err error) {
 		sh.ShardGroup.MemberChunksCallbackMu.Lock()
 		sh.ShardGroup.MemberChunksCallback[guildID] = wg
 		sh.ShardGroup.MemberChunksCallbackMu.Unlock()
+
+		err = sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
+			GuildID: guildID,
+			Query:   "",
+			Limit:   0,
+		})
+		if err != nil {
+			sh.Logger.Error().Err(err).Int64("guild_id", guildID.Int64()).Msg("Failed to chunk guild")
+
+			return
+		}
+
+		// more code here to handle callbacks n stuff
+	} else {
+		sh.ShardGroup.MemberChunksCallbackMu.RLock()
+		callback, ok := sh.ShardGroup.MemberChunksCallback[guildID]
+		sh.ShardGroup.MemberChunksCallbackMu.RUnlock()
+
+		if !ok {
+			sh.Logger.Warn().Msg("No chunk callback was found")
+
+			return nil
+		}
+
+		callback.Done()
 	}
 
-	return
+	return nil
 }
 
 // PublishWebhook is the same as sg.PublishWebhook but has extra sugar for
