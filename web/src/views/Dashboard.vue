@@ -249,9 +249,7 @@
                   type="checkbox"
                   v-model="createManagerDialogueData.persist"
                 />
-                <label class="form-check-label ml-2 mb-2"
-                  >Persist <span class="text-danger">*</span></label
-                >
+                <label class="form-check-label ml-2 mb-2">Persist</label>
                 <p class="text-muted">
                   When enabled, changes to Manager will be saved to the
                   configuration. Un-check if you do not want to save the
@@ -272,6 +270,11 @@
                 type="button"
                 class="btn btn-success"
                 v-on:click="createManager()"
+                :disabled="
+                  createManagerDialogueData.client === '' ||
+                    createManagerDialogueData.token === '' ||
+                    createManagerDialogueData.identifier === ''
+                "
               >
                 Create Manager
               </button>
@@ -1950,7 +1953,7 @@
                     'warn',
                     'error',
                     'fatal',
-                    'panic'
+                    'panic',
                   ]"
                 />
                 <form-input
@@ -2143,16 +2146,16 @@
                 />
                 <form-submit
                   v-on:click="
-                    if ($store.state.user && userid == $store.state.user.id) {
+                    if ($store.state.user && userid === $store.state.user.id) {
                       return;
                     }
                     configuration.elevated_users = configuration.elevated_users.filter(
-                      item => item !== userid
+                      (item) => item !== userid
                     );
                     userid = undefined;
                   "
                   :disabled="
-                    $store.state.user && userid == $store.state.user.id
+                    $store.state.user && userid === $store.state.user.id
                   "
                   :label="'Remove User'"
                 />
@@ -2398,7 +2401,7 @@ import {
   mdiDatabase,
   mdiMessageProcessing,
   mdiWeb,
-  mdiFilter
+  mdiFilter,
 } from "@mdi/js";
 
 import { Toast, Modal } from "bootstrap";
@@ -2418,7 +2421,7 @@ export default {
     FormSubmit,
     LineChart,
     StatusGraph,
-    SvgIcon
+    SvgIcon,
   },
   name: "Dashboard",
   data() {
@@ -2452,7 +2455,7 @@ export default {
 
       toast: {
         title: "",
-        body: ""
+        body: "",
       },
       analytics: {
         chart: {},
@@ -2460,7 +2463,7 @@ export default {
         visible: "...",
         events: "...",
         online: "...",
-        colour: "bg-success"
+        colour: "bg-success",
       },
 
       resttunnel: {
@@ -2470,15 +2473,15 @@ export default {
           waiting: {},
           requests: {},
           callbacks: {},
-          average_response: {}
+          average_response: {},
         },
         numbers: {
           hits: 0,
           misses: 0,
           requests: 0,
-          waiting: 0
+          waiting: 0,
         },
-        uptime: "..."
+        uptime: "...",
       },
 
       createShardGroupDialogueData: {
@@ -2487,11 +2490,11 @@ export default {
         shardCount: 1,
         autoIDs: true,
         shardIDs: "",
-        startImmediately: true
+        startImmediately: true,
       },
       stopShardGroupDialogueData: {
         manager: "",
-        shardgroup: 0
+        shardgroup: 0,
       },
 
       createManagerDialogueData: {
@@ -2500,15 +2503,15 @@ export default {
         token: "",
         prefix: "",
         client: "",
-        channel: ""
+        channel: "",
       },
       deleteManagerDialogueData: {
         confirm: "",
-        manager: ""
+        manager: "",
       },
       restartManagerDialogueData: {
         confirm: "",
-        manager: ""
+        manager: "",
       },
 
       statusShard: [
@@ -2518,7 +2521,7 @@ export default {
         "Connected",
         "Ready",
         "Reconnecting",
-        "Closed"
+        "Closed",
       ],
       colourShard: [
         "dark",
@@ -2527,7 +2530,7 @@ export default {
         "info",
         "success",
         "warn",
-        "secondary"
+        "secondary",
       ],
 
       statusGroup: [
@@ -2538,7 +2541,7 @@ export default {
         "Replaced",
         "Closing",
         "Closed",
-        "Error"
+        "Error",
       ],
       colourGroup: [
         "dark",
@@ -2548,7 +2551,7 @@ export default {
         "info",
         "warn",
         "dark",
-        "danger"
+        "danger",
       ],
 
       colourCluster: [
@@ -2559,7 +2562,7 @@ export default {
         "warn",
         "warn",
         "dark",
-        "danger"
+        "danger",
       ],
 
       chartOptions: {
@@ -2567,107 +2570,107 @@ export default {
           title: { display: true, text: "Ratelimit Hits" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" }
+            line: { tension: 0.2, borderJoinStyle: "round" },
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 }
-              }
+                ticks: { fixedStepSize: 1 },
+              },
             ],
-            xAxes: [{ type: "time" }]
+            xAxes: [{ type: "time" }],
           },
-          animation: { duration: 0 }
+          animation: { duration: 0 },
         },
         ratelimitMisses: {
           title: { display: true, text: "Ratelimit Misses" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" }
+            line: { tension: 0.2, borderJoinStyle: "round" },
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 }
-              }
+                ticks: { fixedStepSize: 1 },
+              },
             ],
-            xAxes: [{ type: "time" }]
+            xAxes: [{ type: "time" }],
           },
-          animation: { duration: 0 }
+          animation: { duration: 0 },
         },
         waitingRequests: {
           title: { display: true, text: "Waiting requests" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" }
+            line: { tension: 0.2, borderJoinStyle: "round" },
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 }
-              }
+                ticks: { fixedStepSize: 1 },
+              },
             ],
-            xAxes: [{ type: "time" }]
+            xAxes: [{ type: "time" }],
           },
-          animation: { duration: 0 }
+          animation: { duration: 0 },
         },
         totalRequests: {
           title: { display: true, text: "Total requests" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" }
+            line: { tension: 0.2, borderJoinStyle: "round" },
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 }
-              }
+                ticks: { fixedStepSize: 1 },
+              },
             ],
-            xAxes: [{ type: "time" }]
+            xAxes: [{ type: "time" }],
           },
-          animation: { duration: 0 }
+          animation: { duration: 0 },
         },
         callbackBuffer: {
           title: { display: true, text: "Callback buffer" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" }
+            line: { tension: 0.2, borderJoinStyle: "round" },
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { fixedStepSize: 1 }
-              }
+                ticks: { fixedStepSize: 1 },
+              },
             ],
-            xAxes: [{ type: "time" }]
+            xAxes: [{ type: "time" }],
           },
-          animation: { duration: 0 }
+          animation: { duration: 0 },
         },
         averageResponse: {
           title: { display: true, text: "Average response" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" }
+            line: { tension: 0.2, borderJoinStyle: "round" },
           },
           scales: {
             yAxes: [
               {
                 display: true,
                 labelString: "events",
-                ticks: { beginAtZero: true }
-              }
+                ticks: { beginAtZero: true },
+              },
             ],
-            xAxes: [{ type: "time" }]
+            xAxes: [{ type: "time" }],
           },
           animation: { duration: 0 },
           tooltips: {
@@ -2679,33 +2682,33 @@ export default {
                   tooltipItems.yLabel +
                   "ms"
                 );
-              }
-            }
-          }
+              },
+            },
+          },
         },
         events: {
           title: { display: true, text: "Events" },
           elements: {
             point: { radius: 0 },
-            line: { tension: 0.2, borderJoinStyle: "round" }
+            line: { tension: 0.2, borderJoinStyle: "round" },
           },
           scales: {
             yAxes: [{ display: true, labelString: "events" }],
-            xAxes: [{ type: "time" }]
+            xAxes: [{ type: "time" }],
           },
-          animation: { duration: 0 }
-        }
-      }
+          animation: { duration: 0 },
+        },
+      },
     };
   },
   filters: {
     pretty: function(value) {
       return JSON.stringify(value, null, 2);
-    }
+    },
   },
   mounted() {
     this.toastModal = new Toast(document.getElementById("toast"), {
-      delay: 2000
+      delay: 2000,
     });
 
     this.fetchConfiguration();
@@ -2729,9 +2732,9 @@ export default {
         .post("/api/rpc", {
           method: method,
           data: data,
-          id: id
+          id: id,
         })
-        .then(result => {
+        .then((result) => {
           var err = result.data.error;
           if (!result.data.success) {
             this.showToast("Error executing " + method, err);
@@ -2740,7 +2743,7 @@ export default {
           }
           return result;
         })
-        .catch(error => {
+        .catch((error) => {
           this.showToast("Exception sending RPC", error);
         });
     },
@@ -2758,7 +2761,7 @@ export default {
           manager.status = 7;
         }
 
-        if (manager.status == 7) {
+        if (manager.status === 7) {
           managers.push(manager);
           break;
         }
@@ -2777,7 +2780,7 @@ export default {
           shard_group.manager = manager.configuration.display_name;
           for (var sindex in shard_group.shards) {
             var shard = shard_group.shards[sindex];
-            if (shard.status == 7) {
+            if (shard.status === 7) {
               shard_groups.push(shard_group);
               break;
             }
@@ -2798,7 +2801,7 @@ export default {
           shard_group.manager = manager.configuration.display_name;
           for (var sindex in shard_group.shards) {
             var shard = shard_group.shards[sindex];
-            if (shard.status == 0) {
+            if (shard.status === 0) {
               shard_groups.push(shard_group);
               break;
             }
@@ -2861,7 +2864,7 @@ export default {
     deleteShardGroup(manager, shardgroup) {
       var config = {
         manager: manager,
-        shardgroup: shardgroup
+        shardgroup: shardgroup,
       };
       this.sendRPC("manager:shardgroup:delete", config);
       setTimeout(() => this.pollData(), 1000);
@@ -2869,7 +2872,7 @@ export default {
 
     refreshGateway(manager) {
       var config = {
-        manager: manager
+        manager: manager,
       };
       this.sendRPC("manager:refresh_gateway", config);
       setTimeout(() => this.pollData(), 1000);
@@ -2903,7 +2906,7 @@ export default {
       );
       this.deleteManagerDialogueData = {
         confirm: "",
-        manager: manager
+        manager: manager,
       };
 
       this.deleteManagerDialogueModal.show();
@@ -2922,7 +2925,7 @@ export default {
       );
       this.restartManagerDialogueData = {
         confirm: "",
-        manager: manager
+        manager: manager,
       };
 
       this.restartManagerDialogueModal.show();
@@ -2961,11 +2964,11 @@ export default {
     pollData() {
       axios
         .get("/api/poll")
-        .then(result => {
-          if (result.status == 403) {
+        .then((result) => {
+          if (result.status === 403) {
             clearInterval(this.fetch_task);
           }
-          if (result.data.success == false) {
+          if (result.data.success === false) {
             return;
           }
           if (this.error) {
@@ -3041,8 +3044,8 @@ export default {
             this.resttunnel.numbers = result.data.data.resttunnel.data.numbers;
           }
         })
-        .catch(error => {
-          if (error.response?.status == 403) {
+        .catch((error) => {
+          if (error.response?.status === 403) {
             clearInterval(this.fetch_task);
           }
           this.showToast("Exception fetching manager data", error);
@@ -3056,8 +3059,8 @@ export default {
     fetchConfiguration() {
       axios
         .get("/api/configuration")
-        .then(result => {
-          if (result.status == 403) {
+        .then((result) => {
+          if (result.status === 403) {
             clearInterval(this.fetch_task);
           }
           this.$root.version = result.data.data.version;
@@ -3066,8 +3069,8 @@ export default {
           this.mq_drivers = result.data.data.mq_drivers;
           this.error = !result.data.success;
         })
-        .catch(error => {
-          if (error.response?.status == 403) {
+        .catch((error) => {
+          if (error.response?.status === 403) {
             clearInterval(this.fetch_task);
           }
           this.showToast("Exception fetching configuration", error);
@@ -3147,8 +3150,8 @@ export default {
         }
       }
       return output;
-    }
-  }
+    },
+  },
 };
 </script>
 
