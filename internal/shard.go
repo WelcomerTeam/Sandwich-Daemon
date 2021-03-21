@@ -38,7 +38,7 @@ const (
 	minPayloadCompressionSize = 1000000 // Apply higher level compression to payloads >1 Mb
 
 	// Time necessary to abort chunking if no event received in this timeframe.
-	initialMemberChunkTimeout = 2 * time.Second
+	initialMemberChunkTimeout = 10 * time.Second
 
 	// Time necessary to mark chunking as completed if no more events received in this timeframe.
 	memberChunkTimeout = 1 * time.Second
@@ -1215,6 +1215,7 @@ func (sh *Shard) cleanGuildChunks(guildID snowflake.ID) {
 	sh.ShardGroup.MemberChunksCallbackMu.Unlock()
 
 	sh.ShardGroup.MemberChunkCallbacksMu.Lock()
+	close(sh.ShardGroup.MemberChunkCallbacks[guildID])
 	delete(sh.ShardGroup.MemberChunkCallbacks, guildID)
 	sh.ShardGroup.MemberChunkCallbacksMu.Unlock()
 
@@ -1284,7 +1285,7 @@ func (sh *Shard) chunkGuild(guildID snowflake.ID, waitForTicket bool) (err error
 
 		sh.cleanGuildChunks(guildID)
 
-		return
+		return err
 	}
 
 	t := time.NewTicker(initialMemberChunkTimeout)
@@ -1299,7 +1300,7 @@ func (sh *Shard) chunkGuild(guildID snowflake.ID, waitForTicket bool) (err error
 
 		sh.cleanGuildChunks(guildID)
 
-		return nil
+		return ErrChunkTimeout
 	}
 
 	t.Reset(memberChunkTimeout)
@@ -1326,7 +1327,6 @@ memberChunks:
 	// Finish marking chunking as done and handle closing.
 	wg.Done()
 	completed.Set()
-	close(chunkCallbacks)
 
 	go func() {
 		time.Sleep(chunkStatePersistTimeout)

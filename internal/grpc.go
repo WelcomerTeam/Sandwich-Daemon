@@ -90,7 +90,7 @@ func (s *RouteGatewayServer) RequestGuildChunks(ctx context.Context, event *pb.R
 			shardgroup.ShardsMu.RUnlock()
 
 			if ok {
-				err = shard.ChunkGuild(snowflake.ParseInt64(event.GuildID), true)
+				err = shard.ChunkGuild(snowflake.ParseInt64(event.GuildID), event.Wait)
 
 				return &pb.StandardResponse{
 					Success: err == nil,

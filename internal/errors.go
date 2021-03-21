@@ -16,4 +16,5 @@ var (
 	ErrInvalidManager    = errors.New("no manager with this name exists")
 	ErrInvalidShardGroup = errors.New("invalid shard group id specified")
 	ErrInvalidShard      = errors.New("invalid shard id specified")
+	ErrChunkTimeout      = errors.New("timed out on initial member chunks")
 )
