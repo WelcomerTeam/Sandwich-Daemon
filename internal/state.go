@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	scripts "github.com/TheRockettek/Sandwich-Daemon/internal/redis"
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
@@ -116,15 +117,16 @@ ready:
 
 			if ctx.Sh.Manager.Configuration.Caching.RequestMembers {
 				for _, guildID := range guildIDs {
-					ctx.Sh.Logger.Trace().Msgf("Requesting guild members for guild %d", guildID)
+					ticket := ctx.Sh.ShardGroup.ChunkLimiter.Wait()
 
-					if err := ctx.Sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
-						GuildID: guildID,
-						Query:   "",
-						Limit:   0,
-					}); err != nil {
-						ctx.Sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
-					}
+					go func(guildID snowflake.ID, ticket int) {
+						err := ctx.Sh.ChunkGuild(guildID, true)
+						if err != nil {
+							ctx.Sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
+						}
+
+						ctx.Sh.ShardGroup.ChunkLimiter.FreeTicket(ticket)
+					}(guildID, ticket)
 				}
 			}
 			ctx.Sh.Manager.Sandwich.ConfigurationMu.RUnlock()
@@ -236,6 +238,14 @@ func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result 
 		return result, false, xerrors.Errorf("Failed to unmarshal message: %w", err)
 	}
 
+	ctx.Sh.ShardGroup.MemberChunkCallbacksMu.RLock()
+	callback, ok := ctx.Sh.ShardGroup.MemberChunkCallbacks[packet.GuildID]
+
+	if ok {
+		callback <- true
+	}
+	ctx.Sh.ShardGroup.MemberChunkCallbacksMu.RUnlock()
+
 	members := make([]interface{}, 0, len(packet.Members))
 
 	// Create list of msgpacked members
@@ -245,45 +255,9 @@ func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result 
 		}
 	}
 
-	err = ctx.Mg.RedisClient.Eval(
+	err = scripts.ProcessGuildMembersChunk.Eval(
 		ctx.Mg.ctx,
-		`
-		local redisPrefix = KEYS[1]
-		local guildID = KEYS[2]
-		local storeMutuals = KEYS[3] == true
-		local cacheUsers = KEYS[4] == true
-
-		local member
-		local user
-
-		local call = redis.call
-
-		redis.log(3, "Received " .. #ARGV .. " member(s) in GuildMembersChunk")
-
-		for i,k in pairs(ARGV) do
-				member = cmsgpack.unpack(k)
-
-				-- We do not want the user object stored in the member
-				local user = member['user']
-				user['id'] = string.format("%.0f",user['id'])
-
-				member['user'] = nil
-				member['id'] = user['id']
-
-				redis.log(3, user['id'], type(user['id']), )
-
-				if cacheUsers then
-						redis.call("HSET", redisPrefix .. ":user", user['id'], cmsgpack.pack(user))
-				end
-
-				call("HSET", redisPrefix .. ":guild:" .. guildID .. ":members", user['id'], cmsgpack.pack(member))
-
-				if storeMutuals then
-						call("SADD", redisPrefix .. ":mutual:" .. user['id'], guildID)
-				end
-
-		end
-		`,
+		ctx.Mg.RedisClient,
 		[]string{
 			ctx.Mg.Configuration.Caching.RedisPrefix,
 			packet.GuildID.String(),
