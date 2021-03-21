@@ -1410,25 +1410,6 @@
                               managers from each other. Having multiple managers
                               with the same key can cause destruction.
                             </p>
-                            <form-input
-                              v-model="
-                                manager.configuration.caching.request_chunk_size
-                              "
-                              :type="'number'"
-                              :id="
-                                'managerConfig-' +
-                                  manager.configuration.identifier +
-                                  '-caching.request_chunk_size'
-                              "
-                              :label="'Request Chunk Size'"
-                            />
-                            <p class="text-muted">
-                              Number of guilds to request in a
-                              REQUEST_GUILD_MEMBERS request. With the new
-                              changes, this should be set to 1. Sending more
-                              than 1 when it limits to 1 will not fail but will
-                              only sent the members of the first ID specified.
-                            </p>
                             <form-submit
                               v-on:click="saveClusterSettings(manager)"
                             >

@@ -48,11 +48,10 @@ type ManagerConfiguration struct {
 	Caching struct {
 		RedisPrefix string `json:"redis_prefix" yaml:"redis_prefix"`
 
-		RequestChunkSize int  `json:"request_chunk_size" yaml:"request_chunk_size"`
-		CacheUsers       bool `json:"cache_users" yaml:"cache_users"`
-		CacheMembers     bool `json:"cache_members" yaml:"cache_members"`
-		RequestMembers   bool `json:"request_members" yaml:"request_members"`
-		StoreMutuals     bool `json:"store_mutuals" yaml:"store_mutuals"`
+		CacheUsers     bool `json:"cache_users" yaml:"cache_users"`
+		CacheMembers   bool `json:"cache_members" yaml:"cache_members"`
+		RequestMembers bool `json:"request_members" yaml:"request_members"`
+		StoreMutuals   bool `json:"store_mutuals" yaml:"store_mutuals"`
 	} `json:"caching" yaml:"caching"`
 
 	Events struct {
@@ -238,10 +237,6 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 	// 	mg.Configuration.Messaging.ChannelName = mg.Sandwich.Configuration.NATS.Channel
 	// 	mg.Logger.Info().Msg("Using global messaging channel")
 	// }
-
-	if mg.Configuration.Caching.RequestChunkSize <= 0 {
-		mg.Configuration.Caching.RequestChunkSize = 1
-	}
 
 	return err
 }

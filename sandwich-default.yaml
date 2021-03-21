@@ -61,7 +61,6 @@ managers:
       redis_prefix: welcomer
       cache_members: false
       request_members: false
-      request_chunk_size: 1
       ignore_bots: true
       store_mutuals: true
     events:
