@@ -12,12 +12,10 @@ import (
 	"time"
 
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
-	"github.com/andybalholm/brotli"
-
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-
 	"github.com/TheRockettek/czlib"
+	"github.com/andybalholm/brotli"
 	"github.com/rs/zerolog"
 	"github.com/savsgio/gotils"
 	"github.com/tevino/abool"
@@ -38,13 +36,16 @@ const (
 
 	messageChannelBuffer      = 64
 	minPayloadCompressionSize = 1000000 // Apply higher level compression to payloads >1 Mb
-)
 
-// List of Dispatch codes that do not allow for concurrency.
-var blockingDispatch = map[string]bool{
-	"READY":                true,
-	"MEMBER_CHUNK_REQUEST": true,
-}
+	// Time necessary to abort chunking if no event received in this timeframe.
+	initialMemberChunkTimeout = 2 * time.Second
+
+	// Time necessary to mark chunking as completed if no more events received in this timeframe.
+	memberChunkTimeout = 1 * time.Second
+
+	// Time between chunks before marked as no longer chunked.
+	chunkStatePersistTimeout = 10 * time.Second
+)
 
 // Shard represents the shard object.
 type Shard struct {
@@ -588,16 +589,13 @@ func (sh *Shard) OnEvent(msg discord.ReceivedPayload) {
 			}
 		}
 
+		// UNUSED:
 		// To reduce the chance of race conditions, some Dispatch events block the
 		// goroutine that reads from MessageCh however this does not mean we do not
 		// handle messages whilst this is running! This essentially just means we pass
 		// control of the MessageCh to that event for its duration. Currently this is
 		// only the READY event.
-		if _, blocking := blockingDispatch[msg.Type]; blocking {
-			exec()
-		} else {
-			go exec()
-		}
+		go exec()
 	case discord.GatewayOpHeartbeatACK:
 		sh.LastHeartbeatMu.Lock()
 		sh.LastHeartbeatAck = time.Now().UTC()
@@ -1011,7 +1009,7 @@ func (sh *Shard) WriteJSON(op discord.GatewayOp, i interface{}) (err error) {
 		}
 	}
 
-	return
+	return nil
 }
 
 // WaitForReady waits until the shard is ready.
@@ -1167,55 +1165,178 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 }
 
 // ChunkGuild requests guild chunks for a guild.
-func (sh *Shard) ChunkGuild(guildID snowflake.ID) (err error) {
+func (sh *Shard) ChunkGuild(guildID snowflake.ID, wait bool) (err error) {
 	sh.ShardGroup.MemberChunksCompleteMu.RLock()
 	completed, ok := sh.ShardGroup.MemberChunksComplete[guildID]
 	sh.ShardGroup.MemberChunksCompleteMu.RUnlock()
 
-	if !ok || completed.IsNotSet() {
-		// Abool so multiple processes can know if a chunk is in progress.
-		// Empty: No chunk recently, chunk
-		// False: Chunk is in progress
-		// True:  Chunk has recently finished, no need to wait.
-		sh.ShardGroup.MemberChunksCompleteMu.Lock()
-		sh.ShardGroup.MemberChunksComplete[guildID] = abool.New()
-		sh.ShardGroup.MemberChunksCompleteMu.Unlock()
+	// If we find a MemberChunksComplete
+	//     If it is set
+	//         Noop and continue
+	//     If it is not set get the ChunksCallback
+	//         If ChunksCallback exists then .Wait on it
+	//         Else warn as a Complete should exist with Callback
+	//     If The ChunksComplete does not exist
+	//         Chunk the guild
 
-		// Channel to signify when chunking has completed.
-		// Broadcast() is  when initial timeout
-		// or the reduced timeout after getting the first MEMBER_CHUNK.
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
+	if ok {
+		if !completed.IsSet() {
+			sh.ShardGroup.MemberChunksCallbackMu.RLock()
+			chunksCallback, ok := sh.ShardGroup.MemberChunksCallback[guildID]
+			sh.ShardGroup.MemberChunksCallbackMu.RUnlock()
 
-		sh.ShardGroup.MemberChunksCallbackMu.Lock()
-		sh.ShardGroup.MemberChunksCallback[guildID] = wg
-		sh.ShardGroup.MemberChunksCallbackMu.Unlock()
-
-		err = sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
-			GuildID: guildID,
-			Query:   "",
-			Limit:   0,
-		})
-		if err != nil {
-			sh.Logger.Error().Err(err).Int64("guild_id", guildID.Int64()).Msg("Failed to chunk guild")
-
-			return
+			if ok {
+				sh.Logger.Debug().
+					Int("guild_id", int(guildID.Int64())).
+					Msg("Received ChunksCallback WaitGroup. Waiting...")
+				chunksCallback.Wait()
+			} else {
+				sh.Logger.Warn().
+					Int64("guild_id", guildID.Int64()).
+					Msg("ChunksComplete found however no ChunksCallback existed.")
+			}
 		}
-
-		// more code here to handle callbacks n stuff
 	} else {
-		sh.ShardGroup.MemberChunksCallbackMu.RLock()
-		callback, ok := sh.ShardGroup.MemberChunksCallback[guildID]
-		sh.ShardGroup.MemberChunksCallbackMu.RUnlock()
-
-		if !ok {
-			sh.Logger.Warn().Msg("No chunk callback was found")
-
-			return nil
+		if wait {
+			return sh.chunkGuild(guildID, false)
 		}
 
-		callback.Done()
+		go sh.chunkGuild(guildID, true) // nolint:errcheck
 	}
+
+	return nil
+}
+
+// cleanGuildChunks all traces of a guild from the member chunking
+// state maps.
+func (sh *Shard) cleanGuildChunks(guildID snowflake.ID) {
+	sh.ShardGroup.MemberChunksCallbackMu.Lock()
+	delete(sh.ShardGroup.MemberChunksCallback, guildID)
+	sh.ShardGroup.MemberChunksCallbackMu.Unlock()
+
+	sh.ShardGroup.MemberChunkCallbacksMu.Lock()
+	delete(sh.ShardGroup.MemberChunkCallbacks, guildID)
+	sh.ShardGroup.MemberChunkCallbacksMu.Unlock()
+
+	sh.ShardGroup.MemberChunksCompleteMu.Lock()
+	delete(sh.ShardGroup.MemberChunksComplete, guildID)
+	sh.ShardGroup.MemberChunksCompleteMu.Unlock()
+}
+
+// chunkGuild handles managing all state and cleaning it up.
+func (sh *Shard) chunkGuild(guildID snowflake.ID, waitForTicket bool) (err error) {
+	var ticket int
+
+	if waitForTicket {
+		ticket = sh.ShardGroup.ChunkLimiter.Wait()
+
+		defer func() {
+			sh.ShardGroup.ChunkLimiter.FreeTicket(ticket)
+		}()
+	}
+
+	start := time.Now().UTC()
+
+	sh.Logger.Debug().
+		Int("guild_id", int(guildID.Int64())).
+		Msg("Preparing to chunk guild")
+
+	// Abool so multiple processes can know if a chunk is in progress.
+	// Empty: No chunk recently, chunk
+	// False: Chunk is in progress
+	// True:  Chunk has recently finished, no need to wait.
+	completed := abool.New()
+
+	sh.ShardGroup.MemberChunksCompleteMu.Lock()
+	sh.ShardGroup.MemberChunksComplete[guildID] = completed
+	sh.ShardGroup.MemberChunksCompleteMu.Unlock()
+
+	// Channel to signify when MEMBER_CHUNKs are received by the
+	// gateway as this task does not handle reading and is "stateless".
+	// We inform the channel when we receive it.
+	chunkCallbacks := make(chan bool)
+
+	sh.ShardGroup.MemberChunkCallbacksMu.Lock()
+	sh.ShardGroup.MemberChunkCallbacks[guildID] = chunkCallbacks
+	sh.ShardGroup.MemberChunkCallbacksMu.Unlock()
+
+	// Channel to signify when chunking has completed.
+	// If we find a waitgroup, we should wait for it to be done
+	// as another task is currently in control of it. Else if we
+	// are the task that made it, we need to finish it then free
+	// along with Complete.
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	sh.ShardGroup.MemberChunksCallbackMu.Lock()
+	sh.ShardGroup.MemberChunksCallback[guildID] = wg
+	sh.ShardGroup.MemberChunksCallbackMu.Unlock()
+
+	err = sh.SendEvent(discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
+		GuildID: guildID,
+		Query:   "",
+		Limit:   0,
+	})
+	if err != nil {
+		sh.Logger.Error().Err(err).
+			Int64("guild_id", guildID.Int64()).
+			Msg("Failed to chunk guild")
+
+		sh.cleanGuildChunks(guildID)
+
+		return
+	}
+
+	t := time.NewTicker(initialMemberChunkTimeout)
+
+	select {
+	case <-chunkCallbacks:
+		break
+	case <-t.C:
+		sh.Logger.Warn().
+			Int64("guild_id", guildID.Int64()).
+			Msg("Timed out on initial member chunks")
+
+		sh.cleanGuildChunks(guildID)
+
+		return nil
+	}
+
+	t.Reset(memberChunkTimeout)
+
+	receivedMemberChunks := 1
+
+memberChunks:
+	for {
+		select {
+		case <-chunkCallbacks:
+			receivedMemberChunks++
+			t.Reset(memberChunkTimeout)
+		case <-t.C:
+			sh.Logger.Info().
+				Int64("guild_id", guildID.Int64()).
+				Int("received", receivedMemberChunks).
+				Int64("duration", time.Now().UTC().Sub(start).Round(time.Millisecond).Milliseconds()).
+				Msg("Timed out on member chunks")
+
+			break memberChunks
+		}
+	}
+
+	// Finish marking chunking as done and handle closing.
+	wg.Done()
+	completed.Set()
+	close(chunkCallbacks)
+
+	go func() {
+		time.Sleep(chunkStatePersistTimeout)
+
+		sh.cleanGuildChunks(guildID)
+
+		sh.Logger.Trace().
+			Int("guild_id", int(guildID.Int64())).
+			Msg("Cleaned MemberChunk tables")
+	}()
 
 	return nil
 }

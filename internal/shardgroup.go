@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/rs/zerolog"
@@ -13,6 +14,9 @@ import (
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
+
+// Total number of active goroutines chunking guilds per ShardGroup shard.
+var guildChunkLimiterCount = 16
 
 // ShardGroup groups a selection of shards.
 type ShardGroup struct {
@@ -57,6 +61,10 @@ type ShardGroup struct {
 	// events are received for the specific guild.
 	MemberChunkCallbacksMu sync.RWMutex               `json:"-"`
 	MemberChunkCallbacks   map[snowflake.ID]chan bool `json:"-"`
+
+	// ConcurrencyLimiter for total number of guilds that can be
+	// simultaneously chunked when no Wait provided.
+	ChunkLimiter *limiter.ConcurrencyLimiter `json:"-"`
 
 	// Used for detecting errors during shard startup
 	err chan error
@@ -127,6 +135,8 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 
 	sg.ShardCount = shardCount
 	sg.ShardIDs = shardIDs
+
+	sg.ChunkLimiter = limiter.NewConcurrencyLimiter("guild_chunks", guildChunkLimiterCount*len(shardIDs))
 
 	ready = make(chan bool, 1)
 

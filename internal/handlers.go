@@ -15,7 +15,6 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/internal/mqclients"
 	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
-
 	"github.com/fasthttp/websocket"
 	"github.com/gorilla/sessions"
 	"github.com/hashicorp/go-uuid"

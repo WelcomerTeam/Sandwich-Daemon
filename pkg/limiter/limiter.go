@@ -1,7 +1,6 @@
 package limiter
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -93,7 +92,7 @@ func (l *DurationLimiter) Lock() {
 		// waiting simultaneously. In order to not make this occur, we
 		// must call the lock again to make sure.
 		sleepDuration := time.Duration(atomic.LoadInt64(l.resetsAt) - now)
-		println(fmt.Sprintf("%s is being ratelimited! Waiting %dms", l.name, sleepDuration.Milliseconds()))
+		// println(fmt.Sprintf("%s is being ratelimited! Waiting %dms", l.name, sleepDuration.Milliseconds()))
 		time.Sleep(sleepDuration)
 		l.Lock()
 

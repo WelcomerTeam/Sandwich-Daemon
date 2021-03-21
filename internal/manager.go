@@ -12,9 +12,7 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/accumulator"
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketstore"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
-
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog"
 	"github.com/vmihailenco/msgpack"

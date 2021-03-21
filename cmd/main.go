@@ -3,13 +3,12 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
+	_ "net/http/pprof" // nolint
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"net/http"
-	_ "net/http/pprof"
 
 	gateway "github.com/TheRockettek/Sandwich-Daemon/internal"
 	"github.com/rs/zerolog"

@@ -21,11 +21,8 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
 	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
 	gatewayServer "github.com/TheRockettek/Sandwich-Daemon/protobuf"
-	"google.golang.org/grpc"
-
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog"
@@ -34,12 +31,13 @@ import (
 	"github.com/valyala/fasthttp"
 	"golang.org/x/oauth2"
 	"golang.org/x/xerrors"
+	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.8.0+202103202107"
+const VERSION = "0.8.0+202103211630"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
