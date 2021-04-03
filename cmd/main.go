@@ -45,7 +45,7 @@ func main() {
 
 	sg, err := gateway.NewSandwich(logger)
 	if err != nil {
-		log.Panic().Err(err).Msgf("Cannot create sandwich: %s", err)
+		log.Panic().Err(err).Msg("Cannot create sandwich")
 	}
 
 	err = sg.Open()

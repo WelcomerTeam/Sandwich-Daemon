@@ -28,6 +28,9 @@ http:
   host: 127.0.0.1:5469
   secret: changeTheSecretToA32LetterString
   public: false
+grpc:
+  network: tcp
+  host: 127.0.0.1:10000
 webhooks:
 oauth:
   clientid: 0

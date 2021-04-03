@@ -37,7 +37,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.8.0+202103211705"
+const VERSION = "0.8.1+202103041313"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
@@ -105,11 +105,10 @@ type SandwichConfiguration struct {
 		Configuration map[string]interface{} `json:"configuration" yaml:"configuration"`
 	} `json:"producer" yaml:"producer"`
 
-	// NATS struct {
-	// 	Address string `json:"address" yaml:"address"`
-	// 	Channel string `json:"channel" yaml:"channel"`
-	// 	Cluster string `json:"cluster" yaml:"cluster"`
-	// } `json:"nats" yaml:"nats"`
+	GRPC struct {
+		Network string `json:"network" yaml:"network"`
+		Host    string `json:"host" yaml:"host"`
+	} `json:"grpc" yaml:"grpc"`
 
 	HTTP struct {
 		Host          string `json:"host" yaml:"host"`
@@ -375,6 +374,10 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 		return xerrors.Errorf("Configuration missing HTTP host. Try 127.0.0.1:5469")
 	}
 
+	if configuration.GRPC.Host == "" {
+		return xerrors.Errorf("Configuration missing GRPC host. Try 127.0.0.1:10000")
+	}
+
 	return
 }
 
@@ -441,9 +444,9 @@ func (sg *Sandwich) Open() (err error) {
 	}
 
 	go func() {
-		lis, err := net.Listen("tcp", "localhost:10000")
+		lis, err := net.Listen(sg.Configuration.GRPC.Network, sg.Configuration.GRPC.Host)
 		if err != nil {
-			sg.Logger.Error().Str("host", "localhost:10000").Err(err).Msg("Failed to bind address for gRPC server")
+			sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to bind address for gRPC server")
 
 			return
 		}
@@ -452,11 +455,11 @@ func (sg *Sandwich) Open() (err error) {
 		grpcServer := grpc.NewServer(opts...)
 		gatewayServer.RegisterGatewayServer(grpcServer, sg.NewGatewayServer())
 
-		fmt.Printf("Serving gRPC on %s (Press CTRL+C to quit)\n", "localhost:10000")
+		fmt.Printf("Serving gRPC on %s (Press CTRL+C to quit)\n", sg.Configuration.GRPC.Host)
 
 		err = grpcServer.Serve(lis)
 		if err != nil {
-			sg.Logger.Error().Str("host", "localhost:10000").Err(err).Msg("Failed to serve gRPC server")
+			sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to serve gRPC server")
 		}
 	}()
 

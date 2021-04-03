@@ -1832,6 +1832,24 @@
               <li class="nav-item" role="presentation">
                 <a
                   class="nav-link"
+                  id="grpc-tab"
+                  data-toggle="tab"
+                  href="#daemonSettings-grpc"
+                  role="tab"
+                  aria-selected="false"
+                >
+                  <svg-icon
+                    type="mdi"
+                    width="20"
+                    height="20"
+                    :path="mdiForum"
+                  />
+                  GRPC</a
+                >
+              </li>
+              <li class="nav-item" role="presentation">
+                <a
+                  class="nav-link"
                   id="http-tab"
                   data-toggle="tab"
                   href="#daemonSettings-http"
@@ -2204,6 +2222,10 @@
                   :label="'Database'"
                 />
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                <b
+                  >Changing these values require a restart before changes are
+                  seen</b
+                >
               </div>
               <div
                 class="tab-pane fade"
@@ -2240,6 +2262,49 @@
                   :label="'OutboundMQ Configuration'"
                 />
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                <b
+                  >Changing these values require a restart before changes are
+                  seen</b
+                >
+              </div>
+              <div
+                class="tab-pane fade"
+                id="daemonSettings-grpc"
+                role="tabpanel"
+                aria-labelledby="grpc-tab"
+              >
+                <!-- GRPC -->
+                <div class="pb-4">
+                  <form-input
+                    v-model="configuration.grpc.network"
+                    :type="'select'"
+                    :id="'grpcNetwork'"
+                    :label="'Network'"
+                    :values="['tcp', 'tcp4', 'tcp6', 'unix', 'unixpacket']"
+                  />
+                  <p class="text-muted">
+                    Specify the type of network transport you want to use
+                  </p>
+                </div>
+                <form-input
+                  v-model="configuration.grpc.host"
+                  :type="'text'"
+                  :id="'grpcHost'"
+                  :label="'Host'"
+                />
+                <p class="text-muted">
+                  <b
+                    >It is recommended you keep this on a local IP such as
+                    localhost or 127.0.0.1.</b
+                  >
+                  Entering 0.0.0.0 or the devices IP will make it accessable to
+                  users outside of the local network.
+                </p>
+                <form-submit v-on:click="saveDaemonSettings()"></form-submit>
+                <b
+                  >Changing these values require a restart before changes are
+                  seen</b
+                >
               </div>
               <div
                 class="tab-pane fade"
@@ -2380,6 +2445,7 @@ import {
   mdiWebhook,
   mdiDoorOpen,
   mdiDatabase,
+  mdiForum,
   mdiMessageProcessing,
   mdiWeb,
   mdiFilter,
@@ -2413,6 +2479,7 @@ export default {
       mdiWebhook,
       mdiDoorOpen,
       mdiDatabase,
+      mdiForum,
       mdiMessageProcessing,
       mdiWeb,
       mdiFilter,
