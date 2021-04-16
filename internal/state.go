@@ -276,7 +276,7 @@ func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result 
 	return result, false, nil
 }
 
-func init() { //nolint
+func init() {
 	registerState("READY", StateReady)
 	registerState("GUILD_CREATE", StateGuildCreate)
 	registerState("GUILD_MEMBERS_CHUNK", StateGuildMembersChunk)

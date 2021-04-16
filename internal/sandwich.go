@@ -37,7 +37,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.8.1+202103041313"
+const VERSION = "0.8.2+170420210016"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
@@ -378,7 +378,7 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 		return xerrors.Errorf("Configuration missing GRPC host. Try 127.0.0.1:10000")
 	}
 
-	return
+	return nil
 }
 
 // Open starts up sandwich and loads the configuration, starts up the HTTP server and

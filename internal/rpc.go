@@ -932,7 +932,7 @@ func RPCDaemonRemoveWebhook(sg *Sandwich, user *structs.DiscordUser,
 	return true
 }
 
-func init() { //nolint
+func init() {
 	registerHandler("manager:update", RPCManagerUpdate)
 	registerHandler("manager:create", RPCManagerCreate)
 	registerHandler("manager:delete", RPCManagerDelete)

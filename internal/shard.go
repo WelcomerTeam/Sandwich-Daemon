@@ -266,15 +266,6 @@ func (sh *Shard) Connect() (err error) {
 		}
 	}()
 
-	// Todo: Add Concurrent Client Support.
-	// This will limit the amount of shards that can be connecting simultaneously.
-	// Currently just uses a mutex to allow for only one per maxconcurrency.
-	sh.Logger.Trace().Msg("Waiting for identify mutex")
-
-	// // Lock the identification bucket
-	// sh.ShardGroup.IdentifyBucket[concurrencyBucket].Lock()
-	// defer sh.ShardGroup.IdentifyBucket[concurrencyBucket].Unlock()
-
 	sh.Logger.Trace().Msg("Starting connecting")
 
 	if err := sh.SetStatus(structs.ShardConnecting); err != nil {

@@ -8,7 +8,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func init() { //nolint
+func init() {
 	MQClients = append(MQClients, "redis")
 }
 
