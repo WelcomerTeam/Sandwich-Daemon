@@ -213,9 +213,9 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 	wg := sync.WaitGroup{}
 
 	for _, shardID := range sg.ShardIDs[1:] {
-		go func(shardID int) {
-			wg.Add(1)
+		wg.Add(1)
 
+		go func(shardID int) {
 			sg.ShardsMu.RLock()
 			shard := sg.Shards[shardID]
 			sg.ShardsMu.RUnlock()

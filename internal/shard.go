@@ -332,7 +332,11 @@ func (sh *Shard) Connect() (err error) {
 
 	// If we have no session ID or the sequence is 0, we can identify instead
 	// of resuming.
-	if sh.sessionID == "" || seq == 0 {
+	sh.RLock()
+	sessionID := sh.sessionID
+	sh.RUnlock()
+
+	if sessionID == "" || seq == 0 {
 		err = sh.Identify()
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to identify")
