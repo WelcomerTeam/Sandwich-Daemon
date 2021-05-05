@@ -175,7 +175,7 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 					Msg("Failed to connect shard. Retrying...")
 			} else {
 				sg.Logger.Error().Err(err).
-				Msg("Failed to connect shard. Cannot continue")
+					Msg("Failed to connect shard. Cannot continue")
 
 				sg.ErrorMu.Lock()
 				sg.Error = err.Error()
@@ -185,13 +185,13 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 
 				if err := sg.SetStatus(structs.ShardGroupError); err != nil {
 					sg.Logger.Error().Err(err).
-					Msg("Encountered error setting shard group status")
+						Msg("Encountered error setting shard group status")
 				}
 
 				for _, shard := range sg.Shards {
 					if err = shard.SetStatus(structs.ShardClosed); err != nil {
 						shard.Logger.Error().Err(err).
-						Msg("Encountered error setting shard status")
+							Msg("Encountered error setting shard status")
 					}
 				}
 
