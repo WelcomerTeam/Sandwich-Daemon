@@ -17,6 +17,7 @@
     "chartjs-adapter-moment": "^0.1.2",
     "core-js": "^3.6.5",
     "json-bigint": "^1.0.0",
+    "mini-css-extract-plugin": "^1.6.0",
     "moment": "^2.29.1",
     "momentjs": "^2.0.0",
     "popper.js": "^1.16.1",
@@ -27,7 +28,7 @@
     "vue-icon": "^2.1.2",
     "vue-router": "^3.2.0",
     "vuex": "^3.5.1",
-    "webpack": "^5.4.0"
+    "webpack": "^4.0.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",
