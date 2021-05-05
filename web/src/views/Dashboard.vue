@@ -956,6 +956,18 @@
                               </div>
                             </div>
 
+                            <div class="status-container my-3">
+                              <div
+                                class="status-box-container"
+                                v-for="(shard, index) in shardgroup.shards"
+                                v-bind:key="index"
+                                v-b-tooltip.hover
+                                :title="'Shard ' + shard.shard_id + ' - ' + (new Date(shard.last_heartbeat_ack) - new Date(shard.last_heartbeat_sent)) + 'ms'"
+                                >
+                                <div :class="'status-box bg-' + colourShard[shard.status]" />
+                              </div>
+                            </div>
+
                             <table class="table table-borderless">
                               <thead>
                                 <tr class="table-dark">
@@ -3204,6 +3216,38 @@ export default {
 </script>
 
 <style scoped>
+.tooltip {
+  display: block !important;
+  z-index: 10000;
+}
+.tooltip .tooltip-inner {
+  background: black;
+  color: white;
+  border-radius: 16px;
+  padding: 5px 10px 4px;
+}
+.tooltip  .tooltip-arrow {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  position: absolute;
+  margin: 5px;
+  border-color: black;
+  z-index: 1;
+}
+.status-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.status-box-container {
+  display: flex;
+}
+.status-box {
+  width: 32px;
+  height: 32px;
+  margin: 2px;
+}
 .visually-hidden {
   clip: rect(0 0 0 0);
   clip-path: inset(50%);

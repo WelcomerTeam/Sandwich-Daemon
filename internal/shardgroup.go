@@ -149,60 +149,94 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 	}
 	sg.ShardsMu.Unlock()
 
-	for index, shardID := range sg.ShardIDs {
-		sg.ShardsMu.RLock()
-		shard := sg.Shards[shardID]
-		sg.ShardsMu.RUnlock()
+	// We will only close down the entire shardgroup in the event that the first
+	// shard fails to connect. This is to ensure that others are able to properly
+	// connect and not just another generic connect issue which would be annoying
+	// if 1 of your 250 shards die whilst starting up causing all the others to
+	// also be killed.
 
-		for {
-			err = shard.Connect()
+	initialShard := sg.ShardIDs[0]
 
-			// We will only close down the entire shardgroup in the event that the first
-			// shard fails to connect. This is to ensure that others are able to properly
-			// connect and not just another generic connect issue which would be annoying
-			// if 1 of your 250 shards die whilst starting up causing all the others to
-			// also be killed.
-			if index == 0 && err != nil && !xerrors.Is(err, context.Canceled) {
-				retries := atomic.LoadInt32(shard.Retries)
+	sg.ShardsMu.RLock()
+	shard := sg.Shards[initialShard]
+	sg.ShardsMu.RUnlock()
 
-				// In the event shard 0 does not successfully connect, we will attempt a
-				// few more times in case it is one of those generic connection issues.
-				if retries > 0 {
-					sg.Logger.Error().Err(err).Int32("retries", retries).Msg("Failed to connect shard. Retrying...")
-				} else {
-					sg.Logger.Error().Err(err).Msg("Failed to connect shard. Cannot continue")
+	for {
+		err = shard.Connect()
 
-					sg.ErrorMu.Lock()
-					sg.Error = err.Error()
-					sg.ErrorMu.Unlock()
+		if err != nil && !xerrors.Is(err, context.Canceled) {
+			retries := atomic.LoadInt32(shard.Retries)
 
-					sg.Close()
+			// In the event the first shard does not successfully connect, we will attempt a
+			// few more times in case it is one of those generic connection issues.
+			if retries > 0 {
+				sg.Logger.Error().Err(err).
+					Int32("retries", retries).
+					Msg("Failed to connect shard. Retrying...")
+			} else {
+				sg.Logger.Error().Err(err).
+				Msg("Failed to connect shard. Cannot continue")
 
-					if err := sg.SetStatus(structs.ShardGroupError); err != nil {
-						sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
-					}
+				sg.ErrorMu.Lock()
+				sg.Error = err.Error()
+				sg.ErrorMu.Unlock()
 
-					for _, shard := range sg.Shards {
-						if err = shard.SetStatus(structs.ShardClosed); err != nil {
-							shard.Logger.Error().Err(err).Msg("Encountered error setting shard status")
-						}
-					}
+				sg.Close()
 
-					err = xerrors.Errorf("ShardGroup open: %w", err)
-
-					return
+				if err := sg.SetStatus(structs.ShardGroupError); err != nil {
+					sg.Logger.Error().Err(err).
+					Msg("Encountered error setting shard group status")
 				}
 
-				atomic.AddInt32(shard.Retries, -1)
-				sg.Logger.Debug().Msgf("Shardgroup retries is now at %d", atomic.LoadInt32(shard.Retries))
-			} else {
-				break
-			}
-		}
+				for _, shard := range sg.Shards {
+					if err = shard.SetStatus(structs.ShardClosed); err != nil {
+						shard.Logger.Error().Err(err).
+						Msg("Encountered error setting shard status")
+					}
+				}
 
-		go shard.Open()
+				err = xerrors.Errorf("ShardGroup open: %w", err)
+
+				return
+			}
+
+			atomic.AddInt32(shard.Retries, -1)
+			sg.Logger.Debug().
+				Msgf("Shardgroup retries is now at %d", atomic.LoadInt32(shard.Retries))
+		} else {
+			break
+		}
 	}
 
+	go shard.Open()
+
+	wg := sync.WaitGroup{}
+
+	for _, shardID := range sg.ShardIDs[1:] {
+		wg.Add(1)
+
+		go func(shardID int) {
+			sg.ShardsMu.RLock()
+			shard := sg.Shards[shardID]
+			sg.ShardsMu.RUnlock()
+
+			for {
+				err = shard.Connect()
+				if err != nil && !xerrors.Is(err, context.Canceled) {
+					sg.Logger.Warn().Err(err).
+						Int("shard_id", shardID).
+						Msgf("Failed to connect shard. Retrying...")
+				} else {
+					break
+				}
+			}
+
+			go shard.Open()
+			wg.Done()
+		}(shardID)
+	}
+
+	wg.Wait()
 	sg.Logger.Debug().Msgf("All shards are now listening")
 
 	if err := sg.SetStatus(structs.ShardGroupConnecting); err != nil {

@@ -378,7 +378,7 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 		return xerrors.Errorf("Configuration missing GRPC host. Try 127.0.0.1:10000")
 	}
 
-	return
+	return nil
 }
 
 // Open starts up sandwich and loads the configuration, starts up the HTTP server and

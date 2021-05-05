@@ -1,23 +1,31 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import VueClipboard from "vue-clipboard2";
-import App from "./App.vue";
-import "./registerServiceWorker";
-import router from "./router";
 
 import axios from "axios";
 import JSONBig from "json-bigint";
 var jsonBig = JSONBig({ storeAsString: true });
 
+import { TooltipPlugin } from 'bootstrap-vue'
+
 import "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-vue/dist/bootstrap-vue.css";
+
 import "moment";
 import "chartjs-adapter-moment";
 
+import App from "./App.vue";
+import router from "./router";
+
+import "./registerServiceWorker";
+
 Vue.config.productionTip = false;
 
+Vue.use(TooltipPlugin)
 Vue.use(VueClipboard);
 Vue.use(Vuex);
+
 const store = new Vuex.Store({
   state: {
     error: "",
