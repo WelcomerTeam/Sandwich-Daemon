@@ -405,7 +405,6 @@ func RPCManagerCreate(sg *Sandwich, user *structs.DiscordUser,
 	}
 
 	// Default configuration things
-	config.Caching.RedisPrefix = event.Prefix
 	config.Messaging.ClientName = event.Client
 	config.Messaging.ChannelName = event.Channel
 	config.Bot.DefaultPresence = &discord.UpdateStatus{}

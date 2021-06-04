@@ -13,7 +13,6 @@ import (
 	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketstore"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-	"github.com/go-redis/redis/v8"
 	"github.com/rs/zerolog"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
@@ -46,8 +45,6 @@ type ManagerConfiguration struct {
 	} `json:"bot" yaml:"bot"`
 
 	Caching struct {
-		RedisPrefix string `json:"redis_prefix" yaml:"redis_prefix"`
-
 		CacheUsers     bool `json:"cache_users" yaml:"cache_users"`
 		CacheMembers   bool `json:"cache_members" yaml:"cache_members"`
 		RequestMembers bool `json:"request_members" yaml:"request_members"`
@@ -57,22 +54,6 @@ type ManagerConfiguration struct {
 	Events struct {
 		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist"`     // Events completely ignored
 		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist"` // Events not sent to consumers
-
-		// IgnoreBots will not pass MESSAGE_CREATE events to consumers if the author was
-		// a bot.
-		IgnoreBots bool `json:"ignore_bots" yaml:"ignore_bots"`
-		// CheckPrefixes will HGET {REDIS_PREFIX}:prefix with the key GUILDID after receiving
-		// a MESSAGE_CREATE and if it is not null and the message content does not start with
-		// the prefix, it will not send the message to consumers. Useful if you only want to
-		// receive commands.
-		CheckPrefixes bool `json:"check_prefixes" yaml:"check_prefixes"`
-		// Also allows for a bot mention to be a prefix
-		AllowMentionPrefix bool `json:"allow_mention_prefix" yaml:"allow_mention_prefix"`
-
-		// FallbackPrefix is the default prefix along with mention prefix (if enabled) when no
-		// entry can be found in redis. If empty it will not treat any message as a prefix and
-		// will instead discard.
-		FallbackPrefix string `json:"fallback_prefix"`
 	} `json:"events" yaml:"events"`
 
 	// Messaging specific configuration
@@ -90,9 +71,6 @@ type ManagerConfiguration struct {
 	Sharding struct {
 		AutoSharded bool `json:"auto_sharded" yaml:"auto_sharded" msgpack:"auto_sharded"`
 		ShardCount  int  `json:"shard_count" yaml:"shard_count" msgpack:"shard_count"`
-
-		ClusterCount int `json:"cluster_count" yaml:"cluster_count" msgpack:"cluster_count"`
-		ClusterID    int `json:"cluster_id" yaml:"cluster_id" msgpack:"cluster_id"`
 	} `json:"sharding" msgpack:"sharding"`
 }
 
@@ -114,8 +92,7 @@ type Manager struct {
 	Configuration   *ManagerConfiguration    `json:"configuration"`
 	Buckets         *bucketstore.BucketStore `json:"-"`
 
-	RedisClient    *redis.Client `json:"-"`
-	ProducerClient MQClient      `json:"-"` // Used to send messages to consumers
+	ProducerClient MQClient `json:"-"` // Used to send messages to consumers
 
 	Client *Client `json:"-"`
 
@@ -218,17 +195,6 @@ func (mg *Manager) NormalizeConfiguration() (err error) {
 		mg.Configuration.Bot.Retries = 1
 	}
 
-	if mg.Configuration.Sharding.ClusterCount < 1 {
-		mg.Configuration.Sharding.ClusterCount = 1
-	}
-
-	if mg.Configuration.Caching.RedisPrefix == "" {
-		mg.Configuration.Caching.RedisPrefix = strings.ToLower(
-			strings.ReplaceAll(mg.Configuration.DisplayName, " ", ""),
-		)
-		mg.Logger.Info().Msgf("Using redis prefix '%s' as none was provided", mg.Configuration.Caching.RedisPrefix)
-	}
-
 	if mg.Configuration.Messaging.ClientName == "" {
 		return xerrors.New("Manager missing client name. Try sandwich")
 	}
@@ -254,16 +220,6 @@ func (mg *Manager) Open() (err error) {
 	mg.ConfigurationMu.RLock()
 	defer mg.ConfigurationMu.RUnlock()
 
-	if mg.Sandwich.Configuration.Redis.UniqueClients {
-		mg.RedisClient = redis.NewClient(&redis.Options{
-			Addr:     mg.Sandwich.Configuration.Redis.Address,
-			Password: mg.Sandwich.Configuration.Redis.Password,
-			DB:       mg.Sandwich.Configuration.Redis.DB,
-		})
-	} else {
-		mg.RedisClient = mg.Sandwich.RedisClient
-	}
-
 	mg.AnalyticsMu.Lock()
 	mg.Analytics = accumulator.NewAccumulator(
 		mg.ctx,
@@ -271,11 +227,6 @@ func (mg *Manager) Open() (err error) {
 		Interval,
 	)
 	mg.AnalyticsMu.Unlock()
-
-	err = mg.RedisClient.Ping(mg.ctx).Err()
-	if err != nil {
-		return xerrors.Errorf("manager open verify redis: %w", err)
-	}
 
 	var clientName string
 	if mg.Configuration.Messaging.UseRandomSuffix {
@@ -394,14 +345,7 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 
 // GenerateShardIDs returns a slice of shard ids the bot will use and accounts for clusters.
 func (mg *Manager) GenerateShardIDs(shardCount int) (shardIDs []int) {
-	mg.ConfigurationMu.RLock()
-	defer mg.ConfigurationMu.RUnlock()
-	deployedShards := shardCount / mg.Configuration.Sharding.ClusterCount
-
-	currentShard := (deployedShards * mg.Configuration.Sharding.ClusterID)
-	maxShard := (deployedShards * (mg.Configuration.Sharding.ClusterID + 1))
-
-	for i := currentShard; i < maxShard; i++ {
+	for i := 0; i < shardCount; i++ {
 		shardIDs = append(shardIDs, i)
 	}
 

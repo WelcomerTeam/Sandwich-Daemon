@@ -1,16 +1,11 @@
 package gateway
 
 import (
-	"context"
-	"fmt"
-	"strconv"
-	"time"
+	"sync"
 
-	scripts "github.com/TheRockettek/Sandwich-Daemon/internal/redis"
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 )
 
@@ -43,237 +38,327 @@ func (sg *Sandwich) StateDispatch(ctx *StateCtx,
 	return result, false, xerrors.Errorf("failed to dispatch: %w", NoHandler)
 }
 
-// CreateKey creates a redis key from a format and values.
-func (mg *Manager) CreateKey(key string, values ...interface{}) string {
-	return mg.Configuration.Caching.RedisPrefix + ":" + fmt.Sprintf(key, values...)
+func NewSandwichState() (st *SandwichState) {
+	st = &SandwichState{
+		GuildsMu: sync.RWMutex{},
+		Guilds:   make(map[snowflake.ID]*discord.StateGuild),
+
+		GuildMembersMu: sync.RWMutex{},
+		GuildMembers:   make(map[snowflake.ID]*discord.StateGuildMembers),
+
+		ChannelsMu: sync.RWMutex{},
+		Channels:   make(map[snowflake.ID]*discord.Channel),
+
+		RolesMu: sync.RWMutex{},
+		Roles:   make(map[snowflake.ID]*discord.Role),
+
+		EmojisMu: sync.RWMutex{},
+		Emojis:   make(map[snowflake.ID]*discord.Emoji),
+
+		UsersMu: sync.RWMutex{},
+		Users:   make(map[snowflake.ID]*discord.User),
+	}
+
+	return st
 }
 
-// StateReady handles the READY event.
-func StateReady(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
-	var packet discord.Ready
-
-	var guildPayload discord.GuildCreate
-
-	err = json.Unmarshal(msg.Data, &packet)
-	if err != nil {
-		return result, false, xerrors.Errorf("Failed to unmarshal message: %w", err)
+func NewStateGuildMembers(g *discord.Guild) (gm *discord.StateGuildMembers) {
+	gm = &discord.StateGuildMembers{
+		GuildID:   g.ID,
+		MembersMu: sync.RWMutex{},
+		Members:   make(map[snowflake.ID]*discord.StateGuildMember),
 	}
 
-	ctx.Sh.Logger.Info().Msg("Received READY payload")
-
-	ctx.Sh.Lock()
-	ctx.Sh.sessionID = packet.SessionID
-	ctx.Sh.User = packet.User
-	ctx.Sh.Unlock()
-
-	events := make([]discord.ReceivedPayload, 0)
-	guildIDs := make([]snowflake.ID, 0, len(packet.Guilds))
-
-	ctx.Sh.UnavailableMu.Lock()
-	ctx.Sh.Unavailable = make(map[snowflake.ID]bool)
-
-	for _, guild := range packet.Guilds {
-		ctx.Sh.Unavailable[guild.ID] = guild.Unavailable
-	}
-	ctx.Sh.UnavailableMu.Unlock()
-
-	guildCreateEvents := 0
-
-	// If true will only run events once finished loading.
-	// Todo: Add to sandwich configuration.
-	preemptiveEvents := false
-
-	t := time.NewTicker(timeoutDuration)
-
-ready:
-	for {
-		select {
-		case err := <-ctx.Sh.ErrorCh:
-			if !xerrors.Is(err, context.Canceled) {
-				ctx.Sh.Logger.Error().Err(err).Msg("Encountered error whilst waiting lazy loading")
-			}
-
-			break ready
-		case msg := <-ctx.Sh.MessageCh:
-			if msg.Type == "GUILD_CREATE" {
-				guildCreateEvents++
-
-				if err = ctx.Sh.decodeContent(msg, &guildPayload); err != nil {
-					ctx.Sh.Logger.Error().Err(err).Msg("Failed to unmarshal GUILD_CREATE")
-				} else {
-					guildIDs = append(guildIDs, guildPayload.ID)
-				}
-
-				t.Reset(timeoutDuration)
-			}
-
-			if preemptiveEvents {
-				events = append(events, msg)
-			} else if err = ctx.Sh.OnDispatch(msg); err != nil && !xerrors.Is(err, NoHandler) {
-				ctx.Sh.Logger.Error().Err(err).Msg("Failed dispatching event")
-			}
-		case <-t.C:
-			ctx.Sh.Manager.Sandwich.ConfigurationMu.RLock()
-
-			if ctx.Sh.Manager.Configuration.Caching.RequestMembers {
-				for _, guildID := range guildIDs {
-					ticket := ctx.Sh.ShardGroup.ChunkLimiter.Wait()
-
-					go func(guildID snowflake.ID, ticket int) {
-						err := ctx.Sh.ChunkGuild(guildID, true)
-						if err != nil {
-							ctx.Sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
-						}
-
-						ctx.Sh.ShardGroup.ChunkLimiter.FreeTicket(ticket)
-					}(guildID, ticket)
-				}
-			}
-			ctx.Sh.Manager.Sandwich.ConfigurationMu.RUnlock()
-
-			break ready
-		}
-	}
-
-	ctx.Sh.ready <- void{}
-	if err := ctx.Sh.SetStatus(structs.ShardReady); err != nil {
-		ctx.Sh.Logger.Error().Err(err).Msg("Encountered error setting shard status")
-	}
-
-	if preemptiveEvents {
-		ctx.Sh.Logger.Debug().Int("events", len(events)).Msg("Dispatching preemptive events")
-
-		for _, event := range events {
-			ctx.Sh.Logger.Debug().Str("type", event.Type).Send()
-
-			if err = ctx.Sh.OnDispatch(event); err != nil {
-				ctx.Sh.Logger.Error().Err(err).Msg("Failed whilst dispatching preemptive events")
-			}
-		}
-
-		ctx.Sh.Logger.Debug().Msg("Finished dispatching events")
-	}
-
-	return result, false, nil
+	return gm
 }
 
-// StateGuildCreate handles the GUILD_CREATE event.
-func StateGuildCreate(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
-	var packet discord.GuildCreate
+func (st *SandwichState) GetGuildCount() int {
+	st.GuildsMu.RLock()
+	defer st.GuildsMu.RUnlock()
 
-	err = json.Unmarshal(msg.Data, &packet)
-	if err != nil {
-		return result, false, xerrors.Errorf("Failed to unmarshal message: %w", err)
-	}
-
-	sg := discord.StateGuild{}
-
-	roles, emojis, channels := sg.FromGuild(packet.Guild)
-
-	if k, err := msgpack.Marshal(sg); err == nil {
-		err = ctx.Mg.RedisClient.HSet(ctx.Mg.ctx, ctx.Mg.CreateKey("guilds"), sg.ID, k).Err()
-		if err != nil {
-			ctx.Mg.Logger.Error().Err(err).Msg("Failed to push guild to redis")
-		}
-	}
-
-	if len(roles) > 0 {
-		err = ctx.Mg.RedisClient.HSet(ctx.Mg.ctx, ctx.Mg.CreateKey("guild:%s:roles", sg.ID), roles).Err()
-		if err != nil {
-			ctx.Mg.Logger.Error().Err(err).Msg("Failed to push guild roles to redis")
-		}
-	}
-
-	if len(emojis) > 0 {
-		err = ctx.Mg.RedisClient.HSet(ctx.Mg.ctx, ctx.Mg.CreateKey("emojis"), emojis).Err()
-		if err != nil {
-			ctx.Mg.Logger.Error().Err(err).Msg("Failed to push guild emojis to redis")
-		}
-	}
-
-	if len(channels) > 0 {
-		err = ctx.Mg.RedisClient.HSet(ctx.Mg.ctx, ctx.Mg.CreateKey("channels"), channels).Err()
-		if err != nil {
-			ctx.Mg.Logger.Error().Err(err).Msg("Failed to push guild channels to redis")
-		}
-	}
-
-	lazy, _ := ctx.Vars["lazy"].(bool)
-
-	ctx.Sh.UnavailableMu.RLock()
-	ok, unavailable := ctx.Sh.Unavailable[sg.ID]
-	ctx.Sh.UnavailableMu.RUnlock()
-
-	// Check if the guild is unavailable.
-	if ok {
-		if unavailable {
-			ctx.Sh.Logger.Trace().Str("id", sg.ID.String()).Msg("Lazy loaded guild")
-
-			lazy = true || lazy
-		}
-
-		ctx.Sh.UnavailableMu.Lock()
-		delete(ctx.Sh.Unavailable, sg.ID)
-		ctx.Sh.UnavailableMu.Unlock()
-	}
-
-	return structs.StateResult{
-		Data: sg,
-		Extra: map[string]interface{}{
-			"lazy": lazy,
-		},
-	}, true, nil
+	return len(st.Guilds)
 }
 
-// StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event.
-func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
-	if !ctx.Mg.Configuration.Caching.CacheMembers {
+func (sg *ShardGroup) GetGuildCount() int {
+	sg.GuildsMu.RLock()
+	sg.GuildsMu.RUnlock()
+
+	return len(sg.Guilds)
+}
+
+// Guild State
+
+func (st *SandwichState) AddGuild(ctx *StateCtx, g *discord.Guild) (sg *discord.StateGuild) {
+	st.GuildsMu.Lock()
+	defer st.GuildsMu.Unlock()
+
+	sg = &discord.StateGuild{}
+
+	for _, r := range g.Roles {
+		st.AddRole(ctx, r)
+		sg.RoleIDs = append(sg.RoleIDs, r.ID)
+	}
+
+	for _, c := range g.Channels {
+		st.AddChannel(ctx, c)
+		sg.ChannelIDs = append(sg.ChannelIDs, c.ID)
+	}
+
+	for _, e := range g.Emojis {
+		st.AddEmoji(ctx, e)
+		sg.EmojiIDs = append(sg.EmojiIDs, e.ID)
+	}
+
+	sg.Guild = g
+	sg.Roles = make([]*discord.Role, 0, len(sg.RoleIDs))
+	sg.Channels = make([]*discord.Channel, 0, len(sg.ChannelIDs))
+	sg.Emojis = make([]*discord.Emoji, 0, len(sg.EmojiIDs))
+
+	st.Guilds[g.ID] = sg
+
+	return
+}
+
+func (st *SandwichState) GetGuild(ctx *StateCtx, s snowflake.ID, expand bool) (g *discord.Guild, o bool) {
+	st.GuildsMu.RLock()
+	defer st.GuildsMu.RUnlock()
+
+	sg, o := st.Guilds[s]
+	if !o {
 		return
 	}
 
-	var packet discord.GuildMembersChunk
+	g = sg.Guild
 
-	err = json.Unmarshal(msg.Data, &packet)
-	if err != nil {
-		return result, false, xerrors.Errorf("Failed to unmarshal message: %w", err)
-	}
+	// If expand is True, it will populate the Role, Channel and Emoji
+	// slices from the State.
+	if expand {
+		for _, ri := range sg.RoleIDs {
+			if r, ok := st.GetRole(ctx, ri); ok {
+				sg.Roles = append(sg.Roles, r)
+			} else {
+				ctx.Sh.Logger.Warn().Msgf("GetGuild referenced role ID %d that was not in state", ri)
+			}
+		}
 
-	ctx.Sh.ShardGroup.MemberChunkCallbacksMu.RLock()
-	callback, ok := ctx.Sh.ShardGroup.MemberChunkCallbacks[packet.GuildID]
+		for _, ci := range sg.ChannelIDs {
+			if c, ok := st.GetChannel(ctx, ci); ok {
+				sg.Channels = append(sg.Channels, c)
+			} else {
+				ctx.Sh.Logger.Warn().Msgf("GetGuild referenced channel ID %d that was not in state", ci)
+			}
+		}
 
-	if ok {
-		callback <- true
-	}
-	ctx.Sh.ShardGroup.MemberChunkCallbacksMu.RUnlock()
-
-	members := make([]interface{}, 0, len(packet.Members))
-
-	// Create list of msgpacked members
-	for _, member := range packet.Members {
-		if ma, err := msgpack.Marshal(member); err == nil {
-			members = append(members, ma)
+		for _, ei := range sg.EmojiIDs {
+			if e, ok := st.GetEmoji(ctx, ei); ok {
+				sg.Emojis = append(sg.Emojis, e)
+			} else {
+				ctx.Sh.Logger.Warn().Msgf("GetGuild referenced emoji ID %d that was not in state", ei)
+			}
 		}
 	}
 
-	err = scripts.ProcessGuildMembersChunk.Eval(
-		ctx.Mg.ctx,
-		ctx.Mg.RedisClient,
-		[]string{
-			ctx.Mg.Configuration.Caching.RedisPrefix,
-			packet.GuildID.String(),
-			strconv.FormatBool(ctx.Mg.Configuration.Caching.StoreMutuals),
-			strconv.FormatBool(ctx.Mg.Configuration.Caching.CacheUsers),
-		},
-		members,
-	).Err()
-	if err != nil {
-		return result, false, xerrors.Errorf("Failed to process guild member chunks: %w", err)
+	return g, o
+}
+
+func (st *SandwichState) RemoveGuild(ctx *StateCtx, s snowflake.ID) {
+	st.GuildsMu.Lock()
+	defer st.GuildsMu.Unlock()
+
+	delete(st.Guilds, s)
+}
+
+// Guild State Shardgroup Specific
+
+func (st *SandwichState) AddGuildShardGroup(ctx *StateCtx, g *discord.Guild) {
+	gs := st.AddGuild(ctx, g)
+
+	ctx.Sh.ShardGroup.GuildsMu.Lock()
+	ctx.Sh.ShardGroup.Guilds[g.ID] = gs
+	ctx.Sh.ShardGroup.GuildsMu.Unlock()
+}
+
+func (st *SandwichState) RemoveGuildShardGroup(ctx *StateCtx, s snowflake.ID) {
+	ctx.Sh.ShardGroup.GuildsMu.Lock()
+	delete(ctx.Sh.ShardGroup.Guilds, s)
+	ctx.Sh.ShardGroup.GuildsMu.Unlock()
+
+	st.RemoveGuild(ctx, s)
+}
+
+// Member State
+
+// AddMembers creates a StateGuildMember object if a guild does not have it,
+// It also adds the User to the cache if it does not already exist.
+func (st *SandwichState) AddMember(ctx *StateCtx, g *discord.Guild, m *discord.GuildMember) {
+	st.GuildMembersMu.Lock()
+	defer st.GuildMembersMu.Unlock()
+
+	members, ok := st.GuildMembers[g.ID]
+	if !ok {
+		members = NewStateGuildMembers(g)
+		st.GuildMembers[g.ID] = members
 	}
 
-	// We do not want to send member chunks to
-	// consumers as they will have no use.
+	st.AddUser(ctx, m.User)
 
-	return result, false, nil
+	members.MembersMu.Lock()
+	members.Members[m.User.ID] = discord.FromGuildMember(m)
+	members.MembersMu.Unlock()
+}
+
+func (st *SandwichState) GetMember(ctx *StateCtx, g *discord.Guild, s snowflake.ID) (m *discord.GuildMember, o bool) {
+	st.GuildMembersMu.RLock()
+	defer st.GuildMembersMu.RUnlock()
+
+	gm, o := st.GuildMembers[g.ID]
+	if !o {
+		return
+	}
+
+	gm.MembersMu.RLock()
+	defer gm.MembersMu.RUnlock()
+
+	sgm, o := gm.Members[s]
+	if !o {
+		return
+	}
+
+	u, o := st.GetUser(ctx, sgm.User)
+	if !o {
+		ctx.Sh.Logger.Warn().Msgf("GetMessage referenced user ID %d that was not in state", sgm.User)
+	}
+
+	return sgm.ToGuildMember(u), true
+}
+
+func (st *SandwichState) RemoveMember(ctx *StateCtx, g *discord.Guild, s snowflake.ID) {
+	st.GuildMembersMu.RUnlock()
+	defer st.GuildMembersMu.RUnlock()
+
+	gm, o := st.GuildMembers[g.ID]
+	if !o {
+		return
+	}
+
+	gm.MembersMu.Lock()
+	defer gm.MembersMu.Unlock()
+
+	delete(gm.Members, s)
+
+	return
+}
+
+// Channel State
+
+func (st *SandwichState) AddChannel(ctx *StateCtx, c *discord.Channel) {
+	st.ChannelsMu.Lock()
+	defer st.ChannelsMu.Unlock()
+
+	st.Channels[c.ID] = c
+}
+
+func (st *SandwichState) GetChannel(ctx *StateCtx, s snowflake.ID) (c *discord.Channel, o bool) {
+	st.ChannelsMu.RLock()
+	defer st.ChannelsMu.RUnlock()
+
+	c, o = st.Channels[s]
+	if !o {
+		c.ID = s
+	}
+
+	return
+}
+
+func (st *SandwichState) RemoveChannel(ctx *StateCtx, s snowflake.ID) {
+	st.ChannelsMu.Lock()
+	defer st.ChannelsMu.Unlock()
+
+	delete(st.Channels, s)
+}
+
+// Role State
+
+func (st *SandwichState) AddRole(ctx *StateCtx, r *discord.Role) {
+	st.RolesMu.Lock()
+	defer st.RolesMu.Unlock()
+
+	st.Roles[r.ID] = r
+}
+
+func (st *SandwichState) GetRole(ctx *StateCtx, s snowflake.ID) (r *discord.Role, o bool) {
+	st.RolesMu.RLock()
+	defer st.RolesMu.RUnlock()
+
+	r, o = st.Roles[s]
+	if !o {
+		r.ID = s
+	}
+
+	return
+}
+
+func (st *SandwichState) RemoveRole(ctx *StateCtx, s snowflake.ID) {
+	st.RolesMu.Lock()
+	defer st.RolesMu.Unlock()
+
+	delete(st.Roles, s)
+}
+
+// Emoji State
+
+func (st *SandwichState) AddEmoji(ctx *StateCtx, e *discord.Emoji) {
+	st.EmojisMu.Lock()
+	defer st.EmojisMu.Unlock()
+
+	st.Emojis[e.ID] = e
+}
+
+func (st *SandwichState) GetEmoji(ctx *StateCtx, s snowflake.ID) (e *discord.Emoji, o bool) {
+	st.EmojisMu.RLock()
+	defer st.EmojisMu.RUnlock()
+
+	e, o = st.Emojis[s]
+	if !o {
+		e.ID = s
+	}
+
+	return
+}
+
+func (st *SandwichState) RemoveEmoji(ctx *StateCtx, s snowflake.ID) {
+	st.EmojisMu.Lock()
+	defer st.EmojisMu.Unlock()
+
+	delete(st.Emojis, s)
+}
+
+// User state
+
+func (st *SandwichState) AddUser(ctx *StateCtx, u *discord.User) {
+	st.UsersMu.Lock()
+	defer st.UsersMu.Unlock()
+
+	st.Users[u.ID] = u
+}
+
+func (st *SandwichState) GetUser(ctx *StateCtx, s snowflake.ID) (u *discord.User, o bool) {
+	st.UsersMu.RLock()
+	defer st.UsersMu.RUnlock()
+
+	u, o = st.Users[s]
+	if !o {
+		u.ID = s
+	}
+
+	return
+}
+
+func (st *SandwichState) RemoveUser(ctx *StateCtx, s snowflake.ID) {
+	st.UsersMu.Lock()
+	defer st.UsersMu.Unlock()
+
+	delete(st.Users, s)
 }
 
 func init() {

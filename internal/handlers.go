@@ -366,7 +366,6 @@ func APIMeHandler(sg *Sandwich) http.HandlerFunc {
 // require elevation and provides basic information.
 func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		guildCounts := make(map[string]int64)
 		now := time.Now().UTC()
 
 		_result := structs.APIStatusResult{
@@ -375,25 +374,15 @@ func APIStatusHandler(sg *Sandwich) http.HandlerFunc {
 		}
 
 		for _, manager := range sg.Managers {
-			guildCount, ok := guildCounts[manager.Configuration.Caching.RedisPrefix]
-			if !ok {
-				guildCount, err := sg.RedisClient.HLen(context.Background(), manager.CreateKey("guilds")).Result()
-				if err != nil {
-					passResponse(rw, err.Error(), false, http.StatusInternalServerError)
-
-					return
-				}
-
-				guildCounts[manager.Configuration.Caching.RedisPrefix] = guildCount
-			}
-
 			_manager := structs.APIStatusManager{
 				DisplayName: manager.Configuration.DisplayName,
-				Guilds:      guildCount,
+				Guilds:      0,
 				ShardGroups: make([]structs.APIStatusShardGroup, 0, len(manager.ShardGroups)),
 			}
 
 			for _, shardgroup := range manager.ShardGroups {
+				_manager.Guilds += int64(shardgroup.GetGuildCount())
+
 				shardgroup.StatusMu.RLock()
 				_shardgroup := structs.APIStatusShardGroup{
 					ID:     shardgroup.ID,
@@ -490,11 +479,12 @@ func APIAnalyticsHandler(sg *Sandwich) http.HandlerFunc {
 // FetchAnalytics returns the data for the /api/analytics endpoint.
 func (sg *Sandwich) FetchAnalytics() (result structs.APIAnalyticsResult) {
 	managers := make([]structs.ManagerInformation, 0, len(sg.Managers))
-	guildCounts := make(map[string]int64)
+	guildCount := int64(0)
 
 	for _, manager := range sg.Managers {
 		manager.ConfigurationMu.RLock()
 
+		managerGuilds := int64(0)
 		statuses := make(map[int32]structs.ShardGroupStatus)
 
 		manager.ShardGroupsMu.RLock()
@@ -502,38 +492,27 @@ func (sg *Sandwich) FetchAnalytics() (result structs.APIAnalyticsResult) {
 			sg.StatusMu.RLock()
 			statuses[i] = sg.Status
 			sg.StatusMu.RUnlock()
+
+			sg.GuildsMu.RLock()
+			managerGuilds += int64(len(sg.Guilds))
+			sg.GuildsMu.RUnlock()
 		}
 		manager.ShardGroupsMu.RUnlock()
 
-		_guildCount, _ok := guildCounts[manager.Configuration.Caching.RedisPrefix]
-		if !_ok {
-			guildCount, err := sg.RedisClient.HLen(context.Background(), manager.CreateKey("guilds")).Result()
-			if err != nil {
-				sg.Logger.Error().Err(err).Msg("Failed to get hlen of table")
-
-				return
-			}
-
-			guildCounts[manager.Configuration.Caching.RedisPrefix] = guildCount
-		}
-
 		_manager := structs.ManagerInformation{
 			Name:      manager.Configuration.DisplayName,
-			Guilds:    _guildCount,
+			Guilds:    managerGuilds,
 			Status:    statuses,
 			AutoStart: manager.Configuration.AutoStart,
 		}
 		manager.ConfigurationMu.RUnlock()
 
+		guildCount += managerGuilds
+
 		managers = append(managers, _manager)
 	}
 
 	now := time.Now()
-	guildCount := int64(0)
-
-	for _, count := range guildCounts {
-		guildCount += count
-	}
 
 	result = structs.APIAnalyticsResult{
 		Graph:    sg.ConstructAnalytics(),

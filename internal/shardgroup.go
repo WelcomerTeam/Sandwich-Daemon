@@ -8,6 +8,7 @@ import (
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
 	"github.com/rs/zerolog"
 	"github.com/tevino/abool"
 	"golang.org/x/net/context"
@@ -40,6 +41,9 @@ type ShardGroup struct {
 
 	ShardsMu sync.RWMutex   `json:"-"`
 	Shards   map[int]*Shard `json:"shards"`
+
+	GuildsMu sync.RWMutex                         `json:"-"`
+	Guilds   map[snowflake.ID]*discord.StateGuild `json:"-"`
 
 	// WaitGroup for detecting when all shards are ready
 	Wait *sync.WaitGroup `json:"-"`
@@ -90,8 +94,12 @@ func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
 		Manager: mg,
 		Logger:  mg.Logger,
 
-		ShardsMu:       sync.RWMutex{},
-		Shards:         make(map[int]*Shard),
+		ShardsMu: sync.RWMutex{},
+		Shards:   make(map[int]*Shard),
+
+		GuildsMu: sync.RWMutex{},
+		Guilds:   make(map[snowflake.ID]*discord.StateGuild),
+
 		Wait:           &sync.WaitGroup{},
 		IdentifyBucket: make(map[int]*sync.Mutex),
 		err:            make(chan error),

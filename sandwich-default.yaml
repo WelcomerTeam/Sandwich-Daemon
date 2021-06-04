@@ -12,11 +12,6 @@ logging:
 resttunnel:
   enabled: false
   url: "http://127.0.0.1:8000"
-redis:
-  address: 127.0.0.1:6379
-  password: ""
-  database: 0
-  unique_clients: false
 producer:
   type: stan
   configuration:

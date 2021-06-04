@@ -20,10 +20,10 @@ import (
 	consolepump "github.com/TheRockettek/Sandwich-Daemon/pkg/consolepump"
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
 	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
 	gatewayServer "github.com/TheRockettek/Sandwich-Daemon/protobuf"
 	"github.com/TheRockettek/Sandwich-Daemon/structs"
 	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -37,7 +37,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.8.2+050520211739"
+const VERSION = "0.9.0+050620212312"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
@@ -91,15 +91,6 @@ type SandwichConfiguration struct {
 		URL     string `json:"url" yaml:"url"`
 	} `json:"resttunnel" yaml:"resttunnel"`
 
-	Redis struct {
-		Address  string `json:"address" yaml:"address"`
-		Password string `json:"password" yaml:"password"`
-		DB       int    `json:"database" yaml:"database"`
-		// If enabled, each manager will create their own redis connection
-		// rather than sharing one.
-		UniqueClients bool `json:"unique_clients" yaml:"unique_clients"`
-	} `json:"redis" yaml:"redis"`
-
 	Producer struct {
 		Type          string                 `json:"type" yaml:"type"`
 		Configuration map[string]interface{} `json:"configuration" yaml:"configuration"`
@@ -147,8 +138,10 @@ type Sandwich struct {
 	Buckets *bucketstore.BucketStore `json:"-"`
 
 	// Used for connection sharing
-	RedisClient    *redis.Client `json:"-"`
-	ProducerClient *MQClient     `json:"-"`
+	ProducerClient *MQClient `json:"-"`
+
+	// State
+	State *SandwichState `json:"-"`
 
 	Router *methodrouter.MethodRouter `json:"-"`
 	Store  *sessions.CookieStore      `json:"-"`
@@ -162,6 +155,28 @@ type Sandwich struct {
 	PoolWaiting *int64                      `json:"-"`
 }
 
+// SandwichState stores the collective state for all ShardGroups
+// across all Managers in the application.
+type SandwichState struct {
+	GuildsMu sync.RWMutex                         `json:"-"`
+	Guilds   map[snowflake.ID]*discord.StateGuild `json:"-"`
+
+	GuildMembersMu sync.RWMutex                                `json:"-"`
+	GuildMembers   map[snowflake.ID]*discord.StateGuildMembers `json:"-"`
+
+	ChannelsMu sync.RWMutex                      `json:"-"`
+	Channels   map[snowflake.ID]*discord.Channel `json:"-"`
+
+	RolesMu sync.RWMutex                   `json:"-"`
+	Roles   map[snowflake.ID]*discord.Role `json:"-"`
+
+	EmojisMu sync.RWMutex                    `json:"-"`
+	Emojis   map[snowflake.ID]*discord.Emoji `json:"-"`
+
+	UsersMu sync.RWMutex                   `json:"-"`
+	Users   map[snowflake.ID]*discord.User `json:"-"`
+}
+
 // NewSandwich creates the application state and initializes it.
 func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	sg = &Sandwich{
@@ -172,6 +187,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		Managers:        make(map[string]*Manager),
 		TotalEvents:     new(int64),
 		Buckets:         bucketstore.NewBucketStore(),
+		State:           NewSandwichState(),
 		Pool:            limiter.NewConcurrencyLimiter("eventPool", poolConcurrency),
 		PoolWaiting:     new(int64),
 	}
@@ -352,11 +368,6 @@ func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration)
 	// We will trim the password just in case.
 	// sg.ConfigurationMu.Lock()
 	// defer sg.ConfigurationMu.Unlock()
-	configuration.Redis.Password = strings.TrimSpace(configuration.Redis.Password)
-
-	if configuration.Redis.Address == "" {
-		return xerrors.Errorf("Configuration missing Redis Address. Try 127.0.0.1:6379")
-	}
 
 	// if configuration.NATS.Address == "" {
 	// 	return xerrors.New("Configuration missing producer address. Try 127.0.0.1:4222")
@@ -462,13 +473,6 @@ func (sg *Sandwich) Open() (err error) {
 			sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to serve gRPC server")
 		}
 	}()
-
-	sg.Logger.Info().Msg("Creating standalone redis client")
-	sg.RedisClient = redis.NewClient(&redis.Options{
-		Addr:     sg.Configuration.Redis.Address,
-		Password: sg.Configuration.Redis.Password,
-		DB:       sg.Configuration.Redis.DB,
-	})
 
 	// Configure RestTunnel
 	sg.Logger.Info().Msg("Configuring RestTunnel")

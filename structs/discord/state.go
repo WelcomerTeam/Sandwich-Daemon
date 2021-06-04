@@ -1,13 +1,14 @@
 package structs
 
 import (
+	"sync"
+
 	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
-	"github.com/vmihailenco/msgpack"
 )
 
 // StateGuild represents a guild in the state.
 type StateGuild struct {
-	Guild
+	*Guild
 
 	Roles   []*Role        `json:"-" msgpack:"-"`
 	RoleIDs []snowflake.ID `json:"roles" msgpack:"roles"`
@@ -19,46 +20,13 @@ type StateGuild struct {
 	ChannelIDs []snowflake.ID `json:"channels" msgpack:"channels"`
 }
 
-// FromGuild converts from a guild to a state guild.
-func (sg *StateGuild) FromGuild(guild Guild) (
-	roles map[string]interface{},
-	emojis map[string]interface{},
-	channels map[string]interface{}) {
-	sg.Guild = guild
+// StateGuildMembers stores the Members for a Guild along with
+// the appropriate lock.
+type StateGuildMembers struct {
+	GuildID snowflake.ID `json:"id"`
 
-	var ma interface{}
-
-	var err error
-
-	roles = make(map[string]interface{})
-	emojis = make(map[string]interface{})
-	channels = make(map[string]interface{})
-
-	for _, role := range guild.Roles {
-		if ma, err = msgpack.Marshal(role); err == nil {
-			roles[role.ID.String()] = ma
-
-			sg.RoleIDs = append(sg.RoleIDs, role.ID)
-		}
-	}
-
-	for _, emoji := range guild.Emojis {
-		if ma, err = msgpack.Marshal(emoji); err == nil {
-			emojis[emoji.ID.String()] = ma
-
-			sg.EmojiIDs = append(sg.EmojiIDs, emoji.ID)
-		}
-	}
-
-	for _, channel := range guild.Channels {
-		if ma, err = msgpack.Marshal(channel); err == nil {
-			channels[channel.ID.String()] = ma
-
-			sg.ChannelIDs = append(sg.ChannelIDs, channel.ID)
-		}
-	}
-
-	return roles, emojis, channels
+	MembersMu sync.RWMutex                       `json:"-"`
+	Members   map[snowflake.ID]*StateGuildMember `json:"-"`
 }
 
 // StateGuildMember represents a guild member in the state.
@@ -69,12 +37,24 @@ type StateGuildMember struct {
 }
 
 // FromDiscord converts a guild member to a state guild member.
-func (sgm *StateGuildMember) FromGuildMember(member GuildMember) {
+func FromGuildMember(member *GuildMember) (sgm *StateGuildMember) {
 	sgm.User = member.User.ID
 	sgm.Nick = member.Nick
-
 	sgm.Roles = member.Roles
 	sgm.JoinedAt = member.JoinedAt
 	sgm.Deaf = member.Deaf
 	sgm.Mute = member.Mute
+
+	return sgm
+}
+
+func (sgm *StateGuildMember) ToGuildMember(u *User) (member *GuildMember) {
+	member.User = u
+	member.Nick = sgm.Nick
+	member.Roles = sgm.Roles
+	member.JoinedAt = sgm.JoinedAt
+	member.Deaf = sgm.Deaf
+	member.Mute = sgm.Mute
+
+	return member
 }
