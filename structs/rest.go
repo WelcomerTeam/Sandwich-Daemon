@@ -116,6 +116,10 @@ type APIStatusShard struct {
 type APIAnalyticsResult struct {
 	Graph    LineChart            `json:"chart"`
 	Guilds   int64                `json:"guilds"`
+	Channels int64                `json:"channels"`
+	Users    int64                `json:"users"`
+	Members  int64                `json:"members"`
+	Emojis   int64                `json:"emojis"`
 	Uptime   string               `json:"uptime"`
 	Events   int64                `json:"events"`
 	Managers []ManagerInformation `json:"managers"`

@@ -1308,6 +1308,9 @@ memberChunks:
 		case <-chunkCallbacks:
 			receivedMemberChunks++
 			t.Reset(memberChunkTimeout)
+			sh.Logger.Debug().
+				Int64("guild_id", guildID.Int64()).
+				Msg("Received member chunk")
 		case <-t.C:
 			sh.Logger.Info().
 				Int64("guild_id", guildID.Int64()).

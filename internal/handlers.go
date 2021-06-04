@@ -481,6 +481,28 @@ func (sg *Sandwich) FetchAnalytics() (result structs.APIAnalyticsResult) {
 	managers := make([]structs.ManagerInformation, 0, len(sg.Managers))
 	guildCount := int64(0)
 
+	sg.State.ChannelsMu.RLock()
+	channelCount := int64(len(sg.State.Channels))
+	sg.State.ChannelsMu.RUnlock()
+
+	sg.State.UsersMu.RLock()
+	userCount := int64(len(sg.State.Users))
+	sg.State.UsersMu.RUnlock()
+
+	sg.State.EmojisMu.RLock()
+	emojiCount := int64(len(sg.State.Emojis))
+	sg.State.EmojisMu.RUnlock()
+
+	memberCount := int64(0)
+
+	sg.State.GuildMembersMu.RLock()
+	for _, gm := range sg.State.GuildMembers {
+		gm.MembersMu.RLock()
+		memberCount += int64(len(gm.Members))
+		gm.MembersMu.RUnlock()
+	}
+	sg.State.GuildMembersMu.RUnlock()
+
 	for _, manager := range sg.Managers {
 		manager.ConfigurationMu.RLock()
 
@@ -515,8 +537,14 @@ func (sg *Sandwich) FetchAnalytics() (result structs.APIAnalyticsResult) {
 	now := time.Now()
 
 	result = structs.APIAnalyticsResult{
-		Graph:    sg.ConstructAnalytics(),
-		Guilds:   guildCount,
+		Graph:  sg.ConstructAnalytics(),
+		Guilds: guildCount,
+
+		Channels: channelCount,
+		Users:    userCount,
+		Members:  memberCount,
+		Emojis:   emojiCount,
+
 		Uptime:   DurationTimestamp(now.Sub(sg.Start)),
 		Events:   atomic.LoadInt64(sg.TotalEvents),
 		Managers: managers,

@@ -9,6 +9,12 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// TODO: Add some sort of ShardGroup parent counter for guilds so
+// a guild is not deleted from cache if multiple ShardGroups are actively
+// using it. When a shardgroup is made, it is incremented by 1 and when closed
+// it is decremented by one. If after closing shardgroup it sees a guild with a
+// count of 0 it will then call DeleteGuild then remove counter from the map.
+
 var NoHandler = xerrors.New("No registered handler for event")
 
 var stateHandlers = make(map[string]func(ctx *StateCtx,
@@ -72,26 +78,25 @@ func NewStateGuildMembers(g *discord.Guild) (gm *discord.StateGuildMembers) {
 	return gm
 }
 
-func (st *SandwichState) GetGuildCount() int {
+func (st *SandwichState) GetGuildCount() (count int) {
 	st.GuildsMu.RLock()
-	defer st.GuildsMu.RUnlock()
+	count = len(st.Guilds)
+	st.GuildsMu.RUnlock()
 
-	return len(st.Guilds)
+	return
 }
 
-func (sg *ShardGroup) GetGuildCount() int {
+func (sg *ShardGroup) GetGuildCount() (count int) {
 	sg.GuildsMu.RLock()
+	count = len(sg.Guilds)
 	sg.GuildsMu.RUnlock()
 
-	return len(sg.Guilds)
+	return
 }
 
 // Guild State
 
 func (st *SandwichState) AddGuild(ctx *StateCtx, g *discord.Guild) (sg *discord.StateGuild) {
-	st.GuildsMu.Lock()
-	defer st.GuildsMu.Unlock()
-
 	sg = &discord.StateGuild{}
 
 	for _, r := range g.Roles {
@@ -114,16 +119,18 @@ func (st *SandwichState) AddGuild(ctx *StateCtx, g *discord.Guild) (sg *discord.
 	sg.Channels = make([]*discord.Channel, 0, len(sg.ChannelIDs))
 	sg.Emojis = make([]*discord.Emoji, 0, len(sg.EmojiIDs))
 
+	st.GuildsMu.Lock()
 	st.Guilds[g.ID] = sg
+	st.GuildsMu.Unlock()
 
 	return
 }
 
 func (st *SandwichState) GetGuild(ctx *StateCtx, s snowflake.ID, expand bool) (g *discord.Guild, o bool) {
 	st.GuildsMu.RLock()
-	defer st.GuildsMu.RUnlock()
-
 	sg, o := st.Guilds[s]
+	st.GuildsMu.RUnlock()
+
 	if !o {
 		return
 	}
@@ -165,6 +172,23 @@ func (st *SandwichState) RemoveGuild(ctx *StateCtx, s snowflake.ID) {
 	st.GuildsMu.Lock()
 	defer st.GuildsMu.Unlock()
 
+	sg, o := st.Guilds[s]
+	if !o {
+		return
+	}
+
+	for _, ri := range sg.RoleIDs {
+		st.RemoveRole(ctx, ri)
+	}
+
+	for _, ci := range sg.ChannelIDs {
+		st.RemoveChannel(ctx, ci)
+	}
+
+	for _, ei := range sg.EmojiIDs {
+		st.RemoveEmoji(ctx, ei)
+	}
+
 	delete(st.Guilds, s)
 }
 
@@ -192,9 +216,9 @@ func (st *SandwichState) RemoveGuildShardGroup(ctx *StateCtx, s snowflake.ID) {
 // It also adds the User to the cache if it does not already exist.
 func (st *SandwichState) AddMember(ctx *StateCtx, g *discord.Guild, m *discord.GuildMember) {
 	st.GuildMembersMu.Lock()
-	defer st.GuildMembersMu.Unlock()
-
 	members, ok := st.GuildMembers[g.ID]
+	st.GuildMembersMu.Unlock()
+
 	if !ok {
 		members = NewStateGuildMembers(g)
 		st.GuildMembers[g.ID] = members
@@ -209,17 +233,17 @@ func (st *SandwichState) AddMember(ctx *StateCtx, g *discord.Guild, m *discord.G
 
 func (st *SandwichState) GetMember(ctx *StateCtx, g *discord.Guild, s snowflake.ID) (m *discord.GuildMember, o bool) {
 	st.GuildMembersMu.RLock()
-	defer st.GuildMembersMu.RUnlock()
-
 	gm, o := st.GuildMembers[g.ID]
+	st.GuildMembersMu.RUnlock()
+
 	if !o {
 		return
 	}
 
 	gm.MembersMu.RLock()
-	defer gm.MembersMu.RUnlock()
-
 	sgm, o := gm.Members[s]
+	gm.MembersMu.RUnlock()
+
 	if !o {
 		return
 	}
@@ -234,17 +258,16 @@ func (st *SandwichState) GetMember(ctx *StateCtx, g *discord.Guild, s snowflake.
 
 func (st *SandwichState) RemoveMember(ctx *StateCtx, g *discord.Guild, s snowflake.ID) {
 	st.GuildMembersMu.RUnlock()
-	defer st.GuildMembersMu.RUnlock()
-
 	gm, o := st.GuildMembers[g.ID]
+	st.GuildMembersMu.RUnlock()
+
 	if !o {
 		return
 	}
 
 	gm.MembersMu.Lock()
-	defer gm.MembersMu.Unlock()
-
 	delete(gm.Members, s)
+	gm.MembersMu.Unlock()
 
 	return
 }
@@ -253,16 +276,15 @@ func (st *SandwichState) RemoveMember(ctx *StateCtx, g *discord.Guild, s snowfla
 
 func (st *SandwichState) AddChannel(ctx *StateCtx, c *discord.Channel) {
 	st.ChannelsMu.Lock()
-	defer st.ChannelsMu.Unlock()
-
 	st.Channels[c.ID] = c
+	st.ChannelsMu.Unlock()
 }
 
 func (st *SandwichState) GetChannel(ctx *StateCtx, s snowflake.ID) (c *discord.Channel, o bool) {
 	st.ChannelsMu.RLock()
-	defer st.ChannelsMu.RUnlock()
-
 	c, o = st.Channels[s]
+	st.ChannelsMu.RUnlock()
+
 	if !o {
 		c.ID = s
 	}
@@ -272,25 +294,23 @@ func (st *SandwichState) GetChannel(ctx *StateCtx, s snowflake.ID) (c *discord.C
 
 func (st *SandwichState) RemoveChannel(ctx *StateCtx, s snowflake.ID) {
 	st.ChannelsMu.Lock()
-	defer st.ChannelsMu.Unlock()
-
 	delete(st.Channels, s)
+	st.ChannelsMu.Unlock()
 }
 
 // Role State
 
 func (st *SandwichState) AddRole(ctx *StateCtx, r *discord.Role) {
 	st.RolesMu.Lock()
-	defer st.RolesMu.Unlock()
-
 	st.Roles[r.ID] = r
+	st.RolesMu.Unlock()
 }
 
 func (st *SandwichState) GetRole(ctx *StateCtx, s snowflake.ID) (r *discord.Role, o bool) {
 	st.RolesMu.RLock()
-	defer st.RolesMu.RUnlock()
-
 	r, o = st.Roles[s]
+	st.RolesMu.RUnlock()
+
 	if !o {
 		r.ID = s
 	}
@@ -300,25 +320,23 @@ func (st *SandwichState) GetRole(ctx *StateCtx, s snowflake.ID) (r *discord.Role
 
 func (st *SandwichState) RemoveRole(ctx *StateCtx, s snowflake.ID) {
 	st.RolesMu.Lock()
-	defer st.RolesMu.Unlock()
-
 	delete(st.Roles, s)
+	st.RolesMu.Unlock()
 }
 
 // Emoji State
 
 func (st *SandwichState) AddEmoji(ctx *StateCtx, e *discord.Emoji) {
 	st.EmojisMu.Lock()
-	defer st.EmojisMu.Unlock()
-
 	st.Emojis[e.ID] = e
+	st.EmojisMu.Unlock()
 }
 
 func (st *SandwichState) GetEmoji(ctx *StateCtx, s snowflake.ID) (e *discord.Emoji, o bool) {
 	st.EmojisMu.RLock()
-	defer st.EmojisMu.RUnlock()
-
 	e, o = st.Emojis[s]
+	st.EmojisMu.RUnlock()
+
 	if !o {
 		e.ID = s
 	}
@@ -328,25 +346,23 @@ func (st *SandwichState) GetEmoji(ctx *StateCtx, s snowflake.ID) (e *discord.Emo
 
 func (st *SandwichState) RemoveEmoji(ctx *StateCtx, s snowflake.ID) {
 	st.EmojisMu.Lock()
-	defer st.EmojisMu.Unlock()
-
 	delete(st.Emojis, s)
+	st.EmojisMu.Unlock()
 }
 
 // User state
 
 func (st *SandwichState) AddUser(ctx *StateCtx, u *discord.User) {
 	st.UsersMu.Lock()
-	defer st.UsersMu.Unlock()
-
 	st.Users[u.ID] = u
+	st.UsersMu.Unlock()
 }
 
 func (st *SandwichState) GetUser(ctx *StateCtx, s snowflake.ID) (u *discord.User, o bool) {
 	st.UsersMu.RLock()
-	defer st.UsersMu.RUnlock()
-
 	u, o = st.Users[s]
+	st.UsersMu.RUnlock()
+
 	if !o {
 		u.ID = s
 	}
@@ -356,9 +372,8 @@ func (st *SandwichState) GetUser(ctx *StateCtx, s snowflake.ID) (u *discord.User
 
 func (st *SandwichState) RemoveUser(ctx *StateCtx, s snowflake.ID) {
 	st.UsersMu.Lock()
-	defer st.UsersMu.Unlock()
-
 	delete(st.Users, s)
+	st.UsersMu.Unlock()
 }
 
 func init() {

@@ -198,19 +198,6 @@
                   />
                 </div>
                 <div class="mb-3">
-                  <label class="col-sm-12 form-label">Redis Prefix</label>
-                  <input
-                    class="form-control"
-                    type="text"
-                    v-model="createManagerDialogueData.prefix"
-                    :placeholder="'eg: ' + createManagerDialogueData.identifier"
-                  />
-                  <p class="text-muted">
-                    Duplicate redis prefixes are completely fine and will share
-                    caches between multiple managers
-                  </p>
-                </div>
-                <div class="mb-3">
                   <label class="col-sm-12 form-label"
                     >Client Name <span class="text-danger">*</span>
                   </label>
@@ -499,6 +486,26 @@
               <card-display
                 :title="'Guilds'"
                 :value="analytics.guilds"
+                bg="bg-dark"
+              />
+              <card-display
+                :title="'Members'"
+                :value="analytics.members"
+                bg="bg-dark"
+              />
+              <card-display
+                :title="'Users'"
+                :value="analytics.users"
+                bg="bg-dark"
+              />
+              <card-display
+                :title="'Channels'"
+                :value="analytics.channels"
+                bg="bg-dark"
+              />
+              <card-display
+                :title="'Emojis'"
+                :value="analytics.emojis"
                 bg="bg-dark"
               />
               <card-display
@@ -1350,7 +1357,7 @@
                                 :label="'Cache Users'"
                               />
                               <p class="text-muted">
-                                If enabled, users will be cached on redis.
+                                If enabled, users will be cached.
                               </p>
                               <form-input
                                 v-model="
@@ -1365,7 +1372,7 @@
                                 :label="'Cache Members'"
                               />
                               <p class="text-muted">
-                                If enabled, members will be cached on redis.
+                                If enabled, members will be cached.
                               </p>
                               <form-input
                                 v-model="
@@ -1400,28 +1407,9 @@
                                 :label="'Store Mutuals'"
                               />
                               <p class="text-muted">
-                                If enabled, guild ids a member is on is stored
-                                on redis.
+                                If enabled, guild IDs a member is directly available.
                               </p>
                             </div>
-                            <form-input
-                              v-model="
-                                manager.configuration.caching.redis_prefix
-                              "
-                              :type="'text'"
-                              :id="
-                                'managerConfig-' +
-                                  manager.configuration.identifier +
-                                  '-caching.redis_prefix'
-                              "
-                              :label="'Redis Prefix'"
-                            />
-                            <p class="text-muted">
-                              String all redis requests will be pre-pended with
-                              {PREFIX}:{KEY}. Useful when wanting to separate
-                              managers from each other. Having multiple managers
-                              with the same key can cause destruction.
-                            </p>
                             <form-submit
                               v-on:click="saveClusterSettings(manager)"
                             >
@@ -1442,77 +1430,6 @@
                               shardgroup is made
                             </p>
                             <!-- Events -->
-                            <div class="pb-4">
-                              <form-input
-                                v-model="
-                                  manager.configuration.events.ignore_bots
-                                "
-                                :type="'checkbox'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-events.ignore_bots'
-                                "
-                                :label="'Ignore Bots'"
-                              />
-                              <p class="text-muted">
-                                When enabled, consumers will not receive
-                                MESSAGE_CREATE events if the author is a bot
-                              </p>
-                              <form-input
-                                v-model="
-                                  manager.configuration.events.check_prefixes
-                                "
-                                :type="'checkbox'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-events.check_prefixes'
-                                "
-                                :label="'Check Prefixes'"
-                              />
-                              <p class="text-muted">
-                                When enabled, consumers will receive only
-                                MESSAGE_CREATE events that start with a defined
-                                prefix. The prefix is determined from a HGET to
-                                {REDIS_PREFIX}:prefix with the guild id as a
-                                key.
-                              </p>
-                              <form-input
-                                v-model="
-                                  manager.configuration.events
-                                    .allow_mention_prefix
-                                "
-                                :type="'checkbox'"
-                                :id="
-                                  'managerConfig-' +
-                                    manager.configuration.identifier +
-                                    '-events.allow_mention_prefix'
-                                "
-                                :label="'Allow Mention Prefix'"
-                              />
-                            </div>
-                            <form-input
-                              v-model="
-                                manager.configuration.events.fallback_prefix
-                              "
-                              :type="'text'"
-                              :id="
-                                'managerConfig-' +
-                                  manager.configuration.identifier +
-                                  '-events.fallback_prefix'
-                              "
-                              :label="'Fallback Prefix'"
-                              :placeholder="'No prefix'"
-                            />
-                            <p class="text-muted">
-                              If the daemon is unable to fetch a custom prefix
-                              from redis, it will use the fallback prefix and
-                              mention prefix (if enabled). If fallback prefix is
-                              left empty, it will not allow any message to be
-                              used as a command.
-                            </p>
-
                             <form-input
                               v-model="
                                 manager.configuration.events.event_blacklist
@@ -1804,24 +1721,6 @@
                   />
                   Access
                 </a>
-              </li>
-              <li class="nav-item" role="presentation">
-                <a
-                  class="nav-link"
-                  id="redis-tab"
-                  data-toggle="tab"
-                  href="#daemonSettings-redis"
-                  role="tab"
-                  aria-selected="false"
-                >
-                  <svg-icon
-                    type="mdi"
-                    width="20"
-                    height="20"
-                    :path="mdiDatabase"
-                  />
-                  Redis</a
-                >
               </li>
               <li class="nav-item" role="presentation">
                 <a
@@ -2189,55 +2088,6 @@
                 </p>
 
                 <form-submit v-on:click="saveDaemonSettings()"></form-submit>
-              </div>
-              <div
-                class="tab-pane fade"
-                id="daemonSettings-redis"
-                role="tabpanel"
-                aria-labelledby="redis-tab"
-              >
-                <!-- Redis -->
-                <p class="text-muted">
-                  Redis is the driver that handles caching of objects within
-                  Sandwich Daemon. This allows for multiple programs to share
-                  and interact with the same cache without passing on the
-                  objects in messages or using RPC.
-                </p>
-                <div class="pb-4">
-                  <form-input
-                    v-model="configuration.redis.unique_clients"
-                    :type="'checkbox'"
-                    :id="'redisUniqueClients'"
-                    :label="'Unique Clients'"
-                  />
-                </div>
-                <p class="text-muted">
-                  If enabled, each Manager will have their own redis connection
-                  else they will share the same connection.
-                </p>
-                <form-input
-                  v-model="configuration.redis.address"
-                  :type="'text'"
-                  :id="'redisAddress'"
-                  :label="'Address'"
-                />
-                <form-input
-                  v-model="configuration.redis.password"
-                  :type="'password'"
-                  :id="'redisPassword'"
-                  :label="'Password'"
-                />
-                <form-input
-                  v-model="configuration.redis.database"
-                  :type="'number'"
-                  :id="'redisDB'"
-                  :label="'Database'"
-                />
-                <form-submit v-on:click="saveDaemonSettings()"></form-submit>
-                <b
-                  >Changing these values require a restart before changes are
-                  seen</b
-                >
               </div>
               <div
                 class="tab-pane fade"
