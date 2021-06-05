@@ -37,7 +37,7 @@ import (
 )
 
 // VERSION respects semantic versioning.
-const VERSION = "0.9.1+050620210028"
+const VERSION = "0.9.2+050620212040"
 
 const (
 	// ConfigurationPath is the path to the file the configration will be located
@@ -443,7 +443,7 @@ func (sg *Sandwich) Open() (err error) {
 		sg.Router = createEndpoints(sg)
 
 		go func() {
-			fmt.Printf("Serving dashboard on %s (Press CTRL+C to quit)\n", sg.Configuration.HTTP.Host)
+			sg.Logger.Info().Msgf("Serving dashboard on %s (Press CTRL+C to quit)\n", sg.Configuration.HTTP.Host)
 
 			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
 			if err != nil {
@@ -466,7 +466,7 @@ func (sg *Sandwich) Open() (err error) {
 		grpcServer := grpc.NewServer(opts...)
 		gatewayServer.RegisterGatewayServer(grpcServer, sg.NewGatewayServer())
 
-		fmt.Printf("Serving gRPC on %s (Press CTRL+C to quit)\n", sg.Configuration.GRPC.Host)
+		sg.Logger.Info().Msgf("Serving gRPC on %s (Press CTRL+C to quit)\n", sg.Configuration.GRPC.Host)
 
 		err = grpcServer.Serve(lis)
 		if err != nil {

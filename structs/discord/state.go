@@ -38,6 +38,8 @@ type StateGuildMember struct {
 
 // FromDiscord converts a guild member to a state guild member.
 func FromGuildMember(member *GuildMember) (sgm *StateGuildMember) {
+	sgm = &StateGuildMember{}
+
 	sgm.User = member.User.ID
 	sgm.Nick = member.Nick
 	sgm.Roles = member.Roles

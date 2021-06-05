@@ -71,25 +71,29 @@ ready:
 
 			if preemptiveEvents {
 				events = append(events, msg)
-			} else if err = ctx.Sh.OnDispatch(msg); err != nil && !xerrors.Is(err, NoHandler) {
-				ctx.Sh.Logger.Error().Err(err).Msg("Failed dispatching event")
+			} else {
+				if err = ctx.Sh.OnDispatch(msg); err != nil && !xerrors.Is(err, NoHandler) {
+					ctx.Sh.Logger.Error().Err(err).Msg("Failed dispatching event")
+				}
 			}
 		case <-t.C:
 			ctx.Sh.Manager.Sandwich.ConfigurationMu.RLock()
 
 			if ctx.Sh.Manager.Configuration.Caching.RequestMembers {
-				for _, guildID := range guildIDs {
-					ticket := ctx.Sh.ShardGroup.ChunkLimiter.Wait()
+				go func() {
+					for _, guildID := range guildIDs {
+						ticket := ctx.Sh.ShardGroup.ChunkLimiter.Wait()
 
-					go func(guildID snowflake.ID, ticket int) {
-						err := ctx.Sh.ChunkGuild(guildID, true)
-						if err != nil {
-							ctx.Sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
-						}
+						go func(guildID snowflake.ID, ticket int) {
+							err := ctx.Sh.ChunkGuild(guildID, true)
+							if err != nil {
+								ctx.Sh.Logger.Error().Err(err).Msgf("Failed to request guild members")
+							}
 
-						ctx.Sh.ShardGroup.ChunkLimiter.FreeTicket(ticket)
-					}(guildID, ticket)
-				}
+							ctx.Sh.ShardGroup.ChunkLimiter.FreeTicket(ticket)
+						}(guildID, ticket)
+					}
+				}()
 			}
 			ctx.Sh.Manager.Sandwich.ConfigurationMu.RUnlock()
 

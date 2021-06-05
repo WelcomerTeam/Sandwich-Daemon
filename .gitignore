@@ -5,3 +5,4 @@ sandwich
 *.fasthttp.gz
 checktags.py
 .vscode/settings.json
+node_modules/.yarn-integrity

@@ -46,9 +46,7 @@ func StateGuildCreate(ctx *StateCtx, msg discord.ReceivedPayload) (result struct
 
 // StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event.
 func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
-	if !ctx.Mg.Configuration.Caching.CacheMembers {
-		return
-	}
+	ctx.Sh.Logger.Debug().Msg("Received member chunk")
 
 	var packet discord.GuildMembersChunk
 
@@ -68,6 +66,7 @@ func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result 
 	g, o := ctx.Sg.State.GetGuild(ctx, packet.GuildID, false)
 	if !o {
 		ctx.Sh.Logger.Warn().Msgf("StateGuildMembersChunk referenced guild ID %d that was not in state", packet.GuildID)
+
 		return
 	}
 
@@ -76,7 +75,6 @@ func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result 
 	}
 
 	// TODO: Handle storing mutuals
-	// TODO: Handle Caching Users
 
 	// We do not want to send member chunks to
 	// consumers as they will have no use.

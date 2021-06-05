@@ -1357,7 +1357,7 @@
                                 :label="'Cache Users'"
                               />
                               <p class="text-muted">
-                                If enabled, users will be cached.
+                                If enabled, users will be cached. This does not affect GUILD_MEMBERS_CHUNK.
                               </p>
                               <form-input
                                 v-model="
@@ -1372,7 +1372,7 @@
                                 :label="'Cache Members'"
                               />
                               <p class="text-muted">
-                                If enabled, members will be cached.
+                                If enabled, members will be cached. This does not affect GUILD_MEMBERS_CHUNK.
                               </p>
                               <form-input
                                 v-model="
@@ -1387,12 +1387,14 @@
                                 :label="'Request Members'"
                               />
                               <p class="text-muted">
+                                <b class="text-danger">This is not fully working at the moment, manual chunking is recommended. </b>
                                 <b
                                   >Due to the new intent changes, enabling this
                                   on larger bots is not recommended.</b
                                 >
                                 If enabled, guild members will be requested when
                                 lazy loading.
+                                <b>This bypasses Cache Users and Cache Members options.</b>
                               </p>
                               <form-input
                                 v-model="
@@ -1586,54 +1588,6 @@
                               "
                               :label="'Shard Count'"
                             />
-                            <p class="text-muted">
-                              Shard Count to launch shard groups with. Be aware
-                              this has no security and if it has not supplied
-                              enough shards, it will error. It is recommended
-                              you use autosharded, enabling autosharded will
-                              overwrite this value.
-                            </p>
-                            <form-input
-                              v-model="
-                                manager.configuration.sharding.manager_count
-                              "
-                              :type="'number'"
-                              :id="
-                                'managerConfig-' +
-                                  manager.configuration.identifier +
-                                  '-sharding.manager_count'
-                              "
-                              :label="'Cluster Count'"
-                            ></form-input>
-                            <p class="text-muted">
-                              <b
-                                >Use if you have multiple daemons running. This
-                                must be the same number on all daemons and
-                                starts from 0.</b
-                              >
-                              Total number of managers running.
-                            </p>
-                            <form-input
-                              v-model="
-                                manager.configuration.sharding.manager_id
-                              "
-                              :type="'number'"
-                              :id="
-                                'managerConfig-' +
-                                  manager.configuration.identifier +
-                                  '-sharding.manager_id'
-                              "
-                              :label="'Cluster ID'"
-                            ></form-input>
-                            <p class="text-muted">
-                              <b
-                                >Use if you have multiple daemons running. This
-                                must be a different number on all daemons.</b
-                              >
-                              Cluster ID of current daemon. With only 1 manager,
-                              this ID must be 0 similarly to how shard count and
-                              shard ID works.
-                            </p>
                             <form-submit
                               v-on:click="saveClusterSettings(manager)"
                             >

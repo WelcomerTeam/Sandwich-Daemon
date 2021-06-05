@@ -215,13 +215,19 @@ func (st *SandwichState) RemoveGuildShardGroup(ctx *StateCtx, s snowflake.ID) {
 // AddMembers creates a StateGuildMember object if a guild does not have it,
 // It also adds the User to the cache if it does not already exist.
 func (st *SandwichState) AddMember(ctx *StateCtx, g *discord.Guild, m *discord.GuildMember) {
-	st.GuildMembersMu.Lock()
+	st.GuildMembersMu.RLock()
 	members, ok := st.GuildMembers[g.ID]
-	st.GuildMembersMu.Unlock()
+	st.GuildMembersMu.RUnlock()
 
 	if !ok {
+		ctx.Sg.Logger.Trace().
+			Msgf("Created new GuildMembers entry for guild ID %d", g.ID)
+
 		members = NewStateGuildMembers(g)
+
+		st.GuildMembersMu.Lock()
 		st.GuildMembers[g.ID] = members
+		st.GuildMembersMu.Unlock()
 	}
 
 	st.AddUser(ctx, m.User)
