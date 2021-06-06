@@ -216,14 +216,6 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 		}
 	}
 
-	// TODO: Fix race condition here.
-	// Opening the shard before READY will cause the shard to
-	// not handle GUILD_CREATE events properly during READY.
-	// WaitingForReady seems like a fix as Connect() handles one
-	// event which will likely be READY however in the case
-	// the first event is not READY, this will deadlock.
-	shard.WaitForReady()
-
 	go shard.Open()
 
 	wg := sync.WaitGroup{}
@@ -243,7 +235,6 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 						Int("shard_id", shardID).
 						Msgf("Failed to connect shard. Retrying...")
 				} else {
-					shard.WaitForReady()
 					go shard.Open()
 
 					break

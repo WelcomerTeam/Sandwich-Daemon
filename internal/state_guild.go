@@ -46,7 +46,6 @@ func StateGuildCreate(ctx *StateCtx, msg discord.ReceivedPayload) (result struct
 
 // StateGuildMembersChunk handles the GUILD_MEMBERS_CHUNK event.
 func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
-	ctx.Sh.Logger.Debug().Msg("Received member chunk")
 
 	var packet discord.GuildMembersChunk
 
@@ -55,13 +54,17 @@ func StateGuildMembersChunk(ctx *StateCtx, msg discord.ReceivedPayload) (result 
 		return result, false, xerrors.Errorf("Failed to unmarshal message: %w", err)
 	}
 
+	ctx.Sh.Logger.Debug().Msgf("Received member chunk %d/%d for guild ID %d", packet.ChunkIndex, packet.ChunkCount, packet.GuildID)
+
 	ctx.Sh.ShardGroup.MemberChunkCallbacksMu.RLock()
 	callback, ok := ctx.Sh.ShardGroup.MemberChunkCallbacks[packet.GuildID]
+	ctx.Sh.ShardGroup.MemberChunkCallbacksMu.RUnlock()
 
 	if ok {
 		callback <- true
+	} else {
+		ctx.Sh.Logger.Warn().Msgf("Received member chunk for guild ID %d but no callback was active", packet.GuildID)
 	}
-	ctx.Sh.ShardGroup.MemberChunkCallbacksMu.RUnlock()
 
 	g, o := ctx.Sg.State.GetGuild(ctx, packet.GuildID, false)
 	if !o {

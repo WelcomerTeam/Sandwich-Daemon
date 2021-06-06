@@ -1387,7 +1387,6 @@
                                 :label="'Request Members'"
                               />
                               <p class="text-muted">
-                                <b class="text-danger">This is not fully working at the moment, manual chunking is recommended. </b>
                                 <b
                                   >Due to the new intent changes, enabling this
                                   on larger bots is not recommended.</b

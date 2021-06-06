@@ -1,4 +1,4 @@
-FROM golang:alpine AS build_base
+FROM golang:1-alpine AS build_base
 
 RUN apk add --no-cache git build-base pkgconfig zlib-dev
 
@@ -13,7 +13,7 @@ COPY . .
 
 RUN go build -o ./out/sandwich ./cmd/main.go
 
-FROM alpine:latest
+FROM alpine:3
 RUN apk add ca-certificates
 
 COPY --from=build_base /tmp/sandwich-daemon/out/sandwich /app/sandwich

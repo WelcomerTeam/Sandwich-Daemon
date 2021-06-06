@@ -396,7 +396,10 @@ func (sh *Shard) Connect() (err error) {
 
 		return xerrors.Errorf("encountered error whilst connecting: %w", err)
 	case msg = <-messagech:
-		sh.OnEvent(msg)
+		sh.Logger.Debug().Msgf("Received first event. %d %s", msg.Op, msg.Type)
+
+		// Requeue event so main loop can handle it
+		messagech <- msg
 	case <-t.C:
 	}
 
@@ -1312,7 +1315,7 @@ memberChunks:
 				Int64("guild_id", guildID.Int64()).
 				Msg("Received member chunk")
 		case <-t.C:
-			sh.Logger.Info().
+			sh.Logger.Debug().
 				Int64("guild_id", guildID.Int64()).
 				Int("received", receivedMemberChunks).
 				Int64("duration", time.Now().UTC().Sub(start).Round(time.Millisecond).Milliseconds()).
