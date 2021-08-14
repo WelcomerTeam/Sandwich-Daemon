@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	gateway "github.com/WelcomerTeam/Sandwich-Daemon/internal"
+	gateway "github.com/WelcomerTeam/Sandwich-Daemon/next/v2/internal"
 	"github.com/rs/zerolog"
 )
 
