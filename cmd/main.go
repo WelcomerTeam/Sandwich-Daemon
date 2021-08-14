@@ -7,14 +7,14 @@ import (
 	"syscall"
 	"time"
 
-	gateway "github.com/WelcomerTeam/Sandwich-Daemon/next/v2/internal"
+	internal "github.com/WelcomerTeam/Sandwich-Daemon/next/internal"
 	"github.com/rs/zerolog"
 )
 
 func main() {
 	lFlag := flag.String("level", "info", "Global log level to use (debug/info/warn/error/fatal/panic/no/disabled/trace) (default: info)")
 	lConfigurationLocation := flag.String("configuration", "sandwich.yaml", "Path of configuration file (default: sandwich.yaml)")
-	lPoolConcurrency := flag.Int64("concurrency", 512, "Total number of events that can be processed concurrently (default: 512)")
+	lPoolConcurrency := flag.Int("concurrency", 512, "Total number of events that can be processed concurrently (default: 512)")
 
 	flag.Parse()
 
@@ -34,7 +34,7 @@ func main() {
 	log := zerolog.New(consoleWriter).With().Timestamp().Logger()
 
 	// Sandwich initialization
-	sandwich, err := gateway.NewSandwich(consoleWriter, *lConfigurationLocation, *lPoolConcurrency)
+	sandwich, err := internal.NewSandwich(consoleWriter, *lConfigurationLocation, *lPoolConcurrency)
 	if err != nil {
 		log.Panic().Err(err).Msg("Cannot create sandwich")
 	}
@@ -50,6 +50,6 @@ func main() {
 
 	err = sandwich.Close()
 	if err != nil {
-		sg.Logger.Warn().Err(err).Msg("Exception whilst closing sandwich")
+		sandwich.Logger.Warn().Err(err).Msg("Exception whilst closing sandwich")
 	}
 }

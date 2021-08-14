@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
+	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/tevino/abool"
@@ -210,7 +210,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 		return configuration, ErrLoadConfigurationFailure
 	}
 
-	err = sg.ValidateConfiguration(configuration())
+	err = sg.ValidateConfiguration(configuration)
 	if err != nil {
 		return configuration, err
 	}
