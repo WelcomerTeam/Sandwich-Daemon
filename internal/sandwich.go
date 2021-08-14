@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/tevino/abool"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"gopkg.in/yaml.v2"
 	"gopkg.in/yaml.v3"
 )
 
