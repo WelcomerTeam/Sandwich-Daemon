@@ -1,5 +1,0 @@
-- Add some sort of IPC to request guild chunks from consumer (likely just using NATs)
-- Ability to defer to using Kafka instead of STAN
-- Prometheus Analytics Support
-- Auto Scaling
-- Create Cache Handlers
