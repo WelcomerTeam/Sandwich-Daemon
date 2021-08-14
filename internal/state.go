@@ -3,7 +3,9 @@ package internal
 import (
 	"sync"
 
-	"github.com/TheRockettek/snowflake"
+	snowflake "github.com/WelcomerTeam/RealRock/snowflake"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"golang.org/x/xerrors"
 )
 
@@ -70,7 +72,7 @@ func registerState(eventType string, handler func(ctx *StateCtx, msg discord.Rec
 }
 
 // StateDispatch handles selecting the proper state handler and executing it.
-func (sg *Sandwich) StateDispatch(ctx *StateCtx,
+func StateDispatch(ctx *StateCtx,
 	event discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
 	if f, ok := stateHandlers[event.Type]; ok {
 		return f(ctx, event)

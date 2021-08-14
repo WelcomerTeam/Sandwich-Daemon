@@ -1,0 +1,10 @@
+Internal - Any generic Sandwich Daemon utilities
+Discord - Interfacing with the discord client (structs, data parsing)
+Gateway - ... gateway
+Messaging - Messaging Clients
+State - Interfacing with the Sandwich Daemon state (structs, data passing)
+Structs - Generic Sandwich Daemon structures
+
+Grpc - Sandwich GRPC
+Http - Backend
+Web - Frontend Web application
