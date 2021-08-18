@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -19,14 +20,6 @@ import (
 )
 
 const VERSION = "0.0.1"
-
-var (
-	ErrReadConfigurationFailure        = xerrors.New("Failed to read configuration")
-	ErrLoadConfigurationFailure        = xerrors.New("Failed to load configuration")
-	ErrConfigurationValidateIdentify   = xerrors.New("Configuration missing valid Identify URI")
-	ErrConfigurationValidateRestTunnel = xerrors.New("Configuration missing valid RestTunnel URI")
-	ErrConfigurationValidateGRPC       = xerrors.New("Configuration missing valid GRPC Host")
-)
 
 type Sandwich struct {
 	sync.RWMutex
@@ -298,4 +291,81 @@ func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) 
 	}
 
 	return nil
+}
+
+// Open starts up any listeners, configures services and starts up managers.
+func (sg *Sandwich) Open() (err error) {
+	sg.ConfigurationMu.RLock()
+	defer sg.ConfigurationMu.RUnlock()
+
+	sg.StartTime = time.Now().UTC()
+	sg.Logger.Info().Msgf("Starting sandwich. Version %s", VERSION)
+
+	// Setup GRPC
+	err = sg.setupGRPC()
+	if err != nil {
+		return err
+	}
+
+	// Setup RestTunnel
+	err = sg.setupRestTunnel()
+	if err != nil {
+		return err
+	}
+
+}
+
+func (sg *Sandwich) setupGRPC() (err error) {
+	// listener, err := net.Listen(sg.Configuration.GRPC.Network, sg.Configuration.GRPC.Host)
+	// if err != nil {
+	// 	sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to bind to host")
+
+	// 	return
+	// }
+
+	// var grpcOptions []grpc.ServerOptions
+	// grpcListener := grpc.NewServer(opts...)
+	// grpcServer.RegisterGatewayServer(grpcListener, sg.NewGatewayServer())
+
+	// err = grpcListener.Serve(listener)
+	// if err != nil {
+	// 	sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to serve gRPC server")
+
+	// 	return
+	// }
+
+	// sg.Logger.Info().Msgf("Serving gRPC at %s", sg.Configuration.GRPC.Host)
+
+	return nil
+}
+
+func (sg *Sandwich) setupRestTunnel() (err error) {
+	if sg.Configuration.RestTunnel.Enabled {
+		enabled, reverse, err := sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
+		}
+
+		sg.RestTunnelOnlyPath.SetTo(reverse)
+		sg.RestTunnelEnabled.SetTo(enabled)
+	} else {
+		sg.RestTunnelEnabled.UnSet()
+	}
+
+	return nil
+}
+
+// PublishWebhook sends a webhook message to all added webhooks in the configuration.
+func (sg *Sandwich) PublishWebhook(ctx context.Context, message discord.WebhookMessage) {
+	for _, webhook := range sg.Configuration.Webhooks {
+		_, err := sg.SendWebhook(ctx, webhook, message)
+		if err != nil && !xerrors.Is(err, context.Canceled) {
+			sg.Logger.Warn().Err(err).Str("url", webhook).Msg("Failed to send webhook")
+		}
+	}
+}
+
+// SendWebhook executes a webhook request. Does not support sending files.
+func (sg *Sandwich) SendWebhook(ctx context.Context, webhookUrl string, message discord.WebhookMessage) (status int, err error) {
+
 }
