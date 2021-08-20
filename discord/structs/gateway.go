@@ -10,10 +10,9 @@ import (
 // gateway.go contains all structures for interacting with discord's gateway and contains
 // all events and structures we send to discord.
 
-// GatewayOp represents a packets operation.
+// GatewayOp represents the operation codes of a gateway message.
 type GatewayOp uint8
 
-// Operation Codes for gateway messages.
 const (
 	GatewayOpDispatch GatewayOp = iota
 	GatewayOpHeartbeat
@@ -32,7 +31,6 @@ const (
 // IntentFlag represents a bitflag for intents.
 type GatewayIntent uint32
 
-// Bitflags for intents.
 const (
 	IntentGuilds GatewayIntent = 1 << iota
 	IntentGuildMembers
@@ -101,7 +99,7 @@ type Identify struct {
 	Token          string              `json:"token"`
 	Properties     *IdentifyProperties `json:"properties"`
 	Compress       bool                `json:"compress"`
-	LargeThreshold int                 `json:"large_threshold,omitempty"`
+	LargeThreshold *int                `json:"large_threshold,omitempty"`
 	Shard          [2]int              `json:"shard,omitempty"`
 	Presence       *UpdateStatus       `json:"presence,omitempty"`
 	Intents        int64               `json:"intents"`
@@ -121,6 +119,9 @@ type Resume struct {
 	Sequence  int64  `json:"seq"`
 }
 
+// Heartbeat represents the heartbeat packet.
+type Heartbeat int
+
 // Request guild members requests members for a guild.
 type RequestGuildMembers struct {
 	GuildID   snowflake.ID   `json:"guild_id" msgpack:"guild_id"`
@@ -133,7 +134,7 @@ type RequestGuildMembers struct {
 
 // Update Presence updates a client's presence.
 type UpdateStatus struct {
-	Since  int       `json:"since,omitempty" msgpack:"since,omitempty"`
+	Since  *int      `json:"since,omitempty" msgpack:"since,omitempty"`
 	Game   *Activity `json:"game,omitempty" msgpack:"game,omitempty"`
 	Status string    `json:"status" msgpack:"status"`
 	AFK    bool      `json:"afk" msgpack:"afk"`
