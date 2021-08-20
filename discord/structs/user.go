@@ -37,17 +37,17 @@ const (
 
 // User represents a user on Discord.
 type User struct {
-	ID            snowflake.ID    `json:"id" msgpack:"id"`
-	Username      string          `json:"username" msgpack:"username"`
-	Discriminator string          `json:"discriminator" msgpack:"discriminator"`
-	Avatar        string          `json:"avatar" msgpack:"avatar"`
-	Bot           bool            `json:"bot,omitempty" msgpack:"bot,omitempty"`
-	System        bool            `json:"system,omitempty" msgpack:"system,omitempty"`
-	MFAEnabled    bool            `json:"mfa_enabled,omitempty" msgpack:"mfa_enabled,omitempty"`
-	Locale        string          `json:"locale,omitempty" msgpack:"locale,omitempty"`
-	Verified      bool            `json:"verified,omitempty" msgpack:"verified,omitempty"`
-	Email         string          `json:"email,omitempty" msgpack:"email,omitempty"`
-	Flags         UserFlags       `json:"flags,omitempty" msgpack:"flags,omitempty"`
-	PremiumType   UserPremiumType `json:"premium_type,omitempty" msgpack:"premium_type,omitempty"`
-	PublicFlags   UserFlags       `json:"public_flags,omitempty" msgpack:"public_flags,omitempty"`
+	ID            snowflake.ID     `json:"id"`
+	Username      string           `json:"username"`
+	Discriminator string           `json:"discriminator"`
+	Avatar        string           `json:"avatar"`
+	Bot           *bool            `json:"bot,omitempty"`
+	System        *bool            `json:"system,omitempty"`
+	MFAEnabled    *bool            `json:"mfa_enabled,omitempty"`
+	Locale        *string          `json:"locale,omitempty"`
+	Verified      *bool            `json:"verified,omitempty"`
+	Email         *string          `json:"email,omitempty"`
+	Flags         *UserFlags       `json:"flags,omitempty"`
+	PremiumType   *UserPremiumType `json:"premium_type,omitempty"`
+	PublicFlags   *UserFlags       `json:"public_flags,omitempty"`
 }
