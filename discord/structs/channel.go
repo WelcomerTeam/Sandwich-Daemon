@@ -36,6 +36,14 @@ const (
 	VideoqualityModeFull
 )
 
+// StageChannelPrivacyLevel represents the privacy level of a stage channel
+type StageChannelPrivacyLevel int8
+
+const (
+	StageChannelPrivacyLevelPublic StageChannelPrivacyLevel = 1 + iota
+	StageChannelPrivacyLevelGuildOnly
+)
+
 // Channel represents a Discord channel.
 type Channel struct {
 	ID                   snowflake.ID        `json:"id"`
@@ -93,4 +101,14 @@ type ThreadMember struct {
 	UserID        *snowflake.ID `json:"user_id,omitempty"`
 	JoinTimestamp time.Time     `json:"join_timestamp`
 	Flags         int           `json:"flags"`
+}
+
+// StageInstance represents a stage channel instance.
+type StageInstance struct {
+	ID                   snowflake.ID             `json:"id"`
+	GuildID              snowflake.ID             `json:"guild_id"`
+	ChannelID            snowflake.ID             `json:"channel_id"`
+	Topic                string                   `json:"topic"`
+	PrivacyLabel         StageChannelPrivacyLevel `json:"privacy_level"`
+	DiscoverableDisabled bool                     `json:"discoverable_disabled"`
 }

@@ -7,6 +7,7 @@ require (
 	github.com/WelcomerTeam/RealRock v0.0.0-20210814150330-a411f684a7e9
 	github.com/andybalholm/brotli v1.0.0
 	github.com/go-redis/redis/v8 v8.11.3
+	github.com/json-iterator/go v1.1.11
 	github.com/nats-io/nats-server/v2 v2.3.4 // indirect
 	github.com/nats-io/nats-streaming-server v0.22.1 // indirect
 	github.com/nats-io/nats.go v1.11.1-0.20210623165838-4b75fc59ae30

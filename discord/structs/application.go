@@ -1,6 +1,10 @@
 package discord
 
-import "github.com/WelcomerTeam/RealRock/snowflake"
+import (
+	"time"
+
+	"github.com/WelcomerTeam/RealRock/snowflake"
+)
 
 // application.go represents the application object and slash command interactions.
 
@@ -46,12 +50,30 @@ const (
 	InteractionTypeMessageComponent
 )
 
+// IntegrationType represents the type of integration
+type IntegrationType string
+
+const (
+	IntegrationTypeTwitch  IntegrationType = "twitch"
+	IntegrationTypeYoutube IntegrationType = "youtube"
+	IntegrationTypeDiscord IntegrationType = "discord"
+)
+
+// IntegrationExpireBehavior represents the integration expiration
+type IntegrationExpireBehavior int8
+
+const (
+	IntegrationExpireBehaviorRemoveRole IntegrationExpireBehavior = iota
+	IntegrationExpireBehaviorKick
+)
+
 // Application response from REST.
 type Application struct {
-	ID                  snowflake.ID     `json:"id"`
-	Name                string           `json:"name"`
-	Icon                string           `json:"icon,omitempty"`
-	Description         string           `json:"description"`
+	ID          snowflake.ID `json:"id"`
+	Name        string       `json:"name"`
+	Icon        string       `json:"icon,omitempty"`
+	Description string       `json:"description"`
+
 	RPCOrigins          []string         `json:"rpc_origins,omitempty"`
 	BotPublic           bool             `json:"bot_public"`
 	BotRequireCodeGrant bool             `json:"bot_require_code_grant"`
@@ -62,10 +84,11 @@ type Application struct {
 	VerifyKey           string           `json:"verify_key,omitempty"`
 	Team                *ApplicationTeam `json:"team,omitempty"`
 	GuildID             snowflake.ID     `json:"guild_id,omitempty"`
-	PrimarySKUID        snowflake.ID     `json:"primary_sku_id,omitempty"`
-	Slug                string           `json:"slug,omitempty"`
-	CoverImage          string           `json:"cover_image,omitempty"`
-	Flags               int64            `json:"flags"`
+
+	PrimarySKUID snowflake.ID `json:"primary_sku_id,omitempty"`
+	Slug         string       `json:"slug,omitempty"`
+	CoverImage   string       `json:"cover_image,omitempty"`
+	Flags        int64        `json:"flags"`
 }
 
 // ApplicationTeam represents the team of an application.
@@ -119,13 +142,14 @@ type Interaction struct {
 	ApplicationID snowflake.ID     `json:"application_id"`
 	Type          *InteractionType `json:"type,omitempty"`
 	Data          *InteractionData `json:"data,omitempty"`
-	GuildID       snowflake.ID     `json:"guild_id,omitempty"`
-	ChannelID     snowflake.ID     `json:"channel_id,omitempty"`
-	Member        *GuildMember     `json:"member,omitempty"`
-	User          *User            `json:"user,omitempty"`
-	Token         string           `json:"token"`
-	Version       int              `json:"version"`
-	Message       *Message         `json:"message,omitempty"`
+
+	GuildID   snowflake.ID `json:"guild_id,omitempty"`
+	ChannelID snowflake.ID `json:"channel_id,omitempty"`
+	Member    *GuildMember `json:"member,omitempty"`
+	User      *User        `json:"user,omitempty"`
+	Token     string       `json:"token"`
+	Version   int          `json:"version"`
+	Message   *Message     `json:"message,omitempty"`
 }
 
 // InteractionData represents the structure of interaction data.
@@ -163,6 +187,32 @@ type ApplicationSelectOption struct {
 	Label       string        `json:"label"`
 	Value       string        `json:"value"`
 	Description *string       `json:"description,omitempty"`
-	Emoji       *Partialemoji `json:"emoji,omitempty"`
+	Emoji       *PartialEmoji `json:"emoji,omitempty"`
 	Default     *bool         `json:"default,omitempty"`
+}
+
+// Integration represents the structure of an integration.
+type Integration struct {
+	ID              snowflake.ID    `json:"id"`
+	Name            string          `json:"name"`
+	Type            IntegrationType `json:"type"`
+	Enabled         bool            `json:"enabled"`
+	Syncing         *bool           `json:"syncing`
+	RoleID          *snowflake.ID   `json:"role_id,omitempty"`
+	EnableEmoticons *bool           `json:"enable_emoticons,omitempty"`
+
+	ExpireBehavior    *IntegrationExpireBehavior `json:"expire_behavior,omitempty"`
+	ExpireGracePeriod int                        `json:"expire_grace_period"`
+	User              *User                      `json:"user,omitempty"`
+	Account           IntegrationAccount         `json:"account"`
+	SyncedAt          *time.Time                 `json:"synced_at,omitempty"`
+	SubscriberCount   int                        `json:"subscriber_count,omitempty"`
+	Revoked           *bool                      `json:"revoked,omitempty"`
+	Application       *Application               `json:"application,omitempty"`
+}
+
+// IntegrationAccount represents the account of the integration.
+type IntegrationAccount struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
