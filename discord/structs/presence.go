@@ -13,15 +13,6 @@ const (
 	PresenceStatusOffline PresenceStatus = "offline"
 )
 
-// PresenceUpdate represents a presence update packet.
-type PresenceUpdate struct {
-	User       *User          `json:"user"`
-	Game       Activity       `json:"activity"`
-	GuildID    snowflake.ID   `json:"guild_id"`
-	Status     PresenceStatus `json:"status"`
-	Activities []Activity     `json:"activities"`
-}
-
 // ActivityType represents an activity's type.
 type ActivityType int
 
@@ -47,18 +38,18 @@ const (
 
 // Activity represents an activity as sent as part of other packets.
 type Activity struct {
-	Name          string        `json:"name" yaml:"name"`
-	Type          ActivityType  `json:"type" yaml:"type"`
-	URL           *string       `json:"url,omitempty" yaml:"url,omitempty"`
-	Timestamps    *Timestamps   `json:"timestamps,omitempty" yaml:"timestamps,omitempty"`
-	ApplicationID *snowflake.ID `json:"application_id" yaml:"application_id"`
-	Details       *string       `json:"details,omitempty" yaml:"details,omitempty"`
-	State         *string       `json:"state,omitempty" yaml:"state,omitempty"`
-	Party         *Party        `json:"party,omitempty" yaml:"party,omitempty"`
-	Assets        *Assets       `json:"assets,omitempty" yaml:"assets,omitempty"`
-	Secrets       *Secrets      `json:"secrets,omitempty" yaml:"secrets,omitempty"`
-	Instance      *bool         `json:"instance,omitempty" yaml:"instance,omitempty"`
-	Flags         *ActivityFlag `json:"flags,omitempty" yaml:"flags,omitempty"`
+	Name          string        `json:"name"`
+	Type          ActivityType  `json:"type"`
+	URL           *string       `json:"url,omitempty"`
+	Timestamps    *Timestamps   `json:"timestamps,omitempty"`
+	ApplicationID *snowflake.ID `json:"application_id"`
+	Details       *string       `json:"details,omitempty"`
+	State         *string       `json:"state,omitempty"`
+	Party         *Party        `json:"party,omitempty"`
+	Assets        *Assets       `json:"assets,omitempty"`
+	Secrets       *Secrets      `json:"secrets,omitempty"`
+	Instance      *bool         `json:"instance,omitempty"`
+	Flags         *ActivityFlag `json:"flags,omitempty"`
 }
 
 // Timestamps represents the starting and ending timestamp of an activity.
@@ -86,4 +77,11 @@ type Secrets struct {
 	Join     *string `json:"join,omitempty"`
 	Spectate *string `json:"spectate,omitempty"`
 	Match    *string `json:"match,omitempty"`
+}
+
+// ClientStatus represent's the status of a client.
+type ClientStatus struct {
+	Desktop *string `json:"desktop,omitempty"`
+	Mobile  *string `json:"mobile,omitempty"`
+	Web     *string `json:"web,omitempty"`
 }

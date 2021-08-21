@@ -124,18 +124,18 @@ type Heartbeat int
 
 // Request guild members requests members for a guild.
 type RequestGuildMembers struct {
-	GuildID   snowflake.ID   `json:"guild_id" msgpack:"guild_id"`
-	Query     string         `json:"query" msgpack:"query"`
-	Limit     int            `json:"limit" msgpack:"limit"`
-	Presences bool           `json:"presences" msgpack:"presences"`
-	Nonce     string         `json:"nonce" msgpack:"nonce"`
-	UserIDs   []snowflake.ID `json:"user_ids" msgpack:"user_ids"`
+	GuildID   snowflake.ID   `json:"guild_id"`
+	Query     string         `json:"query"`
+	Limit     int            `json:"limit"`
+	Presences bool           `json:"presences"`
+	Nonce     string         `json:"nonce"`
+	UserIDs   []snowflake.ID `json:"user_ids"`
 }
 
 // Update Presence updates a client's presence.
 type UpdateStatus struct {
-	Since  *int      `json:"since,omitempty" msgpack:"since,omitempty"`
-	Game   *Activity `json:"game,omitempty" msgpack:"game,omitempty"`
-	Status string    `json:"status" msgpack:"status"`
-	AFK    bool      `json:"afk" msgpack:"afk"`
+	Since  *int      `json:"since,omitempty"`
+	Game   *Activity `json:"game,omitempty"`
+	Status string    `json:"status"`
+	AFK    bool      `json:"afk"`
 }

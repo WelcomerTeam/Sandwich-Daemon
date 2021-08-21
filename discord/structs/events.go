@@ -218,32 +218,138 @@ type IntegrationDelete struct {
 }
 
 // InteractionCreate represents the interaction create event.
-type InteractionCreate Interaction
+type InteractionCreate *Interaction
 
-// TODO:  InteractionCreate
+// InviteCreate represents the invite create event.
+type InviteCreate struct {
+	ChannelID         snowflake.ID        `json:"channel_id"`
+	Code              string              `json:"code"`
+	CreatedAt         time.Time           `json:"created_at"`
+	GuildID           *snowflake.ID       `json:"guild_id,omitempty"`
+	Inviter           *User               `json:"inviter,omitempty"`
+	MaxAge            int                 `json:"max_age"`
+	MaxUses           int                 `json:"max_uses"`
+	TargetType        *InviteTargetType   `json:"target_type,omitempty"`
+	TargetUser        *User               `json:"target_user,omitempty"`
+	TargetApplication *PartialApplication `json:"target_application"`
+	Temporary         bool                `json:"temporary"`
+	Uses              int                 `json:"uses"`
+}
 
-// TODO:  InviteCreate
-// TODO:  InviteDelete
+// InviteDelete represents the invite delete event.
+type InviteDelete struct {
+	ChannelID snowflake.ID  `json:"channel_id"`
+	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
+	Code      string        `json:"code"`
+}
 
-// TODO:  MessageCreate
-// TODO:  MessageUpdate
-// TODO:  MessageDelete
-// TODO:  MessageDeleteBulk
+// MessageCreate represents the message update event.
+type MessageUpdate *Message
 
-// TODO:  MessageReactionAdd
-// TODO:  MessageReactionRemove
-// TODO:  MessageReactionRemoveAll
-// TODO:  MessageReactionRemoveEmoji
+// MessageCreate represents the message delete event.
+type MessageDelete struct {
+	ID        snowflake.ID  `json:"id"`
+	ChannelID snowflake.ID  `json:"channel_id"`
+	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
+}
 
-// TODO:  PresenceUpdate
+// MessageCreate represents the message bulk delete event.
+type MessageDeleteBulk struct {
+	IDs       []snowflake.ID `json:"ids"`
+	ChannelID snowflake.ID   `json:"channel_id"`
+	GuildID   *snowflake.ID  `json:"guild_id,omitempty"`
+}
 
-// TODO:  StageInstanceCreate
-// TODO:  StageInstanceUpdate
-// TODO:  StageInstanceDelete
+// MessageReactionAdd represents a message reaction add event.
+type MessageReactionAdd struct {
+	UserID    snowflake.ID `json:"user_id"`
+	ChannelID snowflake.ID `json:"channel_id"`
+	MessageID snowflake.ID `json:"message_id"`
+	GuildID   snowflake.ID `json:"guild_id,omitempty"`
+	Member    *GuildMember `json:"member,omitempty"`
+	Emoji     *Emoji       `json:"emoji"`
+}
 
-// TODO:  TypingStart
-// TODO:  UserUpdate
+// MessageReactionRemove represents a message reaction remove event.
+type MessageReactionRemove struct {
+	UserID    snowflake.ID  `json:"user_id"`
+	ChannelID snowflake.ID  `json:"channel_id"`
+	MessageID snowflake.ID  `json:"message_id"`
+	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
+	Emoji     *Emoji        `json:"emoji"`
+}
 
-// TODO:  VoiceStateUpdate
-// TODO:  VoiceServerUpdate
-// TODO:  WebhooksUpdate
+// MessageReactionRemoveAll represents a message reaction remove all event.
+type MessageReactionRemoveAll struct {
+	ChannelID snowflake.ID `json:"channel_id"`
+	MessageID snowflake.ID `json:"message_id"`
+	GuildID   snowflake.ID `json:"guild_id,omitempty"`
+}
+
+// MessageReactionRemoveEmoji represents a message reaction remove emoji event.
+type MessageReactionRemoveEmoji struct {
+	ChannelID snowflake.ID  `json:"channel_id"`
+	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
+	MessageID snowflake.ID  `json:"message_id"`
+	Emoji     *PartialEmoji `json:"emoji"`
+}
+
+// PresenceUpdate represents a presence update event.
+type PresenceUpdate struct {
+	User         *User          `json:"user"`
+	GuildID      snowflake.ID   `json:"guild_id"`
+	Status       PresenceStatus `json:"status"`
+	Activities   []*Activity    `json:"activities"`
+	ClientStatus *ClientStatus  `json:"clienbt_status"`
+}
+
+// StageInstanceCreate represents a stage instance create event.
+type StageInstanceCreate *StageInstance
+
+// StageInstanceUpdate represents a stage instance update event.
+type StageInstanceUpdate *StageInstance
+
+// StageInstanceDelete represents a stage instance delete event.
+type StageInstanceDelete *StageInstance
+
+// TypingStart represents a typing start event.
+type TypingStart struct {
+	ChannelID snowflake.ID  `json:"channel_id"`
+	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
+	UserID    snowflake.ID  `json:"user_id"`
+	Timestamp int           `json:"timestamp"`
+	Member    *GuildMember  `json:"member,omitempty"`
+}
+
+// UserUpdate represents a user update event.
+type UserUpdate *User
+
+// VoiceStateUpdate represents the voice state update event.
+type VoiceStateUpdate struct {
+	GuildID                 snowflake.ID  `json:"guild_id"`
+	ChannelID               *snowflake.ID `json:"channel_id,omitempty"`
+	UserID                  snowflake.ID  `json:"user_id"`
+	Member                  *GuildMember  `json:"member,omitempty"`
+	SessionID               string        `json:"session_id"`
+	Deaf                    bool          `json:"deaf"`
+	Mute                    bool          `json:"mute"`
+	SelfDeaf                bool          `json:"self_deaf"`
+	SelfMute                bool          `json:"self_mute"`
+	SelfStream              *bool         `json:"self_stream,omitempty"`
+	SelfVideo               bool          `json:"self_video"`
+	Suppress                bool          `json:"suppress"`
+	RequestToSpeakTimestamp time.Time     `json:"request_to_speak_timestamp"`
+}
+
+// VoiceServerUpdate represents a voice server update event.
+type VoiceServerUpdate struct {
+	Token    string       `json:"token" msgpack:"token"`
+	GuildID  snowflake.ID `json:"guild_id" msgpack:"guild_id"`
+	Endpoint string       `json:"endpoint" msgpack:"endpoint"`
+}
+
+// WebhookUpdate represents a webhook update packet.
+type WebhookUpdate struct {
+	GuildID   snowflake.ID `json:"guild_id" msgpack:"guild_id"`
+	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
+}

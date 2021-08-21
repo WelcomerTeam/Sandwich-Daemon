@@ -1,5 +1,9 @@
 package internal
 
+import (
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+)
+
 const (
 	ShardMaxRetries           = 5
 	ShardCompression          = true
@@ -21,7 +25,7 @@ type ManagerConfiguration struct {
 
 	// Bot specific configuration
 	Bot struct {
-		DefaultPresence *discord.UpdateStatus
+		DefaultPresence *discord.Activity
 		Intents         int64
 	}
 

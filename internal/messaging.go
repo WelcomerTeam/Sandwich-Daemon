@@ -12,6 +12,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
+const (
+	minPayloadCompressionSize = 1000000 // Apply higher level compression to payloads >1 Mb
+)
+
 type MQClient interface {
 	String() string
 	Channel() string

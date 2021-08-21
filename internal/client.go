@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 )
@@ -47,7 +47,7 @@ func NewClient(token string, restTunnelURL string, reverse bool) *Client {
 		mu:            sync.RWMutex{},
 		Token:         token,
 		HTTP:          http.DefaultClient,
-		APIVersion:    "7",
+		APIVersion:    "9",
 		URLHost:       "discord.com",
 		URLScheme:     "https",
 		restTunnelURL: restTunnelURL,
