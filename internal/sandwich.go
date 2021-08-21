@@ -221,48 +221,6 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		}
 	}()
 
-	// If a manager does not persist, we will have to update
-	// the origional configuration instead of override.
-	var config *SandwichConfiguration
-
-	oldManagers := make(map[string]*ManagerConfiguration)
-	storedManagers := []*ManagerConfiguration{}
-
-	// Iterate over our builtin managers, if any do not persist,
-	// we will need to load the old configuration.
-	for _, manager := range configuration.Managers {
-		if !manager.Persist {
-			config, err = sg.LoadConfiguration(path)
-			if err != nil {
-				return err
-			}
-
-			// Add the previous managers to our oldManagers map
-			for _, mg := range config.Managers {
-				oldManagers[mg.Identifier] = mg
-			}
-
-			break
-		}
-	}
-
-	// If we find a manager that does not persist, try to use the old
-	// stored manager. If one does not exist then we can just continue.
-	for _, manager := range configuration.Managers {
-		if !manager.Persist {
-			oldManager, ok := oldManagers[manager.Identifier]
-			if !ok {
-				continue
-			}
-
-			manager = oldManager
-		}
-
-		storedManagers = append(storedManagers, manager)
-	}
-
-	configuration.Managers = storedManagers
-
 	data, err := yaml.Marshal(configuration)
 	if err != nil {
 		return err
