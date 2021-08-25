@@ -1,15 +1,20 @@
 package internal
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/tevino/abool"
@@ -20,6 +25,8 @@ import (
 )
 
 const VERSION = "0.0.1"
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Sandwich struct {
 	sync.RWMutex
@@ -271,6 +278,7 @@ func (sg *Sandwich) Open() (err error) {
 		return err
 	}
 
+	return
 }
 
 func (sg *Sandwich) setupGRPC() (err error) {
@@ -323,7 +331,28 @@ func (sg *Sandwich) PublishWebhook(ctx context.Context, message discord.WebhookM
 	}
 }
 
-// SendWebhook executes a webhook request. Does not support sending files.
-func (sg *Sandwich) SendWebhook(ctx context.Context, webhookUrl string, message discord.WebhookMessage) (status int, err error) {
+func (sg *Sandwich) SendWebhook(ctx context.Context, webhookUrl string,
+	message discord.WebhookMessage) (status int, err error) {
+	var c *Client
 
+	// We will trim whitespace just in case.
+	webhookUrl = strings.TrimSpace(webhookUrl)
+
+	_, err = url.Parse(webhookUrl)
+	if err != nil {
+		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
+	}
+
+	c = sg.NewClient()
+
+	res, err := json.Marshal(message)
+	if err != nil {
+		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
+	}
+
+	_, status, err = c.Fetch(ctx, "POST", webhookUrl, bytes.NewBuffer(res), map[string]string{
+		"Content-Type": "application/json",
+	})
+
+	return status, err
 }

@@ -11,12 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
-	jsoniter "github.com/json-iterator/go"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"golang.org/x/xerrors"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Client represents the REST client.
 type Client struct {
@@ -125,7 +122,7 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 		}
 
 		if res.StatusCode == http.StatusTooManyRequests {
-			resp := structs.TooManyRequests{}
+			resp := discord.TooManyRequests{}
 			err = json.NewDecoder(res.Body).Decode(&resp)
 
 			if err != nil {

@@ -1,15 +1,13 @@
 package discord
 
 import (
-	"time"
-
 	"github.com/WelcomerTeam/RealRock/snowflake"
 )
 
 // channel.go contains the information relating to channels
 
 // ChannelType represents a channel's type.
-type ChannelType int8
+type ChannelType uint8
 
 const (
 	ChannelTypeGuildText ChannelType = iota
@@ -29,7 +27,7 @@ const (
 )
 
 // VideoQualityMode represents the quality of the video
-type VideoQualityMode int8
+type VideoQualityMode uint8
 
 const (
 	VideoQualityModeAuto VideoQualityMode = 1 + iota
@@ -37,7 +35,7 @@ const (
 )
 
 // StageChannelPrivacyLevel represents the privacy level of a stage channel
-type StageChannelPrivacyLevel int8
+type StageChannelPrivacyLevel uint8
 
 const (
 	StageChannelPrivacyLevelPublic StageChannelPrivacyLevel = 1 + iota
@@ -63,7 +61,7 @@ type Channel struct {
 	OwnerID              *snowflake.ID       `json:"owner_id,omitempty"`
 	ApplicationID        *snowflake.ID       `json:"application_id,omitempty"`
 	ParentID             *snowflake.ID       `json:"parent_id,omitempty"`
-	LastPinTimestamp     *time.Time          `json:"last_pin_timestamp,omitempty"`
+	LastPinTimestamp     *string             `json:"last_pin_timestamp,omitempty"`
 
 	RTCRegion        *string           `json:"rtc_region,omitempty"`
 	VideoQualityMode *VideoQualityMode `json:"video_quality_mode,omitempty"`
@@ -89,17 +87,17 @@ type ChannelOverwrite struct {
 
 // ThreadMetadata contains thread-specific channel fields.
 type ThreadMetadata struct {
-	Archived            bool      `json:"archived"`
-	AutoArchiveDuration int       `json:"auto_archive_duration"`
-	ArchiveTimestamp    time.Time `json:"archive_timestamp"`
-	Locked              *bool     `json:"locked,omitempty"`
+	Archived            bool   `json:"archived"`
+	AutoArchiveDuration int    `json:"auto_archive_duration"`
+	ArchiveTimestamp    string `json:"archive_timestamp"`
+	Locked              *bool  `json:"locked,omitempty"`
 }
 
 // ThreadMember is used to indicate whether a user has joined a thread or not.
 type ThreadMember struct {
 	ID            *snowflake.ID `json:"id,omitempty"`
 	UserID        *snowflake.ID `json:"user_id,omitempty"`
-	JoinTimestamp time.Time     `json:"join_timestamp`
+	JoinTimestamp string        `json:"join_timestamp"`
 	Flags         int           `json:"flags"`
 }
 

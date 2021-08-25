@@ -18,3 +18,10 @@ type GatewayBot struct {
 		MaxConcurrency int `json:"max_concurrency"`
 	} `json:"session_start_limit"`
 }
+
+// TooManyRequests represents the payload of a TooManyRequests response.
+type TooManyRequests struct {
+	Message    string `json:"message"`
+	RetryAfter int    `json:"retry_after"`
+	Global     bool   `json:"global"`
+}

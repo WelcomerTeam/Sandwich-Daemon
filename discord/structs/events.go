@@ -18,12 +18,12 @@ type Hello struct {
 
 // Ready represents when the client has completed the initial handshake.
 type Ready struct {
-	Version     int            `json:"version"`
-	User        User           `json:"user"`
-	Guilds      []PartialGuild `json:"guilds"`
-	SessionID   string         `json:"session_id"`
-	Shard       []int          `json:"shard,omitempty"`
-	Application Application    `json:"application"`
+	Version     int                 `json:"version"`
+	User        User                `json:"user"`
+	Guilds      []*UnavailableGuild `json:"guilds"`
+	SessionID   string              `json:"session_id"`
+	Shard       []int               `json:"shard,omitempty"`
+	Application Application         `json:"application"`
 }
 
 // Resumed represents the response to a resume event.
@@ -65,7 +65,7 @@ type ChannelDelete struct {
 type ChannelPisnUpdate struct {
 	GuildID          snowflake.ID `json:"guild_id"`
 	ChannelID        snowflake.ID `json:"channel_id"`
-	LastPinTimestamp *time.Time   `json:"last_pin_timestamp,omitempty"`
+	LastPinTimestamp *string      `json:"last_pin_timestamp,omitempty"`
 }
 
 // ThreadCreate represents a thread create event.
@@ -113,7 +113,7 @@ type GuildCreate struct {
 type GuildUpdate *Guild
 
 // GuildDelete represents a guild delete event.
-type GuildDelete *PartialGuild
+type GuildDelete *UnavailableGuild
 
 // GuildBanAdd represents a guild ban add event.
 type GuildBanAdd struct {
@@ -146,7 +146,7 @@ type GuildIntegrationsUpdate struct {
 
 // GuildMemberAdd represents a guild member add event.
 type GuildMemberAdd struct {
-	*GuildMember
+	*Member
 	GuildID snowflake.ID `json:"guild_id"`
 }
 
@@ -162,17 +162,17 @@ type GuildMemberUpdate struct {
 	Roles        []snowflake.ID `json:"roles"`
 	User         *User          `json:"user"`
 	Nick         string         `json:"nick"`
-	JoinedAt     time.Time      `json:"joined_at"`
-	PremiumSince *time.Time     `json:"premium_since,omitempty"`
+	JoinedAt     string         `json:"joined_at"`
+	PremiumSince *string        `json:"premium_since,omitempty"`
 	Deaf         *bool          `json:"deaf,omitempty"`
-	Mute         *bool          `json:"deaf,omitempty"`
-	Pending      *bool          `json:"deaf,omitempty"`
+	Mute         *bool          `json:"mute,omitempty"`
+	Pending      *bool          `json:"pending,omitempty"`
 }
 
 // GuildMembersChunk represents a guild members chunk event.
 type GuildMembersChunk struct {
 	GuildID    snowflake.ID     `json:"guild_id"`
-	Members    []*GuildMember   `json:"members"`
+	Members    []*Member        `json:"members"`
 	ChunkIndex int              `json:"chunk_index"`
 	ChunkCount int              `json:"chunk_count"`
 	NotFound   []snowflake.ID   `json:"not_found,omitempty"`
@@ -222,18 +222,18 @@ type InteractionCreate *Interaction
 
 // InviteCreate represents the invite create event.
 type InviteCreate struct {
-	ChannelID         snowflake.ID        `json:"channel_id"`
-	Code              string              `json:"code"`
-	CreatedAt         time.Time           `json:"created_at"`
-	GuildID           *snowflake.ID       `json:"guild_id,omitempty"`
-	Inviter           *User               `json:"inviter,omitempty"`
-	MaxAge            int                 `json:"max_age"`
-	MaxUses           int                 `json:"max_uses"`
-	TargetType        *InviteTargetType   `json:"target_type,omitempty"`
-	TargetUser        *User               `json:"target_user,omitempty"`
-	TargetApplication *PartialApplication `json:"target_application"`
-	Temporary         bool                `json:"temporary"`
-	Uses              int                 `json:"uses"`
+	ChannelID         snowflake.ID      `json:"channel_id"`
+	Code              string            `json:"code"`
+	CreatedAt         string            `json:"created_at"`
+	GuildID           *snowflake.ID     `json:"guild_id,omitempty"`
+	Inviter           *User             `json:"inviter,omitempty"`
+	MaxAge            int               `json:"max_age"`
+	MaxUses           int               `json:"max_uses"`
+	TargetType        *InviteTargetType `json:"target_type,omitempty"`
+	TargetUser        *User             `json:"target_user,omitempty"`
+	TargetApplication *Application      `json:"target_application"`
+	Temporary         bool              `json:"temporary"`
+	Uses              int               `json:"uses"`
 }
 
 // InviteDelete represents the invite delete event.
@@ -266,7 +266,7 @@ type MessageReactionAdd struct {
 	ChannelID snowflake.ID `json:"channel_id"`
 	MessageID snowflake.ID `json:"message_id"`
 	GuildID   snowflake.ID `json:"guild_id,omitempty"`
-	Member    *GuildMember `json:"member,omitempty"`
+	Member    *Member      `json:"member,omitempty"`
 	Emoji     *Emoji       `json:"emoji"`
 }
 
@@ -291,7 +291,7 @@ type MessageReactionRemoveEmoji struct {
 	ChannelID snowflake.ID  `json:"channel_id"`
 	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
 	MessageID snowflake.ID  `json:"message_id"`
-	Emoji     *PartialEmoji `json:"emoji"`
+	Emoji     *Emoji        `json:"emoji"`
 }
 
 // PresenceUpdate represents a presence update event.
@@ -318,7 +318,7 @@ type TypingStart struct {
 	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
 	UserID    snowflake.ID  `json:"user_id"`
 	Timestamp int           `json:"timestamp"`
-	Member    *GuildMember  `json:"member,omitempty"`
+	Member    *Member       `json:"member,omitempty"`
 }
 
 // UserUpdate represents a user update event.
@@ -329,7 +329,7 @@ type VoiceStateUpdate struct {
 	GuildID                 snowflake.ID  `json:"guild_id"`
 	ChannelID               *snowflake.ID `json:"channel_id,omitempty"`
 	UserID                  snowflake.ID  `json:"user_id"`
-	Member                  *GuildMember  `json:"member,omitempty"`
+	Member                  *Member       `json:"member,omitempty"`
 	SessionID               string        `json:"session_id"`
 	Deaf                    bool          `json:"deaf"`
 	Mute                    bool          `json:"mute"`
@@ -338,18 +338,18 @@ type VoiceStateUpdate struct {
 	SelfStream              *bool         `json:"self_stream,omitempty"`
 	SelfVideo               bool          `json:"self_video"`
 	Suppress                bool          `json:"suppress"`
-	RequestToSpeakTimestamp time.Time     `json:"request_to_speak_timestamp"`
+	RequestToSpeakTimestamp string        `json:"request_to_speak_timestamp"`
 }
 
 // VoiceServerUpdate represents a voice server update event.
 type VoiceServerUpdate struct {
-	Token    string       `json:"token" msgpack:"token"`
-	GuildID  snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	Endpoint string       `json:"endpoint" msgpack:"endpoint"`
+	Token    string       `json:"token"`
+	GuildID  snowflake.ID `json:"guild_id"`
+	Endpoint string       `json:"endpoint"`
 }
 
 // WebhookUpdate represents a webhook update packet.
 type WebhookUpdate struct {
-	GuildID   snowflake.ID `json:"guild_id" msgpack:"guild_id"`
-	ChannelID snowflake.ID `json:"channel_id" msgpack:"channel_id"`
+	GuildID   snowflake.ID `json:"guild_id"`
+	ChannelID snowflake.ID `json:"channel_id"`
 }
