@@ -40,10 +40,11 @@ type User struct {
 	ID            snowflake.ID     `json:"id"`
 	Username      string           `json:"username"`
 	Discriminator string           `json:"discriminator"`
-	Avatar        string           `json:"avatar"`
+	Avatar        *string          `json:"avatar,omitempty"`
 	Bot           *bool            `json:"bot,omitempty"`
 	System        *bool            `json:"system,omitempty"`
 	MFAEnabled    *bool            `json:"mfa_enabled,omitempty"`
+	Banner        *string          `json:"banner,omitempty"`
 	Locale        *string          `json:"locale,omitempty"`
 	Verified      *bool            `json:"verified,omitempty"`
 	Email         *string          `json:"email,omitempty"`

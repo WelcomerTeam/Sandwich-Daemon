@@ -11,7 +11,7 @@ import (
 
 var NoEventHandler = xerrors.New("No registered handler for event")
 
-var stateHandlers = make(map[string]func(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error))
+var stateHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
 	Sg *Sandwich
@@ -67,13 +67,13 @@ func NewSandwichState() (st *SandwichState) {
 	return st
 }
 
-func registerState(eventType string, handler func(ctx *StateCtx, msg discord.ReceivedPayload) (result structs.StateResult, ok bool, err error)) {
+func registerState(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error)) {
 	stateHandlers[eventType] = handler
 }
 
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx *StateCtx,
-	event discord.ReceivedPayload) (result structs.StateResult, ok bool, err error) {
+	event discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	if f, ok := stateHandlers[event.Type]; ok {
 		return f(ctx, event)
 	}

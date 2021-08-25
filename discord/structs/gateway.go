@@ -72,8 +72,8 @@ const (
 type GatewayPayload struct {
 	Op       GatewayOp       `json:"op"`
 	Data     json.RawMessage `json:"d"`
-	Sequence *int64          `json:"s"`
-	Type     *string         `json:"t"`
+	Sequence int64           `json:"s"`
+	Type     string          `json:"t"`
 
 	// Used internally for trace tracking
 	traceTime time.Time        `json:"-"`

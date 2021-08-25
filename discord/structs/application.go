@@ -1,15 +1,13 @@
 package discord
 
 import (
-	"time"
-
 	"github.com/WelcomerTeam/RealRock/snowflake"
 )
 
-// application.go represents the application object and slash command interactions.
+// application.go represents the application object and interactions.
 
 // ApplicationTeamMemberState represents the state of a member in a team.
-type ApplicationTeamMemberState int8
+type ApplicationTeamMemberState uint8
 
 const (
 	ApplicationTeamMemberStateInvited ApplicationTeamMemberState = 1 + iota
@@ -17,7 +15,7 @@ const (
 )
 
 // ApplicationCommandType represents the different types of application command.
-type ApplicationCommandType int8
+type ApplicationCommandType uint8
 
 const (
 	ApplicationCommandTypeChatInput ApplicationCommandType = 1 + iota
@@ -26,7 +24,7 @@ const (
 )
 
 // ApplicationCommandOptionType represents the different types of options.
-type ApplicationCommandOptionType int8
+type ApplicationCommandOptionType uint8
 
 const (
 	ApplicationCommandOptionTypeSubCommand ApplicationCommandOptionType = 1 + iota
@@ -42,7 +40,7 @@ const (
 )
 
 // InteractionType represents the type of interaction.
-type InteractionType int8
+type InteractionType uint8
 
 const (
 	InteractionTypePing InteractionType = 1 + iota
@@ -60,11 +58,31 @@ const (
 )
 
 // IntegrationExpireBehavior represents the integration expiration
-type IntegrationExpireBehavior int8
+type IntegrationExpireBehavior uint8
 
 const (
 	IntegrationExpireBehaviorRemoveRole IntegrationExpireBehavior = iota
 	IntegrationExpireBehaviorKick
+)
+
+// InteractionComponentType represents the type of component.
+type InteractionComponentType uint8
+
+const (
+	InteractionComponentTypeActionRow InteractionComponentType = 1 + iota
+	InteractionComponentTypeButton
+	InteractionComponentTypeSelectMenu
+)
+
+// InteractionComponentStyle represents the style of a component
+type InteractionComponentStyle uint8
+
+const (
+	InteractionComponentStylePrimary InteractionComponentStyle = 1 + iota
+	InteractionComponentStyleSecondary
+	InteractionComponentStyleSuccess
+	InteractionComponentStyleDanger
+	InteractionComponentStyleLink
 )
 
 // Application response from REST.
@@ -79,7 +97,7 @@ type Application struct {
 	BotRequireCodeGrant bool             `json:"bot_require_code_grant"`
 	TermsOfServiceURL   string           `json:"terms_of_service,omitempty"`
 	PrivacyPolicyURL    string           `json:"privacy_policy_url,omitempty"`
-	Owner               *PartialUser     `json:"owner,omitempty"`
+	Owner               *User            `json:"owner,omitempty"`
 	Summary             string           `json:"summary,omitempty"`
 	VerifyKey           string           `json:"verify_key,omitempty"`
 	Team                *ApplicationTeam `json:"team,omitempty"`
@@ -95,7 +113,7 @@ type Application struct {
 type ApplicationTeam struct {
 	Icon        string                   `json:"icon,omitempty"`
 	ID          snowflake.ID             `json:"id"`
-	Members     []*ApplicationTeamMember `json:"members`
+	Members     []*ApplicationTeamMember `json:"members"`
 	Name        string                   `json:"name"`
 	OwnerUserID snowflake.ID             `json:"owner_user_id"`
 }
@@ -105,7 +123,7 @@ type ApplicationTeamMember struct {
 	MembershipState ApplicationTeamMemberState `json:"membership_state"`
 	Permissions     []string                   `json:"permissions"`
 	TeamID          snowflake.ID               `json:"team_id"`
-	User            *PartialUser               `json:"user"`
+	User            *User                      `json:"user"`
 }
 
 // ApplicationCommand represents an application's command.
@@ -145,7 +163,7 @@ type Interaction struct {
 
 	GuildID   snowflake.ID `json:"guild_id,omitempty"`
 	ChannelID snowflake.ID `json:"channel_id,omitempty"`
-	Member    *GuildMember `json:"member,omitempty"`
+	Member    *Member      `json:"member,omitempty"`
 	User      *User        `json:"user,omitempty"`
 	Token     string       `json:"token"`
 	Version   int          `json:"version"`
@@ -175,20 +193,20 @@ type InteractionDataOption struct {
 
 // InteractionResolvedData represents any extra payload data for an interaction.
 type InteractionResolvedData struct {
-	Users    []*User           `json:"users,omitempty"`
-	Members  []*PartialMember  `json:"members,omitempty"`
-	Roles    []*Role           `json:"roles,omitempty"`
-	Channels []*PartialChannel `json:"channels,omitempty"`
-	Messages []*Message        `json:"messages,omitempty"`
+	Users    []*User    `json:"users,omitempty"`
+	Members  []*Member  `json:"members,omitempty"`
+	Roles    []*Role    `json:"roles,omitempty"`
+	Channels []*Channel `json:"channels,omitempty"`
+	Messages []*Message `json:"messages,omitempty"`
 }
 
 // ApplicationSelectOption represents the structure of select options.
 type ApplicationSelectOption struct {
-	Label       string        `json:"label"`
-	Value       string        `json:"value"`
-	Description *string       `json:"description,omitempty"`
-	Emoji       *PartialEmoji `json:"emoji,omitempty"`
-	Default     *bool         `json:"default,omitempty"`
+	Label       string  `json:"label"`
+	Value       string  `json:"value"`
+	Description *string `json:"description,omitempty"`
+	Emoji       *Emoji  `json:"emoji,omitempty"`
+	Default     *bool   `json:"default,omitempty"`
 }
 
 // Integration represents the structure of an integration.
@@ -197,7 +215,7 @@ type Integration struct {
 	Name            string          `json:"name"`
 	Type            IntegrationType `json:"type"`
 	Enabled         bool            `json:"enabled"`
-	Syncing         *bool           `json:"syncing`
+	Syncing         *bool           `json:"syncing"`
 	RoleID          *snowflake.ID   `json:"role_id,omitempty"`
 	EnableEmoticons *bool           `json:"enable_emoticons,omitempty"`
 
@@ -205,7 +223,7 @@ type Integration struct {
 	ExpireGracePeriod int                        `json:"expire_grace_period"`
 	User              *User                      `json:"user,omitempty"`
 	Account           IntegrationAccount         `json:"account"`
-	SyncedAt          *time.Time                 `json:"synced_at,omitempty"`
+	SyncedAt          *string                    `json:"synced_at,omitempty"`
 	SubscriberCount   int                        `json:"subscriber_count,omitempty"`
 	Revoked           *bool                      `json:"revoked,omitempty"`
 	Application       *Application               `json:"application,omitempty"`
@@ -215,4 +233,20 @@ type Integration struct {
 type IntegrationAccount struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+// InteractionComponent represents the structure of a component.
+type InteractionComponent struct {
+	Type        InteractionComponentType   `json:"type"`
+	CustomID    *string                    `json:"custom_id,omitempty"`
+	Disabled    *bool                      `json:"disabled,omitempty"`
+	Style       *InteractionComponentStyle `json:"style,omitempty"`
+	Label       *string                    `json:"label,omitempty"`
+	Emoji       *Emoji                     `json:"emoji,omitempty"`
+	URL         *string                    `json:"url,omitempty"`
+	Options     []*ApplicationSelectOption `json:"options"`
+	Placeholder *string                    `json:"placeholder,omitempty"`
+	MinValues   *int                       `json:"min_values,omitempty"`
+	MaxValues   *int                       `json:"max_values,omitempty"`
+	Components  []*InteractionComponent    `json:"components,omitempty"`
 }
