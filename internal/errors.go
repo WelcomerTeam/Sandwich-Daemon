@@ -25,6 +25,6 @@ var (
 	ErrReadConfigurationFailure        = xerrors.New("Failed to read configuration")
 	ErrLoadConfigurationFailure        = xerrors.New("Failed to load configuration")
 	ErrConfigurationValidateIdentify   = xerrors.New("Configuration missing valid Identify URI")
-	ErrConfigurationValidateRestTunnel = xerrors.New("Configuration missing valid RestTunnel URI")
+	ErrConfigurationValidatePrometheus = xerrors.New("Configuration missing valid Prometheus Host")
 	ErrConfigurationValidateGRPC       = xerrors.New("Configuration missing valid GRPC Host")
 )

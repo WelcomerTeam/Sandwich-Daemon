@@ -41,7 +41,7 @@ func returnError(err error) string {
 }
 
 // quickHash returns hash from method and input.
-func QuickHash(hashMethod hash.Hash, text string) (result string, err error) {
+func quickHash(hashMethod hash.Hash, text string) (result string, err error) {
 	hashMethod.Reset()
 
 	if _, err := hashMethod.Write([]byte(text)); err != nil {
@@ -51,8 +51,8 @@ func QuickHash(hashMethod hash.Hash, text string) (result string, err error) {
 	return hex.EncodeToString(hashMethod.Sum(nil)), nil
 }
 
-// ReturnRange converts a string like 0-4,6-7 to [0,1,2,3,4,6,7].
-func ReturnRange(_range string, max int) (result []int) {
+// returnRange converts a string like 0-4,6-7 to [0,1,2,3,4,6,7].
+func returnRange(_range string, max int) (result []int) {
 	for _, split := range strings.Split(_range, ",") {
 		ranges := strings.Split(split, "-")
 		if low, err := strconv.Atoi(ranges[0]); err == nil {
@@ -69,7 +69,7 @@ func ReturnRange(_range string, max int) (result []int) {
 	return result
 }
 
-// WebhookTime returns a formatted time.Time as a time accepted by webhooks.
-func WebhookTime(_time time.Time) string {
+// webhookTime returns a formatted time.Time as a time accepted by webhooks.
+func webhookTime(_time time.Time) string {
 	return _time.Format("2006-01-02T15:04:05Z")
 }
