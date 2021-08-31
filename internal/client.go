@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +16,7 @@ import (
 
 // Client represents the REST client.
 type Client struct {
-	mu sync.RWMutex
+	mu sync.Mutex
 
 	Token string
 
@@ -32,23 +31,18 @@ type Client struct {
 	UserAgent string
 
 	isBot bool
-
-	// Will use RestTunnel if not empty
-	restTunnelURL string
-	reverse       bool
 }
 
 // NewClient makes a new client.
-func NewClient(token string, restTunnelURL string, reverse bool) *Client {
+func NewClient(token string) *Client {
 	return &Client{
-		mu:            sync.RWMutex{},
-		Token:         token,
-		HTTP:          http.DefaultClient,
-		APIVersion:    "9",
-		URLHost:       "discord.com",
-		URLScheme:     "https",
-		restTunnelURL: restTunnelURL,
-		reverse:       reverse,
+		mu:         sync.Mutex{},
+		Token:      token,
+		HTTP:       http.DefaultClient,
+		APIVersion: "9",
+		URLHost:    "discord.com",
+		URLScheme:  "https",
+		UserAgent:  "Sandwich/" + VERSION + " (github.com/WelcomerTeam/Sandwich-Daemon)",
 	}
 }
 
@@ -99,8 +93,8 @@ func (c *Client) FetchJSON(ctx context.Context, method string, url string, body 
 
 // HandleRequest makes a request to the Discord API.
 func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Response, err error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Add the /api and version prefix when we did not include one
 	if !strings.HasPrefix(req.URL.Path, "/api") {
@@ -116,40 +110,21 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 		req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), c.Token))
 	}
 
-	if c.restTunnelURL == "" {
-		if res, err = c.HTTP.Do(req); err != nil {
-			return res, fmt.Errorf("failed to do HTTP request: %w", err)
+	if res, err = c.HTTP.Do(req); err != nil {
+		return res, fmt.Errorf("failed to do HTTP request: %w", err)
+	}
+
+	if res.StatusCode == http.StatusTooManyRequests {
+		resp := discord.TooManyRequests{}
+		err = json.NewDecoder(res.Body).Decode(&resp)
+
+		if err != nil {
+			return res, fmt.Errorf("failed to decode body: %w", err)
 		}
 
-		if res.StatusCode == http.StatusTooManyRequests {
-			resp := discord.TooManyRequests{}
-			err = json.NewDecoder(res.Body).Decode(&resp)
+		<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
 
-			if err != nil {
-				return res, fmt.Errorf("failed to decode body: %w", err)
-			}
-
-			<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
-
-			return c.HandleRequest(req, true)
-		}
-	} else {
-		req.Header.Set("Rt-Priority", "true")
-		req.Header.Set("Rt-ResponseType", "RespondWithResponse")
-
-		_url, _ := url.Parse(c.restTunnelURL)
-
-		if c.reverse {
-			req.URL.Host = _url.Host
-			req.URL.Scheme = _url.Scheme
-		} else {
-			req.Header.Set("Rt-URL", req.URL.String())
-			req.URL = _url
-		}
-
-		if res, err = c.HTTP.Do(req); err != nil {
-			return res, fmt.Errorf("failed to do HTTP request: %w", err)
-		}
+		return c.HandleRequest(req, true)
 	}
 
 	if res.StatusCode == http.StatusUnauthorized {

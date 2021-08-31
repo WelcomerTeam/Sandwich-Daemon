@@ -5,21 +5,23 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"net/url"
+	"net/http"
 	"os"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/WelcomerTeam/RealRock/bucketstore"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/andybalholm/brotli"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/tevino/abool"
 	"go.uber.org/atomic"
-	"golang.org/x/xerrors"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
 )
@@ -29,34 +31,48 @@ const VERSION = "0.0.1"
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Sandwich struct {
-	sync.RWMutex
+	sync.Mutex
+
+	ctx    context.Context
+	cancel func()
 
 	Logger    zerolog.Logger
-	StartTime time.Time
+	StartTime time.Time `json:"start_time"`
 
-	ConfigurationLocation atomic.String
+	configurationMu sync.RWMutex
+	Configuration   *SandwichConfiguration `json:"configuration"`
 
-	ConfigurationMu sync.RWMutex
-	Configuration   *SandwichConfiguration
+	gatewayLimiter limiter.DurationLimiter `json:"-"`
 
-	// RestTunnel is a third party library that handles the ratelimiting.
-	// RestTunnel can accept either a direct URL or path only (when running in reverse mode)
-	// https://github.com/WelcomerTeam/RestTunnel
-	RestTunnelEnabled  abool.AtomicBool
-	RestTunnelOnlyPath abool.AtomicBool
+	ProducerClient *MQClient `json:"-"`
 
-	ProducerClient *MQClient
+	IdentifyBuckets *bucketstore.BucketStore `json:"-"`
 
 	// EventPool contains the global event pool limiter defined on startup flags.
 	// EventPoolWaiting stores any events that are waiting for a spot.
-	EventPool        *limiter.ConcurrencyLimiter
-	EventPoolWaiting atomic.Int64
-	EventPoolLimit   int
+	EventPool        *limiter.ConcurrencyLimiter `json:"-"`
+	EventPoolWaiting atomic.Int64                `json:"-"`
+	EventPoolLimit   int                         `json:"-"`
 
-	ManagersMu sync.RWMutex
-	Managers   map[string]*Manager
+	managersMu sync.RWMutex
+	Managers   map[string]*Manager `json:"managers"`
 
-	State *SandwichState
+	State *SandwichState `json:"-"`
+
+	Client *Client `json:"-"`
+
+	// SandwichPayload pool
+	payloadPool sync.Pool
+	// ReceivedPayload pool
+	receivedPool sync.Pool
+	// SentPayload pool
+	sentPool sync.Pool
+	// Buffer pool
+	bufferPool sync.Pool
+
+	// Brotli writers pool
+	defaultCompressorPool sync.Pool
+	fastCompressorPool    sync.Pool
 }
 
 // SandwichConfiguration represents the configuration file
@@ -86,20 +102,19 @@ type SandwichConfiguration struct {
 
 	Identify struct {
 		// URL allows for variables:
-		// {shard}, {shard_count}, {auth}, {manager_name}, {shard_group_id}
+		// {shard_id}, {shard_count}, {token} {token_hash}, {max_concurrency}
 		URL string
 
 		Headers map[string]string
 	}
 
-	RestTunnel struct {
-		Enabled bool
-		URL     string
-	}
-
 	Producer struct {
 		Type          string
 		Configuration map[string]interface{}
+	}
+
+	Prometheus struct {
+		Host string
 	}
 
 	GRPC struct {
@@ -117,10 +132,12 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 	sg = &Sandwich{
 		Logger: zerolog.New(logger).With().Timestamp().Logger(),
 
-		ConfigurationMu: sync.RWMutex{},
+		configurationMu: sync.RWMutex{},
 		Configuration:   &SandwichConfiguration{},
 
-		ManagersMu: sync.RWMutex{},
+		gatewayLimiter: *limiter.NewDurationLimiter(1, time.Second),
+
+		managersMu: sync.RWMutex{},
 		Managers:   make(map[string]*Manager),
 
 		EventPool:        limiter.NewConcurrencyLimiter(eventPoolLimit),
@@ -128,6 +145,30 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 		EventPoolLimit:   eventPoolLimit,
 
 		State: NewSandwichState(),
+
+		payloadPool: sync.Pool{
+			New: func() interface{} { return new(structs.SandwichPayload) },
+		},
+
+		receivedPool: sync.Pool{
+			New: func() interface{} { return new(discord.GatewayPayload) },
+		},
+
+		sentPool: sync.Pool{
+			New: func() interface{} { return new(discord.SentPayload) },
+		},
+
+		bufferPool: sync.Pool{
+			New: func() interface{} { return new(bytes.Buffer) },
+		},
+
+		defaultCompressorPool: sync.Pool{
+			New: func() interface{} { return brotli.NewWriterLevel(nil, brotli.DefaultCompression) },
+		},
+
+		fastCompressorPool: sync.Pool{
+			New: func() interface{} { return brotli.NewWriterLevel(nil, brotli.BestSpeed) },
+		},
 	}
 
 	sg.Lock()
@@ -138,8 +179,8 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 		return nil, err
 	}
 
-	sg.ConfigurationMu.Lock()
-	defer sg.ConfigurationMu.Unlock()
+	sg.configurationMu.Lock()
+	defer sg.configurationMu.Unlock()
 
 	sg.Configuration = configuration
 
@@ -247,8 +288,8 @@ func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) 
 		return ErrConfigurationValidateIdentify
 	}
 
-	if configuration.RestTunnel.Enabled && configuration.RestTunnel.URL == "" {
-		return ErrConfigurationValidateRestTunnel
+	if configuration.Prometheus.Host == "" {
+		return ErrConfigurationValidatePrometheus
 	}
 
 	if configuration.GRPC.Host == "" {
@@ -260,31 +301,92 @@ func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) 
 
 // Open starts up any listeners, configures services and starts up managers.
 func (sg *Sandwich) Open() (err error) {
-	sg.ConfigurationMu.RLock()
-	defer sg.ConfigurationMu.RUnlock()
+	sg.configurationMu.RLock()
+	defer sg.configurationMu.RUnlock()
 
 	sg.StartTime = time.Now().UTC()
 	sg.Logger.Info().Msgf("Starting sandwich. Version %s", VERSION)
 
-	// Setup GRPC
-	err = sg.setupGRPC()
-	if err != nil {
-		return err
-	}
+	go sg.PublishSimpleWebhook("Starting sandwich", "", "Version "+VERSION, EmbedColourSandwich)
 
-	// Setup RestTunnel
-	err = sg.setupRestTunnel()
-	if err != nil {
-		return err
-	}
+	// Setup GRPC
+	go sg.setupGRPC()
+
+	// Setup Prometheus
+	go sg.setupPrometheus()
+
+	sg.Logger.Info().Msg("Creating managers")
+	sg.startManagers()
 
 	return
 }
 
+// Close closes all managers gracefully.
+func (sg *Sandwich) Close() (err error) {
+	sg.Logger.Info().Msg("Closing sandwich")
+	go sg.PublishSimpleWebhook("Sandwich closing", "", "", EmbedColourSandwich)
+
+	sg.managersMu.RLock()
+	for _, manager := range sg.Managers {
+		manager.Close()
+	}
+	sg.managersMu.RUnlock()
+
+	if sg.cancel != nil {
+		sg.cancel()
+	}
+
+	return nil
+}
+
+func (sg *Sandwich) startManagers() (err error) {
+	sg.managersMu.Lock()
+
+	for _, managerConfiguration := range sg.Configuration.Managers {
+		if _, duplicate := sg.Managers[managerConfiguration.Identifier]; duplicate {
+			sg.Logger.Warn().
+				Str("identifier", managerConfiguration.Identifier).
+				Msg("Manager contains duplicate identifier. Ignoring.")
+
+			go sg.PublishSimpleWebhook("Manager contains duplicate identifier. Ignoring.", managerConfiguration.Identifier, "", EmbedColourWarning)
+		}
+
+		manager, err := sg.NewManager(managerConfiguration)
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to create manager")
+
+			continue
+		}
+
+		sg.Managers[managerConfiguration.Identifier] = manager
+
+		err = manager.Initialize()
+		if err != nil {
+			manager.Error.Store(err.Error())
+
+			manager.Logger.Error().Err(err).Msg("Failed to initialize manager")
+			go sg.PublishSimpleWebhook("Failed to open manager", "`"+err.Error()+"`", "", EmbedColourDanger)
+		}
+
+		if managerConfiguration.AutoStart {
+			go manager.Open()
+		}
+	}
+
+	sg.managersMu.Unlock()
+
+	return nil
+}
+
 func (sg *Sandwich) setupGRPC() (err error) {
-	// listener, err := net.Listen(sg.Configuration.GRPC.Network, sg.Configuration.GRPC.Host)
+	// sg.configurationMu.RLock()
+	// network := sg.Configuration.GRPC.Network
+	// host := sg.Configuration.GRPC.Host
+	// sg.configurationMu.RUnlock()
+
+	// listener, err := net.Listen(network, host)
 	// if err != nil {
-	// 	sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to bind to host")
+	// 	sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to bind to host")
 
 	// 	return
 	// }
@@ -295,64 +397,36 @@ func (sg *Sandwich) setupGRPC() (err error) {
 
 	// err = grpcListener.Serve(listener)
 	// if err != nil {
-	// 	sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to serve gRPC server")
+	// 	sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
 
 	// 	return
 	// }
 
-	// sg.Logger.Info().Msgf("Serving gRPC at %s", sg.Configuration.GRPC.Host)
+	// sg.Logger.Info().Msgf("Serving gRPC at %s", host)
 
 	return nil
 }
 
-func (sg *Sandwich) setupRestTunnel() (err error) {
-	if sg.Configuration.RestTunnel.Enabled {
-		enabled, reverse, err := sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
-		if err != nil {
-			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
-		}
+func (sg *Sandwich) setupPrometheus() (err error) {
+	sg.configurationMu.RLock()
+	host := sg.Configuration.Prometheus.Host
+	sg.configurationMu.RUnlock()
 
-		sg.RestTunnelOnlyPath.SetTo(reverse)
-		sg.RestTunnelEnabled.SetTo(enabled)
-	} else {
-		sg.RestTunnelEnabled.UnSet()
+	prometheus.MustRegister(prometheus.NewBuildInfoCollector())
+
+	http.Handle("/metrics", promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{
+			EnableOpenMetrics: true,
+		},
+	))
+
+	err = http.ListenAndServe(host, nil)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve prometheus server")
 	}
+
+	sg.Logger.Info().Msgf("Serving prometheus at %s", host)
 
 	return nil
-}
-
-// PublishWebhook sends a webhook message to all added webhooks in the configuration.
-func (sg *Sandwich) PublishWebhook(ctx context.Context, message discord.WebhookMessage) {
-	for _, webhook := range sg.Configuration.Webhooks {
-		_, err := sg.SendWebhook(ctx, webhook, message)
-		if err != nil && !xerrors.Is(err, context.Canceled) {
-			sg.Logger.Warn().Err(err).Str("url", webhook).Msg("Failed to send webhook")
-		}
-	}
-}
-
-func (sg *Sandwich) SendWebhook(ctx context.Context, webhookUrl string,
-	message discord.WebhookMessage) (status int, err error) {
-	var c *Client
-
-	// We will trim whitespace just in case.
-	webhookUrl = strings.TrimSpace(webhookUrl)
-
-	_, err = url.Parse(webhookUrl)
-	if err != nil {
-		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
-	}
-
-	c = sg.NewClient()
-
-	res, err := json.Marshal(message)
-	if err != nil {
-		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
-	}
-
-	_, status, err = c.Fetch(ctx, "POST", webhookUrl, bytes.NewBuffer(res), map[string]string{
-		"Content-Type": "application/json",
-	})
-
-	return status, err
 }

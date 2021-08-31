@@ -24,43 +24,43 @@ type StateCtx struct {
 // SandwichState stores the collective state of all ShardGroups
 // accross all Managers.
 type SandwichState struct {
-	GuildsMu sync.RWMutex
+	guildsMu sync.RWMutex
 	Guilds   map[snowflake.ID]*discord.StateGuild
 
-	GuildMembersMu sync.RWMutex
+	guildMembersMu sync.RWMutex
 	GuildMembers   map[snowflake.ID]*discord.StateGuildMembers
 
-	ChannelsMu sync.RWMutex
+	channelsMu sync.RWMutex
 	Channels   map[snowflake.ID]*discord.StateChannel
 
-	RolesMu sync.RWMutex
+	rolesMu sync.RWMutex
 	Roles   map[snowflake.ID]*discord.StateRole
 
-	EmojisMu sync.RWMutex
+	emojisMu sync.RWMutex
 	Emojis   map[snowflake.ID]*discord.StateEmoji
 
-	UsersMu sync.RWMutex
+	usersMu sync.RWMutex
 	Users   map[snowflake.ID]*discord.StateUser
 }
 
 func NewSandwichState() (st *SandwichState) {
 	st = &SandwichState{
-		GuildsMu: sync.RWMutex{},
+		guildsMu: sync.RWMutex{},
 		Guilds:   make(map[snowflake.ID]*discord.StateGuild),
 
-		GuildMembersMu: sync.RWMutex{},
+		guildMembersMu: sync.RWMutex{},
 		GuildMembers:   make(map[snowflake.ID]*discord.StateGuildMembers),
 
-		ChannelsMu: sync.RWMutex{},
+		channelsMu: sync.RWMutex{},
 		Channels:   make(map[snowflake.ID]*discord.StateChannel),
 
-		RolesMu: sync.RWMutex{},
+		rolesMu: sync.RWMutex{},
 		Roles:   make(map[snowflake.ID]*discord.StateRole),
 
-		EmojisMu: sync.RWMutex{},
+		emojisMu: sync.RWMutex{},
 		Emojis:   make(map[snowflake.ID]*discord.StateEmoji),
 
-		UsersMu: sync.RWMutex{},
+		usersMu: sync.RWMutex{},
 		Users:   make(map[snowflake.ID]*discord.StateUser),
 	}
 
