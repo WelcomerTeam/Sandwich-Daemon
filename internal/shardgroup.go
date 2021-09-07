@@ -5,21 +5,27 @@ import (
 	"time"
 
 	snowflake "github.com/WelcomerTeam/RealRock/snowflake"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
+	"golang.org/x/net/context"
+	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
 
 // ShardGroup represents a group of shards
 type ShardGroup struct {
-	Error atomic.String `json:"error"`
+	Error *atomic.String `json:"error"`
 
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
 
 	Start time.Time `json:"start"`
 
-	WaitingFor atomic.Int32 `json:"-"`
+	WaitingFor *atomic.Int32 `json:"-"`
+
+	userMu sync.RWMutex  `json:"-"`
+	User   *discord.User `json:"user"`
 
 	ID int32 `json:"id"`
 
@@ -54,14 +60,14 @@ type ShardGroup struct {
 // NewShardGroup creates a new shardgroup.
 func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int, shardCount int) (sg *ShardGroup) {
 	sg = &ShardGroup{
-		Error: atomic.String{},
+		Error: &atomic.String{},
 
 		Manager: mg,
 		Logger:  mg.Logger,
 
 		Start: time.Now().UTC(),
 
-		WaitingFor: atomic.Int32{},
+		WaitingFor: &atomic.Int32{},
 
 		ID: shardGroupID,
 
@@ -93,17 +99,108 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int, shardCount 
 // Once the shardgroup has fully finished connecting and are ready, then floodgate will be enabled allowing
 // their events to be handled.
 func (sg *ShardGroup) Open() (ready chan bool, err error) {
-	// TODO
+	sg.Start = time.Now().UTC()
 
-	// Create Shards
-	// Try connect first Shard. Retry on error and set sg.Error after too many retries.
-	// Open first shard in goroutine
-	// Create new goroutine for each shard that attempts to constantly retry then shard.Open after and Done a waitgroup
-	// Wait for all shards to connect and open.
-	// Create new goroutine that calls shard.WaitforReady
-	// Enable floodgate and close ready.
+	ready = make(chan bool, 1)
 
-	return
+	sg.Logger.Info().
+		Int("shard_count", sg.ShardCount).
+		Int("shard_ids", len(sg.ShardIDs)).
+		Msg("Starting shardgroup")
+
+	sg.shardsMu.Lock()
+	for _, shardID := range sg.ShardIDs {
+		shard := sg.NewShard(shardID)
+		sg.Shards[shardID] = shard
+	}
+	sg.shardsMu.Unlock()
+
+	initialShard := sg.Shards[sg.ShardIDs[0]]
+
+	for {
+		err = initialShard.Connect()
+
+		if err != nil && !xerrors.Is(err, context.Canceled) {
+			retriesRemaining := initialShard.RetriesRemaining.Load()
+
+			if retriesRemaining > 0 {
+				sg.Logger.Error().Err(err).
+					Int32("retries_remaining", retriesRemaining).
+					Msg("Failed to connect shard. Retrying...")
+			} else {
+				sg.Logger.Error().Err(err).
+					Msg("Failed to connect shard. Cannot continue.")
+
+				sg.Error.Store(err.Error())
+
+				sg.Close()
+
+				return
+			}
+
+			initialShard.RetriesRemaining.Sub(1)
+		} else {
+			break
+		}
+	}
+
+	go initialShard.Open()
+
+	connectGroup := sync.WaitGroup{}
+
+	for _, shardID := range sg.ShardIDs[1:] {
+		connectGroup.Add(1)
+
+		go func(shardID int) {
+			sg.shardsMu.RLock()
+			shard := sg.Shards[shardID]
+			sg.shardsMu.RUnlock()
+
+			for {
+				err = shard.Connect()
+				if err != nil && !xerrors.Is(err, context.Canceled) {
+					sg.Logger.Warn().Err(err).
+						Int("shard_id", shardID).
+						Msgf("Failed to connect shard. Retrying.")
+				} else {
+					go shard.Open()
+
+					break
+				}
+
+				connectGroup.Done()
+			}
+		}(shardID)
+	}
+
+	connectGroup.Wait()
+	sg.Logger.Info().Msg("All shards have connected")
+
+	go func(sg *ShardGroup) {
+		sg.shardsMu.RLock()
+		for _, shardID := range sg.ShardIDs {
+			shard := sg.Shards[shardID]
+			sg.WaitingFor.Store(int32(shardID))
+			shard.WaitForReady()
+		}
+		sg.shardsMu.RUnlock()
+
+		sg.Logger.Info().Msg("All shards are now ready")
+
+		sg.Manager.shardGroupsMu.RLock()
+		for sgID, _sg := range sg.Manager.ShardGroups {
+			if sgID != sg.ID {
+				_sg.floodgate.Store(false)
+				_sg.Close()
+			}
+		}
+		sg.Manager.shardGroupsMu.RUnlock()
+
+		sg.floodgate.Store(true)
+		close(ready)
+	}(sg)
+
+	return err
 }
 
 // Close closes all shards in a shardgroup.

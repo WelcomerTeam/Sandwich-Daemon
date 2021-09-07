@@ -2,7 +2,6 @@ package discord
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/WelcomerTeam/RealRock/snowflake"
 )
@@ -74,16 +73,6 @@ type GatewayPayload struct {
 	Data     json.RawMessage `json:"d"`
 	Sequence int64           `json:"s"`
 	Type     string          `json:"t"`
-
-	// Used internally for trace tracking
-	traceTime time.Time        `json:"-"`
-	traces    map[string]int64 `json:"-"`
-}
-
-// AddTrace adds a trace entry to a GatewayPayload.
-func (gp *GatewayPayload) AddTrace(name string, now time.Time) {
-	gp.traces[name] = now.Sub(gp.traceTime).Milliseconds()
-	gp.traceTime = now
 }
 
 // SentPayload represents the base payload we send to discords gateway.
@@ -99,7 +88,7 @@ type Identify struct {
 	Token          string              `json:"token"`
 	Properties     *IdentifyProperties `json:"properties"`
 	Compress       bool                `json:"compress"`
-	LargeThreshold *int                `json:"large_threshold,omitempty"`
+	LargeThreshold int                 `json:"large_threshold"`
 	Shard          [2]int              `json:"shard,omitempty"`
 	Presence       *UpdateStatus       `json:"presence,omitempty"`
 	Intents        int64               `json:"intents"`

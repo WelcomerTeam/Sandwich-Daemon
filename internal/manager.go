@@ -26,8 +26,10 @@ const (
 	ShardLargeThreshold          = 100
 	ShardMaxHeartbeatFailures    = 5
 	MessagingMaxClientNameNumber = 9999
-	IdentifyRetry                = (5 * time.Second)
-	IdentifyRateLimit            = (5 * time.Second) + (500 * time.Millisecond)
+
+	StandardIdentifyLimit = 5
+	IdentifyRetry         = (StandardIdentifyLimit * time.Second)
+	IdentifyRateLimit     = (StandardIdentifyLimit * time.Second) + (500 * time.Millisecond)
 )
 
 // Manager represents a single application.
@@ -35,7 +37,7 @@ type Manager struct {
 	ctx    context.Context
 	cancel func()
 
-	Error atomic.String `json:"error"`
+	Error *atomic.String `json:"error"`
 
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
@@ -76,9 +78,9 @@ type ManagerConfiguration struct {
 
 	// Bot specific configuration
 	Bot struct {
-		DefaultPresence      *discord.Activity `json:"default_presence"`
-		Intents              int64             `json:"intents"`
-		ChunkGuildsOnStartup bool              `json":chunk_guilds_on_startup"`
+		DefaultPresence      *discord.UpdateStatus `json:"default_presence"`
+		Intents              int64                 `json:"intents"`
+		ChunkGuildsOnStartup bool                  `json":chunk_guilds_on_startup"`
 	} `json:"bot"`
 
 	Caching struct {
@@ -174,7 +176,12 @@ func (mg *Manager) Open() (err error) {
 
 	ready, err := sg.Open()
 	if err != nil {
-		go mg.Sandwich.PublishSimpleWebhook("Failed to scale manager", "`"+err.Error()+"`", "Manager: "+mg.Configuration.Identifier, EmbedColourDanger)
+		go mg.Sandwich.PublishSimpleWebhook(
+			"Failed to scale manager",
+			"`"+err.Error()+"`",
+			"Manager: "+mg.Configuration.Identifier,
+			EmbedColourDanger,
+		)
 
 		return err
 	}
@@ -243,7 +250,7 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 		data,
 	)
 
-	return
+	return err
 }
 
 // WaitForIdentify blocks until a shard can identify.

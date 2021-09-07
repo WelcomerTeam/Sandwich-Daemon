@@ -30,6 +30,11 @@ const VERSION = "0.0.1"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+const (
+	PermissionsDefault = 0o744
+	PermissionWrite    = 0o600
+)
+
 type Sandwich struct {
 	sync.Mutex
 
@@ -51,7 +56,7 @@ type Sandwich struct {
 	// EventPool contains the global event pool limiter defined on startup flags.
 	// EventPoolWaiting stores any events that are waiting for a spot.
 	EventPool        *limiter.ConcurrencyLimiter `json:"-"`
-	EventPoolWaiting atomic.Int64                `json:"-"`
+	EventPoolWaiting *atomic.Int64               `json:"-"`
 	EventPoolLimit   int                         `json:"-"`
 
 	managersMu sync.RWMutex
@@ -75,7 +80,7 @@ type Sandwich struct {
 	fastCompressorPool    sync.Pool
 }
 
-// SandwichConfiguration represents the configuration file
+// SandwichConfiguration represents the configuration file.
 type SandwichConfiguration struct {
 	Logging struct {
 		Level              string
@@ -127,7 +132,7 @@ type SandwichConfiguration struct {
 	Managers []*ManagerConfiguration
 }
 
-// NewSandwich creates the application state and initializes it
+// NewSandwich creates the application state and initializes it.
 func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit int) (sg *Sandwich, err error) {
 	sg = &Sandwich{
 		Logger: zerolog.New(logger).With().Timestamp().Logger(),
@@ -141,7 +146,7 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 		Managers:   make(map[string]*Manager),
 
 		EventPool:        limiter.NewConcurrencyLimiter(eventPoolLimit),
-		EventPoolWaiting: *atomic.NewInt64(0),
+		EventPoolWaiting: atomic.NewInt64(0),
 		EventPoolLimit:   eventPoolLimit,
 
 		State: NewSandwichState(),
@@ -199,7 +204,7 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 	writers = append(writers, logger)
 
 	if sg.Configuration.Logging.FileLoggingEnabled {
-		if err := os.MkdirAll(sg.Configuration.Logging.Directory, 0o744); err != nil {
+		if err := os.MkdirAll(sg.Configuration.Logging.Directory, PermissionsDefault); err != nil {
 			log.Error().Err(err).Str("path", sg.Configuration.Logging.Directory).Msg("Unable to create log directory")
 		} else {
 			lumber := &lumberjack.Logger{
@@ -229,7 +234,7 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 	return sg, nil
 }
 
-// LoadConfiguration handles loading the configuration file
+// LoadConfiguration handles loading the configuration file.
 func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfiguration, err error) {
 	sg.Logger.Debug().Msg("Loading configuration")
 
@@ -259,7 +264,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 	return configuration, nil
 }
 
-// SaveConfiguration handles saving the configuration file
+// SaveConfiguration handles saving the configuration file.
 func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path string) (err error) {
 	sg.Logger.Debug().Msg("Saving configuration")
 
@@ -274,7 +279,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return err
 	}
 
-	err = ioutil.WriteFile(path, data, 0o600)
+	err = ioutil.WriteFile(path, data, PermissionWrite)
 	if err != nil {
 		return err
 	}
@@ -282,7 +287,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 	return nil
 }
 
-// ValidateConfiguration ensures certain values in the configuration are passed
+// ValidateConfiguration ensures certain values in the configuration are passed.
 func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) (err error) {
 	if configuration.Identify.URL == "" {
 		return ErrConfigurationValidateIdentify
@@ -301,9 +306,6 @@ func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) 
 
 // Open starts up any listeners, configures services and starts up managers.
 func (sg *Sandwich) Open() (err error) {
-	sg.configurationMu.RLock()
-	defer sg.configurationMu.RUnlock()
-
 	sg.StartTime = time.Now().UTC()
 	sg.Logger.Info().Msgf("Starting sandwich. Version %s", VERSION)
 
@@ -324,6 +326,7 @@ func (sg *Sandwich) Open() (err error) {
 // Close closes all managers gracefully.
 func (sg *Sandwich) Close() (err error) {
 	sg.Logger.Info().Msg("Closing sandwich")
+
 	go sg.PublishSimpleWebhook("Sandwich closing", "", "", EmbedColourSandwich)
 
 	sg.managersMu.RLock()
@@ -348,7 +351,12 @@ func (sg *Sandwich) startManagers() (err error) {
 				Str("identifier", managerConfiguration.Identifier).
 				Msg("Manager contains duplicate identifier. Ignoring.")
 
-			go sg.PublishSimpleWebhook("Manager contains duplicate identifier. Ignoring.", managerConfiguration.Identifier, "", EmbedColourWarning)
+			go sg.PublishSimpleWebhook(
+				"Manager contains duplicate identifier. Ignoring.",
+				managerConfiguration.Identifier,
+				"",
+				EmbedColourWarning,
+			)
 		}
 
 		manager, err := sg.NewManager(managerConfiguration)
@@ -365,6 +373,7 @@ func (sg *Sandwich) startManagers() (err error) {
 			manager.Error.Store(err.Error())
 
 			manager.Logger.Error().Err(err).Msg("Failed to initialize manager")
+
 			go sg.PublishSimpleWebhook("Failed to open manager", "`"+err.Error()+"`", "", EmbedColourDanger)
 		}
 
@@ -412,13 +421,12 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	host := sg.Configuration.Prometheus.Host
 	sg.configurationMu.RUnlock()
 
-	prometheus.MustRegister(prometheus.NewBuildInfoCollector())
+	prometheus.MustRegister(prometheus.NewGoCollector())
+	prometheus.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 
 	http.Handle("/metrics", promhttp.HandlerFor(
 		prometheus.DefaultGatherer,
-		promhttp.HandlerOpts{
-			EnableOpenMetrics: true,
-		},
+		promhttp.HandlerOpts{},
 	))
 
 	err = http.ListenAndServe(host, nil)

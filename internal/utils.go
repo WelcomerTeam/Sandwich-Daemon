@@ -6,21 +6,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/WelcomerTeam/RealRock/snowflake"
 )
 
 const (
-	daySeconds            = 86400
-	hourSeconds           = 3600
-	minuteSeconds         = 60
-	discordSnowflakeEpoch = 1420070400000
+	daySeconds    = 86400
+	hourSeconds   = 3600
+	minuteSeconds = 60
 )
-
-// We change the default Epoch of the snowflake to match discord's.
-func init() {
-	snowflake.Epoch = discordSnowflakeEpoch
-}
 
 type void struct{}
 
