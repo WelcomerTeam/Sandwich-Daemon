@@ -22,7 +22,7 @@ type StateCtx struct {
 }
 
 // SandwichState stores the collective state of all ShardGroups
-// accross all Managers.
+// across all Managers.
 type SandwichState struct {
 	guildsMu sync.RWMutex
 	Guilds   map[snowflake.ID]*discord.StateGuild

@@ -42,12 +42,14 @@ func NewMQClient(mqType string) (MQClient, error) {
 
 // PublishEvent publishes a SandwichPayload.
 func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
-	sh.Manager.ConfigurationMu.RLock()
-	defer sh.Manager.ConfigurationMu.RUnlock()
+	sh.Manager.configurationMu.RLock()
+	identifier := sh.Manager.Configuration.ProducerIdentifier
+	channelName := sh.Manager.Configuration.Messaging.ChannelName
+	sh.Manager.configurationMu.RUnlock()
 
 	packet.Metadata = structs.SandwichMetadata{
 		Version:    VERSION,
-		Identifier: sh.Manager.Configuration.Identifier,
+		Identifier: identifier,
 		Shard: [3]int{
 			int(sh.ShardGroup.ID),
 			sh.ShardID,
@@ -108,10 +110,10 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 
 	// a := time.Now()
 
-	compressedPayload := sh.cp.Get().(*bytes.Buffer)
+	compressedPayload := sh.Sandwich.bufferPool.Get().(*bytes.Buffer)
 
 	if len(payload) > minPayloadCompressionSize {
-		dc := sh.DefaultCompressor.Get().(*brotli.Writer)
+		dc := sh.Sandwich.defaultCompressorPool.Get().(*brotli.Writer)
 		dc.Reset(compressedPayload)
 
 		_, err = dc.Write(payload)
@@ -120,9 +122,9 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 		}
 
 		dc.Flush()
-		sh.DefaultCompressor.Put(dc)
+		sh.Sandwich.defaultCompressorPool.Put(dc)
 	} else {
-		fc := sh.FastCompressor.Get().(*brotli.Writer)
+		fc := sh.Sandwich.fastCompressorPool.Get().(*brotli.Writer)
 		fc.Reset(compressedPayload)
 
 		_, err = fc.Write(payload)
@@ -131,17 +133,17 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 		}
 
 		fc.Flush()
-		sh.FastCompressor.Put(fc)
+		sh.Sandwich.fastCompressorPool.Put(fc)
 	}
 
 	err = sh.Manager.ProducerClient.Publish(
 		sh.ctx,
-		sh.Manager.Configuration.Messaging.ChannelName,
+		channelName,
 		compressedPayload.Bytes(),
 	)
 
 	compressedPayload.Reset()
-	sh.cp.Put(compressedPayload)
+	sh.Sandwich.bufferPool.Put(compressedPayload)
 
 	if err != nil {
 		return xerrors.Errorf("publishEvent publish: %w", err)
