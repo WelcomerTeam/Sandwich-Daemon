@@ -46,7 +46,6 @@ func (sg *Sandwich) PublishWebhook(message discord.WebhookMessage) {
 }
 
 func (sg *Sandwich) SendWebhook(webhookUrl string, message discord.WebhookMessage) (status int, err error) {
-
 	webhookUrl = strings.TrimSpace(webhookUrl)
 
 	_, err = url.Parse(webhookUrl)
