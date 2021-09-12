@@ -37,18 +37,18 @@ type ShardGroup struct {
 	ReadyWait *sync.WaitGroup `json:"-"`
 
 	// MemberChunksCallback is used to signal when a guild is chunking.
-	memberChunksCallbackMu sync.RWMutex                  `json:"-"`
+	memberChunksCallbackMu sync.RWMutex                          `json:"-"`
 	MemberChunksCallback   map[discord.Snowflake]*sync.WaitGroup `json:"-"`
 
 	// MemberChunksComplete is used to signal if a guild has recently
 	// been chunked. It is up to the guild task to remove this bool
 	// a few seconds after finishing chunking.
-	memberChunksCompleteMu sync.RWMutex               `json:"-"`
+	memberChunksCompleteMu sync.RWMutex                       `json:"-"`
 	MemberChunksComplete   map[discord.Snowflake]*atomic.Bool `json:"-"`
 
 	// MemberChunkCallbacks is used to signal when any MEMBER_CHUNK
 	// events are received for the specific guild.
-	memberChunkCallbacksMu sync.RWMutex            `json:"-"`
+	memberChunkCallbacksMu sync.RWMutex                    `json:"-"`
 	MemberChunkCallbacks   map[discord.Snowflake]chan bool `json:"-"`
 
 	// Used to override when events can be processed.

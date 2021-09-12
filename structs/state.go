@@ -6,3 +6,10 @@ type StateResult struct {
 	Data  interface{}
 	Extra map[string]interface{}
 }
+
+type StateGuild struct{}
+type StateGuildMembers struct{}
+type StateRole struct{}
+type StateEmoji struct{}
+type StateUser struct{}
+type StateChannel struct{}

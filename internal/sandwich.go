@@ -42,10 +42,10 @@ type Sandwich struct {
 	cancel func()
 
 	Logger    zerolog.Logger
-	StartTime time.Time `json:"start_time"`
+	StartTime time.Time `json:"start_time" yaml:"start_time"`
 
 	configurationMu sync.RWMutex
-	Configuration   *SandwichConfiguration `json:"configuration"`
+	Configuration   *SandwichConfiguration `json:"configuration" yaml:"configuration"`
 
 	gatewayLimiter limiter.DurationLimiter `json:"-"`
 
@@ -60,7 +60,7 @@ type Sandwich struct {
 	EventPoolLimit   int                         `json:"-"`
 
 	managersMu sync.RWMutex
-	Managers   map[string]*Manager `json:"managers"`
+	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
 
 	State *SandwichState `json:"-"`
 
@@ -83,53 +83,51 @@ type Sandwich struct {
 // SandwichConfiguration represents the configuration file.
 type SandwichConfiguration struct {
 	Logging struct {
-		Level              string
-		FileLoggingEnabled bool
+		Level              string `json:"level" yaml:"level"`
+		FileLoggingEnabled bool   `json:"file_logging_enabled" yaml:"file_logging_enabled"`
 
-		EncodeAsJSON bool
+		EncodeAsJSON bool `json:"encode_as_json" yaml:"encode_as_json"`
 
-		Directory  string
-		Filename   string
-		MaxSize    int
-		MaxBackups int
-		MaxAge     int
-		Compress   bool
-
-		MinimalWebhooks bool
-	}
+		Directory  string `json:"directory" yaml:"directory"`
+		Filename   string `json:"filename" yaml:"filename"`
+		MaxSize    int    `json:"max_size" yaml:"max_size"`
+		MaxBackups int    `json:"max_backups" yaml:"max_backups"`
+		MaxAge     int    `json:"max_age" yaml:"max_age"`
+		Compress   bool   `json:"compress" yaml:"compress"`
+	} `json:"logging" yaml:"logging"`
 
 	State struct {
-		StoreGuildMembers bool
-		StoreEmojis       bool
+		StoreGuildMembers bool `json:"store_guild_members" yaml:"store_guild_members"`
+		StoreEmojis       bool `json:"store_emojis" yaml:"store_emojis"`
 
-		EnableSmaz bool
-	}
+		EnableSmaz bool `json:"enable_smaz" yaml:"enable_smaz"`
+	} `json:"state" yaml:"state"`
 
 	Identify struct {
 		// URL allows for variables:
 		// {shard_id}, {shard_count}, {token} {token_hash}, {max_concurrency}
-		URL string
+		URL string `json:"url" yaml:"url"`
 
-		Headers map[string]string
-	}
+		Headers map[string]string `json:"headers" yaml:"headers"`
+	} `json:"identify" yaml:"identify"`
 
 	Producer struct {
-		Type          string
-		Configuration map[string]interface{}
-	}
+		Type          string                 `json:"type" yaml:"type"`
+		Configuration map[string]interface{} ``
+	} `json:"producer" yaml:"producer"`
 
 	Prometheus struct {
-		Host string
-	}
+		Host string `json:"host" yaml:"host"`
+	} `json:"prometheus" yaml:"prometheus"`
 
 	GRPC struct {
-		Network string
-		Host    string
-	}
+		Network string `json:"network" yaml:"network"`
+		Host    string `json:"host" yaml:"host"`
+	} `json:"grpc" yaml:"grpc"`
 
-	Webhooks []string
+	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
-	Managers []*ManagerConfiguration
+	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
 }
 
 // NewSandwich creates the application state and initializes it.
@@ -236,7 +234,9 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 
 // LoadConfiguration handles loading the configuration file.
 func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfiguration, err error) {
-	sg.Logger.Debug().Msg("Loading configuration")
+	sg.Logger.Debug().
+		Str("path", path).
+		Msg("Loading configuration")
 
 	defer func() {
 		if err == nil {
@@ -251,7 +251,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 
 	configuration = &SandwichConfiguration{}
 
-	err = yaml.Unmarshal(file, &configuration)
+	err = yaml.Unmarshal(file, configuration)
 	if err != nil {
 		return configuration, ErrLoadConfigurationFailure
 	}
@@ -420,9 +420,6 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	sg.configurationMu.RLock()
 	host := sg.Configuration.Prometheus.Host
 	sg.configurationMu.RUnlock()
-
-	prometheus.MustRegister(prometheus.NewGoCollector())
-	prometheus.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 
 	http.Handle("/metrics", promhttp.HandlerFor(
 		prometheus.DefaultGatherer,
