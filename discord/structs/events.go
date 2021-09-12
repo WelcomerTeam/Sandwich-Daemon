@@ -11,7 +11,7 @@ type void struct{}
 
 // Hello represents a hello event when connecting.
 type Hello struct {
-	HeartbeatInterval time.Duration `json:"heartbeat_interal"`
+	HeartbeatInterval time.Duration `json:"heartbeat_interval"`
 }
 
 // Ready represents when the client has completed the initial handshake.
