@@ -4,7 +4,6 @@ import (
 	"sync"
 	"time"
 
-	snowflake "github.com/WelcomerTeam/RealRock/snowflake"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
@@ -38,19 +37,19 @@ type ShardGroup struct {
 	ReadyWait *sync.WaitGroup `json:"-"`
 
 	// MemberChunksCallback is used to signal when a guild is chunking.
-	memberChunksCallbackMu sync.RWMutex                     `json:"-"`
-	MemberChunksCallback   map[snowflake.ID]*sync.WaitGroup `json:"-"`
+	memberChunksCallbackMu sync.RWMutex                  `json:"-"`
+	MemberChunksCallback   map[discord.Snowflake]*sync.WaitGroup `json:"-"`
 
 	// MemberChunksComplete is used to signal if a guild has recently
 	// been chunked. It is up to the guild task to remove this bool
 	// a few seconds after finishing chunking.
-	memberChunksCompleteMu sync.RWMutex                  `json:"-"`
-	MemberChunksComplete   map[snowflake.ID]*atomic.Bool `json:"-"`
+	memberChunksCompleteMu sync.RWMutex               `json:"-"`
+	MemberChunksComplete   map[discord.Snowflake]*atomic.Bool `json:"-"`
 
 	// MemberChunkCallbacks is used to signal when any MEMBER_CHUNK
 	// events are received for the specific guild.
-	memberChunkCallbacksMu sync.RWMutex               `json:"-"`
-	MemberChunkCallbacks   map[snowflake.ID]chan bool `json:"-"`
+	memberChunkCallbacksMu sync.RWMutex            `json:"-"`
+	MemberChunkCallbacks   map[discord.Snowflake]chan bool `json:"-"`
 
 	// Used to override when events can be processed.
 	// Used to orchestrate scaling of shardgroups.
@@ -78,13 +77,13 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int, shardCount 
 		Shards:   make(map[int]*Shard),
 
 		memberChunksCallbackMu: sync.RWMutex{},
-		MemberChunksCallback:   make(map[snowflake.ID]*sync.WaitGroup),
+		MemberChunksCallback:   make(map[discord.Snowflake]*sync.WaitGroup),
 
 		memberChunksCompleteMu: sync.RWMutex{},
-		MemberChunksComplete:   make(map[snowflake.ID]*atomic.Bool),
+		MemberChunksComplete:   make(map[discord.Snowflake]*atomic.Bool),
 
 		memberChunkCallbacksMu: sync.RWMutex{},
-		MemberChunkCallbacks:   make(map[snowflake.ID]chan bool),
+		MemberChunkCallbacks:   make(map[discord.Snowflake]chan bool),
 
 		floodgate: &atomic.Bool{},
 	}
@@ -126,10 +125,10 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 			if retriesRemaining > 0 {
 				sg.Logger.Error().Err(err).
 					Int32("retries_remaining", retriesRemaining).
-					Msg("Failed to connect shard. Retrying...")
+					Msg("Failed to connect shard. Retrying")
 			} else {
 				sg.Logger.Error().Err(err).
-					Msg("Failed to connect shard. Cannot continue.")
+					Msg("Failed to connect shard. Cannot continue")
 
 				sg.Error.Store(err.Error())
 
@@ -161,7 +160,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 				if err != nil && !xerrors.Is(err, context.Canceled) {
 					sg.Logger.Warn().Err(err).
 						Int("shard_id", shardID).
-						Msgf("Failed to connect shard. Retrying.")
+						Msgf("Failed to connect shard. Retrying")
 				} else {
 					go shard.Open()
 

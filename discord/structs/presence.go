@@ -1,7 +1,5 @@
 package discord
 
-import "github.com/WelcomerTeam/RealRock/snowflake"
-
 // PresenceStatus represents a presence's status.
 type PresenceStatus string
 
@@ -42,7 +40,7 @@ type Activity struct {
 	Type          ActivityType  `json:"type"`
 	URL           *string       `json:"url,omitempty"`
 	Timestamps    *Timestamps   `json:"timestamps,omitempty"`
-	ApplicationID *snowflake.ID `json:"application_id"`
+	ApplicationID *Snowflake    `json:"application_id"`
 	Details       *string       `json:"details,omitempty"`
 	State         *string       `json:"state,omitempty"`
 	Party         *Party        `json:"party,omitempty"`

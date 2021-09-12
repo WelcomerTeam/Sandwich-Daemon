@@ -1,9 +1,5 @@
 package discord
 
-import (
-	"github.com/WelcomerTeam/RealRock/snowflake"
-)
-
 // webhook.go represents all structures to create a webhook and interact with it.
 
 // WebhookType is the type of webhook.
@@ -17,16 +13,16 @@ const (
 
 // Webhook represents a webhook on Discord.
 type Webhook struct {
-	ID   snowflake.ID `json:"id"`
-	Type WebhookType  `json:"type"`
+	ID   Snowflake   `json:"id"`
+	Type WebhookType `json:"type"`
 
-	GuildID       *snowflake.ID `json:"guild_id,omitempty"`
-	ChannelID     *snowflake.ID `json:"channel_id,omitempty"`
-	User          *User         `json:"user,omitempty"`
-	Name          string        `json:"name"`
-	Avatar        string        `json:"avatar"`
-	Token         string        `json:"token"`
-	ApplicationID *snowflake.ID `json:"application_id,omitempty"`
+	GuildID       *Snowflake `json:"guild_id,omitempty"`
+	ChannelID     *Snowflake `json:"channel_id,omitempty"`
+	User          *User      `json:"user,omitempty"`
+	Name          string     `json:"name"`
+	Avatar        string     `json:"avatar"`
+	Token         string     `json:"token"`
+	ApplicationID *Snowflake `json:"application_id,omitempty"`
 }
 
 // WebhookMessage represents a message on Discord for webhooks.

@@ -28,3 +28,9 @@ var (
 	ErrConfigurationValidatePrometheus = xerrors.New("Configuration missing valid Prometheus Host")
 	ErrConfigurationValidateGRPC       = xerrors.New("Configuration missing valid GRPC Host")
 )
+
+var (
+	ErrNoGatewayHandler  = xerrors.New("No registered handler for gateway event")
+	ErrNoDispatchHandler = xerrors.New("No registered handler for dispatch event")
+	ErrProducerMissing   = xerrors.New("No producer client found")
+)

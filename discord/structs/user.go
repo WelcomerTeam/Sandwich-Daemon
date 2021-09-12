@@ -1,7 +1,5 @@
 package discord
 
-import "github.com/WelcomerTeam/RealRock/snowflake"
-
 // user.go represents all structures for a discord user.
 
 // UserFlags represents the flags on a user's account.
@@ -37,7 +35,7 @@ const (
 
 // User represents a user on Discord.
 type User struct {
-	ID            snowflake.ID     `json:"id"`
+	ID            Snowflake        `json:"id"`
 	Username      string           `json:"username"`
 	Discriminator string           `json:"discriminator"`
 	Avatar        *string          `json:"avatar,omitempty"`

@@ -1,9 +1,5 @@
 package discord
 
-import (
-	"github.com/WelcomerTeam/RealRock/snowflake"
-)
-
 // channel.go contains the information relating to channels
 
 // ChannelType represents a channel's type.
@@ -44,9 +40,9 @@ const (
 
 // Channel represents a Discord channel.
 type Channel struct {
-	ID                   snowflake.ID        `json:"id"`
+	ID                   Snowflake           `json:"id"`
 	Type                 ChannelType         `json:"type"`
-	GuildID              *snowflake.ID       `json:"guild_id,omitempty"`
+	GuildID              *Snowflake          `json:"guild_id,omitempty"`
 	Position             *int                `json:"position,omitempty"`
 	PermissionOverwrites []*ChannelOverwrite `json:"permission_overwrites,omitempty"`
 	Name                 *string             `json:"name,omitempty"`
@@ -58,9 +54,9 @@ type Channel struct {
 	RateLimitPerUser     *int                `json:"rate_limit_per_user,omitempty"`
 	Recipients           []*User             `json:"recipients,omitempty"`
 	Icon                 *string             `json:"icon,omitempty"`
-	OwnerID              *snowflake.ID       `json:"owner_id,omitempty"`
-	ApplicationID        *snowflake.ID       `json:"application_id,omitempty"`
-	ParentID             *snowflake.ID       `json:"parent_id,omitempty"`
+	OwnerID              *Snowflake          `json:"owner_id,omitempty"`
+	ApplicationID        *Snowflake          `json:"application_id,omitempty"`
+	ParentID             *Snowflake          `json:"parent_id,omitempty"`
 	LastPinTimestamp     *string             `json:"last_pin_timestamp,omitempty"`
 
 	RTCRegion        *string           `json:"rtc_region,omitempty"`
@@ -79,10 +75,10 @@ type Channel struct {
 
 // ChannelOverwrite represents a permission overwrite for a channel.
 type ChannelOverwrite struct {
-	ID    snowflake.ID `json:"id"`
-	Type  int          `json:"type"`
-	Allow int64        `json:"allow"`
-	Deny  int64        `json:"deny"`
+	ID    Snowflake `json:"id"`
+	Type  int       `json:"type"`
+	Allow int64     `json:"allow"`
+	Deny  int64     `json:"deny"`
 }
 
 // ThreadMetadata contains thread-specific channel fields.
@@ -95,17 +91,17 @@ type ThreadMetadata struct {
 
 // ThreadMember is used to indicate whether a user has joined a thread or not.
 type ThreadMember struct {
-	ID            *snowflake.ID `json:"id,omitempty"`
-	UserID        *snowflake.ID `json:"user_id,omitempty"`
-	JoinTimestamp string        `json:"join_timestamp"`
-	Flags         int           `json:"flags"`
+	ID            *Snowflake `json:"id,omitempty"`
+	UserID        *Snowflake `json:"user_id,omitempty"`
+	JoinTimestamp string     `json:"join_timestamp"`
+	Flags         int        `json:"flags"`
 }
 
 // StageInstance represents a stage channel instance.
 type StageInstance struct {
-	ID                   snowflake.ID             `json:"id"`
-	GuildID              snowflake.ID             `json:"guild_id"`
-	ChannelID            snowflake.ID             `json:"channel_id"`
+	ID                   Snowflake                `json:"id"`
+	GuildID              Snowflake                `json:"guild_id"`
+	ChannelID            Snowflake                `json:"channel_id"`
 	Topic                string                   `json:"topic"`
 	PrivacyLabel         StageChannelPrivacyLevel `json:"privacy_level"`
 	DiscoverableDisabled bool                     `json:"discoverable_disabled"`

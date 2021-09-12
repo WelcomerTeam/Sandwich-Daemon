@@ -349,7 +349,7 @@ func (sg *Sandwich) startManagers() (err error) {
 		if _, duplicate := sg.Managers[managerConfiguration.Identifier]; duplicate {
 			sg.Logger.Warn().
 				Str("identifier", managerConfiguration.Identifier).
-				Msg("Manager contains duplicate identifier. Ignoring.")
+				Msg("Manager contains duplicate identifier. Ignoring")
 
 			go sg.PublishSimpleWebhook(
 				"Manager contains duplicate identifier. Ignoring.",

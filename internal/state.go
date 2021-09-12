@@ -4,14 +4,11 @@ import (
 	"sync"
 	"time"
 
-	snowflake "github.com/WelcomerTeam/RealRock/snowflake"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/savsgio/gotils/strings"
 	"golang.org/x/xerrors"
 )
-
-var NoGatewayHandler = xerrors.New("No registered handler for gateway event")
-var NoDispatchHandler = xerrors.New("No registered handler for dispatch event")
 
 // List of handlers for dispatch events.
 var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error))
@@ -20,9 +17,7 @@ var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPa
 var gatewayHandlers = make(map[discord.GatewayOp]func(ctx *StateCtx, msg discord.GatewayPayload) (err error))
 
 type StateCtx struct {
-	Sg *Sandwich
-	Mg *Manager
-	Sh *Shard
+	*Shard
 
 	Vars map[string]interface{}
 }
@@ -31,43 +26,43 @@ type StateCtx struct {
 // across all Managers.
 type SandwichState struct {
 	guildsMu sync.RWMutex
-	Guilds   map[snowflake.ID]*discord.StateGuild
+	Guilds   map[discord.Snowflake]*discord.StateGuild
 
 	guildMembersMu sync.RWMutex
-	GuildMembers   map[snowflake.ID]*discord.StateGuildMembers
+	GuildMembers   map[discord.Snowflake]*discord.StateGuildMembers
 
 	channelsMu sync.RWMutex
-	Channels   map[snowflake.ID]*discord.StateChannel
+	Channels   map[discord.Snowflake]*discord.StateChannel
 
 	rolesMu sync.RWMutex
-	Roles   map[snowflake.ID]*discord.StateRole
+	Roles   map[discord.Snowflake]*discord.StateRole
 
 	emojisMu sync.RWMutex
-	Emojis   map[snowflake.ID]*discord.StateEmoji
+	Emojis   map[discord.Snowflake]*discord.StateEmoji
 
 	usersMu sync.RWMutex
-	Users   map[snowflake.ID]*discord.StateUser
+	Users   map[discord.Snowflake]*discord.StateUser
 }
 
 func NewSandwichState() (st *SandwichState) {
 	st = &SandwichState{
 		guildsMu: sync.RWMutex{},
-		Guilds:   make(map[snowflake.ID]*discord.StateGuild),
+		Guilds:   make(map[discord.Snowflake]*discord.StateGuild),
 
 		guildMembersMu: sync.RWMutex{},
-		GuildMembers:   make(map[snowflake.ID]*discord.StateGuildMembers),
+		GuildMembers:   make(map[discord.Snowflake]*discord.StateGuildMembers),
 
 		channelsMu: sync.RWMutex{},
-		Channels:   make(map[snowflake.ID]*discord.StateChannel),
+		Channels:   make(map[discord.Snowflake]*discord.StateChannel),
 
 		rolesMu: sync.RWMutex{},
-		Roles:   make(map[snowflake.ID]*discord.StateRole),
+		Roles:   make(map[discord.Snowflake]*discord.StateRole),
 
 		emojisMu: sync.RWMutex{},
-		Emojis:   make(map[snowflake.ID]*discord.StateEmoji),
+		Emojis:   make(map[discord.Snowflake]*discord.StateEmoji),
 
 		usersMu: sync.RWMutex{},
-		Users:   make(map[snowflake.ID]*discord.StateUser),
+		Users:   make(map[discord.Snowflake]*discord.StateUser),
 	}
 
 	return st
@@ -98,6 +93,63 @@ func (sh *Shard) OnEvent(msg discord.GatewayPayload) {
 
 	defer close(fin)
 
+	err := GatewayDispatch(&StateCtx{
+		Shard: sh,
+	}, msg)
+	if err != nil {
+		if xerrors.Is(err, ErrNoGatewayHandler) {
+			sh.Logger.Warn().
+				Int("op", int(msg.Op)).
+				Str("type", msg.Type).
+				Msg("Gateway sent unknown packet")
+		}
+	}
+
+	return
+}
+
+// OnDispatch handles routing of discord event.
+func (sh *Shard) OnDispatch(msg discord.GatewayPayload) (err error) {
+	if sh.Manager.ProducerClient == nil {
+		return ErrProducerMissing
+	}
+
+	sh.Manager.eventBlacklistMu.RLock()
+	contains := strings.Include(sh.Manager.eventBlacklist, msg.Type)
+	sh.Manager.eventBlacklistMu.RUnlock()
+
+	if contains {
+		return
+	}
+
+	result, continuable, err := StateDispatch(&StateCtx{
+		Shard: sh,
+	}, msg)
+
+	if err != nil {
+		return err
+	}
+
+	if !continuable {
+		return
+	}
+
+	sh.Manager.produceBlacklistMu.RLock()
+	contains = strings.Include(sh.Manager.produceBlacklist, msg.Type)
+	sh.Manager.produceBlacklistMu.RUnlock()
+
+	if contains {
+		return
+	}
+
+	packet := sh.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
+	defer sh.Sandwich.payloadPool.Put(packet)
+
+	packet.GatewayPayload = msg
+	packet.Data = result.Data
+	packet.Extra = result.Extra
+
+	return sh.PublishEvent(packet)
 }
 
 func registerGatewayEvent(op discord.GatewayOp, handler func(ctx *StateCtx, msg discord.GatewayPayload) (err error)) {
@@ -115,7 +167,7 @@ func GatewayDispatch(ctx *StateCtx,
 		return f(ctx, event)
 	}
 
-	return NoGatewayHandler
+	return ErrNoGatewayHandler
 }
 
 // StateDispatch handles selecting the proper state handler and executing it.
@@ -125,5 +177,73 @@ func StateDispatch(ctx *StateCtx,
 		return f(ctx, event)
 	}
 
-	return result, false, NoDispatchHandler
+	return result, false, ErrNoDispatchHandler
+}
+
+func gatewayOpDispatch(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	go func() {
+		ticket := ctx.Sandwich.EventPool.Wait()
+		defer ctx.Sandwich.EventPool.FreeTicket(ticket)
+
+		err = ctx.OnDispatch(msg)
+		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
+			ctx.Logger.Error().Err(err).Msg("State dispatch failed")
+		}
+	}()
+
+	return
+}
+
+func gatewayOpHeartbeat(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpIdentify(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpStatusUpdate(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpVoiceStateUpdate(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpResume(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpReconnect(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpRequestGuildMembers(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpInvalidSession(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpHello(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func gatewayOpHeartbeatACK(ctx *StateCtx, msg discord.GatewayPayload) (err error) {
+	return
+}
+
+func init() {
+	registerGatewayEvent(discord.GatewayOpDispatch, gatewayOpDispatch)
+	registerGatewayEvent(discord.GatewayOpHeartbeat, gatewayOpHeartbeat)
+	registerGatewayEvent(discord.GatewayOpIdentify, gatewayOpIdentify)
+	registerGatewayEvent(discord.GatewayOpStatusUpdate, gatewayOpStatusUpdate)
+	registerGatewayEvent(discord.GatewayOpVoiceStateUpdate, gatewayOpVoiceStateUpdate)
+	registerGatewayEvent(discord.GatewayOpResume, gatewayOpResume)
+	registerGatewayEvent(discord.GatewayOpReconnect, gatewayOpReconnect)
+	registerGatewayEvent(discord.GatewayOpRequestGuildMembers, gatewayOpRequestGuildMembers)
+	registerGatewayEvent(discord.GatewayOpInvalidSession, gatewayOpInvalidSession)
+	registerGatewayEvent(discord.GatewayOpHello, gatewayOpHello)
+	registerGatewayEvent(discord.GatewayOpHeartbeatACK, gatewayOpHeartbeatACK)
 }

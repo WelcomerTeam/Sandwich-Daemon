@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/RealRock/limiter"
-	"github.com/WelcomerTeam/RealRock/snowflake"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/czlib"
 	"github.com/rs/zerolog"
@@ -77,8 +76,8 @@ type Shard struct {
 	// Duration since last heartbeat Ack beforereconnecting.
 	HeartbeatFailureInterval time.Duration `json:"-"`
 
-	unavailableMu sync.RWMutex          `json:"-"`
-	Unavailable   map[snowflake.ID]bool `json:"-"`
+	unavailableMu sync.RWMutex       `json:"-"`
+	Unavailable   map[discord.Snowflake]bool `json:"-"`
 
 	MessageCh chan discord.GatewayPayload
 	ErrorCh   chan error
@@ -112,7 +111,7 @@ func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 		LastHeartbeatSent: &atomic.Time{},
 
 		unavailableMu: sync.RWMutex{},
-		Unavailable:   make(map[snowflake.ID]bool),
+		Unavailable:   make(map[discord.Snowflake]bool),
 
 		Sequence:  &atomic.Int64{},
 		SessionID: &atomic.String{},
@@ -348,7 +347,7 @@ func (sh *Shard) Heartbeat() {
 
 			if err != nil || now.Sub(sh.LastHeartbeatAck.Load()) > sh.HeartbeatFailureInterval {
 				if err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting.")
+					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
 
 					go sh.Sandwich.PublishSimpleWebhook(
 						"Failed to heartbeat. Reconnecting",
@@ -445,7 +444,7 @@ func (sh *Shard) Listen() (err error) {
 
 			if wsConn == sh.wsConn {
 				// We have likely closed so we should attempt to reconnect
-				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection, reconnecting...")
+				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection. Reconnecting")
 				err = sh.Reconnect(websocket.StatusNormalClosure)
 
 				if err != nil {
@@ -668,6 +667,7 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 func (sh *Shard) WaitForReady() {
 	since := time.Now().UTC()
 	t := time.NewTicker(WaitForReadyTimeout)
+
 	defer t.Stop()
 
 	for {
@@ -703,7 +703,7 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 
 		retries := sh.RetriesRemaining.Sub(-1)
 		if retries <= 0 {
-			sh.Logger.Warn().Msg("Ran out of retries whilst connecting. Attempting to reconnect client.")
+			sh.Logger.Warn().Msg("Ran out of retries whilst connecting. Attempting to reconnect client")
 			sh.Close(code)
 
 			err = sh.Connect()

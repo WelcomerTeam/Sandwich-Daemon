@@ -1,9 +1,5 @@
 package discord
 
-import (
-	"github.com/WelcomerTeam/RealRock/snowflake"
-)
-
 // application.go represents the application object and interactions.
 
 // ApplicationTeamMemberState represents the state of a member in a team.
@@ -87,10 +83,10 @@ const (
 
 // Application response from REST.
 type Application struct {
-	ID          snowflake.ID `json:"id"`
-	Name        string       `json:"name"`
-	Icon        string       `json:"icon,omitempty"`
-	Description string       `json:"description"`
+	ID          Snowflake `json:"id"`
+	Name        string    `json:"name"`
+	Icon        string    `json:"icon,omitempty"`
+	Description string    `json:"description"`
 
 	RPCOrigins          []string         `json:"rpc_origins,omitempty"`
 	BotPublic           bool             `json:"bot_public"`
@@ -101,37 +97,37 @@ type Application struct {
 	Summary             string           `json:"summary,omitempty"`
 	VerifyKey           string           `json:"verify_key,omitempty"`
 	Team                *ApplicationTeam `json:"team,omitempty"`
-	GuildID             snowflake.ID     `json:"guild_id,omitempty"`
+	GuildID             Snowflake        `json:"guild_id,omitempty"`
 
-	PrimarySKUID snowflake.ID `json:"primary_sku_id,omitempty"`
-	Slug         string       `json:"slug,omitempty"`
-	CoverImage   string       `json:"cover_image,omitempty"`
-	Flags        int64        `json:"flags"`
+	PrimarySKUID Snowflake `json:"primary_sku_id,omitempty"`
+	Slug         string    `json:"slug,omitempty"`
+	CoverImage   string    `json:"cover_image,omitempty"`
+	Flags        int64     `json:"flags"`
 }
 
 // ApplicationTeam represents the team of an application.
 type ApplicationTeam struct {
 	Icon        string                   `json:"icon,omitempty"`
-	ID          snowflake.ID             `json:"id"`
+	ID          Snowflake                `json:"id"`
 	Members     []*ApplicationTeamMember `json:"members"`
 	Name        string                   `json:"name"`
-	OwnerUserID snowflake.ID             `json:"owner_user_id"`
+	OwnerUserID Snowflake                `json:"owner_user_id"`
 }
 
 // ApplicationTeamMembers represents a member of a team.
 type ApplicationTeamMember struct {
 	MembershipState ApplicationTeamMemberState `json:"membership_state"`
 	Permissions     []string                   `json:"permissions"`
-	TeamID          snowflake.ID               `json:"team_id"`
+	TeamID          Snowflake                  `json:"team_id"`
 	User            *User                      `json:"user"`
 }
 
 // ApplicationCommand represents an application's command.
 type ApplicationCommand struct {
-	ID                snowflake.ID                `json:"id"`
+	ID                Snowflake                   `json:"id"`
 	Type              *ApplicationCommandType     `json:"type,omitempty"`
-	ApplicationID     snowflake.ID                `json:"application_id"`
-	GuildID           *snowflake.ID               `json:"guild_id,omitempty"`
+	ApplicationID     Snowflake                   `json:"application_id"`
+	GuildID           *Snowflake                  `json:"guild_id,omitempty"`
 	Name              string                      `json:"name"`
 	Description       string                      `json:"description"`
 	Options           []*ApplicationCommandOption `json:"options,omitempty"`
@@ -156,23 +152,23 @@ type ApplicationCommandOptionChoice struct {
 
 // Interaction represents the structure of an interaction.
 type Interaction struct {
-	ID            snowflake.ID     `json:"id"`
-	ApplicationID snowflake.ID     `json:"application_id"`
+	ID            Snowflake        `json:"id"`
+	ApplicationID Snowflake        `json:"application_id"`
 	Type          *InteractionType `json:"type,omitempty"`
 	Data          *InteractionData `json:"data,omitempty"`
 
-	GuildID   snowflake.ID `json:"guild_id,omitempty"`
-	ChannelID snowflake.ID `json:"channel_id,omitempty"`
-	Member    *Member      `json:"member,omitempty"`
-	User      *User        `json:"user,omitempty"`
-	Token     string       `json:"token"`
-	Version   int          `json:"version"`
-	Message   *Message     `json:"message,omitempty"`
+	GuildID   Snowflake `json:"guild_id,omitempty"`
+	ChannelID Snowflake `json:"channel_id,omitempty"`
+	Member    *Member   `json:"member,omitempty"`
+	User      *User     `json:"user,omitempty"`
+	Token     string    `json:"token"`
+	Version   int       `json:"version"`
+	Message   *Message  `json:"message,omitempty"`
 }
 
 // InteractionData represents the structure of interaction data.
 type InteractionData struct {
-	ID            snowflake.ID              `json:"id"`
+	ID            Snowflake                 `json:"id"`
 	Name          string                    `json:"name"`
 	Type          ApplicationCommandType    `json:"type"`
 	Resolved      *InteractionResolvedData  `json:"resolved,omitempty"`
@@ -180,7 +176,7 @@ type InteractionData struct {
 	CustomID      *string                   `json:"custom_id,omitempty"`
 	ComponentType *ApplicationCommandType   `json:"component_type,omitempty"`
 	Values        []ApplicationSelectOption `json:"values,omitempty"`
-	TargetID      *snowflake.ID             `json:"target_id,omitempty"`
+	TargetID      *Snowflake                `json:"target_id,omitempty"`
 }
 
 // InteractionDataOption represents the structure of an interaction option.
@@ -211,12 +207,12 @@ type ApplicationSelectOption struct {
 
 // Integration represents the structure of an integration.
 type Integration struct {
-	ID              snowflake.ID    `json:"id"`
+	ID              Snowflake       `json:"id"`
 	Name            string          `json:"name"`
 	Type            IntegrationType `json:"type"`
 	Enabled         bool            `json:"enabled"`
 	Syncing         *bool           `json:"syncing"`
-	RoleID          *snowflake.ID   `json:"role_id,omitempty"`
+	RoleID          *Snowflake      `json:"role_id,omitempty"`
 	EnableEmoticons *bool           `json:"enable_emoticons,omitempty"`
 
 	ExpireBehavior    *IntegrationExpireBehavior `json:"expire_behavior,omitempty"`
