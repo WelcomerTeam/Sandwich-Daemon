@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -236,6 +237,8 @@ func (sh *Shard) Connect() (err error) {
 	if sh.HeartbeatActive.Load() {
 		sh.cancelHeartbeater()
 	}
+
+	sh.heartbeaterCtx, sh.cancelHeartbeater = context.WithCancel(sh.ctx)
 
 	go sh.Heartbeat()
 
@@ -488,7 +491,7 @@ func (sh *Shard) FeedWebsocket(u string,
 
 	go func() {
 		for {
-			_, buf, err := conn.Read(sh.ctx)
+			messageType, data, err := conn.Read(sh.ctx)
 
 			select {
 			case <-sh.ctx.Done():
@@ -497,21 +500,25 @@ func (sh *Shard) FeedWebsocket(u string,
 			}
 
 			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to read from gateway")
 				errorCh <- err
 
 				return
 			}
 
-			buf, err = czlib.Decompress(buf)
-			if err != nil {
-				errorCh <- err
+			if messageType == websocket.MessageBinary {
+				data, err = czlib.Decompress(data)
+				if err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to decompress data")
+					errorCh <- err
 
-				return
+					return
+				}
 			}
 
-			msg := sh.Sandwich.receivedPool.Get().(discord.GatewayPayload)
+			msg := sh.Sandwich.receivedPool.Get().(*discord.GatewayPayload)
 
-			err = json.Unmarshal(buf, &msg)
+			err = json.Unmarshal(data, &msg)
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to unmarshal message")
 
@@ -520,7 +527,7 @@ func (sh *Shard) FeedWebsocket(u string,
 
 			// TODO Add Analytics
 
-			messageCh <- msg
+			messageCh <- *msg
 		}
 	}()
 
@@ -613,6 +620,13 @@ func (sh *Shard) WriteJSON(op discord.GatewayOp, i interface{}) (err error) {
 // decodeContent converts the stored msg into the passed interface.
 func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err error) {
 	err = json.Unmarshal(msg.Data, &out)
+
+	// TODO: Remove in production
+	// Debug use only
+	outD, _ := json.Marshal(out)
+	if bytes.Compare(outD, msg.Data) != 0 {
+		sh.Logger.Warn().Str("In", string(msg.Data)).Str("Out", string(outD)).Msg("Varied payloads detected")
+	}
 
 	return
 }
