@@ -138,6 +138,8 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		produceBlacklist:   configuration.Events.ProduceBlacklist,
 	}
 
+	mg.ctx, mg.cancel = context.WithCancel(sg.ctx)
+
 	return mg, nil
 }
 
@@ -163,11 +165,8 @@ func (mg *Manager) Initialize() (err error) {
 		clientName,
 		mg.Sandwich.Configuration.Producer.Configuration,
 	)
-	if err != nil {
-		return nil
-	}
 
-	return nil
+	return
 }
 
 // Open handles retrieving shard counts and scaling.
