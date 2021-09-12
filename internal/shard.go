@@ -76,7 +76,7 @@ type Shard struct {
 	// Duration since last heartbeat Ack beforereconnecting.
 	HeartbeatFailureInterval time.Duration `json:"-"`
 
-	unavailableMu sync.RWMutex       `json:"-"`
+	unavailableMu sync.RWMutex               `json:"-"`
 	Unavailable   map[discord.Snowflake]bool `json:"-"`
 
 	MessageCh chan discord.GatewayPayload

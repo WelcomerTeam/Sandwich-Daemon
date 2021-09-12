@@ -37,19 +37,19 @@ type Manager struct {
 	ctx    context.Context
 	cancel func()
 
-	Error *atomic.String `json:"error"`
+	Error *atomic.String `json:"error" yaml:"error"`
 
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
 
 	configurationMu sync.RWMutex
-	Configuration   *ManagerConfiguration `json:"configuration"`
+	Configuration   *ManagerConfiguration `json:"configuration" yaml:"configuration"`
 
 	gatewayMu sync.RWMutex
-	Gateway   discord.GatewayBot `json:"gateway"`
+	Gateway   discord.GatewayBot `json:"gateway" yaml:"gateway"`
 
 	shardGroupsMu sync.RWMutex
-	ShardGroups   map[int32]*ShardGroup `json:"shard_groups"`
+	ShardGroups   map[int32]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
 
 	ProducerClient MQClient `json:"-"`
 
@@ -67,44 +67,44 @@ type Manager struct {
 // ManagerConfiguration represents the configuration for the manager.
 type ManagerConfiguration struct {
 	// Unique name that will be referenced internally
-	Identifier string `json:"identifier"`
+	Identifier string `json:"identifier" yaml:"identifier"`
 	// Non-unique name that is sent to consumers.
-	ProducerIdentifier string `json:"producer_identifier"`
+	ProducerIdentifier string `json:"producer_identifier" yaml:"producer_identifier"`
 
-	FriendlyName string `json:"friendly_name"`
+	FriendlyName string `json:"friendly_name" yaml:"friendly_name"`
 
-	Token     string `json:"token"`
-	AutoStart bool   `json:"auto_start"`
+	Token     string `json:"token" yaml:"token"`
+	AutoStart bool   `json:"auto_start" yaml:"auto_start"`
 
 	// Bot specific configuration
 	Bot struct {
-		DefaultPresence      *discord.UpdateStatus `json:"default_presence"`
-		Intents              int64                 `json:"intents"`
-		ChunkGuildsOnStartup bool                  `json":chunk_guilds_on_startup"`
-	} `json:"bot"`
+		DefaultPresence      *discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
+		Intents              int64                 `json:"intents" yaml:"intents"`
+		ChunkGuildsOnStartup bool                  `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
+	} `json:"bot" yaml:"bot"`
 
 	Caching struct {
-		CacheUsers   bool `json:"cache_users"`
-		CacheMembers bool `json:"cache_members"`
-		StoreMutuals bool `json:"store_mutuals"`
-	} `json:"caching"`
+		CacheUsers   bool `json:"cache_users" yaml:"cache_users"`
+		CacheMembers bool `json:"cache_members" yaml:"cache_members"`
+		StoreMutuals bool `json:"store_mutuals" yaml:"store_mutuals"`
+	} `json:"caching" yaml:"caching"`
 
 	Events struct {
-		EventBlacklist   []string `json:"event_blacklist"`
-		ProduceBlacklist []string `json:"produce_blacklist"`
-	} `json:"events"`
+		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist"`
+		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist"`
+	} `json:"events" yaml:"events"`
 
 	Messaging struct {
-		ClientName      string `json:"client_name"`
-		ChannelName     string `json:"channel_name"`
-		UseRandomSuffix bool   `json:"use_random_prefix"`
-	} `json:"messaging"`
+		ClientName      string `json:"client_name" yaml:"client_name"`
+		ChannelName     string `json:"channel_name" yaml:"channel_name"`
+		UseRandomSuffix bool   `json:"use_random_prefix" yaml:"use_random_prefix"`
+	} `json:"messaging" yaml:"messaging"`
 
 	Sharding struct {
-		AutoSharded bool   `json:"auto_sharded"`
-		ShardCount  int    `json:"shard_count"`
-		ShardIDs    string `json:"shard_ids"`
-	} `json:"sharding"`
+		AutoSharded bool   `json:"auto_sharded" yaml:"auto_sharded"`
+		ShardCount  int    `json:"shard_count" yaml:"shard_count"`
+		ShardIDs    string `json:"shard_ids" yaml:"shard_ids"`
+	} `json:"sharding" yaml:"sharding"`
 }
 
 // NewManager creates a new manager.
