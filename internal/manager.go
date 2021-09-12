@@ -116,6 +116,8 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		Sandwich: sg,
 		Logger:   logger,
 
+		Error: atomic.NewString(""),
+
 		configurationMu: sync.RWMutex{},
 		Configuration:   configuration,
 
