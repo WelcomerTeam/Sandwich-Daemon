@@ -107,7 +107,7 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 	req.Header.Set("User-Agent", replaceIfEmpty(req.Header.Get("User-Agent"), c.UserAgent))
 
 	if c.Token != "" {
-		req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), c.Token))
+		req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), "Bot "+c.Token))
 	}
 
 	if res, err = c.HTTP.Do(req); err != nil {

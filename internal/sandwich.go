@@ -174,6 +174,8 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 		},
 	}
 
+	sg.ctx, sg.cancel = context.WithCancel(context.Background())
+
 	sg.Lock()
 	defer sg.Unlock()
 
