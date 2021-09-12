@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/WelcomerTeam/RealRock v0.0.0-20210814150330-a411f684a7e9
-	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904 // indirect
+	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/andybalholm/brotli v1.0.0
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/json-iterator/go v1.1.11

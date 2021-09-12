@@ -43,6 +43,9 @@ const (
 	GatewayLargeThreshold = 100
 
 	FirstEventTimeout = 5 * time.Second
+
+	WaitForReadyTimeout = 15 * time.Second
+	MaxReconnectWait    = 60 * time.Second
 )
 
 // Shard represents the shard object.
@@ -67,6 +70,9 @@ type Shard struct {
 
 	Heartbeater       *time.Ticker  `json:"-"`
 	HeartbeatInterval time.Duration `json:"-"`
+
+	heartbeaterCtx    context.Context
+	cancelHeartbeater func()
 
 	// Duration since last heartbeat Ack beforereconnecting.
 	HeartbeatFailureInterval time.Duration `json:"-"`
@@ -145,7 +151,7 @@ func (sh *Shard) Open() {
 	}
 }
 
-// Connect connects to the gateway and handles identifying
+// Connect connects to the gateway and handles identifying.
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Connecting shard")
 
@@ -228,9 +234,11 @@ func (sh *Shard) Connect() (err error) {
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
-	if !sh.HeartbeatActive.Load() {
-		go sh.Heartbeat()
+	if sh.HeartbeatActive.Load() {
+		sh.cancelHeartbeater()
 	}
+
+	go sh.Heartbeat()
 
 	sequence := sh.Sequence.Load()
 	sessionID := sh.SessionID.Load()
@@ -285,6 +293,7 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	t := time.NewTicker(FirstEventTimeout)
+	defer t.Stop()
 
 	// We wait until we either receive a first event, error
 	// or we hit our FirstEventTimeout. We do nothing when
@@ -318,6 +327,67 @@ func (sh *Shard) Connect() (err error) {
 	}
 
 	return err
+}
+
+// Heartbeat maintains a heartbeat with discord.
+func (sh *Shard) Heartbeat() {
+	sh.HeartbeatActive.Store(true)
+	defer sh.HeartbeatActive.Store(false)
+
+	for {
+		select {
+		case <-sh.heartbeaterCtx.Done():
+			return
+		case <-sh.Heartbeater.C:
+			seq := sh.Sequence.Load()
+
+			err := sh.SendEvent(discord.GatewayOpHeartbeat, seq)
+
+			now := time.Now().UTC()
+			sh.LastHeartbeatSent.Store(now)
+
+			if err != nil || now.Sub(sh.LastHeartbeatAck.Load()) > sh.HeartbeatFailureInterval {
+				if err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting.")
+
+					go sh.Sandwich.PublishSimpleWebhook(
+						"Failed to heartbeat. Reconnecting",
+						"`"+err.Error()+"`",
+						fmt.Sprintf(
+							"Manager: %s ShardGroup: %d ShardID: %d/%d",
+							sh.Manager.Configuration.Identifier,
+							sh.ShardGroup.ID,
+							sh.ShardID,
+							sh.ShardGroup.ShardCount,
+						),
+						EmbedColourDanger,
+					)
+				}
+			} else {
+				sh.Logger.Warn().Msg("Failed to ack and passed heartbeat failure interval")
+
+				go sh.Sandwich.PublishSimpleWebhook(
+					"Failed to ack and passed heartbeat failure interval",
+					"",
+					fmt.Sprintf(
+						"Manager: %s ShardGroup: %d ShardID: %d/%d",
+						sh.Manager.Configuration.Identifier,
+						sh.ShardGroup.ID,
+						sh.ShardID,
+						sh.ShardGroup.ShardCount,
+					),
+					EmbedColourWarning,
+				)
+			}
+
+			err = sh.Reconnect(websocket.StatusNormalClosure)
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+			}
+
+			return
+		}
+	}
 }
 
 // Listen to gateway and process accordingly.
@@ -362,7 +432,7 @@ func (sh *Shard) Listen() (err error) {
 							sh.ShardID,
 							sh.ShardGroup.ShardCount,
 						),
-						EmbedColourDanger,
+						EmbedColourWarning,
 					)
 
 					sh.ShardGroup.Error.Store(err.Error())
@@ -467,10 +537,16 @@ func (sh *Shard) Identify() (err error) {
 	sh.Manager.WaitForIdentify(sh.ShardID, sh.ShardGroup.ShardCount)
 	sh.Logger.Debug().Msg("Wait for identify completed")
 
+	sh.Manager.configurationMu.RLock()
+	token := sh.Manager.Configuration.Token
+	presence := sh.Manager.Configuration.Bot.DefaultPresence
+	intents := sh.Manager.Configuration.Bot.Intents
+	sh.Manager.configurationMu.RUnlock()
+
 	sh.Logger.Debug().Msg("Sending identify")
 
 	err = sh.SendEvent(discord.GatewayOpIdentify, discord.Identify{
-		Token: sh.Manager.Configuration.Token,
+		Token: token,
 		Properties: &discord.IdentifyProperties{
 			OS:      runtime.GOOS,
 			Browser: "Sandwich " + VERSION,
@@ -479,8 +555,25 @@ func (sh *Shard) Identify() (err error) {
 		Compress:       true,
 		LargeThreshold: GatewayLargeThreshold,
 		Shard:          [2]int{sh.ShardID, sh.ShardGroup.ShardCount},
-		Presence:       sh.Manager.Configuration.Bot.DefaultPresence,
-		Intents:        sh.Manager.Configuration.Bot.Intents,
+		Presence:       presence,
+		Intents:        intents,
+	})
+
+	return err
+}
+
+// Resume sends the resume packet to discord.
+func (sh *Shard) Resume() (err error) {
+	sh.Manager.configurationMu.RLock()
+	token := sh.Manager.Configuration.Token
+	sh.Manager.configurationMu.RUnlock()
+
+	sh.Logger.Debug().Msg("Sending resume")
+
+	err = sh.SendEvent(discord.GatewayOpResume, discord.Resume{
+		Token:     token,
+		SessionID: sh.SessionID.Load(),
+		Sequence:  sh.Sequence.Load(),
 	})
 
 	return err
@@ -538,9 +631,20 @@ func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 	case err = <-sh.ErrorCh:
 		return msg, err
 	case msg = <-sh.MessageCh:
-		msg.AddTrace("read", time.Now().UTC())
-
 		return msg, nil
+	}
+}
+
+// Close closes the shard connection.
+func (sh *Shard) Close(code websocket.StatusCode) {
+	if sh.ctx != nil && sh.cancel != nil {
+		sh.cancel()
+	}
+
+	if sh.wsConn != nil {
+		if err := sh.CloseWS(code); err != nil {
+			sh.Logger.Debug().Err(err).Msg("Encountered error closing websocket")
+		}
 	}
 }
 
@@ -560,27 +664,73 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 	return nil
 }
 
-// Connect to gateway and setup message channels
-// Listen handles reading from websocket, errors and basic reconnection
-// Feed reads from the gateway and decompresses messages and push to message channel
-// OnEvent handles gateway ops and dispatch
-// OnDispatch handles cheking blacklists, handling dispatch and publishing
-// Heartbeat maintains Heartbeat
-// Reconnect reconnects to gateway
-// Close sends a close code
+// WaitForReady blocks until the shard is ready.
+func (sh *Shard) WaitForReady() {
+	since := time.Now().UTC()
+	t := time.NewTicker(WaitForReadyTimeout)
+	defer t.Stop()
 
-// Resume
-// Identify
-// Reconnect
+	for {
+		select {
+		case <-sh.ready:
+			return
+		case <-sh.ctx.Done():
+			return
+		case <-t.C:
+			sh.Logger.Debug().
+				Dur("since", time.Now().UTC().Sub(since).Round(time.Second)).
+				Msg("Still waiting for shard to be ready")
+		}
+	}
+}
 
-// SendEvent sends a sentpayload packet
-// WriteJSON sends a message to discord respecting ratelimits
+// Reconnect attempts to reconnect to the gateway.
+func (sh *Shard) Reconnect(code websocket.StatusCode) error {
+	wait := time.Second
 
-// WaitForReady returns when shard is ready
+	sh.Close(code)
 
-// SetStatus
+	for {
+		sh.Logger.Info().Msg("Trying to reconnect to gateway")
 
-// ChunkGuild chunks a guild
+		err := sh.Connect()
+		if err == nil {
+			sh.RetriesRemaining.Store(ShardConnectRetries)
+			sh.Logger.Info().Msg("Successfully reconnected to gateway")
 
-// readMessage returns a message or error from channels
-// decodeContent unmarshals received payload
+			return nil
+		}
+
+		retries := sh.RetriesRemaining.Sub(-1)
+		if retries <= 0 {
+			sh.Logger.Warn().Msg("Ran out of retries whilst connecting. Attempting to reconnect client.")
+			sh.Close(code)
+
+			err = sh.Connect()
+			if err != nil {
+				go sh.Sandwich.PublishSimpleWebhook(
+					"Failed to connect to gateway",
+					"`"+err.Error()+"`",
+					fmt.Sprintf(
+						"Manager: %s ShardGroup: %d ShardID: %d/%d",
+						sh.Manager.Configuration.Identifier,
+						sh.ShardGroup.ID,
+						sh.ShardID,
+						sh.ShardGroup.ShardCount,
+					),
+					EmbedColourDanger,
+				)
+			}
+
+			return err
+		}
+
+		sh.Logger.Warn().Err(err).Dur("retry", wait).Msg("Failed to reconnect to gateway")
+		<-time.After(wait)
+
+		wait *= 2
+		if wait > MaxReconnectWait {
+			wait = MaxReconnectWait
+		}
+	}
+}

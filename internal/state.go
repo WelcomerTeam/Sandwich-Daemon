@@ -2,6 +2,7 @@ package internal
 
 import (
 	"sync"
+	"time"
 
 	snowflake "github.com/WelcomerTeam/RealRock/snowflake"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
@@ -9,9 +10,14 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var NoEventHandler = xerrors.New("No registered handler for event")
+var NoGatewayHandler = xerrors.New("No registered handler for gateway event")
+var NoDispatchHandler = xerrors.New("No registered handler for dispatch event")
 
-var stateHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error))
+// List of handlers for dispatch events.
+var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error))
+
+// List of handlers for gateway events.
+var gatewayHandlers = make(map[discord.GatewayOp]func(ctx *StateCtx, msg discord.GatewayPayload) (err error))
 
 type StateCtx struct {
 	Sg *Sandwich
@@ -67,16 +73,57 @@ func NewSandwichState() (st *SandwichState) {
 	return st
 }
 
-func registerState(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error)) {
-	stateHandlers[eventType] = handler
+func (sh *Shard) OnEvent(msg discord.GatewayPayload) {
+	fin := make(chan void, 1)
+
+	go func() {
+		since := time.Now()
+
+		t := time.NewTicker(DispatchWarningTimeout)
+		defer t.Stop()
+
+		for {
+			select {
+			case <-fin:
+				return
+			case <-t.C:
+				sh.Logger.Warn().
+					Str("type", msg.Type).
+					Int("op", int(msg.Op)).
+					Dur("since", time.Now().Sub(since)).
+					Msg("Event is taking too long")
+			}
+		}
+	}()
+
+	defer close(fin)
+
+}
+
+func registerGatewayEvent(op discord.GatewayOp, handler func(ctx *StateCtx, msg discord.GatewayPayload) (err error)) {
+	gatewayHandlers[op] = handler
+}
+
+func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error)) {
+	dispatchHandlers[eventType] = handler
+}
+
+// GatewayDispatch handles selecting the proper gateway handler and executing it.
+func GatewayDispatch(ctx *StateCtx,
+	event discord.GatewayPayload) (err error) {
+	if f, ok := gatewayHandlers[event.Op]; ok {
+		return f(ctx, event)
+	}
+
+	return NoGatewayHandler
 }
 
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx *StateCtx,
 	event discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	if f, ok := stateHandlers[event.Type]; ok {
+	if f, ok := dispatchHandlers[event.Type]; ok {
 		return f(ctx, event)
 	}
 
-	return result, false, NoEventHandler
+	return result, false, NoDispatchHandler
 }
