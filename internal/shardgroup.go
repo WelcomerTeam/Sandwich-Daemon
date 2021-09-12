@@ -13,7 +13,7 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// ShardGroup represents a group of shards
+// ShardGroup represents a group of shards.
 type ShardGroup struct {
 	Error *atomic.String `json:"error"`
 
@@ -200,7 +200,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 		close(ready)
 	}(sg)
 
-	return err
+	return ready, err
 }
 
 // Close closes all shards in a shardgroup.
