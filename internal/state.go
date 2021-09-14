@@ -292,9 +292,19 @@ func StateDispatch(ctx *StateCtx,
 		return f(ctx, event)
 	}
 
-	ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
+	// ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
 
 	return result, false, ErrNoDispatchHandler
+}
+
+func tempReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	ctx.ready <- void{}
+
+	ctx.Logger.Info().Msg("TEMP READY!")
+
+	return structs.StateResult{
+		Data: 1,
+	}, true, nil
 }
 
 func init() {
@@ -304,4 +314,6 @@ func init() {
 	registerGatewayEvent(discord.GatewayOpInvalidSession, gatewayOpInvalidSession)
 	registerGatewayEvent(discord.GatewayOpHello, gatewayOpHello)
 	registerGatewayEvent(discord.GatewayOpHeartbeatACK, gatewayOpHeartbeatACK)
+
+	registerDispatch("READY", tempReady)
 }
