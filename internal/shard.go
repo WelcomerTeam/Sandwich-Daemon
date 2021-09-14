@@ -14,6 +14,7 @@ import (
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/czlib"
 	"github.com/rs/zerolog"
+	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
@@ -50,6 +51,7 @@ const (
 
 // Shard represents the shard object.
 type Shard struct {
+	ctxMu  sync.RWMutex
 	ctx    context.Context
 	cancel func()
 
@@ -80,13 +82,15 @@ type Shard struct {
 	unavailableMu sync.RWMutex               `json:"-"`
 	Unavailable   map[discord.Snowflake]bool `json:"-"`
 
+	channelMu sync.RWMutex
 	MessageCh chan discord.GatewayPayload
 	ErrorCh   chan error
 
 	Sequence  *atomic.Int64
 	SessionID *atomic.String
 
-	wsConn *websocket.Conn
+	wsConnMu sync.RWMutex
+	wsConn   *websocket.Conn
 
 	wsRatelimit *limiter.DurationLimiter
 
@@ -97,6 +101,8 @@ type Shard struct {
 func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 	logger := sg.Logger.With().Int("shard_id", shardID).Logger()
 	sh = &Shard{
+		ctxMu: sync.RWMutex{},
+
 		RetriesRemaining: atomic.NewInt32(ShardConnectRetries),
 
 		Logger: logger,
@@ -114,8 +120,12 @@ func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 		unavailableMu: sync.RWMutex{},
 		Unavailable:   make(map[discord.Snowflake]bool),
 
+		channelMu: sync.RWMutex{},
+
 		Sequence:  &atomic.Int64{},
 		SessionID: &atomic.String{},
+
+		wsConnMu: sync.RWMutex{},
 
 		// We use 118 just to allow heartbeating to not be limited
 		// by WS but not use it itself.
@@ -169,17 +179,21 @@ func (sh *Shard) Connect() (err error) {
 	sh.Manager.gatewayMu.RUnlock()
 
 	defer func() {
-		if err != nil && sh.wsConn != nil {
+		sh.wsConnMu.RLock()
+		hasWsConn := sh.wsConn != nil
+		sh.wsConnMu.RUnlock()
+
+		if err != nil && hasWsConn {
 			sh.CloseWS(websocket.StatusNormalClosure)
 		}
 	}()
 
-	if sh.wsConn == nil {
-		var errorCh chan error
+	sh.wsConnMu.RLock()
+	noWsConn := sh.wsConn == nil
+	sh.wsConnMu.RUnlock()
 
-		var messageCh chan discord.GatewayPayload
-
-		errorCh, messageCh, err = sh.FeedWebsocket(gatewayURL, nil)
+	if noWsConn {
+		errorCh, messageCh, err := sh.FeedWebsocket(gatewayURL, nil)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to dial gateway")
 
@@ -196,11 +210,13 @@ func (sh *Shard) Connect() (err error) {
 				EmbedColourDanger,
 			)
 
-			return
+			return err
 		}
 
+		sh.channelMu.Lock()
 		sh.ErrorCh = errorCh
 		sh.MessageCh = messageCh
+		sh.channelMu.Unlock()
 	} else {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
@@ -303,8 +319,16 @@ func (sh *Shard) Connect() (err error) {
 
 	sh.Logger.Trace().Msg("Waiting for first event")
 
+	sh.channelMu.RLock()
+	defer sh.channelMu.RUnlock()
+
+	sh.channelMu.RLock()
+	errorCh := sh.ErrorCh
+	messageCh := sh.MessageCh
+	sh.channelMu.RUnlock()
+
 	select {
-	case err = <-sh.ErrorCh:
+	case err = <-errorCh:
 		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
 
 		go sh.Sandwich.PublishSimpleWebhook(
@@ -321,10 +345,10 @@ func (sh *Shard) Connect() (err error) {
 		)
 
 		return err
-	case msg = <-sh.MessageCh:
+	case msg = <-messageCh:
 		sh.Logger.Debug().Msgf("Received first event %d %s", msg.Op, msg.Type)
 
-		sh.MessageCh <- msg
+		messageCh <- msg
 	case <-t.C:
 	}
 
@@ -344,6 +368,9 @@ func (sh *Shard) Heartbeat() {
 			seq := sh.Sequence.Load()
 
 			err := sh.SendEvent(discord.GatewayOpHeartbeat, seq)
+			if err != nil {
+				println("couldnt hb", err.Error())
+			}
 
 			now := time.Now().UTC()
 			sh.LastHeartbeatSent.Store(now)
@@ -364,37 +391,39 @@ func (sh *Shard) Heartbeat() {
 						),
 						EmbedColourDanger,
 					)
+				} else {
+					sh.Logger.Warn().Msg("Failed to ack and passed heartbeat failure interval")
+
+					go sh.Sandwich.PublishSimpleWebhook(
+						"Failed to ack and passed heartbeat failure interval",
+						"",
+						fmt.Sprintf(
+							"Manager: %s ShardGroup: %d ShardID: %d/%d",
+							sh.Manager.Configuration.Identifier,
+							sh.ShardGroup.ID,
+							sh.ShardID,
+							sh.ShardGroup.ShardCount,
+						),
+						EmbedColourWarning,
+					)
 				}
-			} else {
-				sh.Logger.Warn().Msg("Failed to ack and passed heartbeat failure interval")
 
-				go sh.Sandwich.PublishSimpleWebhook(
-					"Failed to ack and passed heartbeat failure interval",
-					"",
-					fmt.Sprintf(
-						"Manager: %s ShardGroup: %d ShardID: %d/%d",
-						sh.Manager.Configuration.Identifier,
-						sh.ShardGroup.ID,
-						sh.ShardID,
-						sh.ShardGroup.ShardCount,
-					),
-					EmbedColourWarning,
-				)
+				err = sh.Reconnect(websocket.StatusNormalClosure)
+				if err != nil {
+					sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+				}
+
+				return
 			}
-
-			err = sh.Reconnect(websocket.StatusNormalClosure)
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-			}
-
-			return
 		}
 	}
 }
 
 // Listen to gateway and process accordingly.
 func (sh *Shard) Listen() (err error) {
+	sh.wsConnMu.RLock()
 	wsConn := sh.wsConn
+	sh.wsConnMu.RUnlock()
 
 	for {
 		select {
@@ -445,7 +474,11 @@ func (sh *Shard) Listen() (err error) {
 				}
 			}
 
-			if wsConn == sh.wsConn {
+			sh.wsConnMu.RLock()
+			connEqual := wsConn == sh.wsConn
+			sh.wsConnMu.RUnlock()
+
+			if connEqual {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection. Reconnecting")
 				err = sh.Reconnect(websocket.StatusNormalClosure)
@@ -457,16 +490,25 @@ func (sh *Shard) Listen() (err error) {
 				return nil
 			}
 
+			sh.wsConnMu.RLock()
 			wsConn = sh.wsConn
+			sh.wsConnMu.RUnlock()
 		}
 
 		sh.OnEvent(msg)
 
+		sh.wsConnMu.RLock()
+		connNotEqual := wsConn != sh.wsConn
+		sh.wsConnMu.RUnlock()
+
 		// In the event we have reconnected, the wsConn could have changed,
 		// we will use the new wsConn if this is the case
-		if sh.wsConn != wsConn {
+		if connNotEqual {
 			sh.Logger.Debug().Msg("New wsConn was assigned to shard")
+
+			sh.wsConnMu.RLock()
 			wsConn = sh.wsConn
+			sh.wsConnMu.RUnlock()
 		}
 	}
 
@@ -487,7 +529,10 @@ func (sh *Shard) FeedWebsocket(u string,
 	}
 
 	conn.SetReadLimit(WebsocketReadLimit)
+
+	sh.wsConnMu.Lock()
 	sh.wsConn = conn
+	sh.wsConnMu.Unlock()
 
 	go func() {
 		for {
@@ -612,7 +657,13 @@ func (sh *Shard) WriteJSON(op discord.GatewayOp, i interface{}) (err error) {
 		sh.wsRatelimit.Lock()
 	}
 
-	err = sh.wsConn.Write(sh.ctx, websocket.MessageText, res)
+	sh.wsConnMu.RLock()
+	wsConn := sh.wsConn
+	sh.wsConnMu.RUnlock()
+
+	sh.Logger.Trace().Str("msg", gotils_strconv.B2S(res)).Msg("<<<")
+
+	err = wsConn.Write(sh.ctx, websocket.MessageText, res)
 
 	return err
 }
@@ -634,16 +685,22 @@ func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err
 // readMessage fills the shard msg buffer from a websocket message.
 func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 	// Prioritize errors
+
+	sh.channelMu.RLock()
+	errorCh := sh.ErrorCh
+	messageCh := sh.MessageCh
+	sh.channelMu.RUnlock()
+
 	select {
-	case err = <-sh.ErrorCh:
+	case err = <-errorCh:
 		return msg, err
 	default:
 	}
 
 	select {
-	case err = <-sh.ErrorCh:
+	case err = <-errorCh:
 		return msg, err
-	case msg = <-sh.MessageCh:
+	case msg = <-messageCh:
 		return msg, nil
 	}
 }
@@ -654,7 +711,11 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 		sh.cancel()
 	}
 
-	if sh.wsConn != nil {
+	sh.wsConnMu.RLock()
+	hasWsConn := sh.wsConn != nil
+	sh.wsConnMu.RUnlock()
+
+	if hasWsConn {
 		if err := sh.CloseWS(code); err != nil {
 			sh.Logger.Debug().Err(err).Msg("Encountered error closing websocket")
 		}
@@ -663,15 +724,25 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 
 // CloseWS closes the websocket. This will always return 0 as the error is suppressed.
 func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
-	if sh.wsConn != nil {
+	sh.wsConnMu.RLock()
+	hasWsConn := sh.wsConn != nil
+	sh.wsConnMu.RUnlock()
+
+	if hasWsConn {
 		sh.Logger.Debug().Int("code", int(statusCode)).Msg("Closing websocket connection")
 
-		err = sh.wsConn.Close(statusCode, "")
+		sh.wsConnMu.RLock()
+		wsConn := sh.wsConn
+		sh.wsConnMu.RUnlock()
+
+		err = wsConn.Close(statusCode, "")
 		if err != nil && !xerrors.Is(err, context.Canceled) {
 			sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
 		}
 
+		sh.wsConnMu.Lock()
 		sh.wsConn = nil
+		sh.wsConnMu.Unlock()
 	}
 
 	return nil
