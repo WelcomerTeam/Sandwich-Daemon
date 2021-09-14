@@ -1,24 +1,111 @@
 package internal
 
-// counter only up
-// gague up or down
-// summaries you dont know the value
-// histogram you know the values
+import "github.com/prometheus/client_golang/prometheus"
 
-// events total
-// events per manager
-// events per shardgroup
-// events per guild
-// events type total
-// gateway latency
+var (
+	sandwichEventCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Help: "Sandwich Events",
+		},
+		[]string{"identifier"},
+	)
 
-// shard status total
+	sandwichGuildEventCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Help: "Sandwich Event Count by Guild",
+		},
+		[]string{"identifier", "guild_id"},
+	)
 
-// unavailable guilds
+	sandwichDispatchEventCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Help: "Sandwich Dispatch Events",
+		},
+		[]string{"identifier", "type"},
+	)
 
-// cache counts
-// cache requests
-// cache hits
-// cache misses
+	sandwichGatewayLatency = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Help: "Sandwich Discord Gateway Latency",
+		},
+		[]string{"identifier", "shard_group", "shard"},
+	)
 
-// producer events total
+	sandwichUnavailableGuildCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Help: "Sandwich Unavailable Guilds",
+		},
+		[]string{"identifier", "shard_group"},
+	)
+
+	sandwichStateTotalCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich State Total Count",
+		},
+	)
+
+	sandwichStateGuildCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich State Guild Count",
+		},
+	)
+
+	sandwichStateGuildMembersCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich State Guild Member Count",
+		},
+	)
+
+	sandwichStateRoleCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich State Guild Role Count",
+		},
+	)
+
+	sandwichStateEmojiCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich State Emoji Count",
+		},
+	)
+
+	sandwichStateUserCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich State User Count",
+		},
+	)
+
+	sandwichStateChannel = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich State Channel Count",
+		},
+	)
+
+	grpcCacheRequests = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich GRPC Requests",
+		},
+	)
+
+	grpcCacheHits = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich GRPC Cache Hits",
+		},
+	)
+
+	grpcCacheMisses = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Help: "Sandwich GRPC Cache Misses",
+		},
+	)
+
+	// TODO: Message Tracing
+	// Time between from discord GW and Produced
+	// Time in state
+
+	// Events waiting for ticket
+
+	// Guild Count
+	// Guild Join / Leave
+
+	// Outbound WS count + Types
+)
