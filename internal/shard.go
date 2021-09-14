@@ -681,8 +681,6 @@ func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err
 
 // readMessage fills the shard msg buffer from a websocket message.
 func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
-	// Prioritize errors
-
 	sh.channelMu.RLock()
 	errorCh := sh.ErrorCh
 	messageCh := sh.MessageCh
