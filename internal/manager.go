@@ -30,8 +30,6 @@ const (
 	StandardIdentifyLimit = 5
 	IdentifyRetry         = (StandardIdentifyLimit * time.Second)
 	IdentifyRateLimit     = (StandardIdentifyLimit * time.Second) + (500 * time.Millisecond)
-
-	BypassIdentify = true
 )
 
 // Manager represents a single application.
@@ -264,11 +262,6 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 
 // WaitForIdentify blocks until a shard can identify.
 func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
-	// TODO: Remove in production
-	if BypassIdentify {
-		return nil
-	}
-
 	mg.Sandwich.configurationMu.RLock()
 	identifyURL := mg.Sandwich.Configuration.Identify.URL
 	identifyHeaders := mg.Sandwich.Configuration.Identify.Headers

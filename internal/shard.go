@@ -14,6 +14,7 @@ import (
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/czlib"
 	"github.com/rs/zerolog"
+	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
@@ -658,6 +659,8 @@ func (sh *Shard) WriteJSON(op discord.GatewayOp, i interface{}) (err error) {
 	sh.wsConnMu.RLock()
 	wsConn := sh.wsConn
 	sh.wsConnMu.RUnlock()
+
+	sh.Logger.Trace().Msg("<<< " + gotils_strconv.B2S(res))
 
 	err = wsConn.Write(sh.ctx, websocket.MessageText, res)
 

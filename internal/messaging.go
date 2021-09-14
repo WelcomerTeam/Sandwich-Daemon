@@ -7,7 +7,6 @@ import (
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/next/messaging"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/andybalholm/brotli"
-	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/xerrors"
 )
@@ -62,7 +61,7 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}
 
-	sh.Logger.Trace().Str("event", gotils_strconv.B2S(payload)).Msgf("Processed %s event", packet.Type)
+	// sh.Logger.Trace().Str("event", gotils_strconv.B2S(payload)).Msgf("Processed %s event", packet.Type)
 
 	// Compression testing of large payloads. In the future this *may* be
 	// added however in its current state it is uncertain. With using a 1mb

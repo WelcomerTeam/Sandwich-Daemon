@@ -143,6 +143,8 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 		managersMu: sync.RWMutex{},
 		Managers:   make(map[string]*Manager),
 
+		IdentifyBuckets: bucketstore.NewBucketStore(),
+
 		EventPool:        limiter.NewConcurrencyLimiter(eventPoolLimit),
 		EventPoolWaiting: atomic.NewInt64(0),
 		EventPoolLimit:   eventPoolLimit,
@@ -291,9 +293,11 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 
 // ValidateConfiguration ensures certain values in the configuration are passed.
 func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) (err error) {
-	if configuration.Identify.URL == "" {
-		return ErrConfigurationValidateIdentify
-	}
+	// if configuration.Identify.URL == "" {
+	// 	return ErrConfigurationValidateIdentify
+	// }
+
+	// TODO: Allow empty, warn and validate if not empty and invalid
 
 	if configuration.Prometheus.Host == "" {
 		return ErrConfigurationValidatePrometheus
