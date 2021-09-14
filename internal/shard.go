@@ -14,7 +14,6 @@ import (
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/czlib"
 	"github.com/rs/zerolog"
-	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
@@ -541,6 +540,8 @@ func (sh *Shard) FeedWebsocket(u string,
 			default:
 			}
 
+			sandwichEventCount.WithLabelValues(sh.Manager.Configuration.Identifier).Add(1)
+
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to read from gateway")
 				errorCh <- err
@@ -658,8 +659,6 @@ func (sh *Shard) WriteJSON(op discord.GatewayOp, i interface{}) (err error) {
 	wsConn := sh.wsConn
 	sh.wsConnMu.RUnlock()
 
-	sh.Logger.Trace().Str("msg", gotils_strconv.B2S(res)).Msg("<<<")
-
 	err = wsConn.Write(sh.ctx, websocket.MessageText, res)
 
 	return err
@@ -670,10 +669,11 @@ func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err
 	err = json.Unmarshal(msg.Data, &out)
 
 	// TODO: Remove in production
-	// Debug use only
 	outD, _ := json.Marshal(out)
 	if bytes.Compare(outD, msg.Data) != 0 {
 		sh.Logger.Warn().Str("In", string(msg.Data)).Str("Out", string(outD)).Msg("Varied payloads detected")
+	} else {
+		sh.Logger.Info().Str("type", msg.Type).Int("op", int(msg.Op)).Msg("payload pass")
 	}
 
 	return
