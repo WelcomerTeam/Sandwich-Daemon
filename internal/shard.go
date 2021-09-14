@@ -368,9 +368,6 @@ func (sh *Shard) Heartbeat() {
 			seq := sh.Sequence.Load()
 
 			err := sh.SendEvent(discord.GatewayOpHeartbeat, seq)
-			if err != nil {
-				println("couldnt hb", err.Error())
-			}
 
 			now := time.Now().UTC()
 			sh.LastHeartbeatSent.Store(now)
