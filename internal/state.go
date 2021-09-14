@@ -171,7 +171,7 @@ func GatewayDispatch(sh *Shard,
 }
 
 func gatewayOpDispatch(sh *Shard, msg discord.GatewayPayload) (err error) {
-	go func() {
+	go func(msg discord.GatewayPayload) {
 		ticket := sh.Sandwich.EventPool.Wait()
 		defer sh.Sandwich.EventPool.FreeTicket(ticket)
 
@@ -179,7 +179,7 @@ func gatewayOpDispatch(sh *Shard, msg discord.GatewayPayload) (err error) {
 		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Msg("State dispatch failed")
 		}
-	}()
+	}(msg)
 
 	return
 }
@@ -287,8 +287,12 @@ func gatewayOpHeartbeatACK(sh *Shard, msg discord.GatewayPayload) (err error) {
 func StateDispatch(ctx *StateCtx,
 	event discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
+		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
+
 		return f(ctx, event)
 	}
+
+	ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
 
 	return result, false, ErrNoDispatchHandler
 }
