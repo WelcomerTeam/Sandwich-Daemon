@@ -423,6 +423,22 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	host := sg.Configuration.Prometheus.Host
 	sg.configurationMu.RUnlock()
 
+	prometheus.MustRegister(sandwichEventCount)
+	prometheus.MustRegister(sandwichGuildEventCount)
+	prometheus.MustRegister(sandwichDispatchEventCount)
+	prometheus.MustRegister(sandwichGatewayLatency)
+	prometheus.MustRegister(sandwichUnavailableGuildCount)
+	prometheus.MustRegister(sandwichStateTotalCount)
+	prometheus.MustRegister(sandwichStateGuildCount)
+	prometheus.MustRegister(sandwichStateGuildMembersCount)
+	prometheus.MustRegister(sandwichStateRoleCount)
+	prometheus.MustRegister(sandwichStateEmojiCount)
+	prometheus.MustRegister(sandwichStateUserCount)
+	prometheus.MustRegister(sandwichStateChannel)
+	prometheus.MustRegister(grpcCacheRequests)
+	prometheus.MustRegister(grpcCacheHits)
+	prometheus.MustRegister(grpcCacheMisses)
+
 	http.Handle("/metrics", promhttp.HandlerFor(
 		prometheus.DefaultGatherer,
 		promhttp.HandlerOpts{},
