@@ -180,20 +180,12 @@ func (sh *Shard) Connect() (err error) {
 	sh.Manager.gatewayMu.RUnlock()
 
 	defer func() {
-		sh.wsConnMu.RLock()
-		hasWsConn := sh.wsConn != nil
-		sh.wsConnMu.RUnlock()
-
-		if err != nil && hasWsConn {
+		if err != nil && sh.hasWsConn() {
 			sh.CloseWS(websocket.StatusNormalClosure)
 		}
 	}()
 
-	sh.wsConnMu.RLock()
-	noWsConn := sh.wsConn == nil
-	sh.wsConnMu.RUnlock()
-
-	if noWsConn {
+	if !sh.hasWsConn() {
 		errorCh, messageCh, err := sh.FeedWebsocket(gatewayURL, nil)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to dial gateway")
@@ -719,11 +711,7 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 		sh.cancel()
 	}
 
-	sh.wsConnMu.RLock()
-	hasWsConn := sh.wsConn != nil
-	sh.wsConnMu.RUnlock()
-
-	if hasWsConn {
+	if sh.hasWsConn() {
 		if err := sh.CloseWS(code); err != nil {
 			sh.Logger.Debug().Err(err).Msg("Encountered error closing websocket")
 		}
@@ -732,11 +720,7 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 
 // CloseWS closes the websocket. This will always return 0 as the error is suppressed.
 func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
-	sh.wsConnMu.RLock()
-	hasWsConn := sh.wsConn != nil
-	sh.wsConnMu.RUnlock()
-
-	if hasWsConn {
+	if sh.hasWsConn() {
 		sh.Logger.Debug().Int("code", int(statusCode)).Msg("Closing websocket connection")
 
 		sh.wsConnMu.RLock()
@@ -829,4 +813,12 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 			wait = MaxReconnectWait
 		}
 	}
+}
+
+func (sh *Shard) hasWsConn() (hasWsConn bool) {
+	sh.wsConnMu.RLock()
+	hasWsConn = sh.wsConn != nil
+	sh.wsConnMu.RUnlock()
+
+	return
 }
