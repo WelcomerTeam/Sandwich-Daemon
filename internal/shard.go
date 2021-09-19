@@ -51,9 +51,11 @@ const (
 
 // Shard represents the shard object.
 type Shard struct {
-	ctxMu  sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context `json:"-"`
 	cancel func()
+
+	RoutineDeadSignal   DeadSignal `json:"-"`
+	HeartbeatDeadSignal DeadSignal `json:"-"`
 
 	Start            time.Time     `json:"start"`
 	RetriesRemaining *atomic.Int32 `json:"-"`
@@ -72,9 +74,6 @@ type Shard struct {
 
 	Heartbeater       *time.Ticker  `json:"-"`
 	HeartbeatInterval time.Duration `json:"-"`
-
-	heartbeaterCtx    context.Context
-	cancelHeartbeater func()
 
 	// Duration since last heartbeat Ack beforereconnecting.
 	HeartbeatFailureInterval time.Duration `json:"-"`
@@ -101,7 +100,8 @@ type Shard struct {
 func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 	logger := sg.Logger.With().Int("shard_id", shardID).Logger()
 	sh = &Shard{
-		ctxMu: sync.RWMutex{},
+		RoutineDeadSignal:   DeadSignal{},
+		HeartbeatDeadSignal: DeadSignal{},
 
 		RetriesRemaining: atomic.NewInt32(ShardConnectRetries),
 
@@ -153,8 +153,6 @@ func (sh *Shard) Open() {
 
 		select {
 		case <-sh.ctx.Done():
-			sh.Logger.Debug().Msg("Shard context done")
-
 			return
 		default:
 		}
@@ -164,6 +162,9 @@ func (sh *Shard) Open() {
 // Connect connects to the gateway and handles identifying.
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Connecting shard")
+
+	sh.RoutineDeadSignal.Close()
+	sh.RoutineDeadSignal = DeadSignal{}
 
 	select {
 	case <-sh.ctx.Done():
@@ -246,15 +247,12 @@ func (sh *Shard) Connect() (err error) {
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
+	sh.HeartbeatDeadSignal.Close()
+	sh.HeartbeatDeadSignal = DeadSignal{}
+
 	sh.HeartbeatInterval = helloResponse.HeartbeatInterval * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
-
-	if sh.HeartbeatActive.Load() {
-		sh.cancelHeartbeater()
-	}
-
-	sh.heartbeaterCtx, sh.cancelHeartbeater = context.WithCancel(sh.ctx)
 
 	go sh.Heartbeat()
 
@@ -360,9 +358,12 @@ func (sh *Shard) Heartbeat() {
 	sh.HeartbeatActive.Store(true)
 	defer sh.HeartbeatActive.Store(false)
 
+	sh.HeartbeatDeadSignal.Started()
+	defer sh.HeartbeatDeadSignal.Done()
+
 	for {
 		select {
-		case <-sh.heartbeaterCtx.Done():
+		case <-sh.HeartbeatDeadSignal.Dead():
 			return
 		case <-sh.Heartbeater.C:
 			seq := sh.Sequence.Load()
@@ -422,9 +423,12 @@ func (sh *Shard) Listen() (err error) {
 	wsConn := sh.wsConn
 	sh.wsConnMu.RUnlock()
 
+	sh.RoutineDeadSignal.Started()
+	defer sh.RoutineDeadSignal.Done()
+
 	for {
 		select {
-		case <-sh.ctx.Done():
+		case <-sh.RoutineDeadSignal.Dead():
 			return
 		default:
 		}
@@ -532,29 +536,32 @@ func (sh *Shard) FeedWebsocket(u string,
 	sh.wsConnMu.Unlock()
 
 	go func() {
+		sh.RoutineDeadSignal.Started()
+		defer sh.RoutineDeadSignal.Done()
+
 		for {
-			messageType, data, err := conn.Read(sh.ctx)
+			messageType, data, connectionErr := conn.Read(sh.ctx)
 
 			select {
-			case <-sh.ctx.Done():
+			case <-sh.RoutineDeadSignal.Dead():
 				return
 			default:
 			}
 
 			sandwichEventCount.WithLabelValues(sh.Manager.Configuration.Identifier).Add(1)
 
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to read from gateway")
-				errorCh <- err
+			if connectionErr != nil {
+				sh.Logger.Error().Err(connectionErr).Msg("Failed to read from gateway")
+				errorCh <- connectionErr
 
 				return
 			}
 
 			if messageType == websocket.MessageBinary {
-				data, err = czlib.Decompress(data)
-				if err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to decompress data")
-					errorCh <- err
+				data, connectionErr = czlib.Decompress(data)
+				if connectionErr != nil {
+					sh.Logger.Error().Err(connectionErr).Msg("Failed to decompress data")
+					errorCh <- connectionErr
 
 					return
 				}
@@ -562,9 +569,9 @@ func (sh *Shard) FeedWebsocket(u string,
 
 			msg := sh.Sandwich.receivedPool.Get().(*discord.GatewayPayload)
 
-			err = json.Unmarshal(data, &msg)
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to unmarshal message")
+			connectionErr = json.Unmarshal(data, &msg)
+			if connectionErr != nil {
+				sh.Logger.Error().Err(connectionErr).Msg("Failed to unmarshal message")
 
 				continue
 			}
@@ -705,7 +712,10 @@ func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 
 // Close closes the shard connection.
 func (sh *Shard) Close(code websocket.StatusCode) {
-	if sh.ctx != nil && sh.cancel != nil {
+	sh.RoutineDeadSignal.Close()
+	sh.RoutineDeadSignal = DeadSignal{}
+
+	if sh.ctx != nil {
 		sh.cancel()
 	}
 
@@ -753,11 +763,14 @@ func (sh *Shard) WaitForReady() {
 
 	defer t.Stop()
 
+	sh.RoutineDeadSignal.Started()
+	defer sh.RoutineDeadSignal.Done()
+
 	for {
 		select {
 		case <-sh.ready:
 			return
-		case <-sh.ctx.Done():
+		case <-sh.RoutineDeadSignal.Dead():
 			return
 		case <-t.C:
 			sh.Logger.Debug().

@@ -448,12 +448,14 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 		promhttp.HandlerOpts{},
 	))
 
+	sg.Logger.Info().Msgf("Serving prometheus at %s", host)
+
 	err = http.ListenAndServe(host, nil)
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve prometheus server")
-	}
 
-	sg.Logger.Info().Msgf("Serving prometheus at %s", host)
+		return err
+	}
 
 	return nil
 }
