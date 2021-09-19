@@ -156,9 +156,9 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 			sg.shardsMu.RUnlock()
 
 			for {
-				err = shard.Connect()
-				if err != nil && !xerrors.Is(err, context.Canceled) {
-					sg.Logger.Warn().Err(err).
+				shardErr := shard.Connect()
+				if shardErr != nil && !xerrors.Is(shardErr, context.Canceled) {
+					sg.Logger.Warn().Err(shardErr).
 						Int("shard_id", shardID).
 						Msgf("Failed to connect shard. Retrying")
 				} else {

@@ -135,5 +135,5 @@ var (
 	// Events waiting for ticket
 	// Guild Count
 	// Guild Join / Leave
-	// Outbound WS count + Types
+	// Outbound WS count + Types.
 )
