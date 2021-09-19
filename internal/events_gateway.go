@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
@@ -9,16 +10,19 @@ import (
 	"nhooyr.io/websocket"
 )
 
+const MagicDecimalBase = 10
+
 func gatewayOpDispatch(sh *Shard, msg discord.GatewayPayload) error {
-	go func(msg discord.GatewayPayload) {
-		ticket := sh.Sandwich.EventPool.Wait()
+	ticket := sh.Sandwich.EventPool.Wait()
+
+	go func(msg discord.GatewayPayload, ticket int) {
 		defer sh.Sandwich.EventPool.FreeTicket(ticket)
 
 		err := sh.OnDispatch(msg)
 		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Msg("State dispatch failed")
 		}
-	}(msg)
+	}(msg, ticket)
 
 	return nil
 }
@@ -115,9 +119,18 @@ func gatewayOpHello(sh *Shard, msg discord.GatewayPayload) (err error) {
 
 func gatewayOpHeartbeatACK(sh *Shard, msg discord.GatewayPayload) (err error) {
 	sh.LastHeartbeatAck.Store(time.Now().UTC())
+
+	heartbeatRTT := sh.LastHeartbeatAck.Load().Sub(sh.LastHeartbeatSent.Load()).Milliseconds()
+
 	sh.Logger.Debug().
-		Int64("RTT", sh.LastHeartbeatAck.Load().Sub(sh.LastHeartbeatSent.Load()).Milliseconds()).
+		Int64("RTT", heartbeatRTT).
 		Msg("Received heartbeat ACK")
+
+	sandwichGatewayLatency.WithLabelValues(
+		sh.Manager.Configuration.Identifier,
+		strconv.FormatInt(sh.ShardGroup.ID, MagicDecimalBase),
+		strconv.Itoa(sh.ShardID),
+	).Set(float64(heartbeatRTT))
 
 	return
 }

@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -90,36 +88,44 @@ func (ds *DeadSignal) init() {
 func (ds *DeadSignal) Dead() chan void {
 	ds.init()
 
+	ds.Lock()
+	defer ds.Unlock()
+
 	return ds.dead
 }
 
 // Signifies the goroutine has started.
 // When calling open, done should be called on end.
-func (ds *DeadSignal) Started() {
+func (ds *DeadSignal) Started(i string) {
 	ds.init()
 	ds.waiting.Add(1)
 }
 
 // Signifies the goroutine is done.
-func (ds *DeadSignal) Done() {
+func (ds *DeadSignal) Done(i string) {
 	ds.init()
 	ds.waiting.Done()
 }
 
 // Close closes the dead channel and
 // waits for other goroutines waiting on Dead() to call Done().
-func (ds *DeadSignal) Close() {
+func (ds *DeadSignal) Close(t string) {
 	ds.init()
+
+	ds.Lock()
 	close(ds.dead)
-	log.Info().Msg("DeadSignal closed and waiting!")
+	ds.Unlock()
+
 	ds.waiting.Wait()
-	log.Info().Msg("DeadSignal finished waiting!")
 }
 
 // Similar to Close however does not wait for goroutines to finish.
 // Both should not be ran.
 func (ds *DeadSignal) Kill() {
 	ds.init()
-	log.Info().Msg("DeadSignal closed!")
+
+	ds.Lock()
+	defer ds.Unlock()
+
 	close(ds.dead)
 }

@@ -152,6 +152,8 @@ func (sh *Shard) Open() {
 		}
 
 		select {
+		case <-sh.RoutineDeadSignal.Dead():
+			return
 		case <-sh.ctx.Done():
 			return
 		default:
@@ -163,7 +165,7 @@ func (sh *Shard) Open() {
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Connecting shard")
 
-	sh.RoutineDeadSignal.Close()
+	sh.RoutineDeadSignal.Close("CONNECT")
 	sh.RoutineDeadSignal = DeadSignal{}
 
 	select {
@@ -239,7 +241,7 @@ func (sh *Shard) Connect() (err error) {
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
-	sh.HeartbeatDeadSignal.Close()
+	sh.HeartbeatDeadSignal.Close("HB")
 	sh.HeartbeatDeadSignal = DeadSignal{}
 
 	sh.HeartbeatInterval = helloResponse.HeartbeatInterval * time.Millisecond
@@ -350,8 +352,8 @@ func (sh *Shard) Heartbeat() {
 	sh.HeartbeatActive.Store(true)
 	defer sh.HeartbeatActive.Store(false)
 
-	sh.HeartbeatDeadSignal.Started()
-	defer sh.HeartbeatDeadSignal.Done()
+	sh.HeartbeatDeadSignal.Started("HB")
+	defer sh.HeartbeatDeadSignal.Done("HB")
 
 	for {
 		select {
@@ -414,9 +416,6 @@ func (sh *Shard) Listen() (err error) {
 	sh.wsConnMu.RLock()
 	wsConn := sh.wsConn
 	sh.wsConnMu.RUnlock()
-
-	sh.RoutineDeadSignal.Started()
-	defer sh.RoutineDeadSignal.Done()
 
 	for {
 		select {
@@ -528,8 +527,8 @@ func (sh *Shard) FeedWebsocket(u string,
 	sh.wsConnMu.Unlock()
 
 	go func() {
-		sh.RoutineDeadSignal.Started()
-		defer sh.RoutineDeadSignal.Done()
+		sh.RoutineDeadSignal.Started("FEED")
+		defer sh.RoutineDeadSignal.Done("FEED")
 
 		for {
 			messageType, data, connectionErr := conn.Read(sh.ctx)
@@ -704,7 +703,7 @@ func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 
 // Close closes the shard connection.
 func (sh *Shard) Close(code websocket.StatusCode) {
-	sh.RoutineDeadSignal.Close()
+	sh.RoutineDeadSignal.Close("CLOSE")
 	sh.RoutineDeadSignal = DeadSignal{}
 
 	if sh.ctx != nil {
@@ -747,8 +746,8 @@ func (sh *Shard) WaitForReady() {
 
 	defer t.Stop()
 
-	sh.RoutineDeadSignal.Started()
-	defer sh.RoutineDeadSignal.Done()
+	sh.RoutineDeadSignal.Started("WFR")
+	defer sh.RoutineDeadSignal.Done("WFR")
 
 	for {
 		select {

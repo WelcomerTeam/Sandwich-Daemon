@@ -49,13 +49,13 @@ type Manager struct {
 	Gateway   discord.GatewayBot `json:"gateway" yaml:"gateway"`
 
 	shardGroupsMu sync.RWMutex
-	ShardGroups   map[int32]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
+	ShardGroups   map[int64]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
 
 	ProducerClient MQClient `json:"-"`
 
 	Client *Client `json:"-"`
 
-	shardGroupCounter *atomic.Int32
+	shardGroupCounter *atomic.Int64
 
 	eventBlacklistMu sync.RWMutex
 	eventBlacklist   []string
@@ -125,11 +125,11 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		Gateway:   discord.GatewayBot{},
 
 		shardGroupsMu: sync.RWMutex{},
-		ShardGroups:   make(map[int32]*ShardGroup),
+		ShardGroups:   make(map[int64]*ShardGroup),
 
 		Client: NewClient(configuration.Token),
 
-		shardGroupCounter: atomic.NewInt32(0),
+		shardGroupCounter: &atomic.Int64{},
 
 		eventBlacklistMu: sync.RWMutex{},
 		eventBlacklist:   configuration.Events.EventBlacklist,
