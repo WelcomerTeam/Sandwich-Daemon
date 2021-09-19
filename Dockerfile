@@ -11,7 +11,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o ./out/sandwich ./cmd/main.go
+RUN go build --trimpath -o ./out/sandwich ./cmd/main.go
 
 FROM alpine:3
 RUN apk add ca-certificates

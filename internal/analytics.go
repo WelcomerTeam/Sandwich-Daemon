@@ -29,7 +29,6 @@ var (
 		[]string{"identifier", "type"},
 	)
 
-	// TODO: Implement.
 	sandwichGatewayLatency = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "sandwich_discord_gateway_latency",

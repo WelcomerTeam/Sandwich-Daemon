@@ -26,7 +26,7 @@ type ShardGroup struct {
 	userMu sync.RWMutex  `json:"-"`
 	User   *discord.User `json:"user"`
 
-	ID int32 `json:"id"`
+	ID int64 `json:"id"`
 
 	ShardCount int   `json:"shard_count"`
 	ShardIDs   []int `json:"shard_ids"`
@@ -57,7 +57,7 @@ type ShardGroup struct {
 }
 
 // NewShardGroup creates a new shardgroup.
-func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int, shardCount int) (sg *ShardGroup) {
+func (mg *Manager) NewShardGroup(shardGroupID int64, shardIDs []int, shardCount int) (sg *ShardGroup) {
 	sg = &ShardGroup{
 		Error: &atomic.String{},
 
