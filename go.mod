@@ -13,7 +13,7 @@ require (
 	github.com/nats-io/nats-streaming-server v0.22.1 // indirect
 	github.com/nats-io/nats.go v1.11.1-0.20210623165838-4b75fc59ae30
 	github.com/nats-io/stan.go v0.10.0
-	github.com/pkg/profile v1.6.0 // indirect
+	github.com/pkg/profile v1.6.0
 	github.com/prometheus/client_golang v0.9.2
 	github.com/rs/zerolog v1.23.0
 	github.com/savsgio/gotils v0.0.0-20210907153846-c06938798b52
