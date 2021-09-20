@@ -16,7 +16,7 @@ type Hello struct {
 
 // Ready represents when the client has completed the initial handshake.
 type Ready struct {
-	Version     int                 `json:"version"`
+	Version     int                 `json:"v"`
 	User        User                `json:"user"`
 	Guilds      []*UnavailableGuild `json:"guilds"`
 	SessionID   string              `json:"session_id"`
@@ -104,7 +104,7 @@ type ThreadMembersUpdate struct {
 // GuildCreate represents a guild create event.
 type GuildCreate struct {
 	*Guild
-	Lazy bool `json:"-"` // Internal use.
+	Lazy bool `json:"lazy"` // Internal use.
 }
 
 // GuildUpdate represents a guild update event.

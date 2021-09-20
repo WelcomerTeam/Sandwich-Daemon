@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"encoding/hex"
 	"hash"
 	"strconv"
@@ -16,6 +17,11 @@ const (
 )
 
 type void struct{}
+
+type CtxGroup struct {
+	context context.Context
+	cancel  func()
+}
 
 func replaceIfEmpty(v string, s string) string {
 	if v == "" {
@@ -73,6 +79,9 @@ type DeadSignal struct {
 	sync.Mutex
 	waiting sync.WaitGroup
 	dead    chan void
+
+	waitingForMu sync.RWMutex
+	waitingFor   map[string]bool
 }
 
 func (ds *DeadSignal) init() {
@@ -80,6 +89,9 @@ func (ds *DeadSignal) init() {
 	if ds.dead == nil {
 		ds.dead = make(chan void, 1)
 		ds.waiting = sync.WaitGroup{}
+
+		ds.waitingForMu = sync.RWMutex{}
+		ds.waitingFor = make(map[string]bool)
 	}
 	ds.Unlock()
 }
@@ -99,24 +111,64 @@ func (ds *DeadSignal) Dead() chan void {
 func (ds *DeadSignal) Started(i string) {
 	ds.init()
 	ds.waiting.Add(1)
+
+	ds.waitingForMu.Lock()
+	ds.waitingFor[i] = true
+	ds.waitingForMu.Unlock()
 }
 
 // Signifies the goroutine is done.
 func (ds *DeadSignal) Done(i string) {
 	ds.init()
 	ds.waiting.Done()
+
+	ds.waitingForMu.Lock()
+	delete(ds.waitingFor, i)
+	ds.waitingForMu.Unlock()
 }
 
 // Close closes the dead channel and
 // waits for other goroutines waiting on Dead() to call Done().
+// When Close returns, it is designed that any goroutines will no
+// longer be using it.
 func (ds *DeadSignal) Close(t string) {
 	ds.init()
+
+	c := make(chan void, 1)
+	go func() {
+		t := time.NewTicker(time.Second * 5)
+		select {
+		case <-c:
+			return
+		case <-t.C:
+			waitingFor := ""
+
+			ds.waitingForMu.RLock()
+			for i := range ds.waitingFor {
+				waitingFor = waitingFor + " " + i
+			}
+			ds.waitingForMu.RUnlock()
+
+			println("Still waiting for", waitingFor)
+		}
+	}()
 
 	ds.Lock()
 	close(ds.dead)
 	ds.Unlock()
 
 	ds.waiting.Wait()
+}
+
+// Revive makes a closed DeadSignal create
+// a new dead channel to allow for it to be reused. You should not
+// revive on a closed channel if it is still being actively used.
+func (ds *DeadSignal) Revive() {
+	ds.init()
+
+	ds.Lock()
+	ds.dead = make(chan void, 1)
+	ds.Unlock()
 }
 
 // Similar to Close however does not wait for goroutines to finish.

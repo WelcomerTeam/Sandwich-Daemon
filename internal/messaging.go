@@ -40,7 +40,7 @@ func NewMQClient(mqType string) (MQClient, error) {
 }
 
 // PublishEvent publishes a SandwichPayload.
-func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
+func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPayload) (err error) {
 	sh.Manager.configurationMu.RLock()
 	identifier := sh.Manager.Configuration.ProducerIdentifier
 	channelName := sh.Manager.Configuration.Messaging.ChannelName
@@ -136,7 +136,7 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 	}
 
 	err = sh.Manager.ProducerClient.Publish(
-		sh.ctx,
+		ctx,
 		channelName,
 		compressedPayload.Bytes(),
 	)
