@@ -9,9 +9,20 @@ import (
 
 	internal "github.com/WelcomerTeam/Sandwich-Daemon/next/internal"
 	"github.com/rs/zerolog"
+
+	"net/http"
+	_ "net/http/pprof"
+
+	"github.com/pkg/profile"
 )
 
 func main() {
+	defer profile.Start(profile.MemProfile).Stop()
+
+	go func() {
+		http.ListenAndServe(":8080", nil)
+	}()
+
 	lFlag := flag.String("level", "info", "Global log level to use (debug/info/warn/error/fatal/panic/no/disabled/trace) (default: info)")
 	lConfigurationLocation := flag.String("configuration", "sandwich.yaml", "Path of configuration file (default: sandwich.yaml)")
 	lPoolConcurrency := flag.Int("concurrency", 512, "Total number of events that can be processed concurrently (default: 512)")

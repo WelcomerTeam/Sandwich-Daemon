@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -12,13 +13,13 @@ import (
 
 const MagicDecimalBase = 10
 
-func gatewayOpDispatch(sh *Shard, msg discord.GatewayPayload) error {
+func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload) error {
 	ticket := sh.Sandwich.EventPool.Wait()
 
 	go func(msg discord.GatewayPayload, ticket int) {
 		defer sh.Sandwich.EventPool.FreeTicket(ticket)
 
-		err := sh.OnDispatch(msg)
+		err := sh.OnDispatch(ctx, msg)
 		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Msg("State dispatch failed")
 		}
@@ -27,8 +28,8 @@ func gatewayOpDispatch(sh *Shard, msg discord.GatewayPayload) error {
 	return nil
 }
 
-func gatewayOpHeartbeat(sh *Shard, msg discord.GatewayPayload) (err error) {
-	err = sh.SendEvent(discord.GatewayOpHeartbeat, sh.Sequence.Load())
+func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
+	err = sh.SendEvent(ctx, discord.GatewayOpHeartbeat, sh.Sequence.Load())
 	if err != nil {
 		go sh.Sandwich.PublishSimpleWebhook(
 			"Failed to send heartbeat",
@@ -52,7 +53,7 @@ func gatewayOpHeartbeat(sh *Shard, msg discord.GatewayPayload) (err error) {
 	return
 }
 
-func gatewayOpReconnect(sh *Shard, msg discord.GatewayPayload) (err error) {
+func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
 	sh.Logger.Info().Msg("Reconnecting in response to gateway")
 
 	err = sh.Reconnect(WebsocketReconnectCloseCode)
@@ -63,7 +64,7 @@ func gatewayOpReconnect(sh *Shard, msg discord.GatewayPayload) (err error) {
 	return
 }
 
-func gatewayOpInvalidSession(sh *Shard, msg discord.GatewayPayload) (err error) {
+func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
 	resumable := json.Get(msg.Data, "d").ToBool()
 	if !resumable {
 		sh.SessionID.Store("")
@@ -93,7 +94,7 @@ func gatewayOpInvalidSession(sh *Shard, msg discord.GatewayPayload) (err error) 
 	return
 }
 
-func gatewayOpHello(sh *Shard, msg discord.GatewayPayload) (err error) {
+func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
 	hello := discord.Hello{}
 
 	err = sh.decodeContent(msg, &hello)
@@ -117,7 +118,7 @@ func gatewayOpHello(sh *Shard, msg discord.GatewayPayload) (err error) {
 	return
 }
 
-func gatewayOpHeartbeatACK(sh *Shard, msg discord.GatewayPayload) (err error) {
+func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
 	sh.LastHeartbeatAck.Store(time.Now().UTC())
 
 	heartbeatRTT := sh.LastHeartbeatAck.Load().Sub(sh.LastHeartbeatSent.Load()).Milliseconds()

@@ -76,9 +76,9 @@ type Channel struct {
 // ChannelOverwrite represents a permission overwrite for a channel.
 type ChannelOverwrite struct {
 	ID    Snowflake `json:"id"`
-	Type  int       `json:"type"`
-	Allow int64     `json:"allow"`
-	Deny  int64     `json:"deny"`
+	Type  string    `json:"type"`
+	Allow jInt64    `json:"allow_new"`
+	Deny  jInt64    `json:"deny_new"`
 }
 
 // ThreadMetadata contains thread-specific channel fields.

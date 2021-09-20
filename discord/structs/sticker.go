@@ -8,7 +8,7 @@ type Sticker struct {
 	PackID      *Snowflake         `json:"pack_id,omitempty"`
 	Name        string             `json:"name"`
 	Description string             `json:"description"`
-	Tags        []string           `json:"tags,omitempty"`
+	Tags        *string            `json:"tags,omitempty"`
 	Type        *StickerType       `json:"type"`
 	FormatType  *StickerFormatType `json:"format_type"`
 	Available   *bool              `json:"available,omitempty"`

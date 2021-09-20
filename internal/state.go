@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -11,12 +12,14 @@ import (
 )
 
 // List of handlers for gateway events.
-var gatewayHandlers = make(map[discord.GatewayOp]func(sh *Shard, msg discord.GatewayPayload) (err error))
+var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error))
 
 // List of handlers for dispatch events.
 var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
+	context context.Context
+
 	*Shard
 
 	Vars map[string]interface{}
@@ -68,7 +71,7 @@ func NewSandwichState() (st *SandwichState) {
 	return st
 }
 
-func (sh *Shard) OnEvent(msg discord.GatewayPayload) {
+func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload) {
 	fin := make(chan void, 1)
 
 	go func() {
@@ -93,7 +96,7 @@ func (sh *Shard) OnEvent(msg discord.GatewayPayload) {
 
 	defer close(fin)
 
-	err := GatewayDispatch(sh, msg)
+	err := GatewayDispatch(ctx, sh, msg)
 	if err != nil {
 		if xerrors.Is(err, ErrNoGatewayHandler) {
 			sh.Logger.Warn().
@@ -107,7 +110,7 @@ func (sh *Shard) OnEvent(msg discord.GatewayPayload) {
 }
 
 // OnDispatch handles routing of discord event.
-func (sh *Shard) OnDispatch(msg discord.GatewayPayload) (err error) {
+func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (err error) {
 	if sh.Manager.ProducerClient == nil {
 		return ErrProducerMissing
 	}
@@ -147,10 +150,10 @@ func (sh *Shard) OnDispatch(msg discord.GatewayPayload) (err error) {
 	packet.Data = result.Data
 	packet.Extra = result.Extra
 
-	return sh.PublishEvent(packet)
+	return sh.PublishEvent(ctx, packet)
 }
 
-func registerGatewayEvent(op discord.GatewayOp, handler func(sh *Shard, msg discord.GatewayPayload) (err error)) {
+func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error)) {
 	gatewayHandlers[op] = handler
 }
 
@@ -159,11 +162,13 @@ func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.
 }
 
 // GatewayDispatch handles selecting the proper gateway handler and executing it.
-func GatewayDispatch(sh *Shard,
+func GatewayDispatch(ctx context.Context, sh *Shard,
 	event discord.GatewayPayload) (err error) {
 	if f, ok := gatewayHandlers[event.Op]; ok {
-		return f(sh, event)
+		return f(ctx, sh, event)
 	}
+
+	sh.Logger.Warn().Int("op", int(event.Op)).Msg("No gateway handler found")
 
 	return ErrNoGatewayHandler
 }
@@ -177,7 +182,7 @@ func StateDispatch(ctx *StateCtx,
 		return f(ctx, event)
 	}
 
-	// ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
+	ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
 
 	return result, false, ErrNoDispatchHandler
 }
