@@ -6,7 +6,7 @@ import (
 
 // events.go contains the structures of all received events from discord
 
-// Empty structure
+// Empty structure.
 type void struct{}
 
 // Hello represents a hello event when connecting.
@@ -187,7 +187,7 @@ type GuildRoleCreate struct {
 // GuildRoleUpdate represents a guild role update event.
 type GuildRoleUpdate struct {
 	GuildID Snowflake `json:"guild_id"`
-	Role    *Role     `json:"role"` // TODO: type
+	Role    *Role     `json:"role"`
 }
 
 // GuildRoleDelete represents a guild role delete event.

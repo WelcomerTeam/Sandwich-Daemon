@@ -44,7 +44,7 @@ const (
 	InteractionTypeMessageComponent
 )
 
-// IntegrationType represents the type of integration
+// IntegrationType represents the type of integration.
 type IntegrationType string
 
 const (
@@ -53,7 +53,7 @@ const (
 	IntegrationTypeDiscord IntegrationType = "discord"
 )
 
-// IntegrationExpireBehavior represents the integration expiration
+// IntegrationExpireBehavior represents the integration expiration.
 type IntegrationExpireBehavior uint8
 
 const (
@@ -70,7 +70,7 @@ const (
 	InteractionComponentTypeSelectMenu
 )
 
-// InteractionComponentStyle represents the style of a component
+// InteractionComponentStyle represents the style of a component.
 type InteractionComponentStyle uint8
 
 const (
