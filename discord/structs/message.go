@@ -45,7 +45,7 @@ const (
 	MessageFlagLoading
 )
 
-// MessageAllowedMentionsType represents all the allowed mention types
+// MessageAllowedMentionsType represents all the allowed mention types.
 type MessageAllowedMentionsType string
 
 const (

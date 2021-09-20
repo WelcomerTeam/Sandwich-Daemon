@@ -46,7 +46,7 @@ const (
 	IntentDirectMessageTyping
 )
 
-// Gateway close codes
+// Gateway close codes.
 const (
 	CloseUnknownError = 4000 + iota
 	CloseUnknownOpCode

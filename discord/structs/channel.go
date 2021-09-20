@@ -22,7 +22,7 @@ const (
 	ChannelTypeGuildStageVoice
 )
 
-// VideoQualityMode represents the quality of the video
+// VideoQualityMode represents the quality of the video.
 type VideoQualityMode uint8
 
 const (
@@ -30,7 +30,7 @@ const (
 	VideoqualityModeFull
 )
 
-// StageChannelPrivacyLevel represents the privacy level of a stage channel
+// StageChannelPrivacyLevel represents the privacy level of a stage channel.
 type StageChannelPrivacyLevel uint8
 
 const (
