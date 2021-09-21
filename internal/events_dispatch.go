@@ -11,6 +11,7 @@ import (
 
 func tempReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	var readyPayload discord.Ready
+
 	var guildCreatePayload discord.GuildCreate
 
 	err = ctx.decodeContent(msg, &readyPayload)
@@ -21,6 +22,25 @@ func tempReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateR
 	}
 
 	ctx.Logger.Info().Msg("Received READY payload")
+
+	ctx.SessionID.Store(readyPayload.SessionID)
+
+	ctx.ShardGroup.userMu.Lock()
+	ctx.ShardGroup.User = &readyPayload.User
+	ctx.ShardGroup.userMu.Unlock()
+
+	ctx.unavailableMu.Lock()
+	ctx.guildsMu.Lock()
+
+	for _, guild := range readyPayload.Guilds {
+		ctx.Unavailable[guild.ID] = true
+		ctx.Guilds[guild.ID] = true
+	}
+
+	ctx.guildsMu.Unlock()
+	ctx.unavailableMu.Unlock()
+
+	guildCreateEvents := 0
 
 	readyTimeout := time.NewTicker(ReadyTimeout)
 
@@ -35,6 +55,8 @@ ready:
 			break ready
 		case msg := <-ctx.MessageCh:
 			if msg.Type == "GUILD_CREATE" {
+				guildCreateEvents++
+
 				err = ctx.decodeContent(msg, &guildCreatePayload)
 				if err != nil {
 					ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_CREATE event")
@@ -48,7 +70,7 @@ ready:
 				ctx.Logger.Error().Err(err).Msg("Failed to dispatch event")
 			}
 		case <-readyTimeout.C:
-			ctx.Logger.Info().Msg("Finished lazy loading guilds")
+			ctx.Logger.Info().Int("guilds", guildCreateEvents).Msg("Finished lazy loading guilds")
 
 			break ready
 		}
@@ -56,7 +78,7 @@ ready:
 
 	ctx.ready <- void{}
 
-	return
+	return result, false, nil
 }
 
 func init() {

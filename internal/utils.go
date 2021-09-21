@@ -14,6 +14,8 @@ const (
 	daySeconds    = 86400
 	hourSeconds   = 3600
 	minuteSeconds = 60
+
+	deadSignalCloseLoggingInterval = 5 * time.Second
 )
 
 type void struct{}
@@ -127,6 +129,24 @@ func (ds *DeadSignal) Done(i string) {
 	ds.waitingForMu.Unlock()
 }
 
+func (ds *DeadSignal) closeLogging(c chan void) {
+	t := time.NewTicker(deadSignalCloseLoggingInterval)
+	select {
+	case <-c:
+		return
+	case <-t.C:
+		waitingFor := ""
+
+		ds.waitingForMu.RLock()
+		for i := range ds.waitingFor {
+			waitingFor = waitingFor + " " + i
+		}
+		ds.waitingForMu.RUnlock()
+
+		println("Still waiting for", waitingFor)
+	}
+}
+
 // Close closes the dead channel and
 // waits for other goroutines waiting on Dead() to call Done().
 // When Close returns, it is designed that any goroutines will no
@@ -135,23 +155,7 @@ func (ds *DeadSignal) Close(t string) {
 	ds.init()
 
 	c := make(chan void, 1)
-	go func() {
-		t := time.NewTicker(time.Second * 5)
-		select {
-		case <-c:
-			return
-		case <-t.C:
-			waitingFor := ""
-
-			ds.waitingForMu.RLock()
-			for i := range ds.waitingFor {
-				waitingFor = waitingFor + " " + i
-			}
-			ds.waitingForMu.RUnlock()
-
-			println("Still waiting for", waitingFor)
-		}
-	}()
+	go ds.closeLogging(c)
 
 	ds.Lock()
 	close(ds.dead)

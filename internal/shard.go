@@ -85,6 +85,10 @@ type Shard struct {
 	unavailableMu sync.RWMutex               `json:"-"`
 	Unavailable   map[discord.Snowflake]bool `json:"-"`
 
+	// Stores a local list of all guilds in the shard.d
+	guildsMu sync.RWMutex               `json:"-"`
+	Guilds   map[discord.Snowflake]bool `json:"-"`
+
 	channelMu sync.RWMutex
 	MessageCh chan discord.GatewayPayload
 	ErrorCh   chan error
@@ -123,6 +127,9 @@ func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 
 		unavailableMu: sync.RWMutex{},
 		Unavailable:   make(map[discord.Snowflake]bool),
+
+		guildsMu: sync.RWMutex{},
+		Guilds:   make(map[discord.Snowflake]bool),
 
 		channelMu: sync.RWMutex{},
 
