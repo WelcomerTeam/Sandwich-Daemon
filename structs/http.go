@@ -1,6 +1,6 @@
 package structs
 
-// IdentifyPayload represents the payload for external identifying
+// IdentifyPayload represents the payload for external identifying.
 type IdentifyPayload struct {
 	ShardID        int    `json:"shard_id"`
 	ShardCount     int    `json:"shard_count"`
@@ -8,7 +8,7 @@ type IdentifyPayload struct {
 	MaxConcurrency int    `json:"max_concurrency"`
 }
 
-// IdentifyResponse represents the response to external identifying
+// IdentifyResponse represents the response to external identifying.
 type IdentifyResponse struct {
 	Success bool `json:"success"`
 
