@@ -95,7 +95,7 @@ var (
 	)
 
 	// TODO: Implement.
-	sandwichStateChannel = prometheus.NewGauge(
+	sandwichStateChannelCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_channel_count",
 			Help: "Sandwich State Channel Count",

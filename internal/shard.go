@@ -701,7 +701,7 @@ func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err
 	// TODO: Remove in production.
 	outD, _ := json.Marshal(out)
 	if bytes.Compare(outD, msg.Data) != 0 {
-		sh.Logger.Warn().Str("In", string(msg.Data)).Str("Out", string(outD)).Msg("Varied payloads detected")
+		// sh.Logger.Warn().Str("In", string(msg.Data)).Str("Out", string(outD)).Msg("Varied payloads detected")
 	} else {
 		sh.Logger.Info().Str("type", msg.Type).Int("op", int(msg.Op)).Msg("payload pass")
 	}
