@@ -81,6 +81,22 @@ ready:
 	return result, false, nil
 }
 
+func tempCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildCreatePayload discord.GuildCreate
+
+	err = ctx.decodeContent(msg, &guildCreatePayload)
+	if err != nil {
+		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_CREATE event")
+
+		return
+	}
+
+	ctx.Sandwich.State.SetGuild(guildCreatePayload.Guild)
+
+	return result, true, nil
+}
+
 func init() {
 	registerDispatch("READY", tempReady)
+	registerDispatch("GUILD_CREATE", tempCreate)
 }

@@ -33,6 +33,8 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 const (
 	PermissionsDefault = 0o744
 	PermissionWrite    = 0o600
+
+	prometheusGatherInterval = 10 * time.Second
 )
 
 type Sandwich struct {
@@ -438,7 +440,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	prometheus.MustRegister(sandwichStateRoleCount)
 	prometheus.MustRegister(sandwichStateEmojiCount)
 	prometheus.MustRegister(sandwichStateUserCount)
-	prometheus.MustRegister(sandwichStateChannel)
+	prometheus.MustRegister(sandwichStateChannelCount)
 	prometheus.MustRegister(grpcCacheRequests)
 	prometheus.MustRegister(grpcCacheHits)
 	prometheus.MustRegister(grpcCacheMisses)
@@ -447,6 +449,8 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 		prometheus.DefaultGatherer,
 		promhttp.HandlerOpts{},
 	))
+
+	go sg.prometheusGatherer()
 
 	sg.Logger.Info().Msgf("Serving prometheus at %s", host)
 
@@ -458,4 +462,63 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	}
 
 	return nil
+}
+
+func (sg *Sandwich) prometheusGatherer() {
+	t := time.NewTicker(prometheusGatherInterval)
+
+	for {
+		select {
+		case <-t.C:
+			sg.State.guildsMu.RLock()
+			stateGuilds := len(sg.State.Guilds)
+			sg.State.guildsMu.RUnlock()
+
+			stateMembers := 0
+
+			sg.State.guildMembersMu.RLock()
+			for _, guildMembers := range sg.State.GuildMembers {
+				guildMembers.MembersMu.RLock()
+				stateMembers += len(guildMembers.Members)
+				guildMembers.MembersMu.RUnlock()
+			}
+			sg.State.guildMembersMu.RUnlock()
+
+			sg.State.rolesMu.RLock()
+			stateRoles := len(sg.State.Roles)
+			sg.State.rolesMu.RUnlock()
+
+			sg.State.emojisMu.RLock()
+			stateEmojis := len(sg.State.Emojis)
+			sg.State.emojisMu.RUnlock()
+
+			sg.State.usersMu.RLock()
+			stateUsers := len(sg.State.Users)
+			sg.State.usersMu.RUnlock()
+
+			sg.State.channelsMu.RLock()
+			stateChannels := len(sg.State.Channels)
+			sg.State.channelsMu.RUnlock()
+
+			sandwichStateTotalCount.Set(float64(
+				stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
+			))
+
+			sandwichStateGuildCount.Set(float64(stateGuilds))
+			sandwichStateGuildMembersCount.Set(float64(stateMembers))
+			sandwichStateRoleCount.Set(float64(stateRoles))
+			sandwichStateEmojiCount.Set(float64(stateEmojis))
+			sandwichStateUserCount.Set(float64(stateUsers))
+			sandwichStateChannelCount.Set(float64(stateChannels))
+
+			sg.Logger.Debug().
+				Int("guilds", stateGuilds).
+				Int("members", stateMembers).
+				Int("roles", stateRoles).
+				Int("emojis", stateEmojis).
+				Int("users", stateUsers).
+				Int("channels", stateChannels).
+				Msg("Updated prometheus guages")
+		}
+	}
 }

@@ -48,6 +48,7 @@ type StateGuild struct {
 
 	JoinedAt    *string `json:"joined_at,omitempty"`
 	Large       *bool   `json:"large,omitempty"`
+	Unavailable *bool   `json:"unavailable,omitempty"`
 	MemberCount *int    `json:"member_count,omitempty"`
 
 	ChannelIDs []*discord.Snowflake `json:"channel_ids,omitempty"`
@@ -78,8 +79,8 @@ type StateGuildMembers struct {
 }
 
 type StateGuildMember struct {
-	UserID *discord.User `json:"user_id"`
-	Nick   *string       `json:"nick,omitempty"`
+	UserID *discord.Snowflake `json:"user_id"`
+	Nick   *string            `json:"nick,omitempty"`
 
 	Roles    []discord.Snowflake `json:"roles"`
 	JoinedAt string              `json:"joined_at"`
