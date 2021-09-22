@@ -15,7 +15,7 @@ const (
 	hourSeconds   = 3600
 	minuteSeconds = 60
 
-	deadSignalCloseLoggingInterval = 5 * time.Second
+	deadSignalCloseLoggingInterval = 30 * time.Second
 )
 
 type void struct{}
