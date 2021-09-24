@@ -144,7 +144,7 @@ type GuildIntegrationsUpdate struct {
 
 // GuildMemberAdd represents a guild member add event.
 type GuildMemberAdd struct {
-	*Member
+	*GuildMember
 	GuildID Snowflake `json:"guild_id"`
 }
 
@@ -170,7 +170,7 @@ type GuildMemberUpdate struct {
 // GuildMembersChunk represents a guild members chunk event.
 type GuildMembersChunk struct {
 	GuildID    Snowflake        `json:"guild_id"`
-	Members    []*Member        `json:"members"`
+	Members    []*GuildMember   `json:"members"`
 	ChunkIndex int              `json:"chunk_index"`
 	ChunkCount int              `json:"chunk_count"`
 	NotFound   []Snowflake      `json:"not_found,omitempty"`
@@ -260,12 +260,12 @@ type MessageDeleteBulk struct {
 
 // MessageReactionAdd represents a message reaction add event.
 type MessageReactionAdd struct {
-	UserID    Snowflake `json:"user_id"`
-	ChannelID Snowflake `json:"channel_id"`
-	MessageID Snowflake `json:"message_id"`
-	GuildID   Snowflake `json:"guild_id,omitempty"`
-	Member    *Member   `json:"member,omitempty"`
-	Emoji     *Emoji    `json:"emoji"`
+	UserID    Snowflake    `json:"user_id"`
+	ChannelID Snowflake    `json:"channel_id"`
+	MessageID Snowflake    `json:"message_id"`
+	GuildID   Snowflake    `json:"guild_id,omitempty"`
+	Member    *GuildMember `json:"member,omitempty"`
+	Emoji     *Emoji       `json:"emoji"`
 }
 
 // MessageReactionRemove represents a message reaction remove event.
@@ -312,11 +312,11 @@ type StageInstanceDelete *StageInstance
 
 // TypingStart represents a typing start event.
 type TypingStart struct {
-	ChannelID Snowflake  `json:"channel_id"`
-	GuildID   *Snowflake `json:"guild_id,omitempty"`
-	UserID    Snowflake  `json:"user_id"`
-	Timestamp int        `json:"timestamp"`
-	Member    *Member    `json:"member,omitempty"`
+	ChannelID Snowflake    `json:"channel_id"`
+	GuildID   *Snowflake   `json:"guild_id,omitempty"`
+	UserID    Snowflake    `json:"user_id"`
+	Timestamp int          `json:"timestamp"`
+	Member    *GuildMember `json:"member,omitempty"`
 }
 
 // UserUpdate represents a user update event.
@@ -324,19 +324,19 @@ type UserUpdate *User
 
 // VoiceStateUpdate represents the voice state update event.
 type VoiceStateUpdate struct {
-	GuildID                 Snowflake  `json:"guild_id"`
-	ChannelID               *Snowflake `json:"channel_id,omitempty"`
-	UserID                  Snowflake  `json:"user_id"`
-	Member                  *Member    `json:"member,omitempty"`
-	SessionID               string     `json:"session_id"`
-	Deaf                    bool       `json:"deaf"`
-	Mute                    bool       `json:"mute"`
-	SelfDeaf                bool       `json:"self_deaf"`
-	SelfMute                bool       `json:"self_mute"`
-	SelfStream              *bool      `json:"self_stream,omitempty"`
-	SelfVideo               bool       `json:"self_video"`
-	Suppress                bool       `json:"suppress"`
-	RequestToSpeakTimestamp string     `json:"request_to_speak_timestamp"`
+	GuildID                 Snowflake    `json:"guild_id"`
+	ChannelID               *Snowflake   `json:"channel_id,omitempty"`
+	UserID                  Snowflake    `json:"user_id"`
+	Member                  *GuildMember `json:"member,omitempty"`
+	SessionID               string       `json:"session_id"`
+	Deaf                    bool         `json:"deaf"`
+	Mute                    bool         `json:"mute"`
+	SelfDeaf                bool         `json:"self_deaf"`
+	SelfMute                bool         `json:"self_mute"`
+	SelfStream              *bool        `json:"self_stream,omitempty"`
+	SelfVideo               bool         `json:"self_video"`
+	Suppress                bool         `json:"suppress"`
+	RequestToSpeakTimestamp string       `json:"request_to_speak_timestamp"`
 }
 
 // VoiceServerUpdate represents a voice server update event.

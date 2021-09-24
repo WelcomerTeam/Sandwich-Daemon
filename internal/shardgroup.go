@@ -103,8 +103,8 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	ready = make(chan bool, 1)
 
 	sg.Logger.Info().
-		Int("shard_count", sg.ShardCount).
-		Int("shard_ids", len(sg.ShardIDs)).
+		Int("shardCount", sg.ShardCount).
+		Int("shardIds", len(sg.ShardIDs)).
 		Msg("Starting shardgroup")
 
 	sg.shardsMu.Lock()
@@ -159,7 +159,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 				shardErr := shard.Connect()
 				if shardErr != nil && !xerrors.Is(shardErr, context.Canceled) {
 					sg.Logger.Warn().Err(shardErr).
-						Int("shard_id", shardID).
+						Int("shardId", shardID).
 						Msgf("Failed to connect shard. Retrying")
 				} else {
 					go shard.Open()

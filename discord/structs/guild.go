@@ -113,11 +113,12 @@ type Guild struct {
 	Channels    []*Channel     `json:"channels,omitempty"`
 	Presences   []*Activity    `json:"presences,omitempty"`
 
+	Description string `json:"description"`
+	Banner      string `json:"banner"`
+
 	MaxPresences  *int         `json:"max_presences,omitempty"`
 	MaxMembers    *int         `json:"max_members,omitempty"`
 	VanityURLCode *string      `json:"vanity_url_code,omitempty"`
-	Description   *string      `json:"description,omitempty"`
-	Banner        *string      `json:"banner,omitempty"`
 	PremiumTier   *PremiumTier `json:"premium_tier,omitempty"`
 
 	PremiumSubscriptionCount *int       `json:"premium_subscription_count,omitempty"`
@@ -143,10 +144,14 @@ type GuildMember struct {
 	User *User   `json:"user"`
 	Nick *string `json:"nick,omitempty"`
 
-	Roles    []Snowflake `json:"roles"`
-	JoinedAt string      `json:"joined_at"`
-	Deaf     bool        `json:"deaf"`
-	Mute     bool        `json:"mute"`
+	Roles []Snowflake `json:"roles"`
+
+	JoinedAt     string  `json:"joined_at"`
+	PremiumSince *string `json:"premium_since,omitempty"`
+	Deaf         bool    `json:"deaf"`
+	Mute         bool    `json:"mute"`
+	Pending      *bool   `json:"pending,omitempty"`
+	Permissions  *string `json:"permissions,omitempty"`
 }
 
 // VoiceState represents the voice state on Discord.

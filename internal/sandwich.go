@@ -5,11 +5,13 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"path"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
@@ -519,6 +521,95 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
 				Msg("Updated prometheus guages")
+
+			sg.State.MemoryDebug()
 		}
 	}
+}
+
+func divi(a, b int) int {
+	if b == 0 {
+		return 0
+	} else {
+		return int(math.Round(float64(a) / float64(b)))
+	}
+}
+
+func (ss *SandwichState) MemoryDebug() {
+	println("=====================")
+
+	totalSize := 0
+	ref := 0
+
+	totalSize = 0
+	ref = 0
+	ss.guildsMu.RLock()
+	for _, T := range ss.Guilds {
+		ref++
+
+		totalSize = totalSize + int(unsafe.Sizeof(*T))
+	}
+	ss.guildsMu.RUnlock()
+	println("Guilds", totalSize, ref, divi(totalSize, ref))
+
+	totalSize = 0
+	ref = 0
+	ss.guildMembersMu.RLock()
+	for _, gm := range ss.GuildMembers {
+		gm.MembersMu.RLock()
+		for _, T := range gm.Members {
+			ref++
+
+			totalSize = totalSize + int(unsafe.Sizeof(*T))
+		}
+		gm.MembersMu.RUnlock()
+	}
+	ss.guildMembersMu.RUnlock()
+	println("GuildMembers", totalSize, ref, divi(totalSize, ref))
+
+	totalSize = 0
+	ref = 0
+	ss.channelsMu.RLock()
+	for _, T := range ss.Channels {
+		ref++
+
+		totalSize = totalSize + int(unsafe.Sizeof(*T))
+	}
+	ss.channelsMu.RUnlock()
+	println("Channels", totalSize, ref, divi(totalSize, ref))
+
+	totalSize = 0
+	ref = 0
+	ss.emojisMu.RLock()
+	for _, T := range ss.Emojis {
+		ref++
+
+		totalSize = totalSize + int(unsafe.Sizeof(*T))
+	}
+	ss.emojisMu.RUnlock()
+	println("Emojis", totalSize, ref, divi(totalSize, ref))
+
+	totalSize = 0
+	ref = 0
+	ss.rolesMu.RLock()
+	for _, T := range ss.Roles {
+		ref++
+
+		totalSize = totalSize + int(unsafe.Sizeof(*T))
+	}
+	ss.rolesMu.RUnlock()
+	println("Roles", totalSize, ref, divi(totalSize, ref))
+
+	totalSize = 0
+	ref = 0
+	ss.usersMu.RLock()
+	for _, T := range ss.Users {
+		ref++
+
+		totalSize = totalSize + int(unsafe.Sizeof(*T))
+	}
+	ss.usersMu.RUnlock()
+	println("Users", totalSize, ref, divi(totalSize, ref))
+
+	println("=====================")
 }

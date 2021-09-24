@@ -159,7 +159,7 @@ type Interaction struct {
 
 	GuildID   Snowflake `json:"guild_id,omitempty"`
 	ChannelID Snowflake `json:"channel_id,omitempty"`
-	Member    *Member   `json:"member,omitempty"`
+	Member    *GuildMember   `json:"member,omitempty"`
 	User      *User     `json:"user,omitempty"`
 	Token     string    `json:"token"`
 	Version   int       `json:"version"`
@@ -190,7 +190,7 @@ type InteractionDataOption struct {
 // InteractionResolvedData represents any extra payload data for an interaction.
 type InteractionResolvedData struct {
 	Users    []*User    `json:"users,omitempty"`
-	Members  []*Member  `json:"members,omitempty"`
+	Members  []*GuildMember  `json:"members,omitempty"`
 	Roles    []*Role    `json:"roles,omitempty"`
 	Channels []*Channel `json:"channels,omitempty"`
 	Messages []*Message `json:"messages,omitempty"`

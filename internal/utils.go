@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 const (
@@ -80,7 +82,9 @@ func webhookTime(_time time.Time) string {
 type DeadSignal struct {
 	sync.Mutex
 	waiting sync.WaitGroup
-	dead    chan void
+
+	alreadyClosed atomic.Bool
+	dead          chan void
 
 	waitingForMu sync.RWMutex
 	waitingFor   map[string]bool
@@ -89,6 +93,7 @@ type DeadSignal struct {
 func (ds *DeadSignal) init() {
 	ds.Lock()
 	if ds.dead == nil {
+		ds.alreadyClosed = *atomic.NewBool(false)
 		ds.dead = make(chan void, 1)
 		ds.waiting = sync.WaitGroup{}
 
@@ -158,7 +163,10 @@ func (ds *DeadSignal) Close(t string) {
 	go ds.closeLogging(c)
 
 	ds.Lock()
-	close(ds.dead)
+	if !ds.alreadyClosed.Load() {
+		close(ds.dead)
+		ds.alreadyClosed.Store(true)
+	}
 	ds.Unlock()
 
 	ds.waiting.Wait()
@@ -172,6 +180,7 @@ func (ds *DeadSignal) Revive() {
 
 	ds.Lock()
 	ds.dead = make(chan void, 1)
+	ds.alreadyClosed.Store(false)
 	ds.Unlock()
 }
 

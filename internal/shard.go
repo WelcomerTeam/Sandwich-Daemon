@@ -106,7 +106,7 @@ type Shard struct {
 
 // NewShard creates a new shard object.
 func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
-	logger := sg.Logger.With().Int("shard_id", shardID).Logger()
+	logger := sg.Logger.With().Int("shardId", shardID).Logger()
 	sh = &Shard{
 		RoutineDeadSignal:   DeadSignal{},
 		HeartbeatDeadSignal: DeadSignal{},

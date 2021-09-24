@@ -198,7 +198,7 @@ func (mg *Manager) GetGateway() (resp discord.GatewayBot, err error) {
 	_, err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
 
 	mg.Logger.Info().
-		Int("max_concurrency", resp.SessionStartLimit.MaxConcurrency).
+		Int("maxConcurrency", resp.SessionStartLimit.MaxConcurrency).
 		Int("shards", resp.Shards).
 		Int("remaining", resp.SessionStartLimit.Remaining).
 		Msg("Received Gateway")

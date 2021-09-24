@@ -66,11 +66,11 @@ const (
 
 // Message represents a message on Discord.
 type Message struct {
-	ID        Snowflake  `json:"id"`
-	ChannelID Snowflake  `json:"channel_id"`
-	GuildID   *Snowflake `json:"guild_id,omitempty"`
-	Author    *User      `json:"author"`
-	Member    *Member    `json:"member,omitempty"`
+	ID        Snowflake    `json:"id"`
+	ChannelID Snowflake    `json:"channel_id"`
+	GuildID   *Snowflake   `json:"guild_id,omitempty"`
+	Author    *User        `json:"author"`
+	Member    *GuildMember `json:"member,omitempty"`
 
 	Content         string `json:"content"`
 	Timestamp       string `json:"timestamp"`
