@@ -52,15 +52,15 @@ type Channel struct {
 	Bitrate              *int                `json:"bitrate,omitempty"`
 	UserLimit            *int                `json:"user_limit,omitempty"`
 	RateLimitPerUser     *int                `json:"rate_limit_per_user,omitempty"`
-	Recipients           []*User             `json:"recipients,omitempty"`
+	Recipients           []User             `json:"recipients,omitempty"`
 	Icon                 *string             `json:"icon,omitempty"`
 	OwnerID              *Snowflake          `json:"owner_id,omitempty"`
 	ApplicationID        *Snowflake          `json:"application_id,omitempty"`
 	ParentID             *Snowflake          `json:"parent_id,omitempty"`
 	LastPinTimestamp     *string             `json:"last_pin_timestamp,omitempty"`
 
-	RTCRegion        *string           `json:"rtc_region,omitempty"`
-	VideoQualityMode *VideoQualityMode `json:"video_quality_mode,omitempty"`
+	RTCRegion *string `json:"rtc_region,omitempty"`
+	// VideoQualityMode *VideoQualityMode `json:"video_quality_mode,omitempty"`
 
 	// Threads
 	MessageCount               *int            `json:"message_count,omitempty"`

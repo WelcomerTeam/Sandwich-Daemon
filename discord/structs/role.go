@@ -17,7 +17,7 @@ type Role struct {
 
 // RoleTag represents extra information about a role.
 type RoleTag struct {
+	PremiumSubscriber *bool      `json:"premium_subscriber,omitempty"`
 	BotID             *Snowflake `json:"bot_id,omitempty"`
 	IntegrationID     *Snowflake `json:"integration_id,omitempty"`
-	PremiumSubscriber *bool      `json:"premium_subscriber,omitempty"`
 }

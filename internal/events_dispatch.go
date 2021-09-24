@@ -9,7 +9,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func tempReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+// OnReady handles the READY event.
+// It will go and mark guilds as unavailable and go through
+// any GUILD_CREATE events for the next few seconds.
+func OnReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	var readyPayload discord.Ready
 
 	var guildCreatePayload discord.GuildCreate
@@ -81,7 +84,7 @@ ready:
 	return result, false, nil
 }
 
-func tempCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	var guildCreatePayload discord.GuildCreate
 
 	err = ctx.decodeContent(msg, &guildCreatePayload)
@@ -93,10 +96,40 @@ func tempCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.State
 
 	ctx.Sandwich.State.SetGuild(guildCreatePayload.Guild)
 
-	return result, true, nil
+	return structs.StateResult{
+		Data: guildCreatePayload,
+		Extra: map[string]interface{}{
+			"lazy": guildCreatePayload.Lazy,
+		},
+	}, true, nil
+}
+
+func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildMembersChunkPayload discord.GuildMembersChunk
+
+	err = ctx.decodeContent(msg, &guildMembersChunkPayload)
+	if err != nil {
+		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_MEMBERS_CHUNK event")
+
+		return
+	}
+
+	for _, member := range guildMembersChunkPayload.Members {
+		ctx.Sandwich.State.SetGuildMember(guildMembersChunkPayload.GuildID, member)
+	}
+
+	ctx.Logger.Debug().
+		Int("memberCount", len(guildMembersChunkPayload.Members)).
+		Int("chunkIndex", guildMembersChunkPayload.ChunkIndex).
+		Int("chunkCount", guildMembersChunkPayload.ChunkCount).
+		Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
+		Msg("Chunked guild members")
+
+	return result, false, nil
 }
 
 func init() {
-	registerDispatch("READY", tempReady)
-	registerDispatch("GUILD_CREATE", tempCreate)
+	registerDispatch("READY", OnReady)
+	registerDispatch("GUILD_CREATE", OnGuildCreate)
+	registerDispatch("GUILD_MEMBERS_CHUNK", OnGuildMembersChunk)
 }

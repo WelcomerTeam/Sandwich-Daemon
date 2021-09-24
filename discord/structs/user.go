@@ -38,7 +38,7 @@ type User struct {
 	ID            Snowflake        `json:"id"`
 	Username      string           `json:"username"`
 	Discriminator string           `json:"discriminator"`
-	Avatar        *string          `json:"avatar,omitempty"`
+	Avatar        string           `json:"avatar"`
 	Bot           *bool            `json:"bot,omitempty"`
 	System        *bool            `json:"system,omitempty"`
 	MFAEnabled    *bool            `json:"mfa_enabled,omitempty"`
