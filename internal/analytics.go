@@ -11,6 +11,13 @@ var (
 		[]string{"identifier"},
 	)
 
+	sandwichEventWaitingCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "sandwich_event_waiting_count",
+			Help: "Count of gateway events waiting for EventPool",
+		},
+	)
+
 	// TODO: Implement.
 	sandwichGuildEventCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -46,7 +53,6 @@ var (
 		[]string{"identifier", "shard_group"},
 	)
 
-	// TODO: Implement.
 	sandwichStateTotalCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_count",
@@ -54,7 +60,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	sandwichStateGuildCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_guild_count",
@@ -62,7 +67,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	sandwichStateGuildMembersCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_member_count",
@@ -70,7 +74,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	sandwichStateRoleCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_role_count",
@@ -78,7 +81,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	sandwichStateEmojiCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_emoji_count",
@@ -86,7 +88,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	sandwichStateUserCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_user_count",
@@ -94,7 +95,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	sandwichStateChannelCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "sandwich_state_channel_count",
