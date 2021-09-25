@@ -14,16 +14,19 @@ import (
 const MagicDecimalBase = 10
 
 func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload) error {
-	ticket := sh.Sandwich.EventPool.Wait()
+	go func(msg discord.GatewayPayload) {
+		sh.Sandwich.EventPoolWaiting.Inc()
 
-	go func(msg discord.GatewayPayload, ticket int) {
+		ticket := sh.Sandwich.EventPool.Wait()
 		defer sh.Sandwich.EventPool.FreeTicket(ticket)
+
+		sh.Sandwich.EventPoolWaiting.Dec()
 
 		err := sh.OnDispatch(ctx, msg)
 		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Msg("State dispatch failed")
 		}
-	}(msg, ticket)
+	}(msg)
 
 	return nil
 }

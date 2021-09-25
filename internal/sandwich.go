@@ -432,6 +432,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	sg.configurationMu.RUnlock()
 
 	prometheus.MustRegister(sandwichEventCount)
+	prometheus.MustRegister(sandwichEventWaitingCount)
 	prometheus.MustRegister(sandwichGuildEventCount)
 	prometheus.MustRegister(sandwichDispatchEventCount)
 	prometheus.MustRegister(sandwichGatewayLatency)
@@ -506,12 +507,15 @@ func (sg *Sandwich) prometheusGatherer() {
 				stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
 			))
 
+			eventsWaiting := sg.EventPoolWaiting.Load()
+
 			sandwichStateGuildCount.Set(float64(stateGuilds))
 			sandwichStateGuildMembersCount.Set(float64(stateMembers))
 			sandwichStateRoleCount.Set(float64(stateRoles))
 			sandwichStateEmojiCount.Set(float64(stateEmojis))
 			sandwichStateUserCount.Set(float64(stateUsers))
 			sandwichStateChannelCount.Set(float64(stateChannels))
+			sandwichEventWaitingCount.Set(float64(eventsWaiting))
 
 			sg.Logger.Debug().
 				Int("guilds", stateGuilds).
@@ -520,6 +524,7 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("emojis", stateEmojis).
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
+				Int64("eventsWaiting", eventsWaiting).
 				Msg("Updated prometheus guages")
 
 			sg.State.MemoryDebug()
