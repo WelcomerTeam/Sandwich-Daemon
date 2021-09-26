@@ -176,6 +176,16 @@ func (sh *Shard) Open() {
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Connecting shard")
 
+	// Empty ready channel.
+readyConsumer:
+	for {
+		select {
+		case <-sh.ready:
+		default:
+			break readyConsumer
+		}
+	}
+
 	select {
 	case <-sh.ctx.Done():
 	default:

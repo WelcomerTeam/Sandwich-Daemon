@@ -11,10 +11,10 @@ var (
 		[]string{"identifier"},
 	)
 
-	sandwichEventWaitingCount = prometheus.NewGauge(
+	sandwichEventInflightCount = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "sandwich_event_waiting_count",
-			Help: "Count of gateway events waiting for EventPool",
+			Name: "sandwich_events_inflight_count",
+			Help: "Count of dispatch events currently being processed",
 		},
 	)
 

@@ -11,7 +11,6 @@ import (
 	"path"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
@@ -62,6 +61,8 @@ type Sandwich struct {
 	EventPool        *limiter.ConcurrencyLimiter `json:"-"`
 	EventPoolWaiting *atomic.Int64               `json:"-"`
 	EventPoolLimit   int                         `json:"-"`
+
+	EventsInflight *atomic.Int64 `json:"-"`
 
 	managersMu sync.RWMutex
 	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
@@ -152,6 +153,8 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 		EventPool:        limiter.NewConcurrencyLimiter(eventPoolLimit),
 		EventPoolWaiting: atomic.NewInt64(0),
 		EventPoolLimit:   eventPoolLimit,
+
+		EventsInflight: atomic.NewInt64(0),
 
 		State: NewSandwichState(),
 
@@ -432,7 +435,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	sg.configurationMu.RUnlock()
 
 	prometheus.MustRegister(sandwichEventCount)
-	prometheus.MustRegister(sandwichEventWaitingCount)
+	prometheus.MustRegister(sandwichEventInflightCount)
 	prometheus.MustRegister(sandwichGuildEventCount)
 	prometheus.MustRegister(sandwichDispatchEventCount)
 	prometheus.MustRegister(sandwichGatewayLatency)
@@ -508,6 +511,7 @@ func (sg *Sandwich) prometheusGatherer() {
 			))
 
 			eventsWaiting := sg.EventPoolWaiting.Load()
+			eventsInflight := sg.EventsInflight.Load()
 
 			sandwichStateGuildCount.Set(float64(stateGuilds))
 			sandwichStateGuildMembersCount.Set(float64(stateMembers))
@@ -515,7 +519,7 @@ func (sg *Sandwich) prometheusGatherer() {
 			sandwichStateEmojiCount.Set(float64(stateEmojis))
 			sandwichStateUserCount.Set(float64(stateUsers))
 			sandwichStateChannelCount.Set(float64(stateChannels))
-			sandwichEventWaitingCount.Set(float64(eventsWaiting))
+			sandwichEventInflightCount.Set(float64(eventsInflight))
 
 			sg.Logger.Debug().
 				Int("guilds", stateGuilds).
@@ -525,9 +529,8 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
 				Int64("eventsWaiting", eventsWaiting).
+				Int64("eventsInflight", eventsInflight).
 				Msg("Updated prometheus guages")
-
-			sg.State.MemoryDebug()
 		}
 	}
 }
@@ -538,83 +541,4 @@ func divi(a, b int) int {
 	} else {
 		return int(math.Round(float64(a) / float64(b)))
 	}
-}
-
-func (ss *SandwichState) MemoryDebug() {
-	println("=====================")
-
-	totalSize := 0
-	ref := 0
-
-	totalSize = 0
-	ref = 0
-	ss.guildsMu.RLock()
-	for _, T := range ss.Guilds {
-		ref++
-
-		totalSize = totalSize + int(unsafe.Sizeof(*T))
-	}
-	ss.guildsMu.RUnlock()
-	println("Guilds", totalSize, ref, divi(totalSize, ref))
-
-	totalSize = 0
-	ref = 0
-	ss.guildMembersMu.RLock()
-	for _, gm := range ss.GuildMembers {
-		gm.MembersMu.RLock()
-		for _, T := range gm.Members {
-			ref++
-
-			totalSize = totalSize + int(unsafe.Sizeof(*T))
-		}
-		gm.MembersMu.RUnlock()
-	}
-	ss.guildMembersMu.RUnlock()
-	println("GuildMembers", totalSize, ref, divi(totalSize, ref))
-
-	totalSize = 0
-	ref = 0
-	ss.channelsMu.RLock()
-	for _, T := range ss.Channels {
-		ref++
-
-		totalSize = totalSize + int(unsafe.Sizeof(*T))
-	}
-	ss.channelsMu.RUnlock()
-	println("Channels", totalSize, ref, divi(totalSize, ref))
-
-	totalSize = 0
-	ref = 0
-	ss.emojisMu.RLock()
-	for _, T := range ss.Emojis {
-		ref++
-
-		totalSize = totalSize + int(unsafe.Sizeof(*T))
-	}
-	ss.emojisMu.RUnlock()
-	println("Emojis", totalSize, ref, divi(totalSize, ref))
-
-	totalSize = 0
-	ref = 0
-	ss.rolesMu.RLock()
-	for _, T := range ss.Roles {
-		ref++
-
-		totalSize = totalSize + int(unsafe.Sizeof(*T))
-	}
-	ss.rolesMu.RUnlock()
-	println("Roles", totalSize, ref, divi(totalSize, ref))
-
-	totalSize = 0
-	ref = 0
-	ss.usersMu.RLock()
-	for _, T := range ss.Users {
-		ref++
-
-		totalSize = totalSize + int(unsafe.Sizeof(*T))
-	}
-	ss.usersMu.RUnlock()
-	println("Users", totalSize, ref, divi(totalSize, ref))
-
-	println("=====================")
 }
