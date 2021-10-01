@@ -60,7 +60,7 @@ type ChannelDelete struct {
 }
 
 // ChannelPinsUpdate represents a channel pins update event.
-type ChannelPisnUpdate struct {
+type ChannelPinsUpdate struct {
 	GuildID          Snowflake `json:"guild_id"`
 	ChannelID        Snowflake `json:"channel_id"`
 	LastPinTimestamp *string   `json:"last_pin_timestamp,omitempty"`

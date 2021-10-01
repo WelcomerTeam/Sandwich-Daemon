@@ -369,6 +369,17 @@ readyConsumer:
 
 // Heartbeat maintains a heartbeat with discord.
 func (sh *Shard) Heartbeat(ctx context.Context) {
+	needsReconnect := false
+
+	defer func() {
+		if needsReconnect {
+			err := sh.Reconnect(websocket.StatusNormalClosure)
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+			}
+		}
+	}()
+
 	sh.HeartbeatActive.Store(true)
 	defer sh.HeartbeatActive.Store(false)
 
@@ -422,10 +433,7 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 					)
 				}
 
-				err = sh.Reconnect(websocket.StatusNormalClosure)
-				if err != nil {
-					sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-				}
+				needsReconnect = true
 
 				return
 			}
@@ -676,7 +684,8 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 	// are raised.
 	defer func() {
 		if r := recover(); r != nil {
-			sh.Logger.Warn().Err(err).Msg("Recovered panic in WriteJSON")
+			sh.Logger.Warn().Err(r.(error)).Bool("hasWsConn", sh.wsConn != nil).Msg("Recovered panic in WriteJSON")
+			println(r)
 
 			time.Sleep(WriteJSONRetry)
 

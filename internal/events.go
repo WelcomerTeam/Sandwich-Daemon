@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"sync"
-	"time"
 
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
@@ -74,25 +73,25 @@ func NewSandwichState() (st *SandwichState) {
 func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload) {
 	fin := make(chan void, 1)
 
-	go func() {
-		since := time.Now()
+	// go func() {
+	// 	since := time.Now()
 
-		t := time.NewTicker(DispatchWarningTimeout)
-		defer t.Stop()
+	// 	t := time.NewTicker(DispatchWarningTimeout)
+	// 	defer t.Stop()
 
-		for {
-			select {
-			case <-fin:
-				return
-			case <-t.C:
-				sh.Logger.Warn().
-					Str("type", msg.Type).
-					Int("op", int(msg.Op)).
-					Dur("since", time.Now().Sub(since)).
-					Msg("Event is taking too long")
-			}
-		}
-	}()
+	// 	for {
+	// 		select {
+	// 		case <-fin:
+	// 			return
+	// 		case <-t.C:
+	// 			sh.Logger.Warn().
+	// 				Str("type", msg.Type).
+	// 				Int("op", int(msg.Op)).
+	// 				Dur("since", time.Now().Sub(since)).
+	// 				Msg("Event is taking too long")
+	// 		}
+	// 	}
+	// }()
 
 	defer close(fin)
 
@@ -182,7 +181,7 @@ func StateDispatch(ctx *StateCtx,
 		return f(ctx, event)
 	}
 
-	// ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
+	ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
 
 	return result, false, ErrNoDispatchHandler
 }
