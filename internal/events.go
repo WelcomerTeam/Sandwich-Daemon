@@ -34,14 +34,14 @@ type SandwichState struct {
 	guildMembersMu sync.RWMutex
 	GuildMembers   map[discord.Snowflake]*structs.StateGuildMembers
 
-	channelsMu sync.RWMutex
-	Channels   map[discord.Snowflake]*structs.StateChannel
+	guildChannelsMu sync.RWMutex
+	GuildChannels   map[discord.Snowflake]*structs.StateGuildChannels
 
-	rolesMu sync.RWMutex
-	Roles   map[discord.Snowflake]*structs.StateRole
+	guildRolesMu sync.RWMutex
+	GuildRoles   map[discord.Snowflake]*structs.StateGuildRoles
 
-	emojisMu sync.RWMutex
-	Emojis   map[discord.Snowflake]*structs.StateEmoji
+	guildEmojisMu sync.RWMutex
+	GuildEmojis   map[discord.Snowflake]*structs.StateGuildEmojis
 
 	usersMu sync.RWMutex
 	Users   map[discord.Snowflake]*structs.StateUser
@@ -55,14 +55,14 @@ func NewSandwichState() (st *SandwichState) {
 		guildMembersMu: sync.RWMutex{},
 		GuildMembers:   make(map[discord.Snowflake]*structs.StateGuildMembers),
 
-		channelsMu: sync.RWMutex{},
-		Channels:   make(map[discord.Snowflake]*structs.StateChannel),
+		guildChannelsMu: sync.RWMutex{},
+		GuildChannels:   make(map[discord.Snowflake]*structs.StateGuildChannels),
 
-		rolesMu: sync.RWMutex{},
-		Roles:   make(map[discord.Snowflake]*structs.StateRole),
+		guildRolesMu: sync.RWMutex{},
+		GuildRoles:   make(map[discord.Snowflake]*structs.StateGuildRoles),
 
-		emojisMu: sync.RWMutex{},
-		Emojis:   make(map[discord.Snowflake]*structs.StateEmoji),
+		guildEmojisMu: sync.RWMutex{},
+		GuildEmojis:   make(map[discord.Snowflake]*structs.StateGuildEmojis),
 
 		usersMu: sync.RWMutex{},
 		Users:   make(map[discord.Snowflake]*structs.StateUser),
@@ -72,30 +72,6 @@ func NewSandwichState() (st *SandwichState) {
 }
 
 func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload) {
-	fin := make(chan void, 1)
-
-	// go func() {
-	// 	since := time.Now()
-
-	// 	t := time.NewTicker(DispatchWarningTimeout)
-	// 	defer t.Stop()
-
-	// 	for {
-	// 		select {
-	// 		case <-fin:
-	// 			return
-	// 		case <-t.C:
-	// 			sh.Logger.Warn().
-	// 				Str("type", msg.Type).
-	// 				Int("op", int(msg.Op)).
-	// 				Dur("since", time.Now().Sub(since)).
-	// 				Msg("Event is taking too long")
-	// 		}
-	// 	}
-	// }()
-
-	defer close(fin)
-
 	err := GatewayDispatch(ctx, sh, msg)
 	if err != nil {
 		if xerrors.Is(err, ErrNoGatewayHandler) {
@@ -149,7 +125,10 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 	defer sh.Sandwich.payloadPool.Put(packet)
 
 	packet.GatewayPayload = msg
+
+	// Setting result.Data will override what is sent to consumers
 	packet.Data = result.Data
+	// Extra contains any extra information such as before state and if it is a lazy guild.
 	packet.Extra = result.Extra
 
 	return sh.PublishEvent(ctx, packet)

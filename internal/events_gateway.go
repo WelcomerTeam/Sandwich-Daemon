@@ -145,7 +145,7 @@ func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPa
 		Msg("Received heartbeat ACK")
 
 	sandwichGatewayLatency.WithLabelValues(
-		sh.Manager.Configuration.Identifier,
+		sh.Manager.Identifier.Load(),
 		strconv.FormatInt(sh.ShardGroup.ID, MagicDecimalBase),
 		strconv.Itoa(sh.ShardID),
 	).Set(float64(heartbeatRTT))

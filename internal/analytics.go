@@ -18,7 +18,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	sandwichGuildEventCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sandwich_events_by_guild_id_total",
@@ -27,7 +26,6 @@ var (
 		[]string{"identifier", "guild_id"},
 	)
 
-	// TODO: Implement.
 	sandwichDispatchEventCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sandwich_dispatch_events_by_type_total",

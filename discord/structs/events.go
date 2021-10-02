@@ -156,15 +156,8 @@ type GuildMemberRemove struct {
 
 // GuildMemberUpdate represents a guild member update event.
 type GuildMemberUpdate struct {
-	GuildID      Snowflake   `json:"guild_id"`
-	Roles        []Snowflake `json:"roles"`
-	User         *User       `json:"user"`
-	Nick         string      `json:"nick"`
-	JoinedAt     string      `json:"joined_at"`
-	PremiumSince *string     `json:"premium_since,omitempty"`
-	Deaf         *bool       `json:"deaf,omitempty"`
-	Mute         *bool       `json:"mute,omitempty"`
-	Pending      *bool       `json:"pending,omitempty"`
+	*GuildMember
+	GuildID Snowflake `json:"guild_id"`
 }
 
 // GuildMembersChunk represents a guild members chunk event.
