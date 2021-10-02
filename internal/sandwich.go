@@ -471,6 +471,9 @@ func (sg *Sandwich) prometheusGatherer() {
 			sg.State.guildsMu.RUnlock()
 
 			stateMembers := 0
+			stateRoles := 0
+			stateEmojis := 0
+			stateChannels := 0
 
 			sg.State.guildMembersMu.RLock()
 			for _, guildMembers := range sg.State.GuildMembers {
@@ -481,20 +484,32 @@ func (sg *Sandwich) prometheusGatherer() {
 			sg.State.guildMembersMu.RUnlock()
 
 			sg.State.guildRolesMu.RLock()
-			stateRoles := len(sg.State.GuildRoles)
+			for _, guildRoles := range sg.State.GuildRoles {
+				guildRoles.RolesMu.RLock()
+				stateRoles += len(guildRoles.Roles)
+				guildRoles.RolesMu.RUnlock()
+			}
 			sg.State.guildRolesMu.RUnlock()
 
 			sg.State.guildEmojisMu.RLock()
-			stateEmojis := len(sg.State.GuildEmojis)
+			for _, guildEmojis := range sg.State.GuildEmojis {
+				guildEmojis.EmojisMu.RLock()
+				stateEmojis += len(guildEmojis.Emojis)
+				guildEmojis.EmojisMu.RUnlock()
+			}
 			sg.State.guildEmojisMu.RUnlock()
+
+			sg.State.guildChannelsMu.RLock()
+			for _, guildChannels := range sg.State.GuildChannels {
+				guildChannels.ChannelsMu.RLock()
+				stateChannels += len(guildChannels.Channels)
+				guildChannels.ChannelsMu.RUnlock()
+			}
+			sg.State.guildChannelsMu.RUnlock()
 
 			sg.State.usersMu.RLock()
 			stateUsers := len(sg.State.Users)
 			sg.State.usersMu.RUnlock()
-
-			sg.State.guildChannelsMu.RLock()
-			stateChannels := len(sg.State.GuildChannels)
-			sg.State.guildChannelsMu.RUnlock()
 
 			sandwichStateTotalCount.Set(float64(
 				stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
