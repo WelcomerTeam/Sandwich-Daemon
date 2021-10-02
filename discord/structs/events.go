@@ -354,3 +354,9 @@ type WebhookUpdate struct {
 	GuildID   Snowflake `json:"guild_id"`
 	ChannelID Snowflake `json:"channel_id"`
 }
+
+// GuildJoinRequestDelete represents a guild join request delete event.
+type GuildJoinRequestDelete struct {
+	UserID  Snowflake `json:"user_id"`
+	GuildID Snowflake `json:"guild_id"`
+}

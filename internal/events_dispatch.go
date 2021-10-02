@@ -814,6 +814,20 @@ func OnWebhookUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	return result, true, nil
 }
 
+// TODO: Implement
+func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildJoinRequestDeletePayload discord.GuildJoinRequestDelete
+
+	err = ctx.decodeContent(msg, &guildJoinRequestDeletePayload)
+	if err != nil {
+		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_JOIN_REQUEST_DELETE event")
+
+		return
+	}
+
+	return result, true, nil
+}
+
 func init() {
 	registerDispatch("READY", OnReady)
 	registerDispatch("APPLICATION_COMMAND_CREATE", OnApplicationCommandCreate)
@@ -867,4 +881,7 @@ func init() {
 	registerDispatch("VOICE_STATE_UPDATE", OnVoiceStateUpdate)
 	registerDispatch("VOICE_SERVER_UPDATE", OnVoiceServerUpdate)
 	registerDispatch("WEBHOOKS_UPDATE", OnWebhookUpdate)
+
+	// Discord Undocumented
+	registerDispatch("GUILD_JOIN_REQUEST_DELETE", OnGuildJoinRequestDelete)
 }
