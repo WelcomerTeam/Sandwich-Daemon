@@ -82,20 +82,20 @@ type Message struct {
 	MentionRoles    []Snowflake              `json:"mention_roles"`
 	MentionChannels []*MessageChannelMention `json:"mention_channels,omitempty"`
 
-	Attachments       []*MessageAttachment `json:"attachments"`
-	Embeds            []*Embed             `json:"embeds"`
-	Reactions         []*MessageReaction   `json:"reactions"`
-	Nonce             *Snowflake           `json:"nonce,omitempty"`
-	Pinned            bool                 `json:"pinned"`
-	WebhookID         *Snowflake           `json:"webhook_id,omitempty"`
-	Type              MessageType          `json:"type"`
-	Activity          *MessageActivity     `json:"activity"`
-	Application       *Application         `json:"application"`
-	MessageReference  []*MessageReference  `json:"message_referenced,omitempty"`
-	Flags             *MessageFlags        `json:"flags,omitempty"`
-	Components        []*InteractionComponent
-	Stickers          []*Sticker `json:"stickers,omitempty"`
-	ReferencedMessage *Message   `json:"referenced_message,omitempty"`
+	Attachments       []*MessageAttachment    `json:"attachments"`
+	Embeds            []*Embed                `json:"embeds"`
+	Reactions         []*MessageReaction      `json:"reactions"`
+	Nonce             *Snowflake              `json:"nonce,omitempty"`
+	Pinned            bool                    `json:"pinned"`
+	WebhookID         *Snowflake              `json:"webhook_id,omitempty"`
+	Type              MessageType             `json:"type"`
+	Activity          *MessageActivity        `json:"activity"`
+	Application       *Application            `json:"application"`
+	MessageReference  []*MessageReference     `json:"message_referenced,omitempty"`
+	Flags             *MessageFlags           `json:"flags,omitempty"`
+	Components        []*InteractionComponent `json:"components,omitempty"`
+	Stickers          []*Sticker              `json:"stickers,omitempty"`
+	ReferencedMessage *Message                `json:"referenced_message,omitempty"`
 }
 
 // MessageChannelMention represents a mentioned channel.

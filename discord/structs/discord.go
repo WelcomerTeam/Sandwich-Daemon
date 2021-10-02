@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"bytes"
 	"strconv"
 
 	gotils_strconv "github.com/savsgio/gotils/strconv"
@@ -12,16 +13,20 @@ const (
 	maxInt64JsonLength = 22
 )
 
+var null = []byte{'n', 'u', 'l', 'l'}
+
 // Placeholder type for easy identification.
 type Snowflake int64
 
 func (s *Snowflake) UnmarshalJSON(b []byte) error {
-	i, err := strconv.ParseInt(gotils_strconv.B2S(b[1:len(b)-1]), decimalBase, bitSize)
-	if err != nil {
-		return err
-	}
+	if bytes.Compare(b, null) != 0 {
+		i, err := strconv.ParseInt(gotils_strconv.B2S(b[1:len(b)-1]), decimalBase, bitSize)
+		if err != nil {
+			return err
+		}
 
-	*s = Snowflake(i)
+		*s = Snowflake(i)
+	}
 
 	return nil
 }
