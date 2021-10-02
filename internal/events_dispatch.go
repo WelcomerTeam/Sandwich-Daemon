@@ -183,7 +183,7 @@ func OnChannelCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 		return
 	}
 
-	ctx.Sandwich.State.SetGuildChannel(*channelCreatePayload.GuildID, channelCreatePayload.Channel)
+	ctx.Sandwich.State.SetGuildChannel(channelCreatePayload.GuildID, channelCreatePayload.Channel)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -200,8 +200,8 @@ func OnChannelUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 		return
 	}
 
-	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(*channelUpdatePayload.GuildID, channelUpdatePayload.ID)
-	ctx.Sandwich.State.SetGuildChannel(*channelUpdatePayload.GuildID, channelUpdatePayload.Channel)
+	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(channelUpdatePayload.GuildID, channelUpdatePayload.ID)
+	ctx.Sandwich.State.SetGuildChannel(channelUpdatePayload.GuildID, channelUpdatePayload.Channel)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -221,8 +221,8 @@ func OnChannelDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 		return
 	}
 
-	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(*channelDeletePayload.GuildID, channelDeletePayload.ID)
-	ctx.Sandwich.State.RemoveGuildChannel(*channelDeletePayload.GuildID, channelDeletePayload.ID)
+	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(channelDeletePayload.GuildID, channelDeletePayload.ID)
+	ctx.Sandwich.State.RemoveGuildChannel(channelDeletePayload.GuildID, channelDeletePayload.ID)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -504,7 +504,7 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	guildMember, _ := ctx.Sandwich.State.GetGuildMember(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 
-	ctx.Sandwich.State.RemoveGuildMember(guildMemberRemovePayload.GuildID, guildMember.User.ID)
+	ctx.Sandwich.State.RemoveGuildMember(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 
 	return structs.StateResult{
 		Data: msg,

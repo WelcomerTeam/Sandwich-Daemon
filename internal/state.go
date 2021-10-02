@@ -175,7 +175,7 @@ func (ss *SandwichState) SetGuild(guild *discord.Guild) {
 	}
 
 	for _, channel := range guild.Channels {
-		ss.SetGuildChannel(guild.ID, channel)
+		ss.SetGuildChannel(&guild.ID, channel)
 	}
 
 	for _, emoji := range guild.Emojis {
@@ -228,7 +228,7 @@ func (ss *SandwichState) GuildMemberFromState(guildState *structs.StateGuildMemb
 		Deaf:         guildState.Deaf,
 		Mute:         guildState.Mute,
 		Pending:      guildState.Pending,
-		Permissions:  guild.Permissions,
+		Permissions:  guildState.Permissions,
 	}
 }
 
@@ -239,10 +239,13 @@ func (ss *SandwichState) GuildMemberToState(guild *discord.GuildMember) (guildSt
 		UserID: guild.User.ID,
 		Nick:   guild.Nick,
 
-		Roles:    guild.Roles,
-		JoinedAt: guild.JoinedAt,
-		Deaf:     guild.Deaf,
-		Mute:     guild.Mute,
+		Roles:        guild.Roles,
+		JoinedAt:     guild.JoinedAt,
+		PremiumSince: guild.PremiumSince,
+		Deaf:         guild.Deaf,
+		Mute:         guild.Mute,
+		Pending:      guild.Pending,
+		Permissions:  guild.Permissions,
 	}
 }
 
@@ -804,11 +807,19 @@ func (ss *SandwichState) ChannelToState(guild *discord.Channel) (guildState *str
 
 // GetGuildChannel returns the channel with the same ID from the cache.
 // Returns a boolean to signify a match or not.
-func (ss *SandwichState) GetGuildChannel(guildID discord.Snowflake, channelID discord.Snowflake) (guildChannel *discord.Channel, ok bool) {
+func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelID discord.Snowflake) (guildChannel *discord.Channel, ok bool) {
 	ss.guildChannelsMu.RLock()
 	defer ss.guildChannelsMu.RUnlock()
 
-	stateChannels, ok := ss.GuildChannels[channelID]
+	var guildID discord.Snowflake
+
+	if guildIDPtr != nil {
+		guildID = *guildIDPtr
+	} else {
+		guildID = discord.Snowflake(0)
+	}
+
+	stateChannels, ok := ss.GuildChannels[guildID]
 	if !ok {
 		return
 	}
@@ -834,9 +845,17 @@ func (ss *SandwichState) GetGuildChannel(guildID discord.Snowflake, channelID di
 }
 
 // SetGuildChannel creates or updates a channel entry in the cache.
-func (ss *SandwichState) SetGuildChannel(guildID discord.Snowflake, channel *discord.Channel) {
+func (ss *SandwichState) SetGuildChannel(guildIDPtr *discord.Snowflake, channel *discord.Channel) {
 	ss.guildChannelsMu.Lock()
 	defer ss.guildChannelsMu.Unlock()
+
+	var guildID discord.Snowflake
+
+	if guildIDPtr != nil {
+		guildID = *guildIDPtr
+	} else {
+		guildID = discord.Snowflake(0)
+	}
 
 	guildChannels, ok := ss.GuildChannels[guildID]
 	if !ok {
@@ -857,9 +876,17 @@ func (ss *SandwichState) SetGuildChannel(guildID discord.Snowflake, channel *dis
 }
 
 // RemoveGuildChannel removes a channel from the cache.
-func (ss *SandwichState) RemoveGuildChannel(guildID discord.Snowflake, channelID discord.Snowflake) {
+func (ss *SandwichState) RemoveGuildChannel(guildIDPtr *discord.Snowflake, channelID discord.Snowflake) {
 	ss.guildChannelsMu.Lock()
 	defer ss.guildChannelsMu.RUnlock()
+
+	var guildID discord.Snowflake
+
+	if guildIDPtr != nil {
+		guildID = *guildIDPtr
+	} else {
+		guildID = discord.Snowflake(0)
+	}
 
 	guildChannels, ok := ss.GuildChannels[guildID]
 	if !ok {
