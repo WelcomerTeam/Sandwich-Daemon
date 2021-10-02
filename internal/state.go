@@ -194,7 +194,7 @@ func (ss *SandwichState) SetGuild(guild *discord.Guild) {
 // RemoveGuild removes a guild from the cache.
 func (ss *SandwichState) RemoveGuild(guildID discord.Snowflake) {
 	ss.guildsMu.Lock()
-	defer ss.guildsMu.RUnlock()
+	defer ss.guildsMu.Unlock()
 
 	if _, ok := ss.Guilds[guildID]; ok {
 		ss.RemoveAllGuildRoles(guildID)
@@ -343,8 +343,8 @@ func (ss *SandwichState) GetAllGuildMembers(guildID discord.Snowflake) (guildMem
 
 // RemoveAllGuildMembers removes all guildMembers of a specific guild from the cache.
 func (ss *SandwichState) RemoveAllGuildMembers(guildID discord.Snowflake) {
-	ss.guildMembersMu.RLock()
-	defer ss.guildMembersMu.RUnlock()
+	ss.guildMembersMu.Lock()
+	defer ss.guildMembersMu.Unlock()
 
 	delete(ss.GuildMembers, guildID)
 
@@ -434,7 +434,7 @@ func (ss *SandwichState) SetGuildRole(guildID discord.Snowflake, role *discord.R
 
 // RemoveGuildRole removes a role from the cache.
 func (ss *SandwichState) RemoveGuildRole(guildID discord.Snowflake, roleID discord.Snowflake) {
-	ss.guildRolesMu.Lock()
+	ss.guildRolesMu.RLock()
 	defer ss.guildRolesMu.RUnlock()
 
 	guildRoles, ok := ss.GuildRoles[guildID]
@@ -473,7 +473,7 @@ func (ss *SandwichState) GetAllGuildRoles(guildID discord.Snowflake) (guildRoles
 // RemoveGuildRoles removes all guild roles of a specifi guild from the cache.
 func (ss *SandwichState) RemoveAllGuildRoles(guildID discord.Snowflake) {
 	ss.guildRolesMu.Lock()
-	ss.guildRolesMu.Unlock()
+	defer ss.guildRolesMu.Unlock()
 
 	delete(ss.GuildRoles, guildID)
 
@@ -579,7 +579,7 @@ func (ss *SandwichState) SetGuildEmoji(guildID discord.Snowflake, emoji *discord
 
 // RemoveGuildEmoji removes a emoji from the cache.
 func (ss *SandwichState) RemoveGuildEmoji(guildID discord.Snowflake, emojiID discord.Snowflake) {
-	ss.guildEmojisMu.Lock()
+	ss.guildEmojisMu.RLock()
 	defer ss.guildEmojisMu.RUnlock()
 
 	guildEmojis, ok := ss.GuildEmojis[guildID]
@@ -617,8 +617,8 @@ func (ss *SandwichState) GetAllGuildEmojis(guildID discord.Snowflake) (guildEmoj
 
 // RemoveGuildEmojis removes all guildEmojis of a specific guild from the cache.
 func (ss *SandwichState) RemoveAllGuildEmojis(guildID discord.Snowflake) {
-	ss.guildEmojisMu.RLock()
-	defer ss.guildEmojisMu.RUnlock()
+	ss.guildEmojisMu.Lock()
+	defer ss.guildEmojisMu.Unlock()
 
 	delete(ss.GuildEmojis, guildID)
 
@@ -698,7 +698,7 @@ func (ss *SandwichState) SetUser(user *discord.User) {
 // RemoveUser removes a user from the cache.
 func (ss *SandwichState) RemoveUser(userID discord.Snowflake) {
 	ss.usersMu.Lock()
-	defer ss.usersMu.RUnlock()
+	defer ss.usersMu.Unlock()
 
 	delete(ss.Users, userID)
 
@@ -877,7 +877,7 @@ func (ss *SandwichState) SetGuildChannel(guildIDPtr *discord.Snowflake, channel 
 
 // RemoveGuildChannel removes a channel from the cache.
 func (ss *SandwichState) RemoveGuildChannel(guildIDPtr *discord.Snowflake, channelID discord.Snowflake) {
-	ss.guildChannelsMu.Lock()
+	ss.guildChannelsMu.RLock()
 	defer ss.guildChannelsMu.RUnlock()
 
 	var guildID discord.Snowflake
@@ -923,8 +923,8 @@ func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildCh
 
 // RemoveAllGuildChannels removes all guildChannels of a specific guild from the cache.
 func (ss *SandwichState) RemoveAllGuildChannels(guildID discord.Snowflake) {
-	ss.guildEmojisMu.RLock()
-	defer ss.guildEmojisMu.RUnlock()
+	ss.guildEmojisMu.Lock()
+	defer ss.guildEmojisMu.Unlock()
 
 	delete(ss.GuildEmojis, guildID)
 
