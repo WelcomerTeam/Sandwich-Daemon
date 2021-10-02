@@ -861,6 +861,15 @@ func (sh *Shard) OnGuildDispatchEvent(eventType string, guildID discord.Snowflak
 	sandwichDispatchEventCount.WithLabelValues(sh.Manager.Identifier.Load(), eventType).Inc()
 }
 
+// SafeOnGuildDispatchEvent takes a guildID pointer and does handle guild event count if nil.
+func (sh *Shard) SafeOnGuildDispatchEvent(eventType string, guildIDPtr *discord.Snowflake) {
+	if guildIDPtr != nil {
+		sh.OnGuildDispatchEvent(eventType, *guildIDPtr)
+	} else {
+		sh.OnDispatchEvent(eventType)
+	}
+}
+
 func (sh *Shard) hasWsConn() (hasWsConn bool) {
 	sh.wsConnMu.RLock()
 	hasWsConn = sh.wsConn != nil
