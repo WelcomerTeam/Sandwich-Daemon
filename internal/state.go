@@ -859,7 +859,12 @@ func (ss *SandwichState) SetGuildChannel(guildIDPtr *discord.Snowflake, channel 
 
 	guildChannels, ok := ss.GuildChannels[guildID]
 	if !ok {
-		return
+		guildChannels = &structs.StateGuildChannels{
+			ChannelsMu: sync.RWMutex{},
+			Channels:   make(map[discord.Snowflake]*structs.StateChannel),
+		}
+
+		ss.GuildChannels[guildID] = guildChannels
 	}
 
 	guildChannels.ChannelsMu.Lock()
