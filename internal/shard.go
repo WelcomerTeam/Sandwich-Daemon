@@ -572,7 +572,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 			default:
 			}
 
-			sandwichEventCount.WithLabelValues(sh.Manager.Configuration.Identifier).Add(1)
+			sandwichEventCount.WithLabelValues(sh.Manager.Identifier.Load()).Add(1)
 
 			if connectionErr != nil {
 				sh.Logger.Error().Err(connectionErr).Msg("Failed to read from gateway")
@@ -847,6 +847,17 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 			wait = MaxReconnectWait
 		}
 	}
+}
+
+// OnDispatchEvent is called during the dispatch event to call analytics.
+func (sh *Shard) OnDispatchEvent(eventType string) {
+	sh.OnGuildDispatchEvent(eventType, discord.Snowflake(0))
+}
+
+// OnGuildDispatchEvent is called during the dispatch event to call analytics with a guild Id.
+func (sh *Shard) OnGuildDispatchEvent(eventType string, guildID discord.Snowflake) {
+	sandwichGuildEventCount.WithLabelValues(sh.Manager.Identifier.Load(), guildID.String()).Inc()
+	sandwichDispatchEventCount.WithLabelValues(sh.Manager.Identifier.Load(), eventType).Inc()
 }
 
 func (sh *Shard) hasWsConn() (hasWsConn bool) {

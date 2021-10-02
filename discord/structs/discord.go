@@ -40,6 +40,10 @@ func (s Snowflake) MarshalJSON() ([]byte, error) {
 	return buff, nil
 }
 
+func (s *Snowflake) String() string {
+	return strconv.FormatInt(int64(*s), decimalBase)
+}
+
 // JSON-Marshal compatable Int64.
 type jInt64 int64
 

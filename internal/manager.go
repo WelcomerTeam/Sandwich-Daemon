@@ -39,6 +39,8 @@ type Manager struct {
 
 	Error *atomic.String `json:"error" yaml:"error"`
 
+	Identifier *atomic.String `json:"-"`
+
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
 
@@ -120,6 +122,8 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 
 		configurationMu: sync.RWMutex{},
 		Configuration:   configuration,
+
+		Identifier: atomic.NewString(configuration.Identifier),
 
 		gatewayMu: sync.RWMutex{},
 		Gateway:   discord.GatewayBot{},

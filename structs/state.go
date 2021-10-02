@@ -15,14 +15,14 @@ type StateResult struct {
 
 type StateGuild struct {
 	WidgetEnabled *bool `json:"widget_enabled"`
-	Large         *bool  `json:"large"`
-	Unavailable   *bool  `json:"unavailable"`
+	Large         *bool `json:"large"`
+	Unavailable   *bool `json:"unavailable"`
 
-	AFKTimeout int `json:"afk_timeout"`
-	// Permissions *int `json:"permissions,omitempty"`
+	AFKTimeout  int  `json:"afk_timeout"`
+	Permissions *int `json:"permissions,omitempty"`
 
 	NSFWLevel *discord.GuildNSFWLevelType `json:"nsfw_level"`
-	ID        discord.Snowflake          `json:"id"`
+	ID        discord.Snowflake           `json:"id"`
 
 	Name            string `json:"name"`
 	Icon            string `json:"icon"`
@@ -87,6 +87,12 @@ type StateGuildMember struct {
 	Roles        []discord.Snowflake `json:"roles"`
 }
 
+type StateGuildRoles struct {
+	RolesMu sync.RWMutex `json:"-"`
+
+	Roles map[discord.Snowflake]*StateRole `json:"roles"`
+}
+
 type StateRole struct {
 	Hoist       bool              `json:"hoist"`
 	Managed     bool              `json:"managed"`
@@ -97,6 +103,12 @@ type StateRole struct {
 	ID          discord.Snowflake `json:"id"`
 	Tags        *discord.RoleTag  `json:"tags"`
 	Name        string            `json:"name"`
+}
+
+type StateGuildEmojis struct {
+	EmojisMu sync.RWMutex `json:"-"`
+
+	Emojis map[discord.Snowflake]*StateEmoji `json:"emoji"`
 }
 
 type StateEmoji struct {
@@ -110,21 +122,10 @@ type StateEmoji struct {
 	Available     bool                `json:"available"`
 }
 
-type StateUser struct {
-	ID            discord.Snowflake        `json:"id"`
-	Bot           *bool                    `json:"bot"`
-	System        *bool                    `json:"system"`
-	Verified      *bool                    `json:"verified"`
-	MFAEnabled    *bool                    `json:"mfa_enabled"`
-	Flags         *discord.UserFlags       `json:"flags"`
-	PremiumType   *discord.UserPremiumType `json:"premium_type"`
-	PublicFlags   *discord.UserFlags       `json:"public_flags"`
-	Username      string                   `json:"username"`
-	Discriminator string                   `json:"discriminator"`
-	Avatar        string                   `json:"avatar"`
-	Banner        *string                  `json:"banner"`
-	Locale        *string                  `json:"locale"`
-	Email         *string                  `json:"email"`
+type StateGuildChannels struct {
+	ChannelsMu sync.RWMutex `json:"-"`
+
+	Channels map[discord.Snowflake]*StateChannel `json:"channels"`
 }
 
 type StateChannel struct {
@@ -159,4 +160,21 @@ type StateChannel struct {
 
 	// Slash Commands.
 	Permissions *string `json:"permissions"`
+}
+
+type StateUser struct {
+	ID            discord.Snowflake        `json:"id"`
+	Bot           *bool                    `json:"bot"`
+	System        *bool                    `json:"system"`
+	Verified      *bool                    `json:"verified"`
+	MFAEnabled    *bool                    `json:"mfa_enabled"`
+	Flags         *discord.UserFlags       `json:"flags"`
+	PremiumType   *discord.UserPremiumType `json:"premium_type"`
+	PublicFlags   *discord.UserFlags       `json:"public_flags"`
+	Username      string                   `json:"username"`
+	Discriminator string                   `json:"discriminator"`
+	Avatar        string                   `json:"avatar"`
+	Banner        *string                  `json:"banner"`
+	Locale        *string                  `json:"locale"`
+	Email         *string                  `json:"email"`
 }

@@ -480,21 +480,21 @@ func (sg *Sandwich) prometheusGatherer() {
 			}
 			sg.State.guildMembersMu.RUnlock()
 
-			sg.State.rolesMu.RLock()
-			stateRoles := len(sg.State.Roles)
-			sg.State.rolesMu.RUnlock()
+			sg.State.guildRolesMu.RLock()
+			stateRoles := len(sg.State.GuildRoles)
+			sg.State.guildRolesMu.RUnlock()
 
-			sg.State.emojisMu.RLock()
-			stateEmojis := len(sg.State.Emojis)
-			sg.State.emojisMu.RUnlock()
+			sg.State.guildEmojisMu.RLock()
+			stateEmojis := len(sg.State.GuildEmojis)
+			sg.State.guildEmojisMu.RUnlock()
 
 			sg.State.usersMu.RLock()
 			stateUsers := len(sg.State.Users)
 			sg.State.usersMu.RUnlock()
 
-			sg.State.channelsMu.RLock()
-			stateChannels := len(sg.State.Channels)
-			sg.State.channelsMu.RUnlock()
+			sg.State.guildChannelsMu.RLock()
+			stateChannels := len(sg.State.GuildChannels)
+			sg.State.guildChannelsMu.RUnlock()
 
 			sandwichStateTotalCount.Set(float64(
 				stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
