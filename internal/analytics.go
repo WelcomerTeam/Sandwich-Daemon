@@ -131,7 +131,6 @@ var (
 	// TODO: Message Tracing
 	// Time between from discord GW and Produced
 	// -   Time in state
-	// Events waiting for ticket
 	// Guild Count
 	// Guild Join / Leave
 	// Outbound WS count + Types.

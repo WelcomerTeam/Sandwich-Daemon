@@ -56,12 +56,6 @@ type Sandwich struct {
 
 	IdentifyBuckets *bucketstore.BucketStore `json:"-"`
 
-	// EventPool contains the global event pool limiter defined on startup flags.
-	// EventPoolWaiting stores any events that are waiting for a spot.
-	EventPool        *limiter.ConcurrencyLimiter `json:"-"`
-	EventPoolWaiting *atomic.Int64               `json:"-"`
-	EventPoolLimit   int                         `json:"-"`
-
 	EventsInflight *atomic.Int64 `json:"-"`
 
 	managersMu sync.RWMutex
@@ -136,7 +130,7 @@ type SandwichConfiguration struct {
 }
 
 // NewSandwich creates the application state and initializes it.
-func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit int) (sg *Sandwich, err error) {
+func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, err error) {
 	sg = &Sandwich{
 		Logger: zerolog.New(logger).With().Timestamp().Logger(),
 
@@ -149,10 +143,6 @@ func NewSandwich(logger io.Writer, configurationLocation string, eventPoolLimit 
 		Managers:   make(map[string]*Manager),
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
-
-		EventPool:        limiter.NewConcurrencyLimiter(eventPoolLimit),
-		EventPoolWaiting: atomic.NewInt64(0),
-		EventPoolLimit:   eventPoolLimit,
 
 		EventsInflight: atomic.NewInt64(0),
 
@@ -510,7 +500,6 @@ func (sg *Sandwich) prometheusGatherer() {
 				stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
 			))
 
-			eventsWaiting := sg.EventPoolWaiting.Load()
 			eventsInflight := sg.EventsInflight.Load()
 
 			sandwichStateGuildCount.Set(float64(stateGuilds))
@@ -528,7 +517,6 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("emojis", stateEmojis).
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
-				Int64("eventsWaiting", eventsWaiting).
 				Int64("eventsInflight", eventsInflight).
 				Msg("Updated prometheus guages")
 		}

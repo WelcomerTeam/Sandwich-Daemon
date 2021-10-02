@@ -45,7 +45,7 @@ const (
 	FirstEventTimeout = 5 * time.Second
 
 	WaitForReadyTimeout = 15 * time.Second
-	ReadyTimeout        = 2 * time.Second
+	ReadyTimeout        = 5 * time.Second
 
 	MaxReconnectWait = 60 * time.Second
 
