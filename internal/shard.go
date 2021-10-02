@@ -252,8 +252,6 @@ readyConsumer:
 
 	err = sh.decodeContent(msg, &helloResponse)
 	if err != nil {
-		sh.Logger.Error().Err(err).Msg("Failed to decode HELLO event")
-
 		return
 	}
 
@@ -715,6 +713,9 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 // decodeContent converts the stored msg into the passed interface.
 func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err error) {
 	err = json.Unmarshal(msg.Data, &out)
+	if err != nil {
+		sh.Logger.Error().Err(err).Str("type", msg.Type).Msg("Failed to decode event")
+	}
 
 	return
 }
