@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -716,14 +715,6 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 // decodeContent converts the stored msg into the passed interface.
 func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err error) {
 	err = json.Unmarshal(msg.Data, &out)
-
-	// TODO: Remove in production.
-	outD, _ := json.Marshal(out)
-	if bytes.Compare(outD, msg.Data) != 0 {
-		// sh.Logger.Warn().Str("In", string(msg.Data)).Str("Out", string(outD)).Msg("Varied payloads detected")
-	} else {
-		sh.Logger.Info().Str("type", msg.Type).Int("op", int(msg.Op)).Msg("payload pass")
-	}
 
 	return
 }

@@ -241,7 +241,10 @@ type InviteDelete struct {
 	Code      string     `json:"code"`
 }
 
-// MessageCreate represents the message update event.
+// MessageCreate represents the message create event.
+type MessageCreate *Message
+
+// MessageUpdate represents the message update event.
 type MessageUpdate *Message
 
 // MessageCreate represents the message delete event.

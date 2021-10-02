@@ -157,13 +157,13 @@ type Interaction struct {
 	Type          *InteractionType `json:"type,omitempty"`
 	Data          *InteractionData `json:"data,omitempty"`
 
-	GuildID   Snowflake `json:"guild_id,omitempty"`
-	ChannelID Snowflake `json:"channel_id,omitempty"`
-	Member    *GuildMember   `json:"member,omitempty"`
-	User      *User     `json:"user,omitempty"`
-	Token     string    `json:"token"`
-	Version   int       `json:"version"`
-	Message   *Message  `json:"message,omitempty"`
+	GuildID   Snowflake    `json:"guild_id,omitempty"`
+	ChannelID Snowflake    `json:"channel_id,omitempty"`
+	Member    *GuildMember `json:"member,omitempty"`
+	User      *User        `json:"user,omitempty"`
+	Token     string       `json:"token"`
+	Version   int          `json:"version"`
+	Message   *Message     `json:"message,omitempty"`
 }
 
 // InteractionData represents the structure of interaction data.
@@ -189,11 +189,11 @@ type InteractionDataOption struct {
 
 // InteractionResolvedData represents any extra payload data for an interaction.
 type InteractionResolvedData struct {
-	Users    []*User    `json:"users,omitempty"`
-	Members  []*GuildMember  `json:"members,omitempty"`
-	Roles    []*Role    `json:"roles,omitempty"`
-	Channels []*Channel `json:"channels,omitempty"`
-	Messages []*Message `json:"messages,omitempty"`
+	Users    []*User        `json:"users,omitempty"`
+	Members  []*GuildMember `json:"members,omitempty"`
+	Roles    []*Role        `json:"roles,omitempty"`
+	Channels []*Channel     `json:"channels,omitempty"`
+	Messages []*Message     `json:"messages,omitempty"`
 }
 
 // ApplicationSelectOption represents the structure of select options.

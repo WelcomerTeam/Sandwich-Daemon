@@ -52,7 +52,7 @@ type Channel struct {
 	Bitrate              *int                `json:"bitrate,omitempty"`
 	UserLimit            *int                `json:"user_limit,omitempty"`
 	RateLimitPerUser     *int                `json:"rate_limit_per_user,omitempty"`
-	Recipients           []User             `json:"recipients,omitempty"`
+	Recipients           []User              `json:"recipients,omitempty"`
 	Icon                 *string             `json:"icon,omitempty"`
 	OwnerID              *Snowflake          `json:"owner_id,omitempty"`
 	ApplicationID        *Snowflake          `json:"application_id,omitempty"`

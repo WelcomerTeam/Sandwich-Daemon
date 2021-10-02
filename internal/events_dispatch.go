@@ -577,6 +577,20 @@ func OnInviteDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 }
 
 // TODO: Implement.
+func OnMessageCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageCreatePayload discord.MessageCreate
+
+	err = ctx.decodeContent(msg, &messageCreatePayload)
+	if err != nil {
+		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_CREATE event")
+
+		return
+	}
+
+	return result, true, nil
+}
+
+// TODO: Implement.
 func OnMessageUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	var messageUpdatePayload discord.MessageUpdate
 
@@ -836,6 +850,7 @@ func init() {
 	registerDispatch("INTERACTION_CREATE", OnInteractionCreate)
 	registerDispatch("INVITE_CREATE", OnInviteCreate)
 	registerDispatch("INVITE_DELETE", OnInviteDelete)
+	registerDispatch("MESSAGE_CREATE", OnMessageCreate)
 	registerDispatch("MESSAGE_UPDATE", OnMessageUpdate)
 	registerDispatch("MESSAGE_DELETE", OnMessageDelete)
 	registerDispatch("MESSAGE_DELETE_BULK", OnMessageDeleteBulk)
