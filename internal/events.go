@@ -104,7 +104,9 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 	}, msg)
 
 	if err != nil {
-		sh.Logger.Error().Err(err).Str("data", strconv.B2S(msg.Data)).Msg("Encountered error whilst handling " + msg.Type)
+		if !xerrors.Is(err, ErrNoDispatchHandler) {
+			sh.Logger.Error().Err(err).Str("data", strconv.B2S(msg.Data)).Msg("Encountered error whilst handling " + msg.Type)
+		}
 
 		return err
 	}

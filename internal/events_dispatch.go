@@ -19,8 +19,6 @@ func OnReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateRes
 
 	err = ctx.decodeContent(msg, &readyPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode READY event")
-
 		return
 	}
 
@@ -62,7 +60,7 @@ ready:
 
 				err = ctx.decodeContent(msg, &guildCreatePayload)
 				if err != nil {
-					ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_CREATE event")
+					ctx.Logger.Error().Err(err).Str("type", msg.Type).Msg("Failed to decode event")
 				}
 
 				readyTimeout.Reset(ReadyTimeout)
@@ -89,8 +87,6 @@ func OnApplicationCommandCreate(ctx *StateCtx, msg discord.GatewayPayload) (resu
 
 	err = ctx.decodeContent(msg, &applicationCommandCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode APPLICATION_COMMAND_CREATE event")
-
 		return
 	}
 
@@ -104,8 +100,6 @@ func OnApplicationCommandUpdate(ctx *StateCtx, msg discord.GatewayPayload) (resu
 
 	err = ctx.decodeContent(msg, &applicationCommandUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode APPLICATION_COMMAND_UPDATE event")
-
 		return
 	}
 
@@ -119,8 +113,6 @@ func OnApplicationCommandDelete(ctx *StateCtx, msg discord.GatewayPayload) (resu
 
 	err = ctx.decodeContent(msg, &applicationCommandDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode APPLICATION_COMMAND_DELETE event")
-
 		return
 	}
 
@@ -134,8 +126,6 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	err = ctx.decodeContent(msg, &guildCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_CREATE event")
-
 		return
 	}
 
@@ -154,8 +144,6 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &guildMembersChunkPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_MEMBERS_CHUNK event")
-
 		return
 	}
 
@@ -178,8 +166,6 @@ func OnChannelCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	err = ctx.decodeContent(msg, &channelCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode CHANNEL_CREATE event")
-
 		return
 	}
 
@@ -195,8 +181,6 @@ func OnChannelUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	err = ctx.decodeContent(msg, &channelUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode CHANNEL_UPDATE event")
-
 		return
 	}
 
@@ -216,8 +200,6 @@ func OnChannelDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	err = ctx.decodeContent(msg, &channelDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode CHANNEL_DELETE event")
-
 		return
 	}
 
@@ -237,8 +219,6 @@ func OnChannelPinsUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &channelPinsUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode CHANNEL_PINS_UPDATE event")
-
 		return
 	}
 
@@ -252,8 +232,6 @@ func OnThreadCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 
 	err = ctx.decodeContent(msg, &threadCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode THREAD_CREATE event")
-
 		return
 	}
 
@@ -267,8 +245,6 @@ func OnThreadUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 
 	err = ctx.decodeContent(msg, &threadUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode THREAD_UPDATE event")
-
 		return
 	}
 
@@ -282,8 +258,6 @@ func OnThreadDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 
 	err = ctx.decodeContent(msg, &threadDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode THREAD_DELETE event")
-
 		return
 	}
 
@@ -297,8 +271,6 @@ func OnThreadListSync(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 
 	err = ctx.decodeContent(msg, &threadListSyncPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode THREAD_LIST_SYNC event")
-
 		return
 	}
 
@@ -312,8 +284,6 @@ func OnThreadMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result str
 
 	err = ctx.decodeContent(msg, &threadMemberUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode THREAD_MEMBER event")
-
 		return
 	}
 
@@ -327,8 +297,6 @@ func OnThreadMembersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 
 	err = ctx.decodeContent(msg, &threadMembersUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode THREAD_MEMBERS_UPDATE event")
-
 		return
 	}
 
@@ -342,8 +310,6 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	err = ctx.decodeContent(msg, &guildUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_UPDATE event")
-
 		return
 	}
 
@@ -363,8 +329,6 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	err = ctx.decodeContent(msg, &guildDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_DELETE event")
-
 		return
 	}
 
@@ -384,8 +348,6 @@ func OnGuildBanAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	err = ctx.decodeContent(msg, &guildBanAddPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_BAN_ADD event")
-
 		return
 	}
 
@@ -399,8 +361,6 @@ func OnGuildBanRemove(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 
 	err = ctx.decodeContent(msg, &guildBanRemovePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_BAN_REMOVE event")
-
 		return
 	}
 
@@ -414,8 +374,6 @@ func OnGuildEmojisUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &guildEmojisUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_EMOJIS_UPDATE event")
-
 		return
 	}
 
@@ -440,8 +398,6 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 
 	err = ctx.decodeContent(msg, &guildStickersUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_STICKERS_UPDATE event")
-
 		return
 	}
 
@@ -465,8 +421,6 @@ func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord.GatewayPayload) (resul
 
 	err = ctx.decodeContent(msg, &guildIntegrationsUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_INTEGRATIONS_UPDATE event")
-
 		return
 	}
 
@@ -480,8 +434,6 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 
 	err = ctx.decodeContent(msg, &guildMemberAddPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_MEMBER_ADD event")
-
 		return
 	}
 
@@ -497,8 +449,6 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &guildMemberRemovePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_MEMBER_REMOVE event")
-
 		return
 	}
 
@@ -519,8 +469,6 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &guildMemberUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_MEMBER_UPDATE event")
-
 		return
 	}
 
@@ -542,8 +490,6 @@ func OnGuildRoleCreate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 
 	err = ctx.decodeContent(msg, &guildRoleCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_ROLE_CREATE event")
-
 		return
 	}
 
@@ -559,8 +505,6 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 
 	err = ctx.decodeContent(msg, &guildRoleUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_ROLE_UPDATE event")
-
 		return
 	}
 
@@ -582,8 +526,6 @@ func OnGuildRoleDelete(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 
 	err = ctx.decodeContent(msg, &guildRoleDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_ROLE_DELETE event")
-
 		return
 	}
 
@@ -599,8 +541,6 @@ func OnIntegrationCreate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &integrationCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode INTEGRATION_CREATE event")
-
 		return
 	}
 
@@ -614,8 +554,6 @@ func OnIntegrationUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &integrationUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode INTEGRATION_UPDATE event")
-
 		return
 	}
 
@@ -629,8 +567,6 @@ func OnIntegrationDelete(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &integrationDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode INTEGRATION_DELETE event")
-
 		return
 	}
 
@@ -644,8 +580,6 @@ func OnInteractionCreate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &interactionCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode INTERACTION_CREATE event")
-
 		return
 	}
 
@@ -659,8 +593,6 @@ func OnInviteCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 
 	err = ctx.decodeContent(msg, &inviteCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode INVITE_CREATE event")
-
 		return
 	}
 
@@ -674,8 +606,6 @@ func OnInviteDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 
 	err = ctx.decodeContent(msg, &inviteDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode INVITE_DELETE event")
-
 		return
 	}
 
@@ -689,8 +619,6 @@ func OnMessageCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	err = ctx.decodeContent(msg, &messageCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_CREATE event")
-
 		return
 	}
 
@@ -704,8 +632,6 @@ func OnMessageUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	err = ctx.decodeContent(msg, &messageUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_UPDATE event")
-
 		return
 	}
 
@@ -719,8 +645,6 @@ func OnMessageDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	err = ctx.decodeContent(msg, &messageDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_DELETE event")
-
 		return
 	}
 
@@ -734,8 +658,6 @@ func OnMessageDeleteBulk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &messageDeleteBulkPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_DELETE_BULK event")
-
 		return
 	}
 
@@ -749,8 +671,6 @@ func OnMessageReactionAdd(ctx *StateCtx, msg discord.GatewayPayload) (result str
 
 	err = ctx.decodeContent(msg, &messageReactionAddPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_REACTION_REMOVE event")
-
 		return
 	}
 
@@ -764,8 +684,6 @@ func OnMessageReactionRemove(ctx *StateCtx, msg discord.GatewayPayload) (result 
 
 	err = ctx.decodeContent(msg, &messageReactionRemovePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_REACTION_REMOVE event")
-
 		return
 	}
 
@@ -779,8 +697,6 @@ func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord.GatewayPayload) (resu
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveAllPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_REACTION_REMOVE_ALL event")
-
 		return
 	}
 
@@ -794,8 +710,6 @@ func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord.GatewayPayload) (re
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveEmojiPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode MESSAGE_REACTION_REMOVE_EMOJI event")
-
 		return
 	}
 
@@ -809,8 +723,6 @@ func OnPresenceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 
 	err = ctx.decodeContent(msg, &presenceUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode PRESENCE_UPDATE event")
-
 		return
 	}
 
@@ -825,8 +737,6 @@ func OnStageInstanceCreate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 
 	err = ctx.decodeContent(msg, &stageInstanceCreatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode STAGE_INSTANCE_CREATE event")
-
 		return
 	}
 
@@ -841,8 +751,6 @@ func OnStageInstanceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 
 	err = ctx.decodeContent(msg, &stageInstanceUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode STAGE_INSTANCE_UPDATE event")
-
 		return
 	}
 
@@ -857,8 +765,6 @@ func OnStageInstanceDelete(ctx *StateCtx, msg discord.GatewayPayload) (result st
 
 	err = ctx.decodeContent(msg, &stageInstanceDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode STAGE_INSTANCE_DELETE event")
-
 		return
 	}
 
@@ -872,8 +778,6 @@ func OnTypingStart(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	err = ctx.decodeContent(msg, &typingStartPayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode TYPING_START event")
-
 		return
 	}
 
@@ -887,8 +791,6 @@ func OnUserUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.Sta
 
 	err = ctx.decodeContent(msg, &userUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode USER_UPDATE event")
-
 		return
 	}
 
@@ -907,8 +809,6 @@ func OnVoiceStateUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struc
 
 	err = ctx.decodeContent(msg, &voiceStateUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode VOICE_STATE_UPDATE event")
-
 		return
 	}
 
@@ -922,8 +822,6 @@ func OnVoiceServerUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	err = ctx.decodeContent(msg, &voiceServerUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode VOICE_SERVER_UPDATE event")
-
 		return
 	}
 
@@ -937,8 +835,6 @@ func OnWebhookUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	err = ctx.decodeContent(msg, &webhookUpdatePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode WEBHOOKS_UPDATE event")
-
 		return
 	}
 
@@ -952,8 +848,6 @@ func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord.GatewayPayload) (result
 
 	err = ctx.decodeContent(msg, &guildJoinRequestDeletePayload)
 	if err != nil {
-		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_JOIN_REQUEST_DELETE event")
-
 		return
 	}
 
