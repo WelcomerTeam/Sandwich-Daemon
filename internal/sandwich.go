@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
@@ -16,7 +15,7 @@ import (
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
-	"github.com/andybalholm/brotli"
+	"github.com/google/brotli/go/cbrotli"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -36,6 +35,9 @@ const (
 	PermissionWrite    = 0o600
 
 	prometheusGatherInterval = 10 * time.Second
+
+	BrotliBestSpeed          = 0
+	BrotliDefaultCompression = 6
 )
 
 type Sandwich struct {
@@ -71,12 +73,10 @@ type Sandwich struct {
 	receivedPool sync.Pool
 	// SentPayload pool
 	sentPool sync.Pool
-	// Buffer pool
-	bufferPool sync.Pool
 
 	// Brotli writers pool
-	defaultCompressorPool sync.Pool
-	fastCompressorPool    sync.Pool
+	FastCompressionOptions    cbrotli.WriterOptions
+	DefaultCompressionOptions cbrotli.WriterOptions
 }
 
 // SandwichConfiguration represents the configuration file.
@@ -160,16 +160,12 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 			New: func() interface{} { return new(discord.SentPayload) },
 		},
 
-		bufferPool: sync.Pool{
-			New: func() interface{} { return new(bytes.Buffer) },
+		FastCompressionOptions: cbrotli.WriterOptions{
+			Quality: BrotliBestSpeed,
 		},
 
-		defaultCompressorPool: sync.Pool{
-			New: func() interface{} { return brotli.NewWriterLevel(nil, brotli.DefaultCompression) },
-		},
-
-		fastCompressorPool: sync.Pool{
-			New: func() interface{} { return brotli.NewWriterLevel(nil, brotli.BestSpeed) },
+		DefaultCompressionOptions: cbrotli.WriterOptions{
+			Quality: BrotliDefaultCompression,
 		},
 	}
 
