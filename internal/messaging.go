@@ -1,13 +1,11 @@
 package internal
 
 import (
-	"bytes"
 	"context"
 
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/next/messaging"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
-	"github.com/andybalholm/brotli"
-	"github.com/vmihailenco/msgpack"
+	"github.com/google/brotli/go/cbrotli"
 	"golang.org/x/xerrors"
 )
 
@@ -56,7 +54,7 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPaylo
 		},
 	}
 
-	payload, err := msgpack.Marshal(packet)
+	payload, err := json.Marshal(packet)
 	if err != nil {
 		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}
@@ -109,40 +107,24 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPaylo
 
 	// a := time.Now()
 
-	compressedPayload := sh.Sandwich.bufferPool.Get().(*bytes.Buffer)
+	var compressionOptions cbrotli.WriterOptions
 
 	if len(payload) > minPayloadCompressionSize {
-		dc := sh.Sandwich.defaultCompressorPool.Get().(*brotli.Writer)
-		dc.Reset(compressedPayload)
-
-		_, err = dc.Write(payload)
-		if err != nil {
-			sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
-		}
-
-		dc.Flush()
-		sh.Sandwich.defaultCompressorPool.Put(dc)
+		compressionOptions = sh.Sandwich.DefaultCompressionOptions
 	} else {
-		fc := sh.Sandwich.fastCompressorPool.Get().(*brotli.Writer)
-		fc.Reset(compressedPayload)
+		compressionOptions = sh.Sandwich.FastCompressionOptions
+	}
 
-		_, err = fc.Write(payload)
-		if err != nil {
-			sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
-		}
-
-		fc.Flush()
-		sh.Sandwich.fastCompressorPool.Put(fc)
+	result, err := cbrotli.Encode(payload, compressionOptions)
+	if err != nil {
+		return
 	}
 
 	err = sh.Manager.ProducerClient.Publish(
 		ctx,
 		channelName,
-		compressedPayload.Bytes(),
+		result,
 	)
-
-	compressedPayload.Reset()
-	sh.Sandwich.bufferPool.Put(compressedPayload)
 
 	if err != nil {
 		return xerrors.Errorf("publishEvent publish: %w", err)
