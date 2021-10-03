@@ -1,0 +1,152 @@
+syntax = "proto3";
+package sandwich;
+
+option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf/sandwich";
+
+import "discord.proto";
+
+service Sandwich {
+  // FetchConsumerConfiguration returns the Consumer Configuration.
+  rpc FetchConsumerConfiguration(FetchConsumerConfigurationRequest) returns (FetchConsumerConfigurationResponse) {}
+
+  // FetchGuildChannels returns guilds based on the guildID.
+  // Takes either query or channelIDs. Empty query and empty channelIDs will return all.
+  rpc FetchGuildChannels(FetchGuildChannelsRequest) returns (ChannelsResponse) {}
+
+  // FetchGuildEmojis returns emojis based on the guildID.
+  // Takes either query or emojiIDs. Empty query and empty emojiIDs will return all.
+  rpc FetchGuildEmojis(FetchGuildEmojisRequest) returns (EmojisResponse) {}
+
+  // FetchGuildMembers returns guild members based on the guildID.
+  // Takes either query or userIDs. Empty query and empty userIDs will return all.
+  rpc FetchGuildMembers(FetchGuildMembersRequest) returns (GuildMembersResponse) {}
+
+  // FetchGuild returns guilds based on the guildIDs.
+  rpc FetchGuild(FetchGuildRequest) returns (GuildResponse) {}
+
+  // FetchGuildRoles returns roles based on the roleIDs.
+  // Takes either query or roleIDs. Empty query and empty roleIDs will return all.
+  rpc FetchGuildRoles(FetchGuildRolesRequest) returns (GuildRolesResponse) {}
+
+  // FetchMutualGuilds returns a list of all mutual guilds based on userID.
+  // Populates guildIDs with a list of snowflakes of all guilds.
+  // If expand is passed and True, will also populate guilds with the guild object.
+  rpc FetchMutualGuilds(FetchMutualGuildsRequest) returns (GuildsResponse) {}
+
+  // RequestGuildChunk sends a guild chunk request.
+  // Returns once the guild has been chunked.
+  rpc RequestGuildChunk(RequestGuildChunkRequest) returns (BaseResponse) {}
+
+  // SendWebsocketMessage manually sends a websocket message.
+  rpc SendWebsocketMessage(SendWebsocketMessageRequest) returns (BaseResponse) {}
+
+  // WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
+  // WhereIsGuildLocations contains the manager, shardGroup and shardId.
+  rpc WhereIsGuild(WhereIsGuildRequest) returns (WhereIsGuildResponse) {}
+}
+
+message BaseResponse {
+  string version = 1;
+  bool ok = 2;
+  string error = 3;
+}
+
+message ChannelsResponse {
+  BaseResponse baseResponse = 1;
+  map<int64, Channel> guildChannels = 2;
+}
+
+message EmojisResponse {
+  BaseResponse baseResponse = 1;
+  map<int64, Emoji> guildEmojis = 2;
+}
+
+message FetchConsumerConfigurationRequest {
+  string identifier = 1;
+}
+
+message FetchConsumerConfigurationResponse {
+  repeated bytes file = 1;
+}
+
+message FetchGuildChannelsRequest {
+  int64 guildID = 1;
+  repeated int64 channelIDs = 2;
+  string query = 3;
+}
+
+message FetchGuildEmojisRequest {
+  int64 guildID = 1;
+  repeated int64 emojiIDs = 2;
+  string query = 3;
+}
+
+message FetchGuildMembersRequest {
+  int64 guildID = 1;
+  repeated int64 userIDs = 2;
+  string query = 3;
+}
+
+message FetchGuildRequest {
+  repeated int64 guildIDs = 1;
+  string query = 2;
+}
+
+message FetchGuildRolesRequest {
+  int64 guildID = 1;
+  repeated int64 roleIDs = 2;
+  string query = 3;
+}
+
+message FetchMutualGuildsRequest {
+  int64 userID = 1;
+  bool expand = 2;
+}
+
+message GuildMembersResponse {
+  BaseResponse baseResponse = 1;
+  map<int64, GuildMember> guildMembers = 2;
+}
+
+message GuildResponse {
+  BaseResponse baseResponse = 1;
+  Guild guild = 2;
+}
+
+message GuildRolesResponse {
+  BaseResponse baseResponse = 1;
+  map<int64, Role> guildRoles = 2;
+}
+
+message GuildsResponse {
+  BaseResponse baseResponse = 1;
+  map<int64, Guild> guilds = 2;
+  repeated int64 guildIDs = 3;
+}
+
+message RequestGuildChunkRequest {
+  int64 guildId = 1;
+}
+
+message SendWebsocketMessageRequest {
+  string manager = 1;
+  int64 shardGroup = 2;
+  int64 shard = 3;
+  int64 gatewayOPCode = 4;
+  repeated bytes data = 5;
+}
+
+message WhereIsGuildLocation {
+  string manager = 1;
+  int64 shardGroup = 2;
+  int64 shardId = 3;
+}
+
+message WhereIsGuildRequest {
+  int64 guildID = 1;
+}
+
+message WhereIsGuildResponse {
+  BaseResponse baseResponse = 1;
+  repeated WhereIsGuildLocation locations = 2;
+}
