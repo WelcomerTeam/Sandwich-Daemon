@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"path"
@@ -22,8 +23,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
+	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
+
+	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
 )
 
 const VERSION = "0.0.1"
@@ -387,30 +391,30 @@ func (sg *Sandwich) startManagers() (err error) {
 }
 
 func (sg *Sandwich) setupGRPC() (err error) {
-	// sg.configurationMu.RLock()
-	// network := sg.Configuration.GRPC.Network
-	// host := sg.Configuration.GRPC.Host
-	// sg.configurationMu.RUnlock()
+	sg.configurationMu.RLock()
+	network := sg.Configuration.GRPC.Network
+	host := sg.Configuration.GRPC.Host
+	sg.configurationMu.RUnlock()
 
-	// listener, err := net.Listen(network, host)
-	// if err != nil {
-	// 	sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to bind to host")
+	listener, err := net.Listen(network, host)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to bind to host")
 
-	// 	return
-	// }
+		return
+	}
 
-	// var grpcOptions []grpc.ServerOptions
-	// grpcListener := grpc.NewServer(opts...)
-	// grpcServer.RegisterGatewayServer(grpcListener, sg.NewGatewayServer())
+	var grpcOptions []grpc.ServerOption
+	grpcListener := grpc.NewServer(grpcOptions...)
+	grpcServer.RegisterSandwichServer(grpcListener, sg.newSandwichServer())
 
-	// err = grpcListener.Serve(listener)
-	// if err != nil {
-	// 	sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
+	sg.Logger.Info().Msgf("Serving gRPC at %s", host)
 
-	// 	return
-	// }
+	err = grpcListener.Serve(listener)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
 
-	// sg.Logger.Info().Msgf("Serving gRPC at %s", host)
+		return
+	}
 
 	return nil
 }

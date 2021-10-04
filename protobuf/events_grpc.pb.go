@@ -30,7 +30,7 @@ type SandwichClient interface {
 	// Takes either query or userIDs. Empty query and empty userIDs will return all.
 	FetchGuildMembers(ctx context.Context, in *FetchGuildMembersRequest, opts ...grpc.CallOption) (*GuildMembersResponse, error)
 	// FetchGuild returns guilds based on the guildIDs.
-	FetchGuild(ctx context.Context, in *FetchGuildRequest, opts ...grpc.CallOption) (*GuildResponse, error)
+	FetchGuild(ctx context.Context, in *FetchGuildRequest, opts ...grpc.CallOption) (*GuildsResponse, error)
 	// FetchGuildRoles returns roles based on the roleIDs.
 	// Takes either query or roleIDs. Empty query and empty roleIDs will return all.
 	FetchGuildRoles(ctx context.Context, in *FetchGuildRolesRequest, opts ...grpc.CallOption) (*GuildRolesResponse, error)
@@ -92,8 +92,8 @@ func (c *sandwichClient) FetchGuildMembers(ctx context.Context, in *FetchGuildMe
 	return out, nil
 }
 
-func (c *sandwichClient) FetchGuild(ctx context.Context, in *FetchGuildRequest, opts ...grpc.CallOption) (*GuildResponse, error) {
-	out := new(GuildResponse)
+func (c *sandwichClient) FetchGuild(ctx context.Context, in *FetchGuildRequest, opts ...grpc.CallOption) (*GuildsResponse, error) {
+	out := new(GuildsResponse)
 	err := c.cc.Invoke(ctx, "/sandwich.Sandwich/FetchGuild", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ type SandwichServer interface {
 	// Takes either query or userIDs. Empty query and empty userIDs will return all.
 	FetchGuildMembers(context.Context, *FetchGuildMembersRequest) (*GuildMembersResponse, error)
 	// FetchGuild returns guilds based on the guildIDs.
-	FetchGuild(context.Context, *FetchGuildRequest) (*GuildResponse, error)
+	FetchGuild(context.Context, *FetchGuildRequest) (*GuildsResponse, error)
 	// FetchGuildRoles returns roles based on the roleIDs.
 	// Takes either query or roleIDs. Empty query and empty roleIDs will return all.
 	FetchGuildRoles(context.Context, *FetchGuildRolesRequest) (*GuildRolesResponse, error)
@@ -197,7 +197,7 @@ func (UnimplementedSandwichServer) FetchGuildEmojis(context.Context, *FetchGuild
 func (UnimplementedSandwichServer) FetchGuildMembers(context.Context, *FetchGuildMembersRequest) (*GuildMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchGuildMembers not implemented")
 }
-func (UnimplementedSandwichServer) FetchGuild(context.Context, *FetchGuildRequest) (*GuildResponse, error) {
+func (UnimplementedSandwichServer) FetchGuild(context.Context, *FetchGuildRequest) (*GuildsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchGuild not implemented")
 }
 func (UnimplementedSandwichServer) FetchGuildRoles(context.Context, *FetchGuildRolesRequest) (*GuildRolesResponse, error) {

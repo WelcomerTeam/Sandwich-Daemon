@@ -935,3 +935,64 @@ func (ss *SandwichState) RemoveAllGuildChannels(guildID discord.Snowflake) {
 
 	return
 }
+
+// GetUserMutualGuilds returns a list of snowflakes of mutual guilds a member is seen on.
+func (ss *SandwichState) GetUserMutualGuilds(userID discord.Snowflake) (guildIDs []discord.Snowflake, ok bool) {
+	ss.mutualsMu.RLock()
+	defer ss.mutualsMu.RUnlock()
+
+	mutualGuilds, ok := ss.Mutuals[userID]
+	if !ok {
+		return
+	}
+
+	mutualGuilds.GuildsMu.RLock()
+	defer mutualGuilds.GuildsMu.RUnlock()
+
+	for guildID := range mutualGuilds.Guilds {
+		guildIDs = append(guildIDs, guildID)
+	}
+
+	return
+}
+
+// AddUserMutualGuild adds a mutual guild to a user.
+func (ss *SandwichState) AddUserMutualGuild(userID discord.Snowflake, guildID discord.Snowflake) {
+	ss.mutualsMu.Lock()
+	defer ss.mutualsMu.Unlock()
+
+	mutualGuilds, ok := ss.Mutuals[userID]
+	if !ok {
+		mutualGuilds = &structs.StateMutualGuilds{
+			GuildsMu: sync.RWMutex{},
+			Guilds:   make(map[discord.Snowflake]bool),
+		}
+
+		ss.Mutuals[userID] = mutualGuilds
+	}
+
+	mutualGuilds.GuildsMu.Lock()
+	defer mutualGuilds.GuildsMu.Unlock()
+
+	mutualGuilds.Guilds[guildID] = true
+
+	return
+}
+
+// RemoveUserMutualGuild removes a mutual guild from a user.
+func (ss *SandwichState) RemoveUserMutualGuild(userID discord.Snowflake, guildID discord.Snowflake) {
+	ss.mutualsMu.RLock()
+	defer ss.mutualsMu.RUnlock()
+
+	mutualGuilds, ok := ss.Mutuals[userID]
+	if !ok {
+		return
+	}
+
+	mutualGuilds.GuildsMu.Lock()
+	defer mutualGuilds.GuildsMu.Unlock()
+
+	delete(mutualGuilds.Guilds, guildID)
+
+	return
+}
