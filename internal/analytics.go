@@ -100,7 +100,6 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	grpcCacheRequests = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "sandwich_grpc_requests_total",
@@ -108,22 +107,20 @@ var (
 		},
 	)
 
-	// TODO: Implement.
 	grpcCacheHits = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sandwich_grpc_cache_hits_total",
 			Help: "Sandwich GRPC Cache Hits",
 		},
-		[]string{"identifier"},
+		[]string{"guild_id"},
 	)
 
-	// TODO: Implement.
 	grpcCacheMisses = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sandwich_grpc_cache_misses_total",
 			Help: "Sandwich GRPC Cache Misses",
 		},
-		[]string{"identifier"},
+		[]string{"guild_id"},
 	)
 
 	// TODO: Message Tracing

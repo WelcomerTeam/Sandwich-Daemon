@@ -22,7 +22,7 @@ service Sandwich {
   rpc FetchGuildMembers(FetchGuildMembersRequest) returns (GuildMembersResponse) {}
 
   // FetchGuild returns guilds based on the guildIDs.
-  rpc FetchGuild(FetchGuildRequest) returns (GuildResponse) {}
+  rpc FetchGuild(FetchGuildRequest) returns (GuildsResponse) {}
 
   // FetchGuildRoles returns roles based on the roleIDs.
   // Takes either query or roleIDs. Empty query and empty roleIDs will return all.

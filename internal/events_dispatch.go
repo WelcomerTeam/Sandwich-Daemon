@@ -484,6 +484,7 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberAddPayload.GuildID)
 
 	ctx.Sandwich.State.SetGuildMember(guildMemberAddPayload.GuildID, guildMemberAddPayload.GuildMember)
+	ctx.Sandwich.State.AddUserMutualGuild(guildMemberAddPayload.User.ID, guildMemberAddPayload.GuildID)
 
 	return structs.StateResult{
 		Data: msg,
@@ -503,6 +504,7 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	guildMember, _ := ctx.Sandwich.State.GetGuildMember(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 
 	ctx.Sandwich.State.RemoveGuildMember(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
+	ctx.Sandwich.State.RemoveUserMutualGuild(guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
 
 	return structs.StateResult{
 		Data: msg,

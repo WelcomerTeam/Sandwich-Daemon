@@ -69,6 +69,12 @@ type StateGuild struct {
 	Stickers       []discord.Sticker       `json:"stickers"`
 }
 
+type StateMutualGuilds struct {
+	GuildsMu sync.RWMutex `json:"-"`
+
+	Guilds map[discord.Snowflake]bool `json:"guilds"`
+}
+
 type StateGuildMembers struct {
 	MembersMu sync.RWMutex `json:"-"`
 
@@ -134,7 +140,7 @@ type StateChannel struct {
 	GuildID              *discord.Snowflake         `json:"guild_id"`
 	Position             *int                       `json:"position"`
 	PermissionOverwrites []discord.ChannelOverwrite `json:"permission_overwrites"`
-	Name                 *string                    `json:"name"`
+	Name                 string                     `json:"name"`
 	Topic                *string                    `json:"topic"`
 	NSFW                 *bool                      `json:"nsfw"`
 	// LastMessageID        *string                     `json:"last_message_id"`
