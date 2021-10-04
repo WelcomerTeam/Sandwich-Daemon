@@ -27,6 +27,7 @@ var (
 	ErrConfigurationValidateIdentify   = xerrors.New("Configuration missing valid Identify URI")
 	ErrConfigurationValidatePrometheus = xerrors.New("Configuration missing valid Prometheus Host")
 	ErrConfigurationValidateGRPC       = xerrors.New("Configuration missing valid GRPC Host")
+	ErrConfigurationValidateHTTP       = xerrors.New("Configuration missing valid HTTP Host")
 )
 
 var (

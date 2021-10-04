@@ -12,12 +12,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (sg *Sandwich) newSandwichServer() *routeSandwichServer {
-	return &routeSandwichServer{
-		sg: sg,
-	}
-}
-
 var (
 	ErrNoGuildIDPresent = xerrors.New("Missing guild ID")
 	ErrNoUserIDPresent  = xerrors.New("Missing user ID")
@@ -29,6 +23,12 @@ var (
 
 	ErrCacheMiss = xerrors.New("Could not find state for this guild ID")
 )
+
+func (sg *Sandwich) newSandwichServer() *routeSandwichServer {
+	return &routeSandwichServer{
+		sg: sg,
+	}
+}
 
 type routeSandwichServer struct {
 	pb.SandwichServer
