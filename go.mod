@@ -7,6 +7,7 @@ require (
 	github.com/WelcomerTeam/RealRock v0.0.0-20210907123922-8bdb1f691d11
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/fasthttp/router v1.4.3
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/brotli/go/cbrotli v0.0.0-20210908071845-62662f87cdd9
@@ -23,6 +24,7 @@ require (
 	github.com/rs/zerolog v1.25.0
 	github.com/savsgio/gotils v0.0.0-20210921075833-21a6215cb0e4
 	github.com/segmentio/kafka-go v0.4.20
+	github.com/valyala/fasthttp v1.30.0
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect

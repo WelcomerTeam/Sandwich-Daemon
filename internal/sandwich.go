@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/valyala/fasthttp"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -70,6 +71,8 @@ type Sandwich struct {
 	State *SandwichState `json:"-"`
 
 	Client *Client `json:"-"`
+
+	RouterHandler fasthttp.RequestHandler `json:"-"`
 
 	// SandwichPayload pool
 	payloadPool sync.Pool
@@ -127,6 +130,14 @@ type SandwichConfiguration struct {
 		Network string `json:"network" yaml:"network"`
 		Host    string `json:"host" yaml:"host"`
 	} `json:"grpc" yaml:"grpc"`
+
+	HTTP struct {
+		Host string `json:"host" yaml:"host"`
+
+		// If enabled, allows access to dashboard else will only show
+		// index page.
+		Enabled bool `json:"enabled" yaml:"enabled"`
+	} `json:"http" yaml:"http"`
 
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
@@ -304,6 +315,10 @@ func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) 
 		return ErrConfigurationValidateGRPC
 	}
 
+	if configuration.HTTP.Host == "" {
+		return ErrConfigurationValidateHTTP
+	}
+
 	return nil
 }
 
@@ -319,6 +334,9 @@ func (sg *Sandwich) Open() (err error) {
 
 	// Setup Prometheus
 	go sg.setupPrometheus()
+
+	// Setup HTTP
+	go sg.setupHTTP()
 
 	sg.Logger.Info().Msg("Creating managers")
 	sg.startManagers()
@@ -453,6 +471,25 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	err = http.ListenAndServe(host, nil)
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve prometheus server")
+
+		return err
+	}
+
+	return nil
+}
+
+func (sg *Sandwich) setupHTTP() (err error) {
+	sg.configurationMu.RLock()
+	host := sg.Configuration.HTTP.Host
+	sg.configurationMu.RUnlock()
+
+	sg.Logger.Info().Msgf("Serving http at %s", host)
+
+	sg.RouterHandler = sg.NewRestRouter()
+
+	err = fasthttp.ListenAndServe(host, sg.HandleRequest)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to server http server")
 
 		return err
 	}
