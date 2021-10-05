@@ -81,6 +81,8 @@ ready:
 
 	ctx.ready <- void{}
 
+	ctx.SetStatus(structs.ShardStatusReady)
+
 	return result, false, nil
 }
 

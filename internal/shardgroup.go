@@ -5,6 +5,7 @@ import (
 	"time"
 
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/net/context"
@@ -35,6 +36,9 @@ type ShardGroup struct {
 	Shards   map[int]*Shard `json:"shards"`
 
 	ReadyWait *sync.WaitGroup `json:"-"`
+
+	statusMu sync.RWMutex             `json:"-"`
+	Status   structs.ShardGroupStatus `json:"status"`
 
 	// MemberChunksCallback is used to signal when a guild is chunking.
 	memberChunksCallbackMu sync.RWMutex                          `json:"-"`
@@ -76,6 +80,9 @@ func (mg *Manager) NewShardGroup(shardGroupID int64, shardIDs []int, shardCount 
 		shardsMu: sync.RWMutex{},
 		Shards:   make(map[int]*Shard),
 
+		statusMu: sync.RWMutex{},
+		Status:   structs.ShardGroupStatusIdle,
+
 		memberChunksCallbackMu: sync.RWMutex{},
 		MemberChunksCallback:   make(map[discord.Snowflake]*sync.WaitGroup),
 
@@ -100,6 +107,14 @@ func (mg *Manager) NewShardGroup(shardGroupID int64, shardIDs []int, shardCount 
 func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	sg.Start = time.Now().UTC()
 
+	sg.Manager.shardGroupsMu.RLock()
+	for _, shardGroup := range sg.Manager.ShardGroups {
+		if shardGroup.GetStatus() != structs.ShardGroupStatusErroring && shardGroup.ID != sg.ID {
+			shardGroup.SetStatus(structs.ShardGroupStatusMarkedForClosure)
+		}
+	}
+	sg.Manager.shardGroupsMu.RUnlock()
+
 	ready = make(chan bool, 1)
 
 	sg.Logger.Info().
@@ -116,6 +131,8 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 	initialShard := sg.Shards[sg.ShardIDs[0]]
 
+	sg.SetStatus(structs.ShardGroupStatusConnecting)
+
 	for {
 		err = initialShard.Connect()
 
@@ -131,6 +148,8 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 					Msg("Failed to connect shard. Cannot continue")
 
 				sg.Error.Store(err.Error())
+
+				sg.SetStatus(structs.ShardGroupStatusErroring)
 
 				sg.Close()
 
@@ -175,6 +194,8 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	connectGroup.Wait()
 	sg.Logger.Info().Msg("All shards have connected")
 
+	sg.SetStatus(structs.ShardGroupStatusConnected)
+
 	go func(sg *ShardGroup) {
 		sg.shardsMu.RLock()
 		for _, shardID := range sg.ShardIDs {
@@ -206,11 +227,37 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 func (sg *ShardGroup) Close() {
 	sg.Logger.Info().Msgf("Closing shardgroup %d", sg.ID)
 
+	sg.SetStatus(structs.ShardGroupStatusClosing)
+
 	sg.shardsMu.RLock()
 	for _, sh := range sg.Shards {
 		sh.Close(websocket.StatusNormalClosure)
 	}
 	sg.shardsMu.RUnlock()
+
+	sg.SetStatus(structs.ShardGroupStatusClosed)
 }
 
-// SetStatus
+// SetStatus sets the status of the ShardGroup.
+func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
+	sg.statusMu.Lock()
+	defer sg.statusMu.Unlock()
+
+	sg.Logger.Debug().Int("status", int(status)).Msg("ShardGroup status changed")
+
+	sg.Status = status
+
+	sg.Manager.PublishEvent("SHARD_GROUP_STATUS_UPDATE", structs.ShardGroupStatusUpdate{
+		Manager:    sg.Manager.Identifier.Load(),
+		ShardGroup: sg.ID,
+		Status:     int(sg.Status),
+	})
+}
+
+// GetStatus returns the status of a ShardGroup.
+func (sg *ShardGroup) GetStatus() (status structs.ShardGroupStatus) {
+	sg.statusMu.RLock()
+	defer sg.statusMu.RUnlock()
+
+	return sg.Status
+}

@@ -18,24 +18,6 @@ func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayloa
 		sh.Sandwich.EventsInflight.Inc()
 		defer sh.Sandwich.EventsInflight.Dec()
 
-		a := make(chan void, 1)
-		defer close(a)
-
-		// Temporary
-		go func() {
-			s := time.Now().UTC()
-			t := time.NewTicker(5 * time.Second)
-
-			for {
-				select {
-				case <-a:
-					return
-				case <-t.C:
-					println("Event", msg.Type, "(", msg.Op, ") has been running for ", time.Now().UTC().Sub(s).String())
-				}
-			}
-		}()
-
 		err := sh.OnDispatch(ctx, msg)
 		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Msg("State dispatch failed")

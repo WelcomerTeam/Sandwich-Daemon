@@ -16,8 +16,6 @@ const (
 	daySeconds    = 86400
 	hourSeconds   = 3600
 	minuteSeconds = 60
-
-	deadSignalCloseLoggingInterval = 30 * time.Second
 )
 
 type void struct{}
@@ -85,9 +83,6 @@ type DeadSignal struct {
 
 	alreadyClosed atomic.Bool
 	dead          chan void
-
-	waitingForMu sync.RWMutex
-	waitingFor   map[string]bool
 }
 
 func (ds *DeadSignal) init() {
@@ -96,9 +91,6 @@ func (ds *DeadSignal) init() {
 		ds.alreadyClosed = *atomic.NewBool(false)
 		ds.dead = make(chan void, 1)
 		ds.waiting = sync.WaitGroup{}
-
-		ds.waitingForMu = sync.RWMutex{}
-		ds.waitingFor = make(map[string]bool)
 	}
 	ds.Unlock()
 }
@@ -115,41 +107,15 @@ func (ds *DeadSignal) Dead() chan void {
 
 // Signifies the goroutine has started.
 // When calling open, done should be called on end.
-func (ds *DeadSignal) Started(i string) {
+func (ds *DeadSignal) Started() {
 	ds.init()
 	ds.waiting.Add(1)
-
-	ds.waitingForMu.Lock()
-	ds.waitingFor[i] = true
-	ds.waitingForMu.Unlock()
 }
 
 // Signifies the goroutine is done.
-func (ds *DeadSignal) Done(i string) {
+func (ds *DeadSignal) Done() {
 	ds.init()
 	ds.waiting.Done()
-
-	ds.waitingForMu.Lock()
-	delete(ds.waitingFor, i)
-	ds.waitingForMu.Unlock()
-}
-
-func (ds *DeadSignal) closeLogging(c chan void) {
-	t := time.NewTicker(deadSignalCloseLoggingInterval)
-	select {
-	case <-c:
-		return
-	case <-t.C:
-		waitingFor := ""
-
-		ds.waitingForMu.RLock()
-		for i := range ds.waitingFor {
-			waitingFor = waitingFor + " " + i
-		}
-		ds.waitingForMu.RUnlock()
-
-		println("Still waiting for", waitingFor)
-	}
 }
 
 // Close closes the dead channel and
@@ -158,9 +124,6 @@ func (ds *DeadSignal) closeLogging(c chan void) {
 // longer be using it.
 func (ds *DeadSignal) Close(t string) {
 	ds.init()
-
-	c := make(chan void, 1)
-	go ds.closeLogging(c)
 
 	ds.Lock()
 	if !ds.alreadyClosed.Load() {
