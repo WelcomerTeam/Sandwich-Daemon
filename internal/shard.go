@@ -11,6 +11,7 @@ import (
 
 	"github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/WelcomerTeam/czlib"
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
@@ -88,6 +89,9 @@ type Shard struct {
 	guildsMu sync.RWMutex               `json:"-"`
 	Guilds   map[discord.Snowflake]bool `json:"-"`
 
+	statusMu sync.RWMutex        `json:"-"`
+	Status   structs.ShardStatus `json:"status"`
+
 	channelMu sync.RWMutex
 	MessageCh chan discord.GatewayPayload
 	ErrorCh   chan error
@@ -130,6 +134,9 @@ func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 		guildsMu: sync.RWMutex{},
 		Guilds:   make(map[discord.Snowflake]bool),
 
+		statusMu: sync.RWMutex{},
+		Status:   structs.ShardStatusIdle,
+
 		channelMu: sync.RWMutex{},
 
 		Sequence:  &atomic.Int64{},
@@ -153,6 +160,9 @@ func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 func (sh *Shard) Open() {
 	sh.Logger.Debug().Msg("Started listening to shard")
 
+	// We put the connecting here instead of in the Connect() as to allow
+	// the Reconnecting status to not be overidden.
+
 	for {
 		err := sh.Listen(sh.ctx)
 		if xerrors.Is(err, context.Canceled) {
@@ -174,6 +184,17 @@ func (sh *Shard) Open() {
 // Connect connects to the gateway and handles identifying.
 func (sh *Shard) Connect() (err error) {
 	sh.Logger.Debug().Msg("Connecting shard")
+
+	// Do not override status if it is currently Reconnecting.
+	if sh.GetStatus() != structs.ShardStatusReconnecting {
+		sh.SetStatus(structs.ShardStatusConnecting)
+	}
+
+	defer func() {
+		if err != nil {
+			sh.SetStatus(structs.ShardStatusErroring)
+		}
+	}()
 
 	// Empty ready channel.
 readyConsumer:
@@ -326,6 +347,8 @@ readyConsumer:
 	// or we hit our FirstEventTimeout. We do nothing when
 	// hitting the FirstEventtimeout.
 
+	sh.SetStatus(structs.ShardStatusConnected)
+
 	sh.Logger.Trace().Msg("Waiting for first event")
 
 	sh.channelMu.RLock()
@@ -380,8 +403,8 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 	sh.HeartbeatActive.Store(true)
 	defer sh.HeartbeatActive.Store(false)
 
-	sh.HeartbeatDeadSignal.Started("HB")
-	defer sh.HeartbeatDeadSignal.Done("HB")
+	sh.HeartbeatDeadSignal.Started()
+	defer sh.HeartbeatDeadSignal.Done()
 
 	for {
 		select {
@@ -556,8 +579,8 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 	sh.wsConnMu.Unlock()
 
 	go func() {
-		sh.RoutineDeadSignal.Started("FEED")
-		defer sh.RoutineDeadSignal.Done("FEED")
+		sh.RoutineDeadSignal.Started()
+		defer sh.RoutineDeadSignal.Done()
 
 		for {
 			messageType, data, connectionErr := conn.Read(ctx)
@@ -739,6 +762,8 @@ func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 func (sh *Shard) Close(code websocket.StatusCode) {
 	sh.Logger.Info().Int("code", int(code)).Msg("Closing shard")
 
+	sh.SetStatus(structs.ShardStatusClosing)
+
 	sh.RoutineDeadSignal.Close("CLOSE")
 	sh.RoutineDeadSignal.Revive()
 
@@ -751,6 +776,8 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 			sh.Logger.Debug().Err(err).Msg("Encountered error closing websocket")
 		}
 	}
+
+	sh.SetStatus(structs.ShardStatusClosed)
 }
 
 // CloseWS closes the websocket. This will always return 0 as the error is suppressed.
@@ -782,8 +809,8 @@ func (sh *Shard) WaitForReady() {
 
 	defer t.Stop()
 
-	sh.RoutineDeadSignal.Started("WFR")
-	defer sh.RoutineDeadSignal.Done("WFR")
+	sh.RoutineDeadSignal.Started()
+	defer sh.RoutineDeadSignal.Done()
 
 	for {
 		select {
@@ -802,6 +829,8 @@ func (sh *Shard) WaitForReady() {
 // Reconnect attempts to reconnect to the gateway.
 func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 	wait := time.Second
+
+	sh.SetStatus(structs.ShardStatusReconnecting)
 
 	sh.Close(code)
 
@@ -868,6 +897,31 @@ func (sh *Shard) SafeOnGuildDispatchEvent(eventType string, guildIDPtr *discord.
 	} else {
 		sh.OnDispatchEvent(eventType)
 	}
+}
+
+// SetStatus sets the status of the ShardGroup.
+func (sh *Shard) SetStatus(status structs.ShardStatus) {
+	sh.statusMu.Lock()
+	defer sh.statusMu.Unlock()
+
+	sh.Logger.Debug().Int("status", int(status)).Msg("Shard status changed")
+
+	sh.Status = status
+
+	sh.Manager.PublishEvent("SHARD_STATUS_UPDATE", structs.ShardStatusUpdate{
+		Manager:    sh.Manager.Identifier.Load(),
+		ShardGroup: sh.ShardGroup.ID,
+		Shard:      sh.ShardID,
+		Status:     int(sh.Status),
+	})
+}
+
+// GetStatus returns the status of a ShardGroup.
+func (sh *Shard) GetStatus() (status structs.ShardStatus) {
+	sh.statusMu.RLock()
+	defer sh.statusMu.RUnlock()
+
+	return sh.Status
 }
 
 func (sh *Shard) hasWsConn() (hasWsConn bool) {
