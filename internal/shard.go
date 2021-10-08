@@ -27,7 +27,7 @@ const (
 	// Time required before warning about an event taking too long.
 	DispatchWarningTimeout = 30 * time.Second
 
-	MessageChannelBuffer      = 64
+	MessageChannelBuffer      = 1024
 	MinPayloadCompressionSize = 1000000 // Applies higher compression to payloads larger than this in bytes
 
 	// Time necessary to abort chunking when no events have been received yet in this time frame.
@@ -621,9 +621,20 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 				continue
 			}
 
-			// TODO Add Analytics
+			select {
+			case messageCh <- *msg:
+				continue
+			case <-sh.RoutineDeadSignal.Dead():
+				return
+			case <-ctx.Done():
+				return
+			default:
+				// We have discarded an event :(
+				sh.Sandwich.EventsDiscarded.Inc()
+				sandwichDiscardedEvents.WithLabelValues(sh.Manager.Identifier.Load()).Inc()
 
-			messageCh <- *msg
+				sh.Logger.Warn().Str("type", msg.Type).Msg("Event has been discarded")
+			}
 		}
 	}()
 
