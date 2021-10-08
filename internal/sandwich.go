@@ -63,7 +63,8 @@ type Sandwich struct {
 
 	IdentifyBuckets *bucketstore.BucketStore `json:"-"`
 
-	EventsInflight *atomic.Int64 `json:"-"`
+	EventsInflight  *atomic.Int64 `json:"-"`
+	EventsDiscarded *atomic.Int64 `json:"-"`
 
 	managersMu sync.RWMutex
 	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
@@ -73,6 +74,7 @@ type Sandwich struct {
 	Client *Client `json:"-"`
 
 	RouterHandler fasthttp.RequestHandler `json:"-"`
+	DistHandler   fasthttp.RequestHandler `json:"-"`
 
 	// SandwichPayload pool
 	payloadPool sync.Pool
@@ -159,7 +161,8 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
 
-		EventsInflight: atomic.NewInt64(0),
+		EventsInflight:  atomic.NewInt64(0),
+		EventsDiscarded: atomic.NewInt64(0),
 
 		State: NewSandwichState(),
 
@@ -444,6 +447,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 
 	prometheus.MustRegister(sandwichEventCount)
 	prometheus.MustRegister(sandwichEventInflightCount)
+	prometheus.MustRegister(sandwichDiscardedEvents)
 	prometheus.MustRegister(sandwichGuildEventCount)
 	prometheus.MustRegister(sandwichDispatchEventCount)
 	prometheus.MustRegister(sandwichGatewayLatency)
@@ -485,7 +489,7 @@ func (sg *Sandwich) setupHTTP() (err error) {
 
 	sg.Logger.Info().Msgf("Serving http at %s", host)
 
-	sg.RouterHandler = sg.NewRestRouter()
+	sg.RouterHandler, sg.DistHandler = sg.NewRestRouter()
 
 	err = fasthttp.ListenAndServe(host, sg.HandleRequest)
 	if err != nil {
@@ -553,6 +557,7 @@ func (sg *Sandwich) prometheusGatherer() {
 			))
 
 			eventsInflight := sg.EventsInflight.Load()
+			eventsDiscarded := sg.EventsDiscarded.Load()
 
 			sandwichStateGuildCount.Set(float64(stateGuilds))
 			sandwichStateGuildMembersCount.Set(float64(stateMembers))
@@ -570,6 +575,7 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
 				Int64("eventsInflight", eventsInflight).
+				Int64("eventsDiscarded", eventsDiscarded).
 				Msg("Updated prometheus guages")
 		}
 	}
