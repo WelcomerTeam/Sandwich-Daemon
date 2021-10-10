@@ -18,13 +18,20 @@ var (
 		},
 	)
 
-	sandwichDiscardedEvents = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "sandwich_events_discarded_total",
-			Help: "Count of discarded gateway events",
+	sandwichEventBufferCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "sandwich_events_buffer_count",
+			Help: "Count of events in message buffers",
 		},
-		[]string{"identifier"},
 	)
+
+	// sandwichDiscardedEvents = prometheus.NewCounterVec(
+	// 	prometheus.CounterOpts{
+	// 		Name: "sandwich_events_discarded_total",
+	// 		Help: "Count of discarded gateway events",
+	// 	},
+	// 	[]string{"identifier"},
+	// )
 
 	sandwichGuildEventCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{

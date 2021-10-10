@@ -11,6 +11,7 @@ type StatusEndpointManager struct {
 
 type StatusEndpointShardGroup struct {
 	// ShardID, Status, Latency (in milliseconds)
-	Shards [][3]int         `json:"shards"`
-	Status ShardGroupStatus `json:"status"`
+	ShardGroupID int              `json:"id"`
+	Shards       [][5]int         `json:"shards"`
+	Status       ShardGroupStatus `json:"status"`
 }

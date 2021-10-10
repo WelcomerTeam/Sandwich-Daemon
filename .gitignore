@@ -1,6 +1,5 @@
 logs
 sandwich.yaml
-sandwich
 *.fasthttp.br
 *.fasthttp.gz
 checktags.py
