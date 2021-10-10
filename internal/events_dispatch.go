@@ -143,6 +143,10 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	ctx.Sandwich.State.SetGuild(guildCreatePayload.Guild)
 
+	ctx.unavailableMu.Lock()
+	delete(ctx.Unavailable, guildCreatePayload.ID)
+	ctx.unavailableMu.Unlock()
+
 	return structs.StateResult{
 		Data: guildCreatePayload,
 		Extra: map[string]interface{}{

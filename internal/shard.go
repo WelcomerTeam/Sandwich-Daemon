@@ -27,7 +27,7 @@ const (
 	// Time required before warning about an event taking too long.
 	DispatchWarningTimeout = 30 * time.Second
 
-	MessageChannelBuffer      = 1024
+	MessageChannelBuffer      = 64
 	MinPayloadCompressionSize = 1000000 // Applies higher compression to payloads larger than this in bytes
 
 	// Time necessary to abort chunking when no events have been received yet in this time frame.
@@ -83,28 +83,28 @@ type Shard struct {
 	HeartbeatFailureInterval time.Duration `json:"-"`
 
 	unavailableMu sync.RWMutex               `json:"-"`
-	Unavailable   map[discord.Snowflake]bool `json:"-"`
+	Unavailable   map[discord.Snowflake]bool `json:"unavailable"`
 
 	// Stores a local list of all guilds in the shard.d
 	guildsMu sync.RWMutex               `json:"-"`
-	Guilds   map[discord.Snowflake]bool `json:"-"`
+	Guilds   map[discord.Snowflake]bool `json:"guilds"`
 
 	statusMu sync.RWMutex        `json:"-"`
 	Status   structs.ShardStatus `json:"status"`
 
-	channelMu sync.RWMutex
-	MessageCh chan discord.GatewayPayload
-	ErrorCh   chan error
+	channelMu sync.RWMutex                `json:"-"`
+	MessageCh chan discord.GatewayPayload `json:"-"`
+	ErrorCh   chan error                  `json:"-"`
 
-	Sequence  *atomic.Int64
-	SessionID *atomic.String
+	Sequence  *atomic.Int64  `json:"-"`
+	SessionID *atomic.String `json:"-"`
 
-	wsConnMu sync.RWMutex
-	wsConn   *websocket.Conn
+	wsConnMu sync.RWMutex    `json:"-"`
+	wsConn   *websocket.Conn `json:"-"`
 
-	wsRatelimit *limiter.DurationLimiter
+	wsRatelimit *limiter.DurationLimiter `json:"-"`
 
-	ready chan void
+	ready chan void `json:"-"`
 }
 
 // NewShard creates a new shard object.
@@ -628,12 +628,12 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 				return
 			case <-ctx.Done():
 				return
-			default:
-				// We have discarded an event :(
-				sh.Sandwich.EventsDiscarded.Inc()
-				sandwichDiscardedEvents.WithLabelValues(sh.Manager.Identifier.Load()).Inc()
+				// default:
+				// 	// We have discarded an event :(
+				// 	sh.Sandwich.EventsDiscarded.Inc()
+				// 	// sandwichDiscardedEvents.WithLabelValues(sh.Manager.Identifier.Load()).Inc()
 
-				sh.Logger.Warn().Str("type", msg.Type).Msg("Event has been discarded")
+				// 	sh.Logger.Warn().Str("type", msg.Type).Msg("Event has been discarded")
 			}
 		}
 	}()
@@ -796,16 +796,16 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 	if sh.hasWsConn() {
 		sh.Logger.Debug().Int("code", int(statusCode)).Msg("Closing websocket connection")
 
-		sh.wsConnMu.RLock()
+		sh.wsConnMu.Lock()
 		wsConn := sh.wsConn
-		sh.wsConnMu.RUnlock()
 
-		err = wsConn.Close(statusCode, "")
-		if err != nil && !xerrors.Is(err, context.Canceled) {
-			sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
+		if wsConn != nil {
+			err = wsConn.Close(statusCode, "")
+			if err != nil && !xerrors.Is(err, context.Canceled) {
+				sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
+			}
 		}
 
-		sh.wsConnMu.Lock()
 		sh.wsConn = nil
 		sh.wsConnMu.Unlock()
 	}

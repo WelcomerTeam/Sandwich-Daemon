@@ -1,0 +1,12 @@
+/*! @import */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.tooltip {
+  @apply opacity-0 absolute z-50 mt-1;
+}
+
+.has-tooltip:hover .tooltip {
+  @apply opacity-100;
+}

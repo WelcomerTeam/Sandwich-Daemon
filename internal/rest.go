@@ -25,7 +25,6 @@ var (
 func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHandler fasthttp.RequestHandler) {
 	r := router.New()
 	r.GET("/api/status", sg.StatusEndpoint)
-	// r.GET("/api/test", sg.requireDiscordAuthentication(sg.testEndpoint))
 
 	fs := fasthttp.FS{
 		IndexNames:     []string{"index.html"},
@@ -97,8 +96,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	)(ctx)
 }
 
-// /api/status
-// Returns Manager, ShardGroup and Shard status.
+// /api/status: Returns managers, shardgroups and shard status.
 func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RLock()
 	response := &structs.StatusEndpointResponse{
@@ -120,15 +118,21 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 		for _, shardGroup := range manager.ShardGroups {
 			shardGroup.shardsMu.RLock()
 			statusShardGroup := &structs.StatusEndpointShardGroup{
-				Shards: make([][3]int, 0, len(shardGroup.Shards)),
+				ShardGroupID: int(shardGroup.ID),
+				Shards:       make([][5]int, 0, len(shardGroup.Shards)),
+				Status:       shardGroup.Status,
 			}
 
 			for _, shard := range shardGroup.Shards {
-				statusShardGroup.Shards = append(statusShardGroup.Shards, [3]int{
+				shard.channelMu.RLock()
+				statusShardGroup.Shards = append(statusShardGroup.Shards, [5]int{
 					shard.ShardID,
 					int(shard.Status),
 					int(shard.LastHeartbeatAck.Load().Sub(shard.LastHeartbeatSent.Load()).Milliseconds()),
+					len(shard.Guilds),
+					int(time.Since(shard.Start).Seconds()),
 				})
+				shard.channelMu.RUnlock()
 			}
 			shardGroup.shardsMu.RUnlock()
 
@@ -151,7 +155,8 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	ctx.SetStatusCode(http.StatusOK)
 }
 
-func (sg *Sandwich) testEndpoint(ctx *fasthttp.RequestCtx) {
-	ctx.WriteString("Hello!")
-	ctx.SetStatusCode(http.StatusOK)
-}
+// func (sg *Sandwich) testEndpoint(ctx *fasthttp.RequestCtx) {
+// 	b, _ := json.Marshal(sg)
+// 	ctx.Write(b)
+// 	ctx.SetStatusCode(http.StatusOK)
+// }

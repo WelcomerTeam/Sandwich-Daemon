@@ -51,8 +51,8 @@ type Sandwich struct {
 	ctx    context.Context
 	cancel func()
 
-	Logger    zerolog.Logger
-	StartTime time.Time `json:"start_time" yaml:"start_time"`
+	Logger    zerolog.Logger `json:"-"`
+	StartTime time.Time      `json:"start_time" yaml:"start_time"`
 
 	configurationMu sync.RWMutex
 	Configuration   *SandwichConfiguration `json:"configuration" yaml:"configuration"`
@@ -63,11 +63,9 @@ type Sandwich struct {
 
 	IdentifyBuckets *bucketstore.BucketStore `json:"-"`
 
-	EventsInflight  *atomic.Int64 `json:"-"`
-	EventsDiscarded *atomic.Int64 `json:"-"`
-
-	managersMu sync.RWMutex
-	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
+	EventsInflight *atomic.Int64 `json:"-"`
+	managersMu     sync.RWMutex
+	Managers       map[string]*Manager `json:"managers" yaml:"managers"`
 
 	State *SandwichState `json:"-"`
 
@@ -84,8 +82,8 @@ type Sandwich struct {
 	sentPool sync.Pool
 
 	// Brotli writers pool
-	FastCompressionOptions    cbrotli.WriterOptions
-	DefaultCompressionOptions cbrotli.WriterOptions
+	FastCompressionOptions    cbrotli.WriterOptions `json:"-"`
+	DefaultCompressionOptions cbrotli.WriterOptions `json:"-"`
 }
 
 // SandwichConfiguration represents the configuration file.
@@ -121,7 +119,7 @@ type SandwichConfiguration struct {
 
 	Producer struct {
 		Type          string                 `json:"type" yaml:"type"`
-		Configuration map[string]interface{} ``
+		Configuration map[string]interface{} `json:"configuration" yaml:"configuration"`
 	} `json:"producer" yaml:"producer"`
 
 	Prometheus struct {
@@ -161,8 +159,7 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
 
-		EventsInflight:  atomic.NewInt64(0),
-		EventsDiscarded: atomic.NewInt64(0),
+		EventsInflight: atomic.NewInt64(0),
 
 		State: NewSandwichState(),
 
@@ -447,7 +444,8 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 
 	prometheus.MustRegister(sandwichEventCount)
 	prometheus.MustRegister(sandwichEventInflightCount)
-	prometheus.MustRegister(sandwichDiscardedEvents)
+	prometheus.MustRegister(sandwichEventBufferCount)
+	// prometheus.MustRegister(sandwichDiscardedEvents)
 	prometheus.MustRegister(sandwichGuildEventCount)
 	prometheus.MustRegister(sandwichDispatchEventCount)
 	prometheus.MustRegister(sandwichGatewayLatency)
@@ -557,7 +555,22 @@ func (sg *Sandwich) prometheusGatherer() {
 			))
 
 			eventsInflight := sg.EventsInflight.Load()
-			eventsDiscarded := sg.EventsDiscarded.Load()
+
+			eventsBuffer := 0
+
+			sg.managersMu.RLock()
+			for _, manager := range sg.Managers {
+				manager.shardGroupsMu.RLock()
+				for _, shardgroup := range manager.ShardGroups {
+					shardgroup.shardsMu.RLock()
+					for _, shard := range shardgroup.Shards {
+						eventsBuffer += len(shard.MessageCh)
+					}
+					shardgroup.shardsMu.RUnlock()
+				}
+				manager.shardGroupsMu.RUnlock()
+			}
+			sg.managersMu.RUnlock()
 
 			sandwichStateGuildCount.Set(float64(stateGuilds))
 			sandwichStateGuildMembersCount.Set(float64(stateMembers))
@@ -565,7 +578,9 @@ func (sg *Sandwich) prometheusGatherer() {
 			sandwichStateEmojiCount.Set(float64(stateEmojis))
 			sandwichStateUserCount.Set(float64(stateUsers))
 			sandwichStateChannelCount.Set(float64(stateChannels))
+
 			sandwichEventInflightCount.Set(float64(eventsInflight))
+			sandwichEventBufferCount.Set(float64(eventsBuffer))
 
 			sg.Logger.Debug().
 				Int("guilds", stateGuilds).
@@ -575,7 +590,7 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
 				Int64("eventsInflight", eventsInflight).
-				Int64("eventsDiscarded", eventsDiscarded).
+				Int64("eventsBuffer", int64(eventsBuffer)).
 				Msg("Updated prometheus guages")
 		}
 	}
