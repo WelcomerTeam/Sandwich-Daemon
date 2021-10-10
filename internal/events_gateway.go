@@ -14,6 +14,8 @@ import (
 const MagicDecimalBase = 10
 
 func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload) error {
+	sh.Sequence.Store(msg.Sequence)
+
 	go func(msg discord.GatewayPayload) {
 		sh.Sandwich.EventsInflight.Inc()
 		defer sh.Sandwich.EventsInflight.Dec()
