@@ -391,7 +391,13 @@ readyConsumer:
 func (sh *Shard) Heartbeat(ctx context.Context) {
 	needsReconnect := false
 
+	sh.HeartbeatActive.Store(true)
+	sh.HeartbeatDeadSignal.Started()
+
 	defer func() {
+		sh.HeartbeatActive.Store(false)
+		sh.HeartbeatDeadSignal.Done()
+
 		if needsReconnect {
 			err := sh.Reconnect(websocket.StatusNormalClosure)
 			if err != nil {
@@ -399,12 +405,6 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 			}
 		}
 	}()
-
-	sh.HeartbeatActive.Store(true)
-	defer sh.HeartbeatActive.Store(false)
-
-	sh.HeartbeatDeadSignal.Started()
-	defer sh.HeartbeatDeadSignal.Done()
 
 	for {
 		select {
@@ -919,7 +919,7 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) {
 
 	sh.Status = status
 
-	sh.Manager.PublishEvent("SHARD_STATUS_UPDATE", structs.ShardStatusUpdate{
+	sh.Manager.PublishEvent(context.TODO(), "SHARD_STATUS_UPDATE", structs.ShardStatusUpdate{
 		Manager:    sh.Manager.Identifier.Load(),
 		ShardGroup: sh.ShardGroup.ID,
 		Shard:      sh.ShardID,

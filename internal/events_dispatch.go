@@ -355,7 +355,7 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	ctx.Sandwich.State.SetGuild(guildUpdatePayload)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": beforeGuild,
 		},
@@ -376,7 +376,7 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	ctx.Sandwich.State.RemoveGuild(guildDeletePayload.ID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": beforeGuild,
 		},
@@ -394,7 +394,7 @@ func OnGuildBanAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildBanAddPayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -409,7 +409,7 @@ func OnGuildBanRemove(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildBanRemovePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -432,7 +432,7 @@ func OnGuildEmojisUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": beforeEmojis,
 		},
@@ -457,7 +457,7 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	ctx.Sandwich.State.SetGuild(beforeGuild)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": beforeStickers,
 		},
@@ -475,7 +475,7 @@ func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord.GatewayPayload) (resul
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildIntegrationsUpdatePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -493,7 +493,7 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	ctx.Sandwich.State.AddUserMutualGuild(guildMemberAddPayload.User.ID, guildMemberAddPayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -513,7 +513,7 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	ctx.Sandwich.State.RemoveUserMutualGuild(guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": guildMember,
 		},
@@ -536,7 +536,7 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	ctx.Sandwich.State.SetGuildMember(guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": beforeGuildMember,
 		},
@@ -556,7 +556,7 @@ func OnGuildRoleCreate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 	ctx.Sandwich.State.SetGuildRole(guildRoleCreatePayload.GuildID, guildRoleCreatePayload.Role)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -576,7 +576,7 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 	ctx.Sandwich.State.SetGuildRole(guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": beforeRole,
 		},
@@ -596,7 +596,7 @@ func OnGuildRoleDelete(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 	ctx.Sandwich.State.RemoveGuildRole(guildRoleDeletePayload.GuildID, guildRoleDeletePayload.RoleID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -611,7 +611,7 @@ func OnIntegrationCreate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -626,7 +626,7 @@ func OnIntegrationUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -641,7 +641,7 @@ func OnIntegrationDelete(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -656,7 +656,7 @@ func OnInteractionCreate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -671,7 +671,7 @@ func OnInviteCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteCreatePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -686,7 +686,7 @@ func OnInviteDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteDeletePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -701,7 +701,7 @@ func OnMessageCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageCreatePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -716,7 +716,7 @@ func OnMessageUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageUpdatePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -731,7 +731,7 @@ func OnMessageDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageDeletePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -746,7 +746,7 @@ func OnMessageDeleteBulk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageDeleteBulkPayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -761,7 +761,7 @@ func OnMessageReactionAdd(ctx *StateCtx, msg discord.GatewayPayload) (result str
 	defer ctx.OnGuildDispatchEvent(msg.Type, messageReactionAddPayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -776,7 +776,7 @@ func OnMessageReactionRemove(ctx *StateCtx, msg discord.GatewayPayload) (result 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageReactionRemovePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -791,7 +791,7 @@ func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord.GatewayPayload) (resu
 	defer ctx.OnGuildDispatchEvent(msg.Type, messageReactionRemoveAllPayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -806,7 +806,7 @@ func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord.GatewayPayload) (re
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageReactionRemoveEmojiPayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -821,7 +821,7 @@ func OnPresenceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	defer ctx.OnGuildDispatchEvent(msg.Type, presenceUpdatePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -837,7 +837,7 @@ func OnStageInstanceCreate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -853,7 +853,7 @@ func OnStageInstanceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -869,7 +869,7 @@ func OnStageInstanceDelete(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -884,7 +884,7 @@ func OnTypingStart(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, typingStartPayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -901,7 +901,7 @@ func OnUserUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.Sta
 	beforeUser, _ := ctx.Sandwich.State.GetUser(userUpdatePayload.ID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"before": beforeUser,
 		},
@@ -919,7 +919,7 @@ func OnVoiceStateUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struc
 	defer ctx.OnGuildDispatchEvent(msg.Type, voiceStateUpdatePayload.GuildID)
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -934,7 +934,7 @@ func OnVoiceServerUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -949,7 +949,7 @@ func OnWebhookUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 
@@ -964,7 +964,7 @@ func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord.GatewayPayload) (result
 	}
 
 	return structs.StateResult{
-		Data: msg,
+		Data: msg.Data,
 	}, true, nil
 }
 

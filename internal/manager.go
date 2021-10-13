@@ -15,9 +15,10 @@ import (
 
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/google/brotli/go/cbrotli"
 	"github.com/rs/zerolog"
-	"github.com/vmihailenco/msgpack"
 	"go.uber.org/atomic"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -223,13 +224,13 @@ func (mg *Manager) Scale(shardIDs []int, shardCount int) (sg *ShardGroup) {
 }
 
 // PublishEvent sends an event to consumers.
-func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err error) {
+func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData interface{}) (err error) {
 	packet := mg.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
 	defer mg.Sandwich.payloadPool.Put(packet)
 
 	mg.configurationMu.RLock()
 	identifier := mg.Configuration.ProducerIdentifier
-	channel := mg.Configuration.Messaging.ChannelName
+	channelName := mg.Configuration.Messaging.ChannelName
 	mg.configurationMu.RUnlock()
 
 	packet.Type = eventType
@@ -246,22 +247,35 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 	packet.Extra = nil
 	packet.Trace = nil
 
-	data, err := msgpack.Marshal(packet)
+	payload, err := json.Marshal(packet)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}
 
-	if mg.ProducerClient == nil {
+	var compressionOptions cbrotli.WriterOptions
+
+	if len(payload) > minPayloadCompressionSize {
+		compressionOptions = mg.Sandwich.DefaultCompressionOptions
+	} else {
+		compressionOptions = mg.Sandwich.FastCompressionOptions
+	}
+
+	result, err := cbrotli.Encode(payload, compressionOptions)
+	if err != nil {
 		return
 	}
 
 	err = mg.ProducerClient.Publish(
-		mg.ctx,
-		channel,
-		data,
+		ctx,
+		channelName,
+		result,
 	)
 
-	return err
+	if err != nil {
+		return xerrors.Errorf("publishEvent publish: %w", err)
+	}
+
+	return nil
 }
 
 // WaitForIdentify blocks until a shard can identify.
