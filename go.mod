@@ -25,14 +25,12 @@ require (
 	github.com/savsgio/gotils v0.0.0-20210921075833-21a6215cb0e4
 	github.com/segmentio/kafka-go v0.4.20
 	github.com/valyala/fasthttp v1.30.0
-	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6
 	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef // indirect
 	golang.org/x/text v0.3.7
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211001223012-bfb93cce50d9 // indirect
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.27.1

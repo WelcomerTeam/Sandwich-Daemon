@@ -6,19 +6,20 @@ import (
 
 // SandwichMetadata represents the identification information that consumers will use.
 type SandwichMetadata struct {
-	Version    string
-	Identifier string
+	Version    string `json:"v"`
+	Identifier string `json:"i"`
 	// ShardGroup ID, Shard ID, Shard Count
-	Shard [3]int
+	Shard [3]int `json:"s"`
 }
 
 // SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
-	discord.GatewayPayload
+	Op       discord.GatewayOp `json:"op"`
+	Data     interface{}       `json:"d"`
+	Sequence int64             `json:"s"`
+	Type     string            `json:"t"`
 
-	Data interface{}
-
-	Extra    map[string]interface{}
-	Metadata SandwichMetadata
-	Trace    map[string]int
+	Extra    map[string]interface{} `json:"__extra"`
+	Metadata SandwichMetadata       `json:"__sandwich"`
+	Trace    map[string]int         `json:"__sandwich_trace"`
 }

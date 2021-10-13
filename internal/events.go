@@ -132,10 +132,14 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 	packet := sh.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
 	defer sh.Sandwich.payloadPool.Put(packet)
 
-	packet.GatewayPayload = msg
+	// Directly copy op, sequence and type from original message.
+	packet.Op = msg.Op
+	packet.Sequence = msg.Sequence
+	packet.Type = msg.Type
 
 	// Setting result.Data will override what is sent to consumers
 	packet.Data = result.Data
+
 	// Extra contains any extra information such as before state and if it is a lazy guild.
 	packet.Extra = result.Extra
 
