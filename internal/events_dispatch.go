@@ -79,11 +79,29 @@ ready:
 		}
 	}
 
-	ctx.ready <- void{}
+	select {
+	case ctx.ready <- void{}:
+	default:
+	}
 
 	ctx.SetStatus(structs.ShardStatusReady)
 
 	return result, false, nil
+}
+
+func OnResumed(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	select {
+	case ctx.ready <- void{}:
+	default:
+	}
+
+	ctx.SetStatus(structs.ShardStatusReady)
+
+	return structs.StateResult{
+		Data: msg.Data,
+	}, true, nil
 }
 
 func OnApplicationCommandCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
@@ -970,6 +988,7 @@ func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord.GatewayPayload) (result
 
 func init() {
 	registerDispatch("READY", OnReady)
+	registerDispatch("RESUMED", OnResumed)
 	registerDispatch("APPLICATION_COMMAND_CREATE", OnApplicationCommandCreate)
 	registerDispatch("APPLICATION_COMMAND_UPDATE", OnApplicationCommandUpdate)
 	registerDispatch("APPLICATION_COMMAND_DELETE", OnApplicationCommandDelete)
