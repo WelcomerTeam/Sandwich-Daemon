@@ -51,10 +51,10 @@
                 <div class="flex flex-wrap justify-center">
                   <div v-bind:key="shard" v-for="shard in shard_group.shards" class="has-tooltip p-1">
                     <div :class="['w-7 h-7 rounded-md', getShardColour(shard)]" />
-                    <p class="tooltip rounded shadow-lg p-3 bg-blue-500 text-white transition-opacity">
-                      Shard {{shard[0]}}<br><br>
+                    <p class="tooltip bg-blue-500 text-white">
+                      Shard {{shard[0]}} - {{getShardStatus(shard)}}<br><br>
                       Guilds: {{shard[3]}}<br>
-                      Average Latency: {{shard[2]}}ms<br>
+                      Latency: {{shard[2]}}ms<br>
                     </p>
                   </div>
                 </div>
@@ -111,14 +111,14 @@ const managerType = [
 ];
 
 const shardType = [
-  "bg-gray-300",
-  "bg-blue-300",
-  "bg-blue-400",
-  "bg-green-500",
-  "bg-green-600",
-  "bg-yellow-300",
-  "bg-gray-400",
-  "bg-red-500",
+  ["bg-gray-300", "Idle"],
+  ["bg-blue-300", "Connecting"],
+  ["bg-blue-400", "Connected"],
+  ["bg-green-500", "Ready"],
+  ["bg-green-600", "Reconnecting"],
+  ["bg-yellow-300", "Closing"],
+  ["bg-gray-400", "Closed"],
+  ["bg-red-500", "Erroring"],
 ];
 
 const shardStatusConnecting = 1;
@@ -236,7 +236,8 @@ export default {
         }
       })
 
-      return Math.round(shardLatencyTotal/shardLatencyCount);
+      var latency = Math.round(shardLatencyTotal/shardLatencyCount);
+      return Number.isNaN(latency) ? '-' : latency;
     },
     getShardGroupGuildCount(shard_group) {
       var guildCount = 0;
@@ -248,7 +249,10 @@ export default {
       return guildCount;
     },
     getShardColour(shard) {
-      return shardType[shard[1]];
+      return shardType[shard[1]][0];
+    },
+    getShardStatus(shard) {
+      return shardType[shard[1]][1];
     },
   },
 };

@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 .tooltip {
-  @apply opacity-0 absolute z-50 mt-1;
+  @apply opacity-0 absolute z-50 mt-1 rounded shadow-lg p-3 transition-opacity pointer-events-none transform -translate-x-1/2;
 }
 
 .has-tooltip:hover .tooltip {
