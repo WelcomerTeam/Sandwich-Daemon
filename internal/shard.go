@@ -389,21 +389,12 @@ readyConsumer:
 
 // Heartbeat maintains a heartbeat with discord.
 func (sh *Shard) Heartbeat(ctx context.Context) {
-	needsReconnect := false
-
 	sh.HeartbeatActive.Store(true)
 	sh.HeartbeatDeadSignal.Started()
 
 	defer func() {
 		sh.HeartbeatActive.Store(false)
 		sh.HeartbeatDeadSignal.Done()
-
-		if needsReconnect {
-			err := sh.Reconnect(websocket.StatusNormalClosure)
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to reconnect")
-			}
-		}
 	}()
 
 	for {
@@ -453,7 +444,7 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 					)
 				}
 
-				needsReconnect = true
+				sh.ErrorCh <- err
 
 				return
 			}
