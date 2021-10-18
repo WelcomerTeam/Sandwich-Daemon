@@ -16,6 +16,8 @@ import (
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/fasthttp/session/v2"
+	memory "github.com/fasthttp/session/v2/providers/memory"
 	"github.com/google/brotli/go/cbrotli"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,6 +26,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/atomic"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
@@ -70,6 +73,8 @@ type Sandwich struct {
 	State *SandwichState `json:"-"`
 
 	Client *Client `json:"-"`
+
+	SessionProvider *session.Session
 
 	RouterHandler fasthttp.RequestHandler `json:"-"`
 	DistHandler   fasthttp.RequestHandler `json:"-"`
@@ -137,6 +142,12 @@ type SandwichConfiguration struct {
 		// If enabled, allows access to dashboard else will only show
 		// index page.
 		Enabled bool `json:"enabled" yaml:"enabled"`
+
+		// OAuth config used to identification.
+		OAuth *oauth2.Config `json:"oauth" yaml:"oauth"`
+
+		// List of discord user IDs that can access the dashboard.
+		UserAccess []int64 `json:"user_access" yaml:"user_access"`
 	} `json:"http" yaml:"http"`
 
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
@@ -486,6 +497,15 @@ func (sg *Sandwich) setupHTTP() (err error) {
 	sg.configurationMu.RUnlock()
 
 	sg.Logger.Info().Msgf("Serving http at %s", host)
+
+	cfg := session.NewDefaultConfig()
+	provider, err := memory.New(memory.Config{})
+
+	sg.SessionProvider = session.New(cfg)
+	if err = sg.SessionProvider.SetProvider(provider); err != nil {
+		sg.Logger.Error().Err(err).Msg("Failed to set session provider")
+		return err
+	}
 
 	sg.RouterHandler, sg.DistHandler = sg.NewRestRouter()
 

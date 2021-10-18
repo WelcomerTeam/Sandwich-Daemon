@@ -1,12 +1,12 @@
 <template>
   <Layout title="Status">
-    <div v-if="managersLoaded">
+    <div v-if="$store.getters.hasStatusLoaded">
       <h2 class="uppercase font-bold text-gray-700">Discord Bots</h2>
 
       <dl class="space-y-6 divide-y divide-gray-200">
         <Disclosure
           as="div"
-          v-for="manager in managers.managers"
+          v-for="manager in $store.getters.getStatus.managers"
           :key="manager.display_name"
           class="pt-6"
           v-slot="{ open }"
@@ -76,9 +76,9 @@
         </Disclosure>
       </dl>
     </div>
-    <div v-else-if="managersHasFetchError">
+    <div v-else-if="$store.getters.getStatusFetchError">
       <Error :icon="mdiConnection">
-        Failed to fetch status: {{managerFetchError}}
+        Failed to fetch status: {{$store.getters.getStatusFetchError}}
       </Error>
     </div>
     <div v-else-if="showLoading">
@@ -94,11 +94,10 @@ import Layout from "../components/Layout.vue";
 import Error from "../components/Error.vue";
 import LoadingIcon from "../components/LoadingIcon.vue";
 
-import axios from "axios";
+import store from "../store/index";
 import { ref } from "vue";
 
 import { mdiChevronDown, mdiConnection } from '@mdi/js';
-
 import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/vue";
 import { ChevronDownIcon } from "@heroicons/vue/outline";
 
@@ -136,17 +135,9 @@ export default {
     ChevronDownIcon,
   },
   setup() {
-    const managersLoaded = ref(false);
-    const managersHasFetchError = ref(false);
-    const managerFetchError = ref("");
-    const managers = ref([]);
     const showLoading = ref(false);
 
     return {
-      managersLoaded,
-      managersHasFetchError,
-      managerFetchError,
-      managers,
       showLoading,
 
       mdiConnection,
@@ -154,9 +145,10 @@ export default {
     };
   },
   mounted() {
-    this.getSandwichStatus();
-
-    setInterval(this.getSandwichStatus, 30000);
+    store.dispatch("fetchStatus");
+    setInterval(() => {
+      store.dispatch("fetchStatus")
+    }, 30000);
 
     // Only show loading after ~1 second of page loading.
     setTimeout(this.setShowLoading, 1000);
@@ -165,38 +157,10 @@ export default {
     setShowLoading() {
       this.showLoading = true;
     },
-    getSandwichStatus() {
-      axios.get("/api/status").then((result) => {
-        this.managers = result.data;
-        this.managersHasFetchError = false;
-        this.managerFetchError = "";
-        this.managersLoaded = true;
-      }).catch((error) => {
-        this.managersHasFetchError = true;
-        this.managerFetchError = error;
-      }).finally(() => {
-        this.managers.managers = this.managers.managers.sort((a, b) => { return a.display_name.localeCompare(b.display_name) });
-        this.managers.managers = this.managers.managers.map((manager) => {
-          manager.shard_groups = manager.shard_groups.sort((a, b) => { return a.id - b.id});
-          manager.shard_groups = manager.shard_groups.map((shard_group) => {
-            shard_group.shards = shard_group.shards.sort((a, b) => {
-              return a[0] - b[0];
-            });
-
-            return shard_group;
-          });
-
-          return manager;
-        })
-      })
-    },
-    getmanagerType(manager) {
+    getManagerType(manager) {
       if (manager.shard_groups.length === 0) {
         return managerType[0];
       }
-
-      var primaryShardGroup = manager.shard_groups[0];
-      var erroringShards = 0;
 
       primaryShardGroup.shards.forEach((shard) => {
         if (shard[1] === shardStatusErroring) {
@@ -217,13 +181,13 @@ export default {
       return managerType[erroringShards > 0 ? 3 : 4];
     },
     getManagerBadgeColour(manager) {
-      return this.getmanagerType(manager)[0];
+      return this.getManagerType(manager)[0];
     },
     getManagerBadgeText(manager) {
-      return this.getmanagerType(manager)[1];
+      return this.getManagerType(manager)[1];
     },
     getManagerShow(manager) {
-      return this.getmanagerType(manager)[2];
+      return this.getManagerType(manager)[2];
     },
     getShardGroupAverageLatency(shard_group) {
       var shardLatencyTotal = 0;

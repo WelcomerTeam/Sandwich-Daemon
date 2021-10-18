@@ -1,32 +1,42 @@
 import userAPI from "../../api/user";
 
-// initial state
 const state = () => ({
   isLoggedIn: false,
+  isAuthenticated: false,
   user: null,
-  guilds: null,
 });
 
-// getters
 const getters = {
-  // get user
-  // get is logged in
-  // get guilds
+  isLoggedIn: (state) => {
+    return state.isLoggedIn;
+  },
+  isAuthenticated: (state) => {
+    return state.isAuthenticated;
+  },
+  getUser: (state) => {
+    return state.user;
+  },
 };
 
-// actions
 const actions = {
-  // fetch user
-  // fetch guilds
-  // add membership to guild
-  // remove membership from guild
+  fetchUser({ commit }) {
+    userAPI.getUser(
+      (u) => {
+        commit("setUser", [u]);
+      },
+      () => {
+        commit("setUser", [null]);
+      }
+    );
+  },
 };
 
-// mutations
 const mutations = {
-  // set user + isloggedin
-  // set guilds
-  // set guild
+  setUser(state, [userObject]) {
+    state.user = userObject?.user;
+    state.isLoggedIn = userObject?.logged_in;
+    state.isAuthenticated = userObject?.authenticated;
+  },
 };
 
 export default {
