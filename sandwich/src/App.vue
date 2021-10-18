@@ -3,5 +3,11 @@
 </template>
 
 <script>
-export default {};
+import store from "./store/index";
+
+export default {
+  created() {
+    store.dispatch("fetchUser");
+  },
+};
 </script>

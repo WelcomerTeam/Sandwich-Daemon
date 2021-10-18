@@ -26,7 +26,28 @@
               <div class="block">
                 <div class="ml-4 flex items-center md:ml-6">
                   <div class="ml-3 relative">
-                    <div>
+                    <div v-if="$store.getters.isLoggedIn">
+                      <span class="text-white"
+                        >Welcome,
+                        <b>{{ $store.getters.getUser.username }}</b></span
+                      >
+                      <router-link
+                        to="/dashboard"
+                        class="ml-4 text-white hover:text-gray-200 font-medium"
+                        >Dashboard
+                      </router-link>
+                      <a
+                        href="/logout"
+                        class="
+                          ml-4
+                          text-blue-300
+                          hover:text-blue-400
+                          font-medium
+                        "
+                        >Logout</a
+                      >
+                    </div>
+                    <div v-else>
                       <router-link
                         to="/dashboard"
                         class="text-white hover:text-gray-200 font-medium"

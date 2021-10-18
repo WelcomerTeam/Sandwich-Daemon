@@ -1,3 +1,7 @@
-// fetch logged in user information
+import { fetch } from "./index";
 
-export default {};
+export default {
+  getUser(callback, errorCallback) {
+    fetch("/api/user", callback, errorCallback);
+  },
+};

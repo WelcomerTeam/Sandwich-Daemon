@@ -707,7 +707,6 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 	defer func() {
 		if r := recover(); r != nil {
 			sh.Logger.Warn().Err(r.(error)).Bool("hasWsConn", sh.wsConn != nil).Msg("Recovered panic in WriteJSON")
-			println(r)
 
 			time.Sleep(WriteJSONRetry)
 
