@@ -659,7 +659,7 @@ func (sh *Shard) Identify(ctx context.Context) (err error) {
 		Compress:       true,
 		LargeThreshold: GatewayLargeThreshold,
 		Shard:          [2]int{sh.ShardID, sh.ShardGroup.ShardCount},
-		Presence:       presence,
+		Presence:       &presence,
 		Intents:        intents,
 	})
 

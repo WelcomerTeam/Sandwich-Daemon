@@ -51,6 +51,8 @@ const (
 type Sandwich struct {
 	sync.Mutex
 
+	ConfigurationLocation string `json:"configuration_location"`
+
 	ctx    context.Context
 	cancel func()
 
@@ -160,6 +162,8 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 	sg = &Sandwich{
 		Logger: zerolog.New(logger).With().Timestamp().Logger(),
 
+		ConfigurationLocation: configurationLocation,
+
 		configurationMu: sync.RWMutex{},
 		Configuration:   &SandwichConfiguration{},
 
@@ -200,7 +204,7 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 	sg.Lock()
 	defer sg.Unlock()
 
-	configuration, err := sg.LoadConfiguration(configurationLocation)
+	configuration, err := sg.LoadConfiguration(sg.ConfigurationLocation)
 	if err != nil {
 		return nil, err
 	}

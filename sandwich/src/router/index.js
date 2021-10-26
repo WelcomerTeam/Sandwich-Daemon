@@ -1,7 +1,6 @@
 import { createWebHistory, createRouter } from "vue-router";
 
 import Status from "../pages/Status.vue";
-import Dashboard from "../pages/Dashboard.vue";
 
 const routes = [
   {
@@ -12,7 +11,40 @@ const routes = [
   {
     path: "/dashboard",
     name: "Dashboard",
-    component: Dashboard,
+    component: () =>
+      import(/* webpackChunkName: "dashboard" */ "../pages/Dashboard.vue"),
+    children: [
+      {
+        path: "consumers",
+        component: () =>
+          import(
+            /* webpackChunkName: "dashboard" */ "../pages/dashboard/Consumers.vue"
+          ),
+      },
+      {
+        path: "settings",
+        component: () =>
+          import(
+            /* webpackChunkName: "dashboard" */ "../pages/dashboard/Settings.vue"
+          ),
+      },
+      {
+        path: "managers",
+        component: () =>
+          import(
+            /* webpackChunkName: "dashboard" */ "../pages/dashboard/Managers.vue"
+          ),
+        children: [
+          {
+            path: ":id",
+            component: () =>
+              import(
+                /* webpackChunkName: "dashboard" */ "../pages/dashboard/ManagerView.vue"
+              ),
+          },
+        ],
+      },
+    ],
   },
   {
     path: "/:catchAll(.*)",

@@ -162,6 +162,9 @@ export default {
         return managerType[0];
       }
 
+      var erroringShards = 0;
+      var primaryShardGroup = manager.shard_groups[0];
+
       primaryShardGroup.shards.forEach((shard) => {
         if (shard[1] === shardStatusErroring) {
           erroringShards++;
