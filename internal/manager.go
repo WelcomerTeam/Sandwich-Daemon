@@ -81,9 +81,9 @@ type ManagerConfiguration struct {
 
 	// Bot specific configuration
 	Bot struct {
-		DefaultPresence      *discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
-		Intents              int64                 `json:"intents" yaml:"intents"`
-		ChunkGuildsOnStartup bool                  `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
+		DefaultPresence      discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
+		Intents              int64                `json:"intents" yaml:"intents"`
+		ChunkGuildsOnStartup bool                 `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
 	} `json:"bot" yaml:"bot"`
 
 	Caching struct {
@@ -100,7 +100,7 @@ type ManagerConfiguration struct {
 	Messaging struct {
 		ClientName      string `json:"client_name" yaml:"client_name"`
 		ChannelName     string `json:"channel_name" yaml:"channel_name"`
-		UseRandomSuffix bool   `json:"use_random_prefix" yaml:"use_random_prefix"`
+		UseRandomSuffix bool   `json:"use_random_suffix" yaml:"use_random_suffix"`
 	} `json:"messaging" yaml:"messaging"`
 
 	Sharding struct {
@@ -150,12 +150,12 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 
 // Initialize handles the start up process including connecting the message queue client.
 func (mg *Manager) Initialize() (err error) {
-	mg.Gateway, err = mg.GetGateway()
+	gateway, err := mg.GetGateway()
 	if err != nil {
 		return err
 	}
 
-	mg.ProducerClient, err = NewMQClient(mg.Sandwich.Configuration.Producer.Type)
+	producerClient, err := NewMQClient(mg.Sandwich.Configuration.Producer.Type)
 	if err != nil {
 		return err
 	}
@@ -165,13 +165,24 @@ func (mg *Manager) Initialize() (err error) {
 		clientName = clientName + "-" + strconv.Itoa(rand.Intn(MessagingMaxClientNameNumber))
 	}
 
-	err = mg.ProducerClient.Connect(
+	err = producerClient.Connect(
 		mg.ctx,
 		clientName,
 		mg.Sandwich.Configuration.Producer.Configuration,
 	)
+	if err != nil {
+		mg.Logger.Error().Err(err).Msg("Failed to connect producer client")
 
-	return
+		return err
+	}
+
+	mg.gatewayMu.Lock()
+	mg.Gateway = gateway
+	mg.gatewayMu.Unlock()
+
+	mg.ProducerClient = producerClient
+
+	return err
 }
 
 // Open handles retrieving shard counts and scaling.

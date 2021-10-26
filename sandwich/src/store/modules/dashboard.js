@@ -5,6 +5,8 @@ const state = () => ({
   configurationFetchError: "",
   configuration: null,
 
+  selectedManager: null,
+
   statusLoaded: false,
   statusFetchError: "",
   status: null,
@@ -23,6 +25,11 @@ const getters = {
   },
   getConfiguration: (state) => {
     return state.configuration;
+  },
+  getSelectedManager: (state) => {
+    return state.configuration?.managers.filter(
+      (manager) => manager.identifier == state.selectedManager
+    )[0];
   },
 
   // Status
@@ -69,12 +76,14 @@ const mutations = {
     state.configuration = dashboardObject?.configuration;
   },
   setStatus(state, [statusObject, errorObject]) {
-    console.log(statusObject, errorObject);
     if (errorObject == undefined) {
       state.statusLoaded = true;
     }
     state.statusFetchError = errorObject;
     state.status = statusObject;
+  },
+  setSelectedManager(state, managerIdentifier) {
+    state.selectedManager = managerIdentifier;
   },
 };
 

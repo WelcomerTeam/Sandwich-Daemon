@@ -36,6 +36,8 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r.GET("/api/user", sg.UserEndpoint)
 	r.GET("/api/dashboard", sg.DashboardGetEndpoint)
 
+	r.POST("/api/manager", sg.ManagerUpdateEndpoint)
+
 	r.GET("/login", sg.LoginEndpoint)
 	r.GET("/logout", sg.LogoutEndpoint)
 	r.GET("/callback", sg.CallbackEndpoint)
@@ -396,6 +398,76 @@ func (sg *Sandwich) DashboardGetEndpoint(ctx *fasthttp.RequestCtx) {
 			Data: structs.DashboardGetResponse{
 				Configuration: configuration,
 			},
+		})
+	})(ctx)
+}
+
+func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
+	sg.requireDiscordAuthentication(func(ctx *fasthttp.RequestCtx) {
+		sg.managersMu.Lock()
+		defer sg.managersMu.Unlock()
+
+		managerConfiguration := ManagerConfiguration{}
+
+		err := json.Unmarshal(ctx.PostBody(), &managerConfiguration)
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		manager, ok := sg.Managers[managerConfiguration.Identifier]
+		if !ok {
+			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+				Ok:    false,
+				Error: ErrNoManagerPresent.Error(),
+			})
+
+			return
+		}
+
+		manager.configurationMu.Lock()
+		manager.Configuration = &managerConfiguration
+		manager.configurationMu.Unlock()
+
+		err = manager.Initialize()
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		manager.configurationMu.RLock()
+		manager.Client = NewClient(manager.Configuration.Token)
+		manager.configurationMu.RUnlock()
+
+		manager.Sandwich.configurationMu.Lock()
+		for _, configurationManager := range manager.Sandwich.Configuration.Managers {
+			if managerConfiguration.Identifier == configurationManager.Identifier {
+				configurationManager = manager.Configuration
+			}
+		}
+		manager.Sandwich.configurationMu.Unlock()
+
+		err = manager.Sandwich.SaveConfiguration(manager.Sandwich.Configuration, manager.Sandwich.ConfigurationLocation)
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+			Ok:   true,
+			Data: "Changes applied. You may need to make a new shard group to apply changes",
 		})
 	})(ctx)
 }

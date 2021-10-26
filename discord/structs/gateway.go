@@ -121,8 +121,8 @@ type RequestGuildMembers struct {
 
 // Update Presence updates a client's presence.
 type UpdateStatus struct {
-	Since  *int      `json:"since,omitempty"`
-	Game   *Activity `json:"game,omitempty"`
-	Status string    `json:"status"`
-	AFK    bool      `json:"afk"`
+	Since      *int        `json:"since,omitempty"`
+	Activities []*Activity `json:"activities,omitempty"`
+	Status     string      `json:"status"`
+	AFK        bool        `json:"afk"`
 }
