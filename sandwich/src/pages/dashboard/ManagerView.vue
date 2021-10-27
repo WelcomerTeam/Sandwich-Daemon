@@ -1,5 +1,51 @@
 <template>
   <div>
+    <div v-if="$store.getters.getSelectedManagerStatus" class="mb-4">
+      <form class="mb-8">
+        <field-set class="mb-4">
+          <text-input
+            type="text"
+            v-model="newShardGroupShardIDs"
+            label="Shard IDs"
+          />
+          <text-input
+            type="number"
+            v-model="newShardGroupShardCount"
+            label="Shard Count"
+          />
+          <text-input
+            type="checkbox"
+            v-model="newShardGroupAutoSharded"
+            label="Autosharded"
+          />
+        </field-set>
+        <button
+          class="
+            inline-flex
+            items-center
+            px-4
+            py-2
+            border border-transparent
+            text-sm
+            font-medium
+            rounded-md
+            shadow-sm
+            text-white
+            bg-blue-600
+            hover:bg-blue-700
+            focus:outline-none
+            focus:ring-2
+            focus:ring-offset-2
+            focus:ring-blue-500
+          "
+          @click.prevent="createShardGroup"
+        >
+          New ShardGroup
+        </button>
+      </form>
+      <manager-status :manager="$store.getters.getSelectedManagerStatus" />
+    </div>
+
     <form v-if="manager" class="space-y-4">
       <field-set name="General" class="space-y-4">
         <text-input
@@ -182,16 +228,23 @@ import { ref } from "vue";
 import store from "../../store";
 import FieldSet from "../../components/FieldSet.vue";
 import dashboardAPI from "../../api/dashboard";
+import ManagerStatus from "../../components/ManagerStatus.vue";
 
 export default {
   components: {
     TextInput,
     FieldSet,
+    ManagerStatus,
   },
   setup() {
     return {
       default_presence: ref(""),
       default_presence_invalid: ref(false),
+
+      newShardGroupShardIDs: ref(""),
+      newShardGroupShardCount: ref(0),
+      newShardGroupAutoSharded: ref(false),
+
       event_blacklist: ref(""),
       produce_blacklist: ref(""),
       manager: ref(null),
@@ -199,6 +252,11 @@ export default {
   },
   mounted() {
     this.refreshManager();
+
+    store.dispatch("fetchManagerStatus");
+    setInterval(() => {
+      store.dispatch("fetchManagerStatus");
+    }, 30000);
   },
   beforeRouteUpdate(to, from, next) {
     this.refreshManager();
@@ -239,6 +297,7 @@ export default {
   methods: {
     refreshManager() {
       if (typeof store.getters.getSelectedManager !== "undefined") {
+        store.dispatch("fetchManagerStatus");
         this.manager = JSON.parse(
           JSON.stringify(store.getters.getSelectedManager)
         );
@@ -251,6 +310,23 @@ export default {
         this.manager,
         (response) => {
           alert(response);
+        },
+        (e) => {
+          alert(e);
+        }
+      );
+    },
+    createShardGroup() {
+      dashboardAPI.createManagerShardGroup(
+        {
+          shard_ids: this.newShardGroupShardIDs,
+          shard_count: this.newShardGroupShardCount,
+          auto_sharded: this.newShardGroupAutoSharded,
+          identifier: this.manager.identifier,
+        },
+        (response) => {
+          alert(response);
+          store.dispatch("fetchManagerStatus");
         },
         (e) => {
           alert(e);

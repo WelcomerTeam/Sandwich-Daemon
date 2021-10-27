@@ -122,7 +122,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 
 	response.BaseResponse.Ok = true
 
-	return
+	return response, nil
 }
 
 // FetchGuildEmojis returns emojis based on the guildID.
@@ -184,7 +184,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 
 	response.BaseResponse.Ok = true
 
-	return
+	return response, nil
 }
 
 // FetchGuildMembers returns guild members based on the guildID.
@@ -246,7 +246,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 
 	response.BaseResponse.Ok = true
 
-	return
+	return response, nil
 }
 
 // FetchGuild returns guilds based on the guildIDs.
@@ -303,7 +303,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 
 	response.BaseResponse.Ok = true
 
-	return
+	return response, nil
 }
 
 // FetchGuildRoles returns roles based on the roleIDs.
@@ -323,6 +323,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 
 	if request.GuildID == 0 {
 		response.BaseResponse.Error = ErrNoGuildIDPresent.Error()
+
 		return response, ErrNoGuildIDPresent
 	}
 
@@ -344,6 +345,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 		guildRoles, ok := grpc.sg.State.GetAllGuildRoles(discord.Snowflake(request.GuildID))
 		if !ok {
 			response.BaseResponse.Error = ErrCacheMiss.Error()
+
 			return response, ErrCacheMiss
 		}
 
@@ -363,7 +365,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 
 	response.BaseResponse.Ok = true
 
-	return
+	return response, nil
 }
 
 // FetchMutualGuilds returns a list of all mutual guilds based on userID.
@@ -382,6 +384,7 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 
 	if request.UserID == 0 {
 		response.BaseResponse.Error = ErrNoUserIDPresent.Error()
+
 		return response, ErrNoUserIDPresent
 	}
 
@@ -399,20 +402,24 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 				}
 			}
 		}
+
 		response.GuildIDs = append(response.GuildIDs, int64(guildID))
 	}
 
 	response.BaseResponse.Ok = true
 
-	return
+	return response, nil
 }
 
 // RequestGuildChunk sends a guild chunk request.
 // Returns once the guild has been chunked.
 func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request *pb.RequestGuildChunkRequest) (response *pb.BaseResponse, err error) {
 	response = &pb.BaseResponse{
-		Ok: false,
+		Ok:    false,
+		Error: "Not implemented",
 	}
+
+	// TODO: Implement
 
 	return response, nil
 }
@@ -429,6 +436,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 
 	if !ok {
 		response.Error = ErrNoManagerPresent.Error()
+
 		return response, ErrNoManagerPresent
 	}
 
@@ -438,6 +446,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 
 	if !ok {
 		response.Error = ErrNoShardGroupPresent.Error()
+
 		return response, ErrNoShardGroupPresent
 	}
 
@@ -447,12 +456,14 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 
 	if !ok {
 		response.Error = ErrNoShardPresent.Error()
+
 		return response, ErrNoShardPresent
 	}
 
 	err = shard.SendEvent(ctx, discord.GatewayOp(request.GatewayOPCode), request.Data)
 	if err != nil {
 		response.Error = err.Error()
+
 		return response, err
 	}
 
@@ -495,7 +506,7 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 
 	response.BaseResponse.Ok = true
 
-	return
+	return response, nil
 }
 
 // Converts discord.Guild to gRPC counterpart.

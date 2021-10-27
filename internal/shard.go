@@ -619,12 +619,6 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 				return
 			case <-ctx.Done():
 				return
-				// default:
-				// 	// We have discarded an event :(
-				// 	sh.Sandwich.EventsDiscarded.Inc()
-				// 	// sandwichDiscardedEvents.WithLabelValues(sh.Manager.Identifier.Load()).Inc()
-
-				// 	sh.Logger.Warn().Str("type", msg.Type).Msg("Event has been discarded")
 			}
 		}
 	}()

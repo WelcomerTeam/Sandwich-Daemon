@@ -187,7 +187,10 @@ func (mg *Manager) Initialize() (err error) {
 
 // Open handles retrieving shard counts and scaling.
 func (mg *Manager) Open() (err error) {
-	shardIDs, shardCount := mg.getInitialShardCount()
+	shardIDs, shardCount := mg.getInitialShardCount(
+		mg.Configuration.Sharding.ShardCount,
+		mg.Configuration.Sharding.ShardIDs,
+	)
 
 	sg := mg.Scale(shardIDs, shardCount)
 
@@ -403,7 +406,7 @@ func (mg *Manager) Close() {
 }
 
 // getInitialShardCount returns the initial shard count and ids to use.
-func (mg *Manager) getInitialShardCount() (shardIDs []int, shardCount int) {
+func (mg *Manager) getInitialShardCount(customShardCount int, customShardIDs string) (shardIDs []int, shardCount int) {
 	mg.configurationMu.RLock()
 	defer mg.configurationMu.RUnlock()
 
@@ -414,8 +417,8 @@ func (mg *Manager) getInitialShardCount() (shardIDs []int, shardCount int) {
 			shardIDs = append(shardIDs, i)
 		}
 	} else {
-		shardCount = mg.Configuration.Sharding.ShardCount
-		shardIDs = returnRange(mg.Configuration.Sharding.ShardIDs, shardCount)
+		shardCount = customShardCount
+		shardIDs = returnRange(customShardIDs, shardCount)
 	}
 
 	return
