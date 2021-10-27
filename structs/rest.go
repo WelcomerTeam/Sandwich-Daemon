@@ -35,3 +35,10 @@ type UserResponse struct {
 type DashboardGetResponse struct {
 	Configuration interface{} `json:"configuration"` // Avoids circular references
 }
+
+type CreateManagerShardGroupArguments struct {
+	ShardIDs    string `json:"shard_ids"`
+	ShardCount  int    `json:"shard_count"`
+	AutoSharded bool   `json:"auto_sharded"`
+	Identifier  string `json:"identifier"`
+}

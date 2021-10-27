@@ -841,7 +841,7 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 		}
 	}
 
-	return
+	return guildChannel, ok
 }
 
 // SetGuildChannel creates or updates a channel entry in the cache.

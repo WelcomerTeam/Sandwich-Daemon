@@ -6,6 +6,7 @@ const state = () => ({
   configuration: null,
 
   selectedManager: null,
+  managerStatus: null,
 
   statusLoaded: false,
   statusFetchError: "",
@@ -30,6 +31,9 @@ const getters = {
     return state.configuration?.managers.filter(
       (manager) => manager.identifier == state.selectedManager
     )[0];
+  },
+  getSelectedManagerStatus: (state) => {
+    return state.managerStatus;
   },
 
   // Status
@@ -65,6 +69,19 @@ const actions = {
       }
     );
   },
+  fetchManagerStatus({ state, commit }) {
+    if (state.selectedManager) {
+      dashboardAPI.getManagerStatus(
+        state.selectedManager,
+        (status) => {
+          commit("setManagerStatus", [status, null]);
+        },
+        (e) => {
+          commit("setManagerStatus", [null, e]);
+        }
+      );
+    }
+  },
 };
 
 const mutations = {
@@ -82,8 +99,12 @@ const mutations = {
     state.statusFetchError = errorObject;
     state.status = statusObject;
   },
+  setManagerStatus(state, [statusObject, errorObject]) {
+    state.managerStatus = statusObject;
+  },
   setSelectedManager(state, managerIdentifier) {
     state.selectedManager = managerIdentifier;
+    state.managerStatus = null;
   },
 };
 

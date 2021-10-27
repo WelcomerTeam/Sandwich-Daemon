@@ -316,12 +316,6 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 
 // ValidateConfiguration ensures certain values in the configuration are passed.
 func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) (err error) {
-	// if configuration.Identify.URL == "" {
-	// 	return ErrConfigurationValidateIdentify
-	// }
-
-	// TODO: Allow empty, warn and validate if not empty and invalid
-
 	if configuration.Prometheus.Host == "" {
 		return ErrConfigurationValidatePrometheus
 	}
