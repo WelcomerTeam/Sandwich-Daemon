@@ -40,15 +40,12 @@ func onGRPCRequest() {
 	grpcCacheRequests.Inc()
 }
 
-func onGRPCHitMiss(ok bool, guild_id int64) {
+func onGRPCHit(ok bool, guild_id int64) {
 	if ok {
 		grpcCacheHits.WithLabelValues(strconv.FormatInt(guild_id, MagicDecimalBase)).Inc()
 	} else {
 		grpcCacheMisses.WithLabelValues(strconv.FormatInt(guild_id, MagicDecimalBase)).Inc()
 	}
-}
-
-func onGRPCMiss(guild_id int64) {
 }
 
 // Returns if the query matches the ID or contains part of query.
@@ -96,7 +93,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 				}
 			}
 
-			onGRPCHitMiss(ok, request.GuildID)
+			onGRPCHit(ok, request.GuildID)
 		}
 	} else {
 		guildChannels, ok := grpc.sg.State.GetAllGuildChannels(discord.Snowflake(request.GuildID))
@@ -158,7 +155,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 				}
 			}
 
-			onGRPCHitMiss(ok, request.GuildID)
+			onGRPCHit(ok, request.GuildID)
 		}
 	} else {
 		guildEmojis, ok := grpc.sg.State.GetAllGuildEmojis(discord.Snowflake(request.GuildID))
@@ -220,7 +217,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 				}
 			}
 
-			onGRPCHitMiss(ok, request.GuildID)
+			onGRPCHit(ok, request.GuildID)
 		}
 	} else {
 		guildGuildMembers, ok := grpc.sg.State.GetAllGuildMembers(discord.Snowflake(request.GuildID))
@@ -275,7 +272,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 				}
 			}
 
-			onGRPCHitMiss(ok, guildID)
+			onGRPCHit(ok, guildID)
 		}
 	} else {
 		if !hasQuery {
@@ -339,7 +336,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 				}
 			}
 
-			onGRPCHitMiss(ok, request.GuildID)
+			onGRPCHit(ok, request.GuildID)
 		}
 	} else {
 		guildRoles, ok := grpc.sg.State.GetAllGuildRoles(discord.Snowflake(request.GuildID))

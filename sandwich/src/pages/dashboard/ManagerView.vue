@@ -19,29 +19,35 @@
             label="Autosharded"
           />
         </field-set>
-        <button
-          class="
-            inline-flex
-            items-center
-            px-4
-            py-2
-            border border-transparent
-            text-sm
-            font-medium
-            rounded-md
-            shadow-sm
-            text-white
-            bg-blue-600
-            hover:bg-blue-700
-            focus:outline-none
-            focus:ring-2
-            focus:ring-offset-2
-            focus:ring-blue-500
-          "
-          @click.prevent="createShardGroup"
-        >
-          New ShardGroup
-        </button>
+        <div class="flex space-x-4">
+          <button
+            class="
+              inline-flex
+              items-center
+              px-4
+              py-2
+              border border-transparent
+              text-sm
+              font-medium
+              rounded-md
+              shadow-sm
+              text-white
+              bg-blue-600
+              hover:bg-blue-700
+              focus:outline-none
+              focus:ring-2
+              focus:ring-offset-2
+              focus:ring-blue-500
+            "
+            @click.prevent="createShardGroup"
+          >
+            New ShardGroup
+          </button>
+          <div v-if="shardGroupLoading" class="flex">
+            <loading-icon />
+            Connecting Shards...
+          </div>
+        </div>
       </form>
       <manager-status :manager="$store.getters.getSelectedManagerStatus" />
     </div>
@@ -229,12 +235,14 @@ import store from "../../store";
 import FieldSet from "../../components/FieldSet.vue";
 import dashboardAPI from "../../api/dashboard";
 import ManagerStatus from "../../components/ManagerStatus.vue";
+import LoadingIcon from "../../components/LoadingIcon.vue";
 
 export default {
   components: {
     TextInput,
     FieldSet,
     ManagerStatus,
+    LoadingIcon,
   },
   setup() {
     return {
@@ -244,6 +252,8 @@ export default {
       newShardGroupShardIDs: ref(""),
       newShardGroupShardCount: ref(0),
       newShardGroupAutoSharded: ref(false),
+
+      shardGroupLoading: ref(false),
 
       event_blacklist: ref(""),
       produce_blacklist: ref(""),
@@ -256,7 +266,7 @@ export default {
     store.dispatch("fetchManagerStatus");
     setInterval(() => {
       store.dispatch("fetchManagerStatus");
-    }, 30000);
+    }, 15000);
   },
   beforeRouteUpdate(to, from, next) {
     this.refreshManager();
@@ -317,14 +327,16 @@ export default {
       );
     },
     createShardGroup() {
+      this.shardGroupLoading = true;
       dashboardAPI.createManagerShardGroup(
         {
           shard_ids: this.newShardGroupShardIDs,
-          shard_count: this.newShardGroupShardCount,
+          shard_count: Number(this.newShardGroupShardCount),
           auto_sharded: this.newShardGroupAutoSharded,
           identifier: this.manager.identifier,
         },
         (response) => {
+          this.shardGroupLoading = false;
           alert(response);
           store.dispatch("fetchManagerStatus");
         },

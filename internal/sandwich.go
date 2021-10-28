@@ -502,6 +502,7 @@ func (sg *Sandwich) setupHTTP() (err error) {
 	sg.SessionProvider = session.New(cfg)
 	if err = sg.SessionProvider.SetProvider(provider); err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to set session provider")
+
 		return err
 	}
 
