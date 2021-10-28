@@ -19,6 +19,7 @@ var (
 	ErrInvalidShardGroup = xerrors.New("Invalid shard group id specified")
 	ErrInvalidShard      = xerrors.New("Invalid shard id specified")
 	ErrChunkTimeout      = xerrors.New("Timed out on initial member chunks")
+	ErrMissingShards     = xerrors.New("ShardGroup has no shards")
 )
 
 var (

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -327,43 +328,14 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 
 	if manager == "" {
 		for _, manager := range sg.Managers {
-			manager.shardGroupsMu.RLock()
-
 			manager.configurationMu.RLock()
 			friendlyName := manager.Configuration.FriendlyName
 			manager.configurationMu.RUnlock()
 
-			statusManager := &structs.StatusEndpointManager{
+			managers = append(managers, &structs.StatusEndpointManager{
 				DisplayName: friendlyName,
-				ShardGroups: make([]*structs.StatusEndpointShardGroup, 0, len(manager.ShardGroups)),
-			}
-
-			for _, shardGroup := range manager.ShardGroups {
-				shardGroup.shardsMu.RLock()
-				statusShardGroup := &structs.StatusEndpointShardGroup{
-					ShardGroupID: int(shardGroup.ID),
-					Shards:       make([][5]int, 0, len(shardGroup.Shards)),
-					Status:       shardGroup.Status,
-				}
-
-				for _, shard := range shardGroup.Shards {
-					shard.channelMu.RLock()
-					statusShardGroup.Shards = append(statusShardGroup.Shards, [5]int{
-						shard.ShardID,
-						int(shard.Status),
-						int(shard.LastHeartbeatAck.Load().Sub(shard.LastHeartbeatSent.Load()).Milliseconds()),
-						len(shard.Guilds),
-						int(time.Since(shard.Start).Seconds()),
-					})
-					shard.channelMu.RUnlock()
-				}
-				shardGroup.shardsMu.RUnlock()
-
-				statusManager.ShardGroups = append(statusManager.ShardGroups, statusShardGroup)
-			}
-			manager.shardGroupsMu.RUnlock()
-
-			managers = append(managers, statusManager)
+				ShardGroups: getManagerShardGroupStatus(manager),
+			})
 		}
 
 		writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
@@ -387,42 +359,73 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 		friendlyName := manager.Configuration.FriendlyName
 		manager.configurationMu.RUnlock()
 
-		statusManager := &structs.StatusEndpointManager{
-			DisplayName: friendlyName,
-			ShardGroups: make([]*structs.StatusEndpointShardGroup, 0, len(manager.ShardGroups)),
-		}
-
-		manager.shardGroupsMu.RLock()
-		for _, shardGroup := range manager.ShardGroups {
-			shardGroup.shardsMu.RLock()
-			statusShardGroup := &structs.StatusEndpointShardGroup{
-				ShardGroupID: int(shardGroup.ID),
-				Shards:       make([][5]int, 0, len(shardGroup.Shards)),
-				Status:       shardGroup.Status,
-			}
-
-			for _, shard := range shardGroup.Shards {
-				shard.channelMu.RLock()
-				statusShardGroup.Shards = append(statusShardGroup.Shards, [5]int{
-					shard.ShardID,
-					int(shard.Status),
-					int(shard.LastHeartbeatAck.Load().Sub(shard.LastHeartbeatSent.Load()).Milliseconds()),
-					len(shard.Guilds),
-					int(time.Since(shard.Start).Seconds()),
-				})
-				shard.channelMu.RUnlock()
-			}
-			shardGroup.shardsMu.RUnlock()
-
-			statusManager.ShardGroups = append(statusManager.ShardGroups, statusShardGroup)
-		}
-		manager.shardGroupsMu.RUnlock()
-
 		writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
-			Ok:   true,
-			Data: statusManager,
+			Ok: true,
+			Data: &structs.StatusEndpointManager{
+				DisplayName: friendlyName,
+				ShardGroups: getManagerShardGroupStatus(manager),
+			},
 		})
 	}
+}
+
+func getManagerShardGroupStatus(manager *Manager) (shardGroups []*structs.StatusEndpointShardGroup) {
+	manager.shardGroupsMu.RLock()
+
+	sortedShardGroupIDs := make([]int, 0)
+	for shardGroupID, shardGroup := range manager.ShardGroups {
+		shardGroup.statusMu.RLock()
+		shardGroupStatus := shardGroup.Status
+		shardGroup.statusMu.RUnlock()
+
+		if shardGroupStatus != structs.ShardGroupStatusClosed {
+			sortedShardGroupIDs = append(sortedShardGroupIDs, int(shardGroupID))
+		}
+	}
+
+	sort.Ints(sortedShardGroupIDs)
+
+	for _, shardGroupID := range sortedShardGroupIDs {
+		shardGroup := manager.ShardGroups[int64(shardGroupID)]
+
+		shardGroup.shardsMu.RLock()
+		statusShardGroup := &structs.StatusEndpointShardGroup{
+			ShardGroupID: int(shardGroup.ID),
+			Shards:       make([][5]int, 0, len(shardGroup.Shards)),
+			Status:       shardGroup.Status,
+		}
+
+		sortedShardIDs := make([]int, 0, len(shardGroup.Shards))
+		for shardID := range shardGroup.Shards {
+			sortedShardIDs = append(sortedShardIDs, shardID)
+		}
+
+		sort.Ints(sortedShardIDs)
+
+		for _, shardID := range sortedShardIDs {
+			shard := shardGroup.Shards[shardID]
+
+			shard.statusMu.RLock()
+			shardStatus := shard.Status
+			shard.statusMu.RUnlock()
+
+			shard.guildsMu.RLock()
+			statusShardGroup.Shards = append(statusShardGroup.Shards, [5]int{
+				shard.ShardID,
+				int(shardStatus),
+				int(shard.LastHeartbeatAck.Load().Sub(shard.LastHeartbeatSent.Load()).Milliseconds()),
+				len(shard.Guilds),
+				int(time.Since(shard.Start).Seconds()),
+			})
+			shard.guildsMu.RUnlock()
+		}
+		shardGroup.shardsMu.RUnlock()
+
+		shardGroups = append(shardGroups, statusShardGroup)
+	}
+	manager.shardGroupsMu.RUnlock()
+
+	return shardGroups
 }
 
 func (sg *Sandwich) UserEndpoint(ctx *fasthttp.RequestCtx) {
@@ -442,9 +445,6 @@ func (sg *Sandwich) UserEndpoint(ctx *fasthttp.RequestCtx) {
 
 func (sg *Sandwich) DashboardGetEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.requireDiscordAuthentication(func(ctx *fasthttp.RequestCtx) {
-		sg.managersMu.Lock()
-		defer sg.managersMu.Unlock()
-
 		sg.configurationMu.RLock()
 		configuration := sg.Configuration
 		sg.configurationMu.RUnlock()
@@ -460,9 +460,6 @@ func (sg *Sandwich) DashboardGetEndpoint(ctx *fasthttp.RequestCtx) {
 
 func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.requireDiscordAuthentication(func(ctx *fasthttp.RequestCtx) {
-		sg.managersMu.Lock()
-		defer sg.managersMu.Unlock()
-
 		managerConfiguration := ManagerConfiguration{}
 
 		err := json.Unmarshal(ctx.PostBody(), &managerConfiguration)
@@ -475,7 +472,10 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 			return
 		}
 
+		sg.managersMu.RLock()
 		manager, ok := sg.Managers[managerConfiguration.Identifier]
+		defer sg.managersMu.RUnlock()
+
 		if !ok {
 			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
 				Ok:    false,
@@ -511,6 +511,9 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 		manager.Sandwich.configurationMu.Unlock()
 
+		manager.Sandwich.configurationMu.RLock()
+		defer manager.Sandwich.configurationMu.RUnlock()
+
 		err = manager.Sandwich.SaveConfiguration(manager.Sandwich.Configuration, manager.Sandwich.ConfigurationLocation)
 		if err != nil {
 			writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
@@ -530,9 +533,6 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 func (sg *Sandwich) CreateManagerShardGroupEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.requireDiscordAuthentication(func(ctx *fasthttp.RequestCtx) {
-		sg.managersMu.Lock()
-		defer sg.managersMu.Unlock()
-
 		shardGroupArguments := structs.CreateManagerShardGroupArguments{}
 
 		err := json.Unmarshal(ctx.PostBody(), &shardGroupArguments)
@@ -545,7 +545,10 @@ func (sg *Sandwich) CreateManagerShardGroupEndpoint(ctx *fasthttp.RequestCtx) {
 			return
 		}
 
+		sg.managersMu.RLock()
 		manager, ok := sg.Managers[shardGroupArguments.Identifier]
+		sg.managersMu.RUnlock()
+
 		if !ok {
 			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
 				Ok:    false,
@@ -564,6 +567,11 @@ func (sg *Sandwich) CreateManagerShardGroupEndpoint(ctx *fasthttp.RequestCtx) {
 
 		_, err = sg.Open()
 		if err != nil {
+			// Cleanup ShardGroups to remove failed ShardGroup.
+			manager.shardGroupsMu.Lock()
+			delete(manager.ShardGroups, sg.ID)
+			manager.shardGroupsMu.Unlock()
+
 			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
 				Ok:    false,
 				Error: err.Error(),

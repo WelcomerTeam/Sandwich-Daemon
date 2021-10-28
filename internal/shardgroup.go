@@ -129,6 +129,10 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	}
 	sg.shardsMu.Unlock()
 
+	if len(sg.ShardIDs) == 0 {
+		return nil, ErrMissingShards
+	}
+
 	initialShard := sg.Shards[sg.ShardIDs[0]]
 
 	sg.SetStatus(structs.ShardGroupStatusConnecting)
@@ -185,9 +189,9 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 					break
 				}
-
-				connectGroup.Done()
 			}
+
+			connectGroup.Done()
 		}(shardID)
 	}
 
@@ -229,11 +233,20 @@ func (sg *ShardGroup) Close() {
 
 	sg.SetStatus(structs.ShardGroupStatusClosing)
 
+	closeWaiter := sync.WaitGroup{}
+
 	sg.shardsMu.RLock()
 	for _, sh := range sg.Shards {
-		sh.Close(websocket.StatusNormalClosure)
+		closeWaiter.Add(1)
+
+		go func(sh *Shard) {
+			sh.Close(websocket.StatusNormalClosure)
+			closeWaiter.Done()
+		}(sh)
 	}
 	sg.shardsMu.RUnlock()
+
+	closeWaiter.Wait()
 
 	sg.SetStatus(structs.ShardGroupStatusClosed)
 }
