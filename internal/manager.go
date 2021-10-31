@@ -239,7 +239,7 @@ func (mg *Manager) Scale(shardIDs []int, shardCount int) (sg *ShardGroup) {
 
 // PublishEvent sends an event to consumers.
 func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData interface{}) (err error) {
-	packet := mg.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
+	packet, _ := mg.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
 	defer mg.Sandwich.payloadPool.Put(packet)
 
 	mg.configurationMu.RLock()

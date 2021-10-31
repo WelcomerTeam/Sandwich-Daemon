@@ -42,3 +42,8 @@ type CreateManagerShardGroupArguments struct {
 	AutoSharded bool   `json:"auto_sharded"`
 	Identifier  string `json:"identifier"`
 }
+
+type SandwichConsumerConfiguration struct {
+	Version string            `json:"v"`
+	Tokens  map[string]string `json:"tokens"`
+}

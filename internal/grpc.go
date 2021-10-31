@@ -1,12 +1,15 @@
 package internal
 
 import (
+	"bytes"
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -53,11 +56,78 @@ func requestMatch(query string, id discord.Snowflake, name string) bool {
 	return query == id.String() || strings.Contains(norm.NFKD.String(name), query)
 }
 
+// Listen delivers information to consumers.
+func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.Sandwich_ListenServer) (err error) {
+	globalPoolID := grpc.sg.globalPoolAccumulator.Add(1)
+	channel := make(chan []byte)
+
+	grpc.sg.globalPoolMu.Lock()
+	grpc.sg.globalPool[globalPoolID] = channel
+	grpc.sg.globalPoolMu.Unlock()
+
+	defer func() {
+		grpc.sg.globalPoolMu.Lock()
+		delete(grpc.sg.globalPool, globalPoolID)
+		grpc.sg.globalPoolMu.Unlock()
+
+		close(channel)
+	}()
+
+	ctx := listener.Context()
+
+	for {
+		select {
+		case msg := <-channel:
+			err = listener.Send(&pb.ListenResponse{
+				Timestamp: time.Now().Unix(),
+				Data:      msg,
+			})
+			if err != nil {
+				grpc.sg.Logger.Error().Err(err).
+					Str("identifier", request.Identifier).
+					Msg("Encountered error on GRPC Listen")
+
+				return err
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// PostAnalytics is used for consumers to provide information to Sandwich Daemon.
+func (grpc *routeSandwichServer) PostAnalytics(ctx context.Context, request *pb.PostAnalyticsRequest) (response *pb.BaseResponse, err error) {
+	// TODO
+
+	return
+}
+
 // FetchConsumerConfiguration returns the Consumer Configuration.
 func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context, request *pb.FetchConsumerConfigurationRequest) (response *pb.FetchConsumerConfigurationResponse, err error) {
-	// TODO: Implementation for this. Are we sending a file in FS or will this be bootstrapped from the yaml?
+	// ConsumerConfiguration at the moment just contains the Version of the library
+	// along with a map of tokens. The key is the application passed in metadata.
+	tokens := make(map[string]string, 0)
 
-	return &pb.FetchConsumerConfigurationResponse{}, nil
+	grpc.sg.managersMu.RLock()
+	for _, manager := range grpc.sg.Managers {
+		manager.configurationMu.RLock()
+		tokens[manager.Identifier.Load()] = manager.Configuration.Token
+		manager.configurationMu.RUnlock()
+	}
+	grpc.sg.managersMu.RUnlock()
+
+	sandwichConsumerConfiguration := structs.SandwichConsumerConfiguration{
+		Version: VERSION,
+		Tokens:  tokens,
+	}
+
+	var b bytes.Buffer
+
+	json.NewEncoder(&b).Encode(sandwichConsumerConfiguration)
+
+	return &pb.FetchConsumerConfigurationResponse{
+		File: b.Bytes(),
+	}, nil
 }
 
 // FetchGuildChannels returns guilds based on the guildID.
@@ -457,11 +527,13 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 		return response, ErrNoShardPresent
 	}
 
-	err = shard.SendEvent(ctx, discord.GatewayOp(request.GatewayOPCode), request.Data)
-	if err != nil {
-		response.Error = err.Error()
+	for _, data := range request.Data {
+		err = shard.SendEvent(ctx, discord.GatewayOp(request.GatewayOPCode), data)
+		if err != nil {
+			response.Error = err.Error()
 
-		return response, err
+			return response, err
+		}
 	}
 
 	response.Ok = true

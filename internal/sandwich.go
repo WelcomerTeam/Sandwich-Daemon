@@ -24,9 +24,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	gotils_strings "github.com/savsgio/gotils/strings"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/atomic"
 	"golang.org/x/oauth2"
+	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
@@ -69,8 +71,13 @@ type Sandwich struct {
 	IdentifyBuckets *bucketstore.BucketStore `json:"-"`
 
 	EventsInflight *atomic.Int64 `json:"-"`
-	managersMu     sync.RWMutex
-	Managers       map[string]*Manager `json:"managers" yaml:"managers"`
+
+	managersMu sync.RWMutex
+	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
+
+	globalPoolMu          sync.RWMutex
+	globalPool            map[int64]chan []byte
+	globalPoolAccumulator *atomic.Int64
 
 	State *SandwichState `json:"-"`
 
@@ -171,6 +178,10 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 		managersMu: sync.RWMutex{},
 		Managers:   make(map[string]*Manager),
+
+		globalPoolMu:          sync.RWMutex{},
+		globalPool:            make(map[int64]chan []byte),
+		globalPoolAccumulator: atomic.NewInt64(0),
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
 
@@ -311,6 +322,19 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return err
 	}
 
+	produces := make([]string, 0)
+
+	// Dedupe event
+	for _, manager := range sg.Managers {
+		produceKey := manager.Configuration.Messaging.ChannelName
+
+		if !gotils_strings.Include(produces, produceKey) {
+			manager.Sandwich.PublishGlobalEvent("SW_CONFIGURATION_RELOAD", nil)
+
+			produces = append(produces, produceKey)
+		}
+	}
+
 	return nil
 }
 
@@ -349,6 +373,35 @@ func (sg *Sandwich) Open() (err error) {
 
 	sg.Logger.Info().Msg("Creating managers")
 	sg.startManagers()
+
+	return
+}
+
+// PublishGlobalEvent publishes an event to all Consumers.
+func (sg *Sandwich) PublishGlobalEvent(eventType string, data interface{}) (err error) {
+	sg.globalPoolMu.RLock()
+	defer sg.globalPoolMu.RUnlock()
+
+	packet, _ := sg.payloadPool.Get().(*structs.SandwichPayload)
+	defer sg.payloadPool.Put(packet)
+
+	packet.Op = discord.GatewayOpDispatch
+	packet.Type = eventType
+	packet.Data = data
+	packet.Extra = make(map[string]interface{})
+
+	packet.Metadata = structs.SandwichMetadata{
+		Version: VERSION,
+	}
+
+	payload, err := json.Marshal(packet)
+	if err != nil {
+		return xerrors.Errorf("failed to marshal payload: %w", err)
+	}
+
+	for _, pool := range sg.globalPool {
+		pool <- payload
+	}
 
 	return
 }

@@ -18,6 +18,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SandwichClient interface {
+	// Listen delivers information to consumers.
+	Listen(ctx context.Context, in *ListenRequest, opts ...grpc.CallOption) (Sandwich_ListenClient, error)
+	// PostAnalytics is used for consumers to provide information to Sandwich Daemon.
+	PostAnalytics(ctx context.Context, in *PostAnalyticsRequest, opts ...grpc.CallOption) (*BaseResponse, error)
 	// FetchConsumerConfiguration returns the Consumer Configuration.
 	FetchConsumerConfiguration(ctx context.Context, in *FetchConsumerConfigurationRequest, opts ...grpc.CallOption) (*FetchConsumerConfigurationResponse, error)
 	// FetchGuildChannels returns guilds based on the guildID.
@@ -54,6 +58,47 @@ type sandwichClient struct {
 
 func NewSandwichClient(cc grpc.ClientConnInterface) SandwichClient {
 	return &sandwichClient{cc}
+}
+
+func (c *sandwichClient) Listen(ctx context.Context, in *ListenRequest, opts ...grpc.CallOption) (Sandwich_ListenClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Sandwich_ServiceDesc.Streams[0], "/sandwich.Sandwich/Listen", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &sandwichListenClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Sandwich_ListenClient interface {
+	Recv() (*ListenResponse, error)
+	grpc.ClientStream
+}
+
+type sandwichListenClient struct {
+	grpc.ClientStream
+}
+
+func (x *sandwichListenClient) Recv() (*ListenResponse, error) {
+	m := new(ListenResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *sandwichClient) PostAnalytics(ctx context.Context, in *PostAnalyticsRequest, opts ...grpc.CallOption) (*BaseResponse, error) {
+	out := new(BaseResponse)
+	err := c.cc.Invoke(ctx, "/sandwich.Sandwich/PostAnalytics", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *sandwichClient) FetchConsumerConfiguration(ctx context.Context, in *FetchConsumerConfigurationRequest, opts ...grpc.CallOption) (*FetchConsumerConfigurationResponse, error) {
@@ -150,6 +195,10 @@ func (c *sandwichClient) WhereIsGuild(ctx context.Context, in *WhereIsGuildReque
 // All implementations must embed UnimplementedSandwichServer
 // for forward compatibility
 type SandwichServer interface {
+	// Listen delivers information to consumers.
+	Listen(*ListenRequest, Sandwich_ListenServer) error
+	// PostAnalytics is used for consumers to provide information to Sandwich Daemon.
+	PostAnalytics(context.Context, *PostAnalyticsRequest) (*BaseResponse, error)
 	// FetchConsumerConfiguration returns the Consumer Configuration.
 	FetchConsumerConfiguration(context.Context, *FetchConsumerConfigurationRequest) (*FetchConsumerConfigurationResponse, error)
 	// FetchGuildChannels returns guilds based on the guildID.
@@ -185,6 +234,12 @@ type SandwichServer interface {
 type UnimplementedSandwichServer struct {
 }
 
+func (UnimplementedSandwichServer) Listen(*ListenRequest, Sandwich_ListenServer) error {
+	return status.Errorf(codes.Unimplemented, "method Listen not implemented")
+}
+func (UnimplementedSandwichServer) PostAnalytics(context.Context, *PostAnalyticsRequest) (*BaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PostAnalytics not implemented")
+}
 func (UnimplementedSandwichServer) FetchConsumerConfiguration(context.Context, *FetchConsumerConfigurationRequest) (*FetchConsumerConfigurationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchConsumerConfiguration not implemented")
 }
@@ -226,6 +281,45 @@ type UnsafeSandwichServer interface {
 
 func RegisterSandwichServer(s grpc.ServiceRegistrar, srv SandwichServer) {
 	s.RegisterService(&Sandwich_ServiceDesc, srv)
+}
+
+func _Sandwich_Listen_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ListenRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SandwichServer).Listen(m, &sandwichListenServer{stream})
+}
+
+type Sandwich_ListenServer interface {
+	Send(*ListenResponse) error
+	grpc.ServerStream
+}
+
+type sandwichListenServer struct {
+	grpc.ServerStream
+}
+
+func (x *sandwichListenServer) Send(m *ListenResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Sandwich_PostAnalytics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PostAnalyticsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SandwichServer).PostAnalytics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/sandwich.Sandwich/PostAnalytics",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SandwichServer).PostAnalytics(ctx, req.(*PostAnalyticsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Sandwich_FetchConsumerConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -416,6 +510,10 @@ var Sandwich_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SandwichServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "PostAnalytics",
+			Handler:    _Sandwich_PostAnalytics_Handler,
+		},
+		{
 			MethodName: "FetchConsumerConfiguration",
 			Handler:    _Sandwich_FetchConsumerConfiguration_Handler,
 		},
@@ -456,6 +554,12 @@ var Sandwich_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Sandwich_WhereIsGuild_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Listen",
+			Handler:       _Sandwich_Listen_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "events.proto",
 }

@@ -260,7 +260,7 @@ func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
 
 	sg.Status = status
 
-	sg.Manager.PublishEvent(context.TODO(), "SHARD_GROUP_STATUS_UPDATE", structs.ShardGroupStatusUpdate{
+	sg.Manager.Sandwich.PublishGlobalEvent("SW_SHARD_GROUP_STATUS_UPDATE", structs.ShardGroupStatusUpdate{
 		Manager:    sg.Manager.Identifier.Load(),
 		ShardGroup: sg.ID,
 		Status:     int(sg.Status),

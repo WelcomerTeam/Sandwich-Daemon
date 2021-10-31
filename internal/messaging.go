@@ -20,6 +20,7 @@ type MQClient interface {
 
 	Connect(ctx context.Context, clientName string, args map[string]interface{}) (err error)
 	Publish(ctx context.Context, channel string, data []byte) (err error)
+
 	// Function to receive a channel with messages
 	// Function to close
 }
@@ -42,11 +43,13 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPaylo
 	sh.Manager.configurationMu.RLock()
 	identifier := sh.Manager.Configuration.ProducerIdentifier
 	channelName := sh.Manager.Configuration.Messaging.ChannelName
+	application := sh.Manager.Identifier.Load()
 	sh.Manager.configurationMu.RUnlock()
 
 	packet.Metadata = structs.SandwichMetadata{
-		Version:    VERSION,
-		Identifier: identifier,
+		Version:     VERSION,
+		Identifier:  identifier,
+		Application: application,
 		Shard: [3]int{
 			int(sh.ShardGroup.ID),
 			sh.ShardID,
