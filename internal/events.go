@@ -129,7 +129,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 		return
 	}
 
-	packet := sh.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
+	packet, _ := sh.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
 	defer sh.Sandwich.payloadPool.Put(packet)
 
 	// Directly copy op, sequence and type from original message.

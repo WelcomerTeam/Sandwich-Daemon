@@ -6,6 +6,12 @@ option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf/sandw
 import "discord.proto";
 
 service Sandwich {
+  // Listen delivers information to consumers.
+  rpc Listen(ListenRequest) returns (stream ListenResponse) {}
+
+  // PostAnalytics is used for consumers to provide information to Sandwich Daemon.
+  rpc PostAnalytics(PostAnalyticsRequest) returns (BaseResponse) {}
+
   // FetchConsumerConfiguration returns the Consumer Configuration.
   rpc FetchConsumerConfiguration(FetchConsumerConfigurationRequest) returns (FetchConsumerConfigurationResponse) {}
 
@@ -66,7 +72,7 @@ message FetchConsumerConfigurationRequest {
 }
 
 message FetchConsumerConfigurationResponse {
-  repeated bytes file = 1;
+  bytes file = 1;
 }
 
 message FetchGuildChannelsRequest {
@@ -133,7 +139,7 @@ message SendWebsocketMessageRequest {
   int64 shardGroup = 2;
   int64 shard = 3;
   int64 gatewayOPCode = 4;
-  repeated bytes data = 5;
+  bytes data = 5;
 }
 
 message WhereIsGuildLocation {
@@ -149,4 +155,19 @@ message WhereIsGuildRequest {
 message WhereIsGuildResponse {
   BaseResponse baseResponse = 1;
   repeated WhereIsGuildLocation locations = 2;
+}
+
+message ListenRequest {
+  string identifier = 1;
+}
+
+message ListenResponse {
+  int64 timestamp = 1;
+  bytes data = 2;
+}
+
+message PostAnalyticsRequest {
+  string identifier = 1;
+  // GRPC does not determine the structure of the data provided.
+  bytes data = 2;
 }

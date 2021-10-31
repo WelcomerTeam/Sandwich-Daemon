@@ -603,7 +603,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 				}
 			}
 
-			msg := sh.Sandwich.receivedPool.Get().(*discord.GatewayPayload)
+			msg, _ := sh.Sandwich.receivedPool.Get().(*discord.GatewayPayload)
 
 			connectionErr = json.Unmarshal(data, &msg)
 			if connectionErr != nil {
@@ -679,7 +679,7 @@ func (sh *Shard) Resume(ctx context.Context) (err error) {
 
 // SendEvent sends an event to discord.
 func (sh *Shard) SendEvent(ctx context.Context, op discord.GatewayOp, data interface{}) (err error) {
-	packet := sh.Sandwich.sentPool.Get().(*discord.SentPayload)
+	packet, _ := sh.Sandwich.sentPool.Get().(*discord.SentPayload)
 	defer sh.Sandwich.sentPool.Put(packet)
 
 	packet.Op = op
@@ -903,7 +903,7 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) {
 
 	sh.Status = status
 
-	sh.Manager.PublishEvent(context.TODO(), "SHARD_STATUS_UPDATE", structs.ShardStatusUpdate{
+	sh.Manager.Sandwich.PublishGlobalEvent("SW_SHARD_STATUS_UPDATE", structs.ShardStatusUpdate{
 		Manager:    sh.Manager.Identifier.Load(),
 		ShardGroup: sh.ShardGroup.ID,
 		Shard:      sh.ShardID,

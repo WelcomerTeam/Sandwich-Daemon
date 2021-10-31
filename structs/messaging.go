@@ -6,8 +6,9 @@ import (
 
 // SandwichMetadata represents the identification information that consumers will use.
 type SandwichMetadata struct {
-	Version    string `json:"v"`
-	Identifier string `json:"i"`
+	Version     string `json:"v"`
+	Identifier  string `json:"i"`
+	Application string `json:"a"`
 	// ShardGroup ID, Shard ID, Shard Count
 	Shard [3]int `json:"s"`
 }
