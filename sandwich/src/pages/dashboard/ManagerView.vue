@@ -1,8 +1,12 @@
 <template>
   <div>
-    <div v-if="$store.getters.getSelectedManagerStatus" class="mb-4">
-      <form class="mb-8">
-        <field-set class="mb-4">
+    <div v-if="$store.getters.getSelectedManagerStatus">
+      <manager-status
+        :manager="$store.getters.getSelectedManagerStatus"
+        class="mb-4"
+      />
+      <form class="mb-4">
+        <field-set class="mb-4 space-y-4" name="New ShardGroup">
           <text-input
             type="text"
             v-model="newShardGroupShardIDs"
@@ -49,7 +53,6 @@
           </div>
         </div>
       </form>
-      <manager-status :manager="$store.getters.getSelectedManagerStatus" />
     </div>
 
     <form v-if="manager" class="space-y-4">
@@ -227,13 +230,13 @@
 </template>
 
 <script>
-import TextInput from "../../components/TextInput.vue";
+import dashboardAPI from "../../api/dashboard";
+import store from "../../store";
 
 import { ref } from "vue";
 
-import store from "../../store";
+import TextInput from "../../components/TextInput.vue";
 import FieldSet from "../../components/FieldSet.vue";
-import dashboardAPI from "../../api/dashboard";
 import ManagerStatus from "../../components/ManagerStatus.vue";
 import LoadingIcon from "../../components/LoadingIcon.vue";
 

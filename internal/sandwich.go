@@ -116,13 +116,6 @@ type SandwichConfiguration struct {
 		Compress   bool   `json:"compress" yaml:"compress"`
 	} `json:"logging" yaml:"logging"`
 
-	State struct {
-		StoreGuildMembers bool `json:"store_guild_members" yaml:"store_guild_members"`
-		StoreEmojis       bool `json:"store_emojis" yaml:"store_emojis"`
-
-		EnableSmaz bool `json:"enable_smaz" yaml:"enable_smaz"`
-	} `json:"state" yaml:"state"`
-
 	Identify struct {
 		// URL allows for variables:
 		// {shard_id}, {shard_count}, {token} {token_hash}, {max_concurrency}
