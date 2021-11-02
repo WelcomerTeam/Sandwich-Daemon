@@ -13,8 +13,10 @@
     "@mdi/js": "^6.2.95",
     "@tailwindcss/forms": "^0.3.4",
     "axios": "^0.22.0",
+    "prismjs": "^1.25.0",
     "sass": "^1.42.1",
     "vue": "^3.2.20",
+    "vue-prism-editor": "^2.0.0-alpha.2",
     "vue-router": "^4.0.11",
     "vuex": "^4.0.2"
   },
