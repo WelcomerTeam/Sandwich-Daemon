@@ -17,6 +17,13 @@ export default {
       errorCallback
     );
   },
+  updateSandwichConfig(data, callback, errorCallback) {
+    fetch(
+      { url: "/api/sandwich", method: "post", data: data },
+      callback,
+      errorCallback
+    );
+  },
   createManagerShardGroup(data, callback, errorCallback) {
     fetch(
       { url: "/api/manager/shardgroup", method: "post", data: data },

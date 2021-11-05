@@ -15,13 +15,6 @@ const routes = [
       import(/* webpackChunkName: "dashboard" */ "../pages/Dashboard.vue"),
     children: [
       {
-        path: "consumers",
-        component: () =>
-          import(
-            /* webpackChunkName: "dashboard" */ "../pages/dashboard/Consumers.vue"
-          ),
-      },
-      {
         path: "settings",
         component: () =>
           import(

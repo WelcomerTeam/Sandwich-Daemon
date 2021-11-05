@@ -105,20 +105,22 @@ func (grpc *routeSandwichServer) PostAnalytics(ctx context.Context, request *pb.
 // FetchConsumerConfiguration returns the Consumer Configuration.
 func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context, request *pb.FetchConsumerConfigurationRequest) (response *pb.FetchConsumerConfigurationResponse, err error) {
 	// ConsumerConfiguration at the moment just contains the Version of the library
-	// along with a map of tokens. The key is the application passed in metadata.
-	tokens := make(map[string]string, 0)
+	// along with a map of identifiers. The key is the application passed in metadata.
+	identifiers := make(map[string]structs.ManagerConsumerConfiguration, 0)
 
 	grpc.sg.managersMu.RLock()
 	for _, manager := range grpc.sg.Managers {
 		manager.configurationMu.RLock()
-		tokens[manager.Identifier.Load()] = manager.Configuration.Token
+		identifiers[manager.Identifier.Load()] = structs.ManagerConsumerConfiguration{
+			Token: manager.Configuration.Token,
+		}
 		manager.configurationMu.RUnlock()
 	}
 	grpc.sg.managersMu.RUnlock()
 
 	sandwichConsumerConfiguration := structs.SandwichConsumerConfiguration{
-		Version: VERSION,
-		Tokens:  tokens,
+		Version:     VERSION,
+		Identifiers: identifiers,
 	}
 
 	var b bytes.Buffer
