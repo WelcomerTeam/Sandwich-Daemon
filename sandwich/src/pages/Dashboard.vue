@@ -54,10 +54,6 @@ var tabs = [
     name: "Global Settings",
     href: "/dashboard/settings",
   },
-  {
-    name: "Consumers",
-    href: "/dashboard/consumers",
-  },
 ];
 
 export default {

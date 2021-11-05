@@ -44,6 +44,10 @@ type CreateManagerShardGroupArguments struct {
 }
 
 type SandwichConsumerConfiguration struct {
-	Version string            `json:"v"`
-	Tokens  map[string]string `json:"tokens"`
+	Version     string                                  `json:"v"`
+	Identifiers map[string]ManagerConsumerConfiguration `json:"identifiers"`
+}
+
+type ManagerConsumerConfiguration struct {
+	Token string `json:"token"`
 }

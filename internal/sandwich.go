@@ -24,7 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	gotils_strings "github.com/savsgio/gotils/strings"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/atomic"
 	"golang.org/x/oauth2"
@@ -149,7 +148,7 @@ type SandwichConfiguration struct {
 		OAuth *oauth2.Config `json:"oauth" yaml:"oauth"`
 
 		// List of discord user IDs that can access the dashboard.
-		UserAccess []int64 `json:"user_access" yaml:"user_access"`
+		UserAccess []string `json:"user_access" yaml:"user_access"`
 	} `json:"http" yaml:"http"`
 
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
@@ -315,18 +314,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return err
 	}
 
-	produces := make([]string, 0)
-
-	// Dedupe event
-	for _, manager := range sg.Managers {
-		produceKey := manager.Configuration.Messaging.ChannelName
-
-		if !gotils_strings.Include(produces, produceKey) {
-			manager.Sandwich.PublishGlobalEvent("SW_CONFIGURATION_RELOAD", nil)
-
-			produces = append(produces, produceKey)
-		}
-	}
+	sg.PublishGlobalEvent("SW_CONFIGURATION_RELOAD", nil)
 
 	return nil
 }

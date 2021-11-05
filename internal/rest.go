@@ -35,10 +35,11 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r := router.New()
 	r.GET("/api/status", sg.StatusEndpoint)
 	r.GET("/api/user", sg.UserEndpoint)
-	r.GET("/api/dashboard", sg.DashboardGetEndpoint)
+	r.GET("/api/dashboard", sg.requireDiscordAuthentication(sg.DashboardGetEndpoint))
 
-	r.POST("/api/manager", sg.ManagerUpdateEndpoint)
-	r.POST("/api/manager/shardgroup", sg.CreateManagerShardGroupEndpoint)
+	r.POST("/api/manager", sg.requireDiscordAuthentication(sg.ManagerUpdateEndpoint))
+	r.POST("/api/manager/shardgroup", sg.requireDiscordAuthentication(sg.CreateManagerShardGroupEndpoint))
+	r.POST("/api/sandwich", sg.requireDiscordAuthentication(sg.SandwichUpdateEndpoint))
 
 	r.GET("/login", sg.LoginEndpoint)
 	r.GET("/logout", sg.LogoutEndpoint)
@@ -153,7 +154,7 @@ func (sg *Sandwich) authenticateValue(ctx *fasthttp.RequestCtx) (store *session.
 	defer sg.configurationMu.RUnlock()
 
 	for _, userID := range sg.Configuration.HTTP.UserAccess {
-		if userID == int64(user.ID) {
+		if userID == user.ID.String() {
 			isAuthenticated = true
 
 			return
@@ -458,131 +459,161 @@ func (sg *Sandwich) DashboardGetEndpoint(ctx *fasthttp.RequestCtx) {
 	})(ctx)
 }
 
-func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
-	sg.requireDiscordAuthentication(func(ctx *fasthttp.RequestCtx) {
-		managerConfiguration := ManagerConfiguration{}
+func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
+	sandwichConfiguration := SandwichConfiguration{}
 
-		err := json.Unmarshal(ctx.PostBody(), &managerConfiguration)
-		if err != nil {
-			writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
-				Ok:    false,
-				Error: err.Error(),
-			})
-
-			return
-		}
-
-		sg.managersMu.RLock()
-		manager, ok := sg.Managers[managerConfiguration.Identifier]
-		defer sg.managersMu.RUnlock()
-
-		if !ok {
-			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
-				Ok:    false,
-				Error: ErrNoManagerPresent.Error(),
-			})
-
-			return
-		}
-
-		manager.configurationMu.Lock()
-		manager.Configuration = &managerConfiguration
-		manager.configurationMu.Unlock()
-
-		err = manager.Initialize()
-		if err != nil {
-			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
-				Ok:    false,
-				Error: err.Error(),
-			})
-
-			return
-		}
-
-		manager.configurationMu.RLock()
-		manager.Client = NewClient(manager.Configuration.Token)
-		manager.configurationMu.RUnlock()
-
-		manager.Sandwich.configurationMu.Lock()
-		for _, configurationManager := range manager.Sandwich.Configuration.Managers {
-			if managerConfiguration.Identifier == configurationManager.Identifier {
-				configurationManager = manager.Configuration
-			}
-		}
-		manager.Sandwich.configurationMu.Unlock()
-
-		manager.Sandwich.configurationMu.RLock()
-		defer manager.Sandwich.configurationMu.RUnlock()
-
-		err = manager.Sandwich.SaveConfiguration(manager.Sandwich.Configuration, manager.Sandwich.ConfigurationLocation)
-		if err != nil {
-			writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
-				Ok:    false,
-				Error: err.Error(),
-			})
-
-			return
-		}
-
-		writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
-			Ok:   true,
-			Data: "Changes applied. You may need to make a new shard group to apply changes",
+	err := json.Unmarshal(ctx.PostBody(), &sandwichConfiguration)
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
 		})
-	})(ctx)
+
+		return
+	}
+
+	sg.configurationMu.Lock()
+	sandwichConfiguration.Managers = sg.Configuration.Managers
+	sg.Configuration = &sandwichConfiguration
+	sg.configurationMu.Unlock()
+
+	err = sg.SaveConfiguration(&sandwichConfiguration, sg.ConfigurationLocation)
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
+		})
+
+		return
+	}
+
+	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+		Ok:   true,
+		Data: "Changes applied.",
+	})
+}
+
+func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
+	managerConfiguration := ManagerConfiguration{}
+
+	err := json.Unmarshal(ctx.PostBody(), &managerConfiguration)
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
+		})
+
+		return
+	}
+
+	sg.managersMu.RLock()
+	manager, ok := sg.Managers[managerConfiguration.Identifier]
+	defer sg.managersMu.RUnlock()
+
+	if !ok {
+		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+			Ok:    false,
+			Error: ErrNoManagerPresent.Error(),
+		})
+
+		return
+	}
+
+	manager.configurationMu.Lock()
+	manager.Configuration = &managerConfiguration
+	manager.configurationMu.Unlock()
+
+	err = manager.Initialize()
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
+		})
+
+		return
+	}
+
+	manager.configurationMu.RLock()
+	manager.Client = NewClient(manager.Configuration.Token)
+	manager.configurationMu.RUnlock()
+
+	sg.configurationMu.Lock()
+	for _, configurationManager := range sg.Configuration.Managers {
+		if managerConfiguration.Identifier == configurationManager.Identifier {
+			configurationManager = manager.Configuration
+		}
+	}
+	sg.configurationMu.Unlock()
+
+	sg.configurationMu.RLock()
+	defer sg.configurationMu.RUnlock()
+
+	err = sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
+		})
+
+		return
+	}
+
+	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+		Ok:   true,
+		Data: "Changes applied. You may need to make a new shard group to apply changes",
+	})
 }
 
 func (sg *Sandwich) CreateManagerShardGroupEndpoint(ctx *fasthttp.RequestCtx) {
-	sg.requireDiscordAuthentication(func(ctx *fasthttp.RequestCtx) {
-		shardGroupArguments := structs.CreateManagerShardGroupArguments{}
+	shardGroupArguments := structs.CreateManagerShardGroupArguments{}
 
-		err := json.Unmarshal(ctx.PostBody(), &shardGroupArguments)
-		if err != nil {
-			writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
-				Ok:    false,
-				Error: err.Error(),
-			})
-
-			return
-		}
-
-		sg.managersMu.RLock()
-		manager, ok := sg.Managers[shardGroupArguments.Identifier]
-		sg.managersMu.RUnlock()
-
-		if !ok {
-			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
-				Ok:    false,
-				Error: ErrNoManagerPresent.Error(),
-			})
-
-			return
-		}
-
-		shardIDs, shardCount := manager.getInitialShardCount(
-			shardGroupArguments.ShardCount,
-			shardGroupArguments.ShardIDs,
-		)
-
-		sg := manager.Scale(shardIDs, shardCount)
-
-		_, err = sg.Open()
-		if err != nil {
-			// Cleanup ShardGroups to remove failed ShardGroup.
-			manager.shardGroupsMu.Lock()
-			delete(manager.ShardGroups, sg.ID)
-			manager.shardGroupsMu.Unlock()
-
-			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
-				Ok:    false,
-				Error: err.Error(),
-			})
-
-			return
-		}
-
-		writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
-			Ok:   true,
-			Data: "ShardGroup successfully created",
+	err := json.Unmarshal(ctx.PostBody(), &shardGroupArguments)
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
 		})
-	})(ctx)
+
+		return
+	}
+
+	sg.managersMu.RLock()
+	manager, ok := sg.Managers[shardGroupArguments.Identifier]
+	sg.managersMu.RUnlock()
+
+	if !ok {
+		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+			Ok:    false,
+			Error: ErrNoManagerPresent.Error(),
+		})
+
+		return
+	}
+
+	shardIDs, shardCount := manager.getInitialShardCount(
+		shardGroupArguments.ShardCount,
+		shardGroupArguments.ShardIDs,
+	)
+
+	shardGroup := manager.Scale(shardIDs, shardCount)
+
+	_, err = shardGroup.Open()
+	if err != nil {
+		// Cleanup ShardGroups to remove failed ShardGroup.
+		manager.shardGroupsMu.Lock()
+		delete(manager.ShardGroups, shardGroup.ID)
+		manager.shardGroupsMu.Unlock()
+
+		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
+		})
+
+		return
+	}
+
+	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+		Ok:   true,
+		Data: "ShardGroup successfully created",
+	})
 }
