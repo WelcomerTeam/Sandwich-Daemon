@@ -881,7 +881,6 @@ func (sh *Shard) OnDispatchEvent(eventType string) {
 
 // OnGuildDispatchEvent is called during the dispatch event to call analytics with a guild Id.
 func (sh *Shard) OnGuildDispatchEvent(eventType string, guildID discord.Snowflake) {
-	sandwichGuildEventCount.WithLabelValues(sh.Manager.Identifier.Load(), guildID.String()).Inc()
 	sandwichDispatchEventCount.WithLabelValues(sh.Manager.Identifier.Load(), eventType).Inc()
 }
 

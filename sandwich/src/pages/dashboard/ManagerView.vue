@@ -3,6 +3,7 @@
     <div v-if="$store.getters.getSelectedManagerStatus">
       <manager-status
         :manager="$store.getters.getSelectedManagerStatus"
+        :showAllShardGroups="true"
         class="mb-4"
       />
       <form class="mb-4">
@@ -47,6 +48,28 @@
           >
             New ShardGroup
           </button>
+          <button
+            class="
+              ml-3
+              inline-flex
+              items-center
+              px-4
+              py-2
+              border border-transparent
+              text-sm
+              font-medium
+              rounded-md
+              text-red-600
+              bg-white
+              focus:outline-none
+              focus:ring-2
+              focus:ring-offset-2
+              focus:ring-red-500
+            "
+            @click.prevent="stopShardGroups"
+          >
+            Stop ShardGroups
+          </button>
           <div v-if="shardGroupLoading" class="flex">
             <loading-icon />
             Connecting Shards...
@@ -63,7 +86,7 @@
           name="identifier"
           label="Identifier"
           description="Internal identifier of the manager. This cannot be changed and is unique."
-          :disabled="true"
+          :disabled="allowIdentifierEdits"
         />
         <text-input
           type="text"
@@ -114,6 +137,7 @@
           v-model="manager.bot.chunk_guilds_on_startup"
           name="chunk_guilds_on_startup"
           label="Chunk Guilds on Startup"
+          :disabled="true"
           description="When enabled, will request guild members on startup."
         />
       </field-set>
@@ -123,6 +147,7 @@
           v-model="manager.caching.cache_users"
           name="cache_users"
           label="Cache Users"
+          :disabled="true"
           description="When enabled, will keep users in cache."
         />
         <text-input
@@ -130,6 +155,7 @@
           v-model="manager.caching.cache_members"
           name="cache_members"
           label="Cache Members"
+          :disabled="true"
           description="When enabled, will keep members in cache. Noop if cache users is disabled."
         />
         <text-input
@@ -137,6 +163,7 @@
           v-model="manager.caching.store_mutuals"
           name="store_mutuals"
           label="Store Mutuals"
+          :disabled="true"
           description="When enabled, will keep track of mutual guilds for a specific user. Rely on oauth2 instead of this. Noop if cache members or cache users is disabled."
         />
       </field-set>
@@ -225,6 +252,51 @@
       >
         Save
       </button>
+      <button
+        class="
+          ml-3
+          inline-fl1ex
+          items-center
+          px-4
+          py-2
+          border border-transparent
+          text-sm
+          font-medium
+          rounded-md
+          shadow-sm
+          bg-white
+          border-blue-600
+          text-blue-600
+          hover:bg-gray-50
+          focus:outline-none
+          focus:ring-2
+          focus:ring-offset-2
+          focus:ring-blue-500
+        "
+        @click.prevent="initializeManager"
+      >
+        Initialize
+      </button>
+      <button
+        class="
+          ml-3
+          inline-flex
+          items-center
+          px-4
+          py-2
+          border border-transparent
+          text-sm
+          font-medium
+          rounded-md
+          text-red-600
+          hover:text-red-700
+          bg-white
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500
+        "
+        @click.prevent="deleteManager"
+      >
+        Delete Manager
+      </button>
     </form>
   </div>
 </template>
@@ -246,6 +318,12 @@ export default {
     FieldSet,
     ManagerStatus,
     LoadingIcon,
+  },
+  props: {
+    allowIdentifierEdits: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup() {
     return {
@@ -296,18 +374,45 @@ export default {
       }
     },
     event_blacklist() {
-      if (this.manager && this.manager.events) {
+      if (this.manager && this.manager.events && this.event_blacklist) {
         this.manager.events.event_blacklist = this.event_blacklist.split(",");
       }
     },
     produce_blacklist() {
-      if (this.manager && this.manager.events) {
+      if (this.manager && this.manager.events && this.produce_blacklist) {
         this.manager.events.produce_blacklist =
           this.produce_blacklist.split(",");
       }
     },
   },
   methods: {
+    stopShardGroups() {
+      if (confirm("Are you sure you want to stop all shard groups?")) {
+        dashboardAPI.stopShardGroups(
+          this.manager.identifier,
+          (response) => {
+            alert(response);
+          },
+          (e) => {
+            alert(e);
+          }
+        );
+      }
+    },
+    deleteManager() {
+      if (confirm("Are you sure you want to delete this manager?")) {
+        dashboardAPI.deleteManager(
+          this.manager.identifier,
+          (response) => {
+            alert(response);
+            location.reload();
+          },
+          (e) => {
+            alert(e);
+          }
+        );
+      }
+    },
     refreshManager() {
       if (typeof store.getters.getSelectedManager !== "undefined") {
         store.dispatch("fetchManagerStatus");
@@ -317,6 +422,17 @@ export default {
       } else {
         this.manager = null;
       }
+    },
+    initializeManager() {
+      dashboardAPI.initializeManager(
+        this.manager.identifier,
+        (response) => {
+          alert(response);
+        },
+        (e) => {
+          alert(e);
+        }
+      );
     },
     updateManagerConfig() {
       dashboardAPI.updateManagerConfig(
@@ -330,23 +446,26 @@ export default {
       );
     },
     createShardGroup() {
-      this.shardGroupLoading = true;
-      dashboardAPI.createManagerShardGroup(
-        {
-          shard_ids: this.newShardGroupShardIDs,
-          shard_count: Number(this.newShardGroupShardCount),
-          auto_sharded: this.newShardGroupAutoSharded,
-          identifier: this.manager.identifier,
-        },
-        (response) => {
-          this.shardGroupLoading = false;
-          alert(response);
-          store.dispatch("fetchManagerStatus");
-        },
-        (e) => {
-          alert(e);
-        }
-      );
+      if (confirm("Are you sure you want to make a new shard group?")) {
+        this.shardGroupLoading = true;
+        dashboardAPI.createManagerShardGroup(
+          {
+            shard_ids: this.newShardGroupShardIDs,
+            shard_count: Number(this.newShardGroupShardCount),
+            auto_sharded: this.newShardGroupAutoSharded,
+            identifier: this.manager.identifier,
+          },
+          (response) => {
+            this.shardGroupLoading = false;
+            alert(response);
+            store.dispatch("fetchManagerStatus");
+          },
+          (e) => {
+            this.shardGroupLoading = false;
+            alert(e);
+          }
+        );
+      }
     },
   },
 };

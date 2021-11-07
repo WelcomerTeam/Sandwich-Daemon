@@ -51,3 +51,12 @@ type SandwichConsumerConfiguration struct {
 type ManagerConsumerConfiguration struct {
 	Token string `json:"token"`
 }
+
+type CreateManagerArguments struct {
+	Identifier         string `json:"identifier"`
+	ProducerIdentifier string `json:"producer_identifier"`
+	FriendlyName       string `json:"friendly_name"`
+	Token              string `json:"token"`
+	ClientName         string `json:"client_name"`
+	ChannelName        string `json:"channel_name"`
+}

@@ -1,7 +1,0 @@
-pc, fn, line, _ := runtime.Caller(1)
-fun := runtime.FuncForPC(pc)
-println(fn, line, fun.Name())
-
-// github.com/WelcomerTeam/Sandwich-Daemon/next/internal/state.go
-// 168
-// github.com/WelcomerTeam/Sandwich-Daemon/next/internal.GatewayDispatch

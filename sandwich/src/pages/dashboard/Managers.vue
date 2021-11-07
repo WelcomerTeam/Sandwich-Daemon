@@ -140,6 +140,7 @@
             focus:ring-offset-2
             focus:ring-blue-500
           "
+          @click="createNewManager"
         >
           Create new Manager
         </button>
@@ -151,6 +152,9 @@
 </template>
 
 <script>
+import dashboardAPI from "../../api/dashboard";
+import store from "../../store";
+
 import TextInput from "../../components/TextInput.vue";
 import {
   Listbox,
@@ -160,8 +164,6 @@ import {
   ListboxOptions,
 } from "@headlessui/vue";
 import { CheckIcon, SelectorIcon } from "@heroicons/vue/solid";
-
-import store from "../../store";
 
 export default {
   components: {
@@ -177,6 +179,61 @@ export default {
   methods: {
     onChange(event) {
       store.commit("setSelectedManager", event.target.value);
+    },
+  },
+  methods: {
+    createNewManager() {
+      let newManagerConfiguration = {
+        identifier: "",
+        producer_identifier: "",
+        friendly_name: "",
+        token: "",
+        client_name: "",
+        channel_name: "",
+      };
+
+      newManagerConfiguration.identifier = prompt(
+        "Enter new manager identifier",
+        ""
+      );
+      if (newManagerConfiguration.identifier == "") {
+        return;
+      }
+
+      newManagerConfiguration.producer_identifier = prompt(
+        "Enter new manager producer identifier",
+        newManagerConfiguration.producer_identifier
+      );
+      if (newManagerConfiguration.producer_identifier == "") {
+        return;
+      }
+
+      newManagerConfiguration.friendly_name = prompt(
+        "Enter friendly name",
+        newManagerConfiguration.identifier
+      );
+      if (newManagerConfiguration.friendly_name == "") {
+        return;
+      }
+
+      newManagerConfiguration.token = prompt("Enter manager token", "");
+      newManagerConfiguration.client_name = prompt("Enter client name", "");
+      newManagerConfiguration.channel_name = prompt(
+        "Enter new manager channel name",
+        "sandwich"
+      );
+
+      dashboardAPI.createNewManager(
+        newManagerConfiguration,
+        (response) => {
+          alert(response);
+          store.dispatch("fetchDashboardConfig");
+          location.reload();
+        },
+        (e) => {
+          alert(e);
+        }
+      );
     },
   },
 };

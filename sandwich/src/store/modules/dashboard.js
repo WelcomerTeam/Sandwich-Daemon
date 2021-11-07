@@ -50,7 +50,7 @@ const getters = {
 
 const actions = {
   fetchDashboardConfig({ commit }) {
-    dashboardAPI.getDashboardConfig(
+    dashboardAPI.getSandwichConfig(
       (dashboard) => {
         commit("setDashboardConfig", [dashboard, null]);
       },
