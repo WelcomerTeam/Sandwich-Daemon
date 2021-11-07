@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -35,6 +34,7 @@ import (
 	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
 )
 
+// VERSION follows semantic versionining.
 const VERSION = "1.0.0"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -652,13 +652,5 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int64("eventsBuffer", int64(eventsBuffer)).
 				Msg("Updated prometheus guages")
 		}
-	}
-}
-
-func divi(a, b int) int {
-	if b == 0 {
-		return 0
-	} else {
-		return int(math.Round(float64(a) / float64(b)))
 	}
 }
