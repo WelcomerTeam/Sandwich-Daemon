@@ -843,7 +843,6 @@ func OnPresenceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	}, true, nil
 }
 
-// TODO: Implement.
 func OnStageInstanceCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
@@ -859,7 +858,6 @@ func OnStageInstanceCreate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}, true, nil
 }
 
-// TODO: Implement.
 func OnStageInstanceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
@@ -875,7 +873,6 @@ func OnStageInstanceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}, true, nil
 }
 
-// TODO: Implement.
 func OnStageInstanceDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 

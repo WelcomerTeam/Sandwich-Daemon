@@ -5,6 +5,7 @@ type IdentifyPayload struct {
 	ShardID        int    `json:"shard_id"`
 	ShardCount     int    `json:"shard_count"`
 	Token          string `json:"token"`
+	TokenHash      string `json:"token_hash"`
 	MaxConcurrency int    `json:"max_concurrency"`
 }
 

@@ -20,9 +20,7 @@ type MQClient interface {
 
 	Connect(ctx context.Context, clientName string, args map[string]interface{}) (err error)
 	Publish(ctx context.Context, channel string, data []byte) (err error)
-
-	// Function to receive a channel with messages
-	// Function to close
+	// Function to clean close
 }
 
 func NewMQClient(mqType string) (MQClient, error) {

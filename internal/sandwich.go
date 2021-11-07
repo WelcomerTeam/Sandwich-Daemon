@@ -35,7 +35,7 @@ import (
 	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
 )
 
-const VERSION = "0.0.1"
+const VERSION = "1.0.0"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -78,9 +78,11 @@ type Sandwich struct {
 	globalPool            map[int64]chan []byte
 	globalPoolAccumulator *atomic.Int64
 
-	State *SandwichState `json:"-"`
+	State  *SandwichState `json:"-"`
+	Client *Client        `json:"-"`
 
-	Client *Client `json:"-"`
+	webhookBuckets *bucketstore.BucketStore
+	statusCache    *interfaceCache
 
 	SessionProvider *session.Session
 
@@ -180,6 +182,11 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 		EventsInflight: atomic.NewInt64(0),
 
 		State: NewSandwichState(),
+
+		Client: NewClient(""),
+
+		webhookBuckets: bucketstore.NewBucketStore(),
+		statusCache:    NewInterfaceCache(),
 
 		payloadPool: sync.Pool{
 			New: func() interface{} { return new(structs.SandwichPayload) },
@@ -488,8 +495,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	prometheus.MustRegister(sandwichEventCount)
 	prometheus.MustRegister(sandwichEventInflightCount)
 	prometheus.MustRegister(sandwichEventBufferCount)
-	// prometheus.MustRegister(sandwichDiscardedEvents)
-	prometheus.MustRegister(sandwichGuildEventCount)
+	// prometheus.MustRegister(sandwichGuildEventCount)
 	prometheus.MustRegister(sandwichDispatchEventCount)
 	prometheus.MustRegister(sandwichGatewayLatency)
 	prometheus.MustRegister(sandwichUnavailableGuildCount)

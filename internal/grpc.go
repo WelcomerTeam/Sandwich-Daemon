@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +11,8 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/xerrors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -20,9 +21,10 @@ var (
 	ErrNoUserIDPresent  = xerrors.New("Missing user ID")
 	ErrNoQueryPresent   = xerrors.New("Missing query")
 
-	ErrNoManagerPresent    = xerrors.New("Invalid manager identifier passed")
-	ErrNoShardGroupPresent = xerrors.New("Invalid shard group identifier passed")
-	ErrNoShardPresent      = xerrors.New("Invalid shard ID passed")
+	ErrDuplicateManagerPresent = xerrors.New("Duplicate manager identifier passed")
+	ErrNoManagerPresent        = xerrors.New("Invalid manager identifier passed")
+	ErrNoShardGroupPresent     = xerrors.New("Invalid shard group identifier passed")
+	ErrNoShardPresent          = xerrors.New("Invalid shard ID passed")
 
 	ErrCacheMiss = xerrors.New("Could not find state for this guild ID")
 )
@@ -45,9 +47,9 @@ func onGRPCRequest() {
 
 func onGRPCHit(ok bool, guild_id int64) {
 	if ok {
-		grpcCacheHits.WithLabelValues(strconv.FormatInt(guild_id, MagicDecimalBase)).Inc()
+		grpcCacheHits.Inc()
 	} else {
-		grpcCacheMisses.WithLabelValues(strconv.FormatInt(guild_id, MagicDecimalBase)).Inc()
+		grpcCacheMisses.Inc()
 	}
 }
 
@@ -99,7 +101,7 @@ func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.S
 func (grpc *routeSandwichServer) PostAnalytics(ctx context.Context, request *pb.PostAnalyticsRequest) (response *pb.BaseResponse, err error) {
 	// TODO
 
-	return
+	return nil, status.Errorf(codes.Unimplemented, "method PostAnalytics not implemented")
 }
 
 // FetchConsumerConfiguration returns the Consumer Configuration.
@@ -488,9 +490,9 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 		Error: "Not implemented",
 	}
 
-	// TODO: Implement
+	// TODO
 
-	return response, nil
+	return response, status.Errorf(codes.Unimplemented, "method RequestGuildChunk not implemented")
 }
 
 // SendWebsocketMessage manually sends a websocket message.

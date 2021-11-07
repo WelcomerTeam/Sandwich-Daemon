@@ -16,6 +16,9 @@ const (
 	EmbedColourSandwich = 16701571
 	EmbedColourWarning  = 16760839
 	EmbedColourDanger   = 14431557
+
+	WebhookRateLimitDuration = 5 * time.Second
+	WebhookRateLimitLimit    = 5
 )
 
 // PublishSimpleWebhook is a helper function for creating quicker webhook messages.
@@ -57,6 +60,8 @@ func (sg *Sandwich) SendWebhook(webhookUrl string, message discord.WebhookMessag
 	if err != nil {
 		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
 	}
+
+	sg.webhookBuckets.CreateWaitForBucket(webhookUrl, WebhookRateLimitLimit, WebhookRateLimitDuration)
 
 	_, status, err = sg.Client.Fetch(sg.ctx, "POST", webhookUrl, bytes.NewBuffer(res), map[string]string{
 		"Content-Type": "application/json",

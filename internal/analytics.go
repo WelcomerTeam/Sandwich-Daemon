@@ -25,14 +25,6 @@ var (
 		},
 	)
 
-	sandwichGuildEventCount = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "sandwich_events_by_guild_id_total",
-			Help: "Sandwich Event Count by Guild",
-		},
-		[]string{"identifier", "guild_id"},
-	)
-
 	sandwichDispatchEventCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sandwich_dispatch_events_by_type_total",
@@ -113,26 +105,23 @@ var (
 		},
 	)
 
-	grpcCacheHits = prometheus.NewCounterVec(
+	grpcCacheHits = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "sandwich_grpc_cache_hits_total",
 			Help: "Sandwich GRPC Cache Hits",
 		},
-		[]string{"guild_id"},
 	)
 
-	grpcCacheMisses = prometheus.NewCounterVec(
+	grpcCacheMisses = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "sandwich_grpc_cache_misses_total",
 			Help: "Sandwich GRPC Cache Misses",
 		},
-		[]string{"guild_id"},
 	)
 
-	// TODO: Message Tracing
+	// TODO: More analytics
 	// Time between from discord GW and Produced
-	// -   Time in state
-	// Guild Count
 	// Guild Join / Leave
-	// Outbound WS count + Types.
+	// Identifies + Resumes
+	// Guild Count.
 )

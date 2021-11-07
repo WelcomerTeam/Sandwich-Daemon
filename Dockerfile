@@ -19,5 +19,4 @@ RUN apk add ca-certificates
 COPY --from=build_base /tmp/sandwich-daemon/out/sandwich /app/sandwich
 COPY --from=build_base /tmp/sandwich-daemon/web/dist /web/dist
 
-EXPOSE 5469
 CMD ["/app/sandwich"]

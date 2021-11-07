@@ -84,12 +84,14 @@ type ManagerConfiguration struct {
 		DefaultPresence      discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
 		Intents              int64                `json:"intents" yaml:"intents"`
 		ChunkGuildsOnStartup bool                 `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
+		// TODO: Guild chunking
 	} `json:"bot" yaml:"bot"`
 
 	Caching struct {
 		CacheUsers   bool `json:"cache_users" yaml:"cache_users"`
 		CacheMembers bool `json:"cache_members" yaml:"cache_members"`
 		StoreMutuals bool `json:"store_mutuals" yaml:"store_mutuals"`
+		// TODO: Flexible caching
 	} `json:"caching" yaml:"caching"`
 
 	Events struct {
@@ -190,6 +192,7 @@ func (mg *Manager) Open() (err error) {
 	shardIDs, shardCount := mg.getInitialShardCount(
 		mg.Configuration.Sharding.ShardCount,
 		mg.Configuration.Sharding.ShardIDs,
+		mg.Configuration.Sharding.AutoSharded,
 	)
 
 	sg := mg.Scale(shardIDs, shardCount)
@@ -342,6 +345,7 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 			ShardID:        shardID,
 			ShardCount:     shardCount,
 			Token:          token,
+			TokenHash:      hash,
 			MaxConcurrency: maxConcurrency,
 		}
 
@@ -353,7 +357,7 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 		client := http.DefaultClient
 
 		for {
-			req, err := http.NewRequestWithContext(mg.ctx, "POST", sendURL, &body)
+			req, err := http.NewRequestWithContext(mg.ctx, "POST", sendURL, bytes.NewBuffer(body.Bytes()))
 			if err != nil {
 				return err
 			}
@@ -361,6 +365,8 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 			for k, v := range identifyHeaders {
 				req.Header.Set(k, v)
 			}
+
+			req.Header.Set("Content-Type", "application/json")
 
 			res, err := client.Do(req)
 			if err != nil {
@@ -384,7 +390,11 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 				break
 			}
 
-			time.Sleep(time.Millisecond * time.Duration(identifyResponse.Wait))
+			waitDuration := time.Millisecond * time.Duration(identifyResponse.Wait)
+
+			mg.Logger.Info().Dur("wait", waitDuration).Msg("Received wait on identify")
+
+			time.Sleep(waitDuration)
 		}
 	}
 
@@ -406,15 +416,16 @@ func (mg *Manager) Close() {
 }
 
 // getInitialShardCount returns the initial shard count and ids to use.
-func (mg *Manager) getInitialShardCount(customShardCount int, customShardIDs string) (shardIDs []int, shardCount int) {
-	mg.configurationMu.RLock()
-	defer mg.configurationMu.RUnlock()
-
-	if mg.Configuration.Sharding.AutoSharded {
+func (mg *Manager) getInitialShardCount(customShardCount int, customShardIDs string, autoSharded bool) (shardIDs []int, shardCount int) {
+	if autoSharded {
 		shardCount = mg.Gateway.Shards
 
-		for i := 0; i < shardCount; i++ {
-			shardIDs = append(shardIDs, i)
+		if customShardIDs == "" {
+			for i := 0; i < shardCount; i++ {
+				shardIDs = append(shardIDs, i)
+			}
+		} else {
+			shardIDs = returnRange(customShardIDs, shardCount)
 		}
 	} else {
 		shardCount = customShardCount
