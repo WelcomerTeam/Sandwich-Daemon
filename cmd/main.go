@@ -2,65 +2,60 @@ package main
 
 import (
 	"flag"
-	"log"
-	"net/http"
-	_ "net/http/pprof" // nolint
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	gateway "github.com/TheRockettek/Sandwich-Daemon/internal"
+	internal "github.com/WelcomerTeam/Sandwich-Daemon/next/internal"
 	"github.com/rs/zerolog"
 )
 
 func main() {
-	lFlag := flag.String("level", "info", "Log level to use (debug/info/warn/error/fatal/panic/no/disabled/trace)")
+	lFlag := flag.String(
+		"level", "info",
+		"Global log level to use (debug/info/warn/error/fatal/panic/no/disabled/trace) (default: info)",
+	)
+
+	lConfigurationLocation := flag.String(
+		"configuration", "sandwich.yaml",
+		"Path of configuration file (default: sandwich.yaml)",
+	)
 
 	flag.Parse()
 
+	// Parse flag and configure logging
 	level, err := zerolog.ParseLevel(*lFlag)
 	if err != nil {
 		level = zerolog.InfoLevel
 	}
 
-	if level <= zerolog.DebugLevel {
-		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
-	}
+	zerolog.SetGlobalLevel(level)
 
-	logger := zerolog.ConsoleWriter{
+	consoleWriter := zerolog.ConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: time.Stamp,
 	}
 
-	log := zerolog.New(logger).With().Timestamp().Logger()
+	log := zerolog.New(consoleWriter).With().Timestamp().Logger()
 
-	if level != zerolog.NoLevel {
-		log.Info().Str("logLevel", level.String()).Msg("Using logging")
-	}
-
-	zerolog.SetGlobalLevel(level)
-
-	sg, err := gateway.NewSandwich(logger)
+	// Sandwich initialization
+	sandwich, err := internal.NewSandwich(consoleWriter, *lConfigurationLocation)
 	if err != nil {
 		log.Panic().Err(err).Msg("Cannot create sandwich")
 	}
 
-	err = sg.Open()
-
+	err = sandwich.Open()
 	if err != nil {
-		log.Panic().Err(err).Msgf("Cannot open sandwich: %s", err)
+		log.Panic().Err(err).Msg("Cannot open sandwich")
 	}
 
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-signalCh
 
-	err = sg.Close()
-
+	err = sandwich.Close()
 	if err != nil {
-		sg.Logger.Error().Err(err).Msg("Exception whilst closing sandwich")
+		sandwich.Logger.Warn().Err(err).Msg("Exception whilst closing sandwich")
 	}
 }

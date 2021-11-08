@@ -1,100 +1,138 @@
-package gateway
+package internal
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketstore"
-	consolepump "github.com/TheRockettek/Sandwich-Daemon/pkg/consolepump"
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
-	methodrouter "github.com/TheRockettek/Sandwich-Daemon/pkg/methodrouter"
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
-	gatewayServer "github.com/TheRockettek/Sandwich-Daemon/protobuf"
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
-	"github.com/gorilla/sessions"
+	"github.com/WelcomerTeam/RealRock/bucketstore"
+	limiter "github.com/WelcomerTeam/RealRock/limiter"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/fasthttp/session/v2"
+	memory "github.com/fasthttp/session/v2/providers/memory"
+	"github.com/google/brotli/go/cbrotli"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/tevino/abool"
 	"github.com/valyala/fasthttp"
+	"go.uber.org/atomic"
 	"golang.org/x/oauth2"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+
+	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
 )
 
-// VERSION respects semantic versioning.
-const VERSION = "0.9.2+050620212040"
+// VERSION follows semantic versionining.
+const VERSION = "1.0.0"
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
-	// ConfigurationPath is the path to the file the configration will be located
-	// at.
-	ConfigurationPath = "sandwich.yaml"
+	PermissionsDefault = 0o744
+	PermissionWrite    = 0o600
 
-	// ErrOnConfigurationFailure will return errors when loading configuration.
-	// If this is false, these errors are suppressed. There is no reason for this
-	// to be false.
-	ErrOnConfigurationFailure = true
+	prometheusGatherInterval = 10 * time.Second
 
-	// Interval between each analytic sample.
-	Interval = time.Second * 15
-
-	// Samples to hold. 5 seconds and 720 samples is 1 hour.
-	Samples = 720
-
-	// distCacheDuration is the amount of hours to cache dist files.
-	// This is 720 (1 month) by default.
-	distCacheDuration = 720
-
-	// Limit of how many events sandwich daemon can process concurrently on all
-	// managers.
-	poolConcurrency = 512
-
-	// Relative location of the distribution file for the website.
-	webRootPath = "web/dist"
+	BrotliBestSpeed          = 0
+	BrotliDefaultCompression = 6
 )
 
-// SandwichConfiguration represents the configuration of the program.
+type Sandwich struct {
+	sync.Mutex
+
+	ConfigurationLocation string `json:"configuration_location"`
+
+	ctx    context.Context
+	cancel func()
+
+	Logger    zerolog.Logger `json:"-"`
+	StartTime time.Time      `json:"start_time" yaml:"start_time"`
+
+	configurationMu sync.RWMutex
+	Configuration   *SandwichConfiguration `json:"configuration" yaml:"configuration"`
+
+	gatewayLimiter limiter.DurationLimiter `json:"-"`
+
+	ProducerClient *MQClient `json:"-"`
+
+	IdentifyBuckets *bucketstore.BucketStore `json:"-"`
+
+	EventsInflight *atomic.Int64 `json:"-"`
+
+	managersMu sync.RWMutex
+	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
+
+	globalPoolMu          sync.RWMutex
+	globalPool            map[int64]chan []byte
+	globalPoolAccumulator *atomic.Int64
+
+	State  *SandwichState `json:"-"`
+	Client *Client        `json:"-"`
+
+	webhookBuckets *bucketstore.BucketStore
+	statusCache    *interfaceCache
+
+	SessionProvider *session.Session
+
+	RouterHandler fasthttp.RequestHandler `json:"-"`
+	DistHandler   fasthttp.RequestHandler `json:"-"`
+
+	// SandwichPayload pool
+	payloadPool sync.Pool
+	// ReceivedPayload pool
+	receivedPool sync.Pool
+	// SentPayload pool
+	sentPool sync.Pool
+
+	// Brotli writers pool
+	FastCompressionOptions    cbrotli.WriterOptions `json:"-"`
+	DefaultCompressionOptions cbrotli.WriterOptions `json:"-"`
+}
+
+// SandwichConfiguration represents the configuration file.
 type SandwichConfiguration struct {
 	Logging struct {
-		Level                 string `json:"level" yaml:"level"`
-		ConsoleLoggingEnabled bool   `json:"console_logging" yaml:"console_logging"`
-		FileLoggingEnabled    bool   `json:"file_logging" yaml:"file_logging"`
+		Level              string `json:"level" yaml:"level"`
+		FileLoggingEnabled bool   `json:"file_logging_enabled" yaml:"file_logging_enabled"`
 
-		EncodeAsJSON bool `json:"encode_as_json" yaml:"encode_as_json"` // Make the framework log as json
+		EncodeAsJSON bool `json:"encode_as_json" yaml:"encode_as_json"`
 
-		Directory  string `json:"directory" yaml:"directory"`     // Directory to log into.
-		Filename   string `json:"filename" yaml:"filename"`       // Name of logfile.
-		MaxSize    int    `json:"max_size" yaml:"max_size"`       // Size in MB before a new file.
-		MaxBackups int    `json:"max_backups" yaml:"max_backups"` // Number of files to keep.
-		MaxAge     int    `json:"max_age" yaml:"max_age"`         // Number of days to keep a logfile.
-
-		MinimalWebhooks bool `json:"minimal_webhooks" yaml:"minimal_webhooks"`
-		// If enabled, webhooks for status changes will use one liners instead of an embed.
+		Directory  string `json:"directory" yaml:"directory"`
+		Filename   string `json:"filename" yaml:"filename"`
+		MaxSize    int    `json:"max_size" yaml:"max_size"`
+		MaxBackups int    `json:"max_backups" yaml:"max_backups"`
+		MaxAge     int    `json:"max_age" yaml:"max_age"`
+		Compress   bool   `json:"compress" yaml:"compress"`
 	} `json:"logging" yaml:"logging"`
 
-	RestTunnel struct {
-		Enabled bool   `json:"enabled" yaml:"enabled"`
-		URL     string `json:"url" yaml:"url"`
-	} `json:"resttunnel" yaml:"resttunnel"`
+	Identify struct {
+		// URL allows for variables:
+		// {shard_id}, {shard_count}, {token} {token_hash}, {max_concurrency}
+		URL string `json:"url" yaml:"url"`
+
+		Headers map[string]string `json:"headers" yaml:"headers"`
+	} `json:"identify" yaml:"identify"`
 
 	Producer struct {
 		Type          string                 `json:"type" yaml:"type"`
 		Configuration map[string]interface{} `json:"configuration" yaml:"configuration"`
 	} `json:"producer" yaml:"producer"`
+
+	Prometheus struct {
+		Host string `json:"host" yaml:"host"`
+	} `json:"prometheus" yaml:"prometheus"`
 
 	GRPC struct {
 		Network string `json:"network" yaml:"network"`
@@ -102,129 +140,106 @@ type SandwichConfiguration struct {
 	} `json:"grpc" yaml:"grpc"`
 
 	HTTP struct {
-		Host          string `json:"host" yaml:"host"`
-		SessionSecret string `json:"secret" yaml:"secret"`
-		Enabled       bool   `json:"enabled" yaml:"enabled"`
-		Public        bool   `json:"public" yaml:"public"`
+		Host string `json:"host" yaml:"host"`
+
+		// If enabled, allows access to dashboard else will only show
+		// index page.
+		Enabled bool `json:"enabled" yaml:"enabled"`
+
+		// OAuth config used to identification.
+		OAuth *oauth2.Config `json:"oauth" yaml:"oauth"`
+
+		// List of discord user IDs that can access the dashboard.
+		UserAccess []string `json:"user_access" yaml:"user_access"`
 	} `json:"http" yaml:"http"`
 
-	Webhooks      []string       `json:"webhooks" yaml:"webhooks"`
-	ElevatedUsers []string       `json:"elevated_users" yaml:"elevated_users"`
-	OAuth         *oauth2.Config `json:"oauth" yaml:"oauth"`
+	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
 }
 
-// Sandwich represents the global application state.
-type Sandwich struct {
-	sync.RWMutex // used to block important functions
-
-	Logger zerolog.Logger `json:"-"`
-
-	Start time.Time `json:"uptime"`
-
-	ConfigurationMu sync.RWMutex           `json:"-"`
-	Configuration   *SandwichConfiguration `json:"configuration"`
-
-	RestTunnelReverse abool.AtomicBool `json:"-"`
-	RestTunnelEnabled abool.AtomicBool `json:"-"`
-
-	ManagersMu sync.RWMutex        `json:"-"`
-	Managers   map[string]*Manager `json:"-"`
-
-	TotalEvents *int64 `json:"-"`
-
-	// Buckets will be shared between all Managers
-	Buckets *bucketstore.BucketStore `json:"-"`
-
-	// Used for connection sharing
-	ProducerClient *MQClient `json:"-"`
-
-	// State
-	State *SandwichState `json:"-"`
-
-	Router *methodrouter.MethodRouter `json:"-"`
-	Store  *sessions.CookieStore      `json:"-"`
-
-	distHandler fasthttp.RequestHandler
-	fs          *fasthttp.FS
-
-	ConsolePump *consolepump.ConsolePump `json:"-"`
-
-	Pool        *limiter.ConcurrencyLimiter `json:"-"`
-	PoolWaiting *int64                      `json:"-"`
-}
-
-// SandwichState stores the collective state for all ShardGroups
-// across all Managers in the application.
-type SandwichState struct {
-	GuildsMu sync.RWMutex                         `json:"-"`
-	Guilds   map[snowflake.ID]*discord.StateGuild `json:"-"`
-
-	GuildMembersMu sync.RWMutex                                `json:"-"`
-	GuildMembers   map[snowflake.ID]*discord.StateGuildMembers `json:"-"`
-
-	ChannelsMu sync.RWMutex                      `json:"-"`
-	Channels   map[snowflake.ID]*discord.Channel `json:"-"`
-
-	RolesMu sync.RWMutex                   `json:"-"`
-	Roles   map[snowflake.ID]*discord.Role `json:"-"`
-
-	EmojisMu sync.RWMutex                    `json:"-"`
-	Emojis   map[snowflake.ID]*discord.Emoji `json:"-"`
-
-	UsersMu sync.RWMutex                   `json:"-"`
-	Users   map[snowflake.ID]*discord.User `json:"-"`
-}
-
 // NewSandwich creates the application state and initializes it.
-func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
+func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, err error) {
 	sg = &Sandwich{
-		Logger:          zerolog.New(logger).With().Timestamp().Logger(),
-		ConfigurationMu: sync.RWMutex{},
+		Logger: zerolog.New(logger).With().Timestamp().Logger(),
+
+		ConfigurationLocation: configurationLocation,
+
+		configurationMu: sync.RWMutex{},
 		Configuration:   &SandwichConfiguration{},
-		ManagersMu:      sync.RWMutex{},
-		Managers:        make(map[string]*Manager),
-		TotalEvents:     new(int64),
-		Buckets:         bucketstore.NewBucketStore(),
-		State:           NewSandwichState(),
-		Pool:            limiter.NewConcurrencyLimiter("eventPool", poolConcurrency),
-		PoolWaiting:     new(int64),
+
+		gatewayLimiter: *limiter.NewDurationLimiter(1, time.Second),
+
+		managersMu: sync.RWMutex{},
+		Managers:   make(map[string]*Manager),
+
+		globalPoolMu:          sync.RWMutex{},
+		globalPool:            make(map[int64]chan []byte),
+		globalPoolAccumulator: atomic.NewInt64(0),
+
+		IdentifyBuckets: bucketstore.NewBucketStore(),
+
+		EventsInflight: atomic.NewInt64(0),
+
+		State: NewSandwichState(),
+
+		Client: NewClient(""),
+
+		webhookBuckets: bucketstore.NewBucketStore(),
+		statusCache:    NewInterfaceCache(),
+
+		payloadPool: sync.Pool{
+			New: func() interface{} { return new(structs.SandwichPayload) },
+		},
+
+		receivedPool: sync.Pool{
+			New: func() interface{} { return new(discord.GatewayPayload) },
+		},
+
+		sentPool: sync.Pool{
+			New: func() interface{} { return new(discord.SentPayload) },
+		},
+
+		FastCompressionOptions: cbrotli.WriterOptions{
+			Quality: BrotliBestSpeed,
+		},
+
+		DefaultCompressionOptions: cbrotli.WriterOptions{
+			Quality: BrotliDefaultCompression,
+		},
 	}
+
+	sg.ctx, sg.cancel = context.WithCancel(context.Background())
 
 	sg.Lock()
 	defer sg.Unlock()
 
-	configuration, err := sg.LoadConfiguration(ConfigurationPath)
+	configuration, err := sg.LoadConfiguration(sg.ConfigurationLocation)
 	if err != nil {
-		return nil, xerrors.Errorf("new sandwich: %w", err)
+		return nil, err
 	}
 
-	sg.ConfigurationMu.Lock()
-	defer sg.ConfigurationMu.Unlock()
+	sg.configurationMu.Lock()
+	defer sg.configurationMu.Unlock()
 
 	sg.Configuration = configuration
 
-	var writers []io.Writer
-
 	zlLevel, err := zerolog.ParseLevel(sg.Configuration.Logging.Level)
 	if err != nil {
-		sg.Logger.Warn().
-			Str("lvl", sg.Configuration.Logging.Level).
-			Msg("Current zerolog level provided is not valid")
+		sg.Logger.Warn().Str("level", sg.Configuration.Logging.Level).Msg("Logging level providied is not valid")
 	} else {
-		sg.Logger.Info().
-			Str("lvl", sg.Configuration.Logging.Level).
-			Msg("Changed logging level")
+		sg.Logger.Info().Str("level", sg.Configuration.Logging.Level).Msg("Changed logging level")
 		zerolog.SetGlobalLevel(zlLevel)
 	}
 
-	if sg.Configuration.Logging.ConsoleLoggingEnabled {
-		writers = append(writers, logger)
-	}
+	// Create file and console logging
+
+	var writers []io.Writer
+
+	writers = append(writers, logger)
 
 	if sg.Configuration.Logging.FileLoggingEnabled {
-		if err := os.MkdirAll(sg.Configuration.Logging.Directory, 0o744); err != nil {
+		if err := os.MkdirAll(sg.Configuration.Logging.Directory, PermissionsDefault); err != nil {
 			log.Error().Err(err).Str("path", sg.Configuration.Logging.Directory).Msg("Unable to create log directory")
 		} else {
 			lumber := &lumberjack.Logger{
@@ -232,6 +247,7 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 				MaxBackups: sg.Configuration.Logging.MaxBackups,
 				MaxSize:    sg.Configuration.Logging.MaxSize,
 				MaxAge:     sg.Configuration.Logging.MaxAge,
+				Compress:   sg.Configuration.Logging.Compress,
 			}
 
 			if sg.Configuration.Logging.EncodeAsJSON {
@@ -246,12 +262,6 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 		}
 	}
 
-	// We will only enable the ConsolePump if HTTP has been enabled
-	if sg.Configuration.HTTP.Enabled {
-		sg.ConsolePump = consolepump.NewConsolePump()
-		writers = append(writers, sg.ConsolePump)
-	}
-
 	mw := io.MultiWriter(writers...)
 	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
 	sg.Logger.Info().Msg("Logging configured")
@@ -259,9 +269,11 @@ func NewSandwich(logger io.Writer) (sg *Sandwich, err error) {
 	return sg, nil
 }
 
-// LoadConfiguration loads the sandwich configuration.
+// LoadConfiguration handles loading the configuration file.
 func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfiguration, err error) {
-	sg.Logger.Debug().Msg("Loading configuration")
+	sg.Logger.Debug().
+		Str("path", path).
+		Msg("Loading configuration")
 
 	defer func() {
 		if err == nil {
@@ -271,38 +283,25 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
-		if ErrOnConfigurationFailure {
-			return configuration, xerrors.Errorf("load configuration readfile: %w", err)
-		}
-
-		sg.Logger.Warn().Msg("Failed to read configuration but ErrOnConfigurationFailure is disabled")
+		return configuration, ErrReadConfigurationFailure
 	}
 
 	configuration = &SandwichConfiguration{}
-	err = yaml.Unmarshal(file, &configuration)
 
+	err = yaml.Unmarshal(file, configuration)
 	if err != nil {
-		if ErrOnConfigurationFailure {
-			return configuration, xerrors.Errorf("load configuration unmarshal: %w", err)
-		}
-
-		sg.Logger.Warn().Msg("Failed to unmarshal configuration but ErrOnConfigurationFailure is disabled")
+		return configuration, ErrLoadConfigurationFailure
 	}
 
-	err = sg.NormalizeConfiguration(configuration)
-
+	err = sg.ValidateConfiguration(configuration)
 	if err != nil {
-		if ErrOnConfigurationFailure {
-			return configuration, xerrors.Errorf("load configuration normalize: %w", err)
-		}
-
-		sg.Logger.Warn().Msg("Failed to normalize configuration but ErrOnConfigurationFailure is disabled")
+		return configuration, err
 	}
 
-	return configuration, err
+	return configuration, nil
 }
 
-// SaveConfiguration saves the sandwich configuration.
+// SaveConfiguration handles saving the configuration file.
 func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path string) (err error) {
 	sg.Logger.Debug().Msg("Saving configuration")
 
@@ -312,510 +311,346 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		}
 	}()
 
-	// Load old configuration only if necessary
-	var config *SandwichConfiguration
-
-	oldmanagers := make(map[string]*ManagerConfiguration)
-
-	for _, manager := range configuration.Managers {
-		if !manager.Persist {
-			config, err = sg.LoadConfiguration(path)
-
-			if err != nil {
-				return err
-			}
-
-			for _, mg := range config.Managers {
-				oldmanagers[mg.Identifier] = mg
-			}
-		}
-	}
-
-	storedManagers := []*ManagerConfiguration{}
-
-	for _, manager := range configuration.Managers {
-		if !manager.Persist {
-			oldmanager, ok := oldmanagers[manager.Identifier]
-			// If we do not persist, reuse the old configuration. If it does not exist we do not need to store anything.
-			if ok {
-				manager = oldmanager
-			} else {
-				continue
-			}
-		}
-
-		storedManagers = append(storedManagers, manager)
-	}
-
-	configuration.Managers = storedManagers
-
 	data, err := yaml.Marshal(configuration)
 	if err != nil {
-		return xerrors.Errorf("save configuration marshal: %w", err)
+		return err
 	}
 
-	err = ioutil.WriteFile(path, data, 0o600)
-
+	err = ioutil.WriteFile(path, data, PermissionWrite)
 	if err != nil {
-		return xerrors.Errorf("save configuration write: %w", err)
+		return err
 	}
+
+	sg.PublishGlobalEvent("SW_CONFIGURATION_RELOAD", nil)
 
 	return nil
 }
 
-// NormalizeConfiguration fills in any defaults within the configuration.
-func (sg *Sandwich) NormalizeConfiguration(configuration *SandwichConfiguration) (err error) {
-	// We will trim the password just in case.
-	// sg.ConfigurationMu.Lock()
-	// defer sg.ConfigurationMu.Unlock()
-
-	// if configuration.NATS.Address == "" {
-	// 	return xerrors.New("Configuration missing producer address. Try 127.0.0.1:4222")
-	// }
-
-	// if configuration.NATS.Channel == "" {
-	// 	return xerrors.Errorf("Configuration missing producer channel. Try sandwich")
-	// }
-
-	// if configuration.NATS.Cluster == "" {
-	// 	return xerrors.Errorf("Configuration missing producer cluster. Try cluster")
-	// }
-
-	if configuration.HTTP.Host == "" {
-		return xerrors.Errorf("Configuration missing HTTP host. Try 127.0.0.1:5469")
+// ValidateConfiguration ensures certain values in the configuration are passed.
+func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) (err error) {
+	if configuration.Prometheus.Host == "" {
+		return ErrConfigurationValidatePrometheus
 	}
 
 	if configuration.GRPC.Host == "" {
-		return xerrors.Errorf("Configuration missing GRPC host. Try 127.0.0.1:10000")
+		return ErrConfigurationValidateGRPC
+	}
+
+	if configuration.HTTP.Host == "" {
+		return ErrConfigurationValidateHTTP
 	}
 
 	return nil
 }
 
-// Open starts up sandwich and loads the configuration, starts up the HTTP server and
-// managers who have autostart enabled.
+// Open starts up any listeners, configures services and starts up managers.
 func (sg *Sandwich) Open() (err error) {
-	//          _-**--__
-	//      _--*         *--__         Sandwich Daemon 0
-	//  _-**                  **-_
-	// |_*--_                _-* _|	   HTTP: 127.0.0.1:1234
-	// | *-_ *---_     _----* _-* |    Managers: 2
-	//  *-_ *--__ *****  __---* _*
-	//     *--__ *-----** ___--*       placeholder
-	//          **-____-**
-	sg.ConfigurationMu.RLock()
-	defer sg.ConfigurationMu.RUnlock()
+	sg.StartTime = time.Now().UTC()
+	sg.Logger.Info().Msgf("Starting sandwich. Version %s", VERSION)
 
-	sg.Start = time.Now().UTC()
-	sg.Logger.Info().Msgf("Starting sandwich\n\n         _-**--__\n"+
-		"     _--*         *--__         Sandwich Daemon %s\n"+
-		" _-**                  **-_\n"+
-		"|_*--_                _-* _|    HTTP: %s\n"+
-		"| *-_ *---_     _----* _-* |    Managers: %d\n"+
-		" *-_ *--__ *****  __---* _*\n"+
-		"     *--__ *-----** ___--*      %s\n"+
-		"         **-____-**\n",
-		VERSION, sg.Configuration.HTTP.Host, len(sg.Configuration.Managers), "┬─┬ ノ( ゜-゜ノ)")
+	go sg.PublishSimpleWebhook("Starting sandwich", "", "Version "+VERSION, EmbedColourSandwich)
 
-	// Check if HTTP is enabled and if it is, set it up.
-	if sg.Configuration.HTTP.Enabled {
-		if sg.Configuration.HTTP.Public {
-			sg.Logger.Warn().Msg(
-				"Public mode is enabled on the HTTP API. This can allow anyone to" +
-					"get bot credentials if exposed publicly. It is recommended you disable" +
-					"this and add trusted user ids in sandwich.yaml under \"elevated_users\"")
-		}
+	// Setup GRPC
+	go sg.setupGRPC()
 
-		sg.Logger.Info().Msg("Starting up http server")
-		sg.fs = &fasthttp.FS{
-			Root:            webRootPath,
-			Compress:        true,
-			CompressBrotli:  true,
-			AcceptByteRange: true,
-			CacheDuration:   time.Hour * distCacheDuration,
-			PathNotFound:    fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) {}),
-		}
-		sg.distHandler = sg.fs.NewRequestHandler()
+	// Setup Prometheus
+	go sg.setupPrometheus()
 
-		sg.Store = sessions.NewCookieStore([]byte(sg.Configuration.HTTP.SessionSecret))
-
-		sg.Logger.Info().Msg("Creating endpoints")
-		sg.Router = createEndpoints(sg)
-
-		go func() {
-			sg.Logger.Info().Msgf("Serving dashboard on %s (Press CTRL+C to quit)\n", sg.Configuration.HTTP.Host)
-
-			err = fasthttp.ListenAndServe(sg.Configuration.HTTP.Host, sg.HandleRequest)
-			if err != nil {
-				sg.Logger.Error().Str("host", sg.Configuration.HTTP.Host).Err(err).Msg("Failed to serve http server")
-			}
-		}()
-	} else {
-		sg.Logger.Info().Msg("The web interface will not start as HTTP is disabled in the configuration")
-	}
-
-	go func() {
-		lis, err := net.Listen(sg.Configuration.GRPC.Network, sg.Configuration.GRPC.Host)
-		if err != nil {
-			sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to bind address for gRPC server")
-
-			return
-		}
-
-		var opts []grpc.ServerOption
-		grpcServer := grpc.NewServer(opts...)
-		gatewayServer.RegisterGatewayServer(grpcServer, sg.NewGatewayServer())
-
-		sg.Logger.Info().Msgf("Serving gRPC on %s (Press CTRL+C to quit)\n", sg.Configuration.GRPC.Host)
-
-		err = grpcServer.Serve(lis)
-		if err != nil {
-			sg.Logger.Error().Str("host", sg.Configuration.GRPC.Host).Err(err).Msg("Failed to serve gRPC server")
-		}
-	}()
-
-	// Configure RestTunnel
-	sg.Logger.Info().Msg("Configuring RestTunnel")
-
-	if sg.Configuration.RestTunnel.Enabled {
-		enabled, reverse, err := sg.VerifyRestTunnel(sg.Configuration.RestTunnel.URL)
-		if err != nil {
-			sg.Logger.Error().Err(err).Msg("Failed to verify RestTunnel")
-		}
-
-		sg.RestTunnelReverse.SetTo(reverse)
-		sg.RestTunnelEnabled.SetTo(enabled)
-	} else {
-		sg.RestTunnelEnabled.UnSet()
-	}
-
-	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
-		Embeds: []discord.Embed{
-			{
-				Title:       "Starting up Sandwich-Daemon",
-				URL:         "https://github.com/TheRockettek/Sandwich-Daemon",
-				Description: fmt.Sprintf("Version %s", VERSION),
-				Color:       discord.EmbedSandwich,
-				Timestamp:   WebhookTime(time.Now().UTC()),
-			},
-		},
-	})
+	// Setup HTTP
+	go sg.setupHTTP()
 
 	sg.Logger.Info().Msg("Creating managers")
-
 	sg.startManagers()
 
-	go sg.gatherAnalytics()
-	go sg.analyticsRunner()
+	return
+}
+
+// PublishGlobalEvent publishes an event to all Consumers.
+func (sg *Sandwich) PublishGlobalEvent(eventType string, data interface{}) (err error) {
+	sg.globalPoolMu.RLock()
+	defer sg.globalPoolMu.RUnlock()
+
+	packet, _ := sg.payloadPool.Get().(*structs.SandwichPayload)
+	defer sg.payloadPool.Put(packet)
+
+	packet.Op = discord.GatewayOpDispatch
+	packet.Type = eventType
+	packet.Data = data
+	packet.Extra = make(map[string]interface{})
+
+	packet.Metadata = structs.SandwichMetadata{
+		Version: VERSION,
+	}
+
+	payload, err := json.Marshal(packet)
+	if err != nil {
+		return xerrors.Errorf("failed to marshal payload: %w", err)
+	}
+
+	for _, pool := range sg.globalPool {
+		pool <- payload
+	}
+
+	return
+}
+
+// Close closes all managers gracefully.
+func (sg *Sandwich) Close() (err error) {
+	sg.Logger.Info().Msg("Closing sandwich")
+
+	go sg.PublishSimpleWebhook("Sandwich closing", "", "", EmbedColourSandwich)
+
+	sg.managersMu.RLock()
+	for _, manager := range sg.Managers {
+		manager.Close()
+	}
+	sg.managersMu.RUnlock()
+
+	if sg.cancel != nil {
+		sg.cancel()
+	}
 
 	return nil
 }
 
-func (sg *Sandwich) startManagers() {
-	sg.ManagersMu.Lock()
+func (sg *Sandwich) startManagers() (err error) {
+	sg.managersMu.Lock()
 
 	for _, managerConfiguration := range sg.Configuration.Managers {
-		manager, err := sg.NewManager(managerConfiguration)
-		if err != nil {
-			sg.Logger.Error().Err(err).Msg("Could not create manager")
-
-			continue
-		}
-
-		if _, ok := sg.Managers[managerConfiguration.Identifier]; ok {
+		if _, duplicate := sg.Managers[managerConfiguration.Identifier]; duplicate {
 			sg.Logger.Warn().
 				Str("identifier", managerConfiguration.Identifier).
-				Msg("Found conflicting manager identifiers. Ignoring!")
+				Msg("Manager contains duplicate identifier. Ignoring")
 
-			go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
-				Embeds: []discord.Embed{
-					{
-						Title:     "Found conflicting manager identifiers. Ignoring!",
-						Color:     discord.EmbedWarning,
-						Timestamp: WebhookTime(time.Now().UTC()),
-						Footer: &discord.EmbedFooter{
-							Text: fmt.Sprintf("Manager %s",
-								manager.Configuration.DisplayName),
-						},
-					},
-				},
-			})
+			go sg.PublishSimpleWebhook(
+				"Manager contains duplicate identifier. Ignoring.",
+				managerConfiguration.Identifier,
+				"",
+				EmbedColourWarning,
+			)
+		}
+
+		manager, err := sg.NewManager(managerConfiguration)
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to create manager")
 
 			continue
 		}
 
 		sg.Managers[managerConfiguration.Identifier] = manager
-		err = manager.Open()
 
+		err = manager.Initialize()
 		if err != nil {
-			manager.ErrorMu.Lock()
-			manager.Error = err.Error()
-			manager.ErrorMu.Unlock()
+			manager.Error.Store(err.Error())
 
-			sg.Logger.Error().Err(err).Msg("Failed to start up manager")
-		} else if manager.Configuration.AutoStart {
-			go func() {
-				manager.Gateway, err = manager.GetGateway()
-				if err != nil {
-					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
+			manager.Logger.Error().Err(err).Msg("Failed to initialize manager")
 
-					return
-				}
-
-				manager.GatewayMu.RLock()
-				manager.Logger.Info().
-					Int("sessions", manager.Gateway.SessionStartLimit.Remaining).
-					Msg("Retrieved gateway information")
-
-				shardCount := manager.GatherShardCount()
-				if shardCount >= manager.Gateway.SessionStartLimit.Remaining {
-					manager.Logger.Error().Err(ErrSessionLimitExhausted).Msg("Failed to start up manager")
-					manager.GatewayMu.RUnlock()
-
-					go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
-						Embeds: []discord.Embed{
-							{
-								Title: fmt.Sprintf("Failed to start up manager as not enough sessions to start %d shard(s). %d remain",
-									shardCount, manager.Gateway.SessionStartLimit.Remaining),
-								Color:     discord.EmbedDanger,
-								Timestamp: WebhookTime(time.Now().UTC()),
-								Footer: &discord.EmbedFooter{
-									Text: fmt.Sprintf("Manager %s",
-										manager.Configuration.DisplayName),
-								},
-							},
-						},
-					})
-
-					return
-				}
-
-				manager.GatewayMu.RUnlock()
-
-				ready, err := manager.Scale(manager.GenerateShardIDs(shardCount), shardCount, true)
-				if err != nil {
-					manager.Logger.Error().Err(err).Msg("Failed to start up manager")
-
-					go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
-						Embeds: []discord.Embed{
-							{
-								Title:       "Failed to start up manager",
-								Description: err.Error(),
-								Color:       discord.EmbedDanger,
-								Timestamp:   WebhookTime(time.Now().UTC()),
-								Footer: &discord.EmbedFooter{
-									Text: fmt.Sprintf("Manager %s",
-										manager.Configuration.DisplayName),
-								},
-							},
-						},
-					})
-
-					return
-				}
-
-				// Wait for all shards in ShardGroup to be ready
-				<-ready
-			}()
+			go sg.PublishSimpleWebhook("Failed to open manager", "`"+err.Error()+"`", "", EmbedColourDanger)
+		} else {
+			if managerConfiguration.AutoStart {
+				go manager.Open()
+			}
 		}
 	}
 
-	sg.ManagersMu.Unlock()
+	sg.managersMu.Unlock()
+
+	return nil
 }
 
-func (sg *Sandwich) gatherAnalytics() {
-	var events int64
+func (sg *Sandwich) setupGRPC() (err error) {
+	sg.configurationMu.RLock()
+	network := sg.Configuration.GRPC.Network
+	host := sg.Configuration.GRPC.Host
+	sg.configurationMu.RUnlock()
 
-	var managerEvents int64
+	listener, err := net.Listen(network, host)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to bind to host")
 
-	t := time.NewTicker(time.Second * 1)
+		return
+	}
+
+	var grpcOptions []grpc.ServerOption
+	grpcListener := grpc.NewServer(grpcOptions...)
+	grpcServer.RegisterSandwichServer(grpcListener, sg.newSandwichServer())
+
+	sg.Logger.Info().Msgf("Serving gRPC at %s", host)
+
+	err = grpcListener.Serve(listener)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
+
+		return
+	}
+
+	return nil
+}
+
+func (sg *Sandwich) setupPrometheus() (err error) {
+	sg.configurationMu.RLock()
+	host := sg.Configuration.Prometheus.Host
+	sg.configurationMu.RUnlock()
+
+	prometheus.MustRegister(sandwichEventCount)
+	prometheus.MustRegister(sandwichEventInflightCount)
+	prometheus.MustRegister(sandwichEventBufferCount)
+	// prometheus.MustRegister(sandwichGuildEventCount)
+	prometheus.MustRegister(sandwichDispatchEventCount)
+	prometheus.MustRegister(sandwichGatewayLatency)
+	prometheus.MustRegister(sandwichUnavailableGuildCount)
+	prometheus.MustRegister(sandwichStateTotalCount)
+	prometheus.MustRegister(sandwichStateGuildCount)
+	prometheus.MustRegister(sandwichStateGuildMembersCount)
+	prometheus.MustRegister(sandwichStateRoleCount)
+	prometheus.MustRegister(sandwichStateEmojiCount)
+	prometheus.MustRegister(sandwichStateUserCount)
+	prometheus.MustRegister(sandwichStateChannelCount)
+	prometheus.MustRegister(grpcCacheRequests)
+	prometheus.MustRegister(grpcCacheHits)
+	prometheus.MustRegister(grpcCacheMisses)
+
+	http.Handle("/metrics", promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{},
+	))
+
+	go sg.prometheusGatherer()
+
+	sg.Logger.Info().Msgf("Serving prometheus at %s", host)
+
+	err = http.ListenAndServe(host, nil)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve prometheus server")
+
+		return err
+	}
+
+	return nil
+}
+
+func (sg *Sandwich) setupHTTP() (err error) {
+	sg.configurationMu.RLock()
+	host := sg.Configuration.HTTP.Host
+	sg.configurationMu.RUnlock()
+
+	sg.Logger.Info().Msgf("Serving http at %s", host)
+
+	cfg := session.NewDefaultConfig()
+	provider, err := memory.New(memory.Config{})
+
+	sg.SessionProvider = session.New(cfg)
+	if err = sg.SessionProvider.SetProvider(provider); err != nil {
+		sg.Logger.Error().Err(err).Msg("Failed to set session provider")
+
+		return err
+	}
+
+	sg.RouterHandler, sg.DistHandler = sg.NewRestRouter()
+
+	err = fasthttp.ListenAndServe(host, sg.HandleRequest)
+	if err != nil {
+		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to server http server")
+
+		return err
+	}
+
+	return nil
+}
+
+func (sg *Sandwich) prometheusGatherer() {
+	t := time.NewTicker(prometheusGatherInterval)
 
 	for {
-		<-t.C
+		select {
+		case <-t.C:
+			sg.State.guildsMu.RLock()
+			stateGuilds := len(sg.State.Guilds)
+			sg.State.guildsMu.RUnlock()
 
-		events = 0
+			stateMembers := 0
+			stateRoles := 0
+			stateEmojis := 0
+			stateChannels := 0
 
-		sg.ManagersMu.RLock()
+			sg.State.guildMembersMu.RLock()
+			for _, guildMembers := range sg.State.GuildMembers {
+				guildMembers.MembersMu.RLock()
+				stateMembers += len(guildMembers.Members)
+				guildMembers.MembersMu.RUnlock()
+			}
+			sg.State.guildMembersMu.RUnlock()
 
-		for _, mg := range sg.Managers {
-			managerEvents = 0
+			sg.State.guildRolesMu.RLock()
+			for _, guildRoles := range sg.State.GuildRoles {
+				guildRoles.RolesMu.RLock()
+				stateRoles += len(guildRoles.Roles)
+				guildRoles.RolesMu.RUnlock()
+			}
+			sg.State.guildRolesMu.RUnlock()
 
-			mg.ShardGroupsMu.RLock()
-			for _, sg := range mg.ShardGroups {
-				sg.ShardsMu.RLock()
-				for _, sh := range sg.Shards {
-					managerEvents += atomic.SwapInt64(sh.events, 0)
+			sg.State.guildEmojisMu.RLock()
+			for _, guildEmojis := range sg.State.GuildEmojis {
+				guildEmojis.EmojisMu.RLock()
+				stateEmojis += len(guildEmojis.Emojis)
+				guildEmojis.EmojisMu.RUnlock()
+			}
+			sg.State.guildEmojisMu.RUnlock()
+
+			sg.State.guildChannelsMu.RLock()
+			for _, guildChannels := range sg.State.GuildChannels {
+				guildChannels.ChannelsMu.RLock()
+				stateChannels += len(guildChannels.Channels)
+				guildChannels.ChannelsMu.RUnlock()
+			}
+			sg.State.guildChannelsMu.RUnlock()
+
+			sg.State.usersMu.RLock()
+			stateUsers := len(sg.State.Users)
+			sg.State.usersMu.RUnlock()
+
+			sandwichStateTotalCount.Set(float64(
+				stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
+			))
+
+			eventsInflight := sg.EventsInflight.Load()
+
+			eventsBuffer := 0
+
+			sg.managersMu.RLock()
+			for _, manager := range sg.Managers {
+				manager.shardGroupsMu.RLock()
+				for _, shardgroup := range manager.ShardGroups {
+					shardgroup.shardsMu.RLock()
+					for _, shard := range shardgroup.Shards {
+						eventsBuffer += len(shard.MessageCh)
+					}
+					shardgroup.shardsMu.RUnlock()
 				}
-				sg.ShardsMu.RUnlock()
+				manager.shardGroupsMu.RUnlock()
 			}
-			mg.ShardGroupsMu.RUnlock()
+			sg.managersMu.RUnlock()
 
-			mg.AnalyticsMu.RLock()
-			if mg.Analytics != nil {
-				mg.Analytics.IncrementBy(managerEvents)
-			}
-			mg.AnalyticsMu.RUnlock()
+			sandwichStateGuildCount.Set(float64(stateGuilds))
+			sandwichStateGuildMembersCount.Set(float64(stateMembers))
+			sandwichStateRoleCount.Set(float64(stateRoles))
+			sandwichStateEmojiCount.Set(float64(stateEmojis))
+			sandwichStateUserCount.Set(float64(stateUsers))
+			sandwichStateChannelCount.Set(float64(stateChannels))
 
-			events += managerEvents
-		}
-		sg.ManagersMu.RUnlock()
-		atomic.AddInt64(sg.TotalEvents, events)
+			sandwichEventInflightCount.Set(float64(eventsInflight))
+			sandwichEventBufferCount.Set(float64(eventsBuffer))
 
-		now := time.Now().UTC()
-		uptime := now.Sub(sg.Start).Round(time.Second)
-		sg.Logger.Debug().Str("Elapsed", uptime.String()).Int64("q", atomic.LoadInt64(sg.PoolWaiting)).Msgf("%d/s", events)
-	}
-}
-
-func (sg *Sandwich) analyticsRunner() {
-	e := time.NewTicker(Interval)
-
-	for {
-		<-e.C
-
-		now := time.Now().UTC().Round(time.Second)
-
-		sg.ManagersMu.RLock()
-
-		for _, mg := range sg.Managers {
-			mg.AnalyticsMu.RLock()
-			if mg.Analytics != nil {
-				go mg.Analytics.RunOnce(now)
-			}
-			mg.AnalyticsMu.RUnlock()
-		}
-		sg.ManagersMu.RUnlock()
-	}
-}
-
-// VerifyRestTunnel returns a boolean if RestTunnel can be found and is alive.
-func (sg *Sandwich) VerifyRestTunnel(restTunnelURL string) (enabled bool, reverse bool, err error) {
-	if restTunnelURL == "" {
-		return
-	}
-
-	_url, err := url.Parse(restTunnelURL)
-	if err != nil {
-		sg.Logger.Error().Err(err).Msgf("Failed to parse RestTunnel URL %s", restTunnelURL)
-
-		return
-	}
-
-	resp, err := http.Get(_url.Scheme + "://" + _url.Host + "/resttunnel") //nolint:noctx
-	if err != nil {
-		sg.Logger.Error().Err(err).Msgf("Failed to connect to RestTunnel")
-
-		return
-	}
-
-	baseResponse := structs.RestTunnelAliveResponse{}
-
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&baseResponse)
-
-	if err != nil {
-		sg.Logger.Error().Err(err).Msg("Failed to parse RestTunnel alive response")
-	}
-
-	aliveResponse := baseResponse.Data
-
-	sg.Logger.Info().Msgf(
-		"\\o/ Detected RestTunnel version %s. Running in reverse mode: %t",
-		aliveResponse.Version, aliveResponse.Reverse)
-
-	return true, aliveResponse.Reverse, nil
-}
-
-// Close will gracefully close the application.
-func (sg *Sandwich) Close() (err error) {
-	sg.Logger.Info().Msg("Closing sandwich")
-
-	go sg.PublishWebhook(context.Background(), discord.WebhookMessage{
-		Embeds: []discord.Embed{
-			{
-				Title:     "Shutting down sandwich",
-				Color:     discord.EmbedSandwich,
-				Timestamp: WebhookTime(time.Now().UTC()),
-			},
-		},
-	})
-
-	// Close all managers
-	sg.ManagersMu.RLock()
-	for _, manager := range sg.Managers {
-		manager.Close()
-	}
-	sg.ManagersMu.RUnlock()
-
-	return
-}
-
-// PublishWebhook sends a webhook message to all added webhooks in the configuration.
-func (sg *Sandwich) PublishWebhook(ctx context.Context, message discord.WebhookMessage) {
-	for _, webhook := range sg.Configuration.Webhooks {
-		_, err := sg.SendWebhook(ctx, webhook, message)
-		if err != nil && !xerrors.Is(err, context.Canceled) {
-			sg.Logger.Warn().Err(err).Str("url", webhook).Msg("Failed to send webhook")
+			sg.Logger.Debug().
+				Int("guilds", stateGuilds).
+				Int("members", stateMembers).
+				Int("roles", stateRoles).
+				Int("emojis", stateEmojis).
+				Int("users", stateUsers).
+				Int("channels", stateChannels).
+				Int64("eventsInflight", eventsInflight).
+				Int64("eventsBuffer", int64(eventsBuffer)).
+				Msg("Updated prometheus guages")
 		}
 	}
-}
-
-// SendWebhook executes a webhook request. This does not currently support sending.
-// files.
-func (sg *Sandwich) SendWebhook(ctx context.Context, _url string,
-	message discord.WebhookMessage) (status int, err error) {
-	var c *Client
-
-	// We will trim whitespace just in case.
-	_url = strings.TrimSpace(_url)
-
-	_, err = url.Parse(_url)
-	if err != nil {
-		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
-	}
-
-	if sg.RestTunnelEnabled.IsSet() {
-		c = NewClient("", sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet(), false)
-	} else {
-		c = NewClient("", "", false, false)
-	}
-
-	res, err := json.Marshal(message)
-	if err != nil {
-		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
-	}
-
-	_, status, err = c.Fetch(ctx, "POST", _url, bytes.NewBuffer(res), map[string]string{
-		"Content-Type": "application/json",
-	})
-
-	return status, err
-}
-
-// TestWebhook tests a URL to see if it is valid.
-func (sg *Sandwich) TestWebhook(ctx context.Context,
-	_url string) (status int, err error) {
-	_, err = url.Parse(_url)
-	if err != nil {
-		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
-	}
-
-	message := discord.WebhookMessage{
-		Content: "Test Webhook",
-		Embeds: []discord.Embed{
-			{
-				Title:       "This is a test webhook",
-				Description: "This is the description",
-				URL:         "https://github.com/TheRockettek/Sandwich-Daemon",
-				Thumbnail: &discord.EmbedThumbnail{
-					URL: "https://raw.githubusercontent.com/TheRockettek/Sandwich-Daemon/master/" +
-						webRootPath + "/img/icons/favicon-96x96.png",
-				},
-				Color:     discord.EmbedSandwich,
-				Timestamp: WebhookTime(time.Now().UTC()),
-			},
-		},
-	}
-
-	return sg.SendWebhook(ctx, _url, message)
 }

@@ -1,8 +1,8 @@
 logs
 sandwich.yaml
-sandwich
 *.fasthttp.br
 *.fasthttp.gz
 checktags.py
 .vscode/settings.json
 node_modules/.yarn-integrity
+sdn

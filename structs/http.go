@@ -1,18 +1,20 @@
 package structs
 
-// TooManyRequests represents the payload of a TooManyRequests response.
-type TooManyRequests struct {
-	Message    string `json:"message" msgpack:"message"`
-	RetryAfter int    `json:"retry_after" msgpack:"retry_after"`
-	Global     bool   `json:"global" msgpack:"global"`
+// IdentifyPayload represents the payload for external identifying.
+type IdentifyPayload struct {
+	ShardID        int    `json:"shard_id"`
+	ShardCount     int    `json:"shard_count"`
+	Token          string `json:"token"`
+	TokenHash      string `json:"token_hash"`
+	MaxConcurrency int    `json:"max_concurrency"`
 }
 
-// RestTunnelAliveResponse the RestTunnel alive response payload.
-type RestTunnelAliveResponse struct {
+// IdentifyResponse represents the response to external identifying.
+type IdentifyResponse struct {
 	Success bool `json:"success"`
-	Data    struct {
-		Name    string `json:"name"`
-		Version string `json:"version"`
-		Reverse bool   `json:"reverse"`
-	} `json:"data"`
+
+	// If Success is false and this is passed,
+	// a value of 5000 represents waiting 5 seconds.
+	Wait    int64  `json:"wait"`
+	Message string `json:"message"`
 }

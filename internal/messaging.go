@@ -1,15 +1,16 @@
-package gateway
+package internal
 
 import (
-	"bytes"
 	"context"
 
-	"github.com/TheRockettek/Sandwich-Daemon/internal/mqclients"
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	"github.com/andybalholm/brotli"
-	"github.com/savsgio/gotils"
-	"github.com/vmihailenco/msgpack"
+	messaging "github.com/WelcomerTeam/Sandwich-Daemon/next/messaging"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/google/brotli/go/cbrotli"
 	"golang.org/x/xerrors"
+)
+
+const (
+	minPayloadCompressionSize = 1000000 // Apply higher level compression to payloads >1 Mb
 )
 
 type MQClient interface {
@@ -19,31 +20,34 @@ type MQClient interface {
 
 	Connect(ctx context.Context, clientName string, args map[string]interface{}) (err error)
 	Publish(ctx context.Context, channel string, data []byte) (err error)
-	// Function to receive a channel with messages
-	// Function to close
+	// Function to clean close
 }
 
 func NewMQClient(mqType string) (MQClient, error) {
 	switch mqType {
 	case "stan":
-		return &mqclients.StanMQClient{}, nil
+		return &messaging.StanMQClient{}, nil
 	case "kafka":
-		return &mqclients.KafkaMQClient{}, nil
+		return &messaging.KafkaMQClient{}, nil
 	case "redis":
-		return &mqclients.RedisMQClient{}, nil
+		return &messaging.RedisMQClient{}, nil
 	default:
 		return nil, xerrors.New("No MQ client named " + mqType)
 	}
 }
 
 // PublishEvent publishes a SandwichPayload.
-func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
-	sh.Manager.ConfigurationMu.RLock()
-	defer sh.Manager.ConfigurationMu.RUnlock()
+func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPayload) (err error) {
+	sh.Manager.configurationMu.RLock()
+	identifier := sh.Manager.Configuration.ProducerIdentifier
+	channelName := sh.Manager.Configuration.Messaging.ChannelName
+	application := sh.Manager.Identifier.Load()
+	sh.Manager.configurationMu.RUnlock()
 
 	packet.Metadata = structs.SandwichMetadata{
-		Version:    VERSION,
-		Identifier: sh.Manager.Configuration.Identifier,
+		Version:     VERSION,
+		Identifier:  identifier,
+		Application: application,
 		Shard: [3]int{
 			int(sh.ShardGroup.ID),
 			sh.ShardID,
@@ -51,12 +55,12 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 		},
 	}
 
-	payload, err := msgpack.Marshal(packet)
+	payload, err := json.Marshal(packet)
 	if err != nil {
 		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}
 
-	sh.Logger.Trace().Str("event", gotils.B2S(payload)).Msgf("Processed %s event", packet.Type)
+	// sh.Logger.Trace().Str("event", gotils_strconv.B2S(payload)).Msgf("Processed %s event", packet.Type)
 
 	// Compression testing of large payloads. In the future this *may* be
 	// added however in its current state it is uncertain. With using a 1mb
@@ -104,40 +108,24 @@ func (sh *Shard) PublishEvent(packet *structs.SandwichPayload) (err error) {
 
 	// a := time.Now()
 
-	compressedPayload := sh.cp.Get().(*bytes.Buffer)
+	var compressionOptions cbrotli.WriterOptions
 
 	if len(payload) > minPayloadCompressionSize {
-		dc := sh.DefaultCompressor.Get().(*brotli.Writer)
-		dc.Reset(compressedPayload)
-
-		_, err = dc.Write(payload)
-		if err != nil {
-			sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
-		}
-
-		dc.Flush()
-		sh.DefaultCompressor.Put(dc)
+		compressionOptions = sh.Sandwich.DefaultCompressionOptions
 	} else {
-		fc := sh.FastCompressor.Get().(*brotli.Writer)
-		fc.Reset(compressedPayload)
+		compressionOptions = sh.Sandwich.FastCompressionOptions
+	}
 
-		_, err = fc.Write(payload)
-		if err != nil {
-			sh.Logger.Warn().Err(err).Msg("Failed to write payload to brotli compressor")
-		}
-
-		fc.Flush()
-		sh.FastCompressor.Put(fc)
+	result, err := cbrotli.Encode(payload, compressionOptions)
+	if err != nil {
+		return
 	}
 
 	err = sh.Manager.ProducerClient.Publish(
-		sh.ctx,
-		sh.Manager.Configuration.Messaging.ChannelName,
-		compressedPayload.Bytes(),
+		ctx,
+		channelName,
+		result,
 	)
-
-	compressedPayload.Reset()
-	sh.cp.Put(compressedPayload)
 
 	if err != nil {
 		return xerrors.Errorf("publishEvent publish: %w", err)

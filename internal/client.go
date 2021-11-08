@@ -1,4 +1,4 @@
-package gateway
+package internal
 
 import (
 	"context"
@@ -6,21 +6,17 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"golang.org/x/xerrors"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
 // Client represents the REST client.
 type Client struct {
-	mu sync.RWMutex
+	mu sync.Mutex
 
 	Token string
 
@@ -35,24 +31,18 @@ type Client struct {
 	UserAgent string
 
 	isBot bool
-
-	// Will use RestTunnel if not empty
-	restTunnelURL string
-	reverse       bool
 }
 
 // NewClient makes a new client.
-func NewClient(token string, restTunnelURL string, reverse bool, isBot bool) *Client {
+func NewClient(token string) *Client {
 	return &Client{
-		mu:            sync.RWMutex{},
-		Token:         token,
-		HTTP:          http.DefaultClient,
-		APIVersion:    "6",
-		URLHost:       "discord.com",
-		URLScheme:     "https",
-		isBot:         isBot,
-		restTunnelURL: restTunnelURL,
-		reverse:       reverse,
+		mu:         sync.Mutex{},
+		Token:      token,
+		HTTP:       http.DefaultClient,
+		APIVersion: "9",
+		URLHost:    "discord.com",
+		URLScheme:  "https",
+		UserAgent:  "Sandwich/" + VERSION + " (github.com/WelcomerTeam/Sandwich-Daemon)",
 	}
 }
 
@@ -88,12 +78,12 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 // will be sent to the request however Authorization will be overwrote.
 func (c *Client) FetchJSON(ctx context.Context, method string, url string, body io.Reader,
 	headers map[string]string, structure interface{}) (status int, err error) {
-	_body, status, err := c.Fetch(ctx, method, url, body, headers)
+	responseBody, status, err := c.Fetch(ctx, method, url, body, headers)
 	if err != nil {
 		return
 	}
 
-	err = json.Unmarshal(_body, &structure)
+	err = json.Unmarshal(responseBody, &structure)
 	if err != nil {
 		return -1, fmt.Errorf("failed to unmarshal body: %w", err)
 	}
@@ -103,8 +93,8 @@ func (c *Client) FetchJSON(ctx context.Context, method string, url string, body 
 
 // HandleRequest makes a request to the Discord API.
 func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Response, err error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Add the /api and version prefix when we did not include one
 	if !strings.HasPrefix(req.URL.Path, "/api") {
@@ -117,47 +107,24 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 	req.Header.Set("User-Agent", replaceIfEmpty(req.Header.Get("User-Agent"), c.UserAgent))
 
 	if c.Token != "" {
-		if c.isBot {
-			req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), ("Bot "+c.Token)))
-		} else {
-			req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), c.Token))
-		}
+		req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), "Bot "+c.Token))
 	}
 
-	if c.restTunnelURL == "" {
-		if res, err = c.HTTP.Do(req); err != nil {
-			return res, fmt.Errorf("failed to do HTTP request: %w", err)
+	if res, err = c.HTTP.Do(req); err != nil {
+		return res, fmt.Errorf("failed to do HTTP request: %w", err)
+	}
+
+	if res.StatusCode == http.StatusTooManyRequests {
+		resp := discord.TooManyRequests{}
+		err = json.NewDecoder(res.Body).Decode(&resp)
+
+		if err != nil {
+			return res, fmt.Errorf("failed to decode body: %w", err)
 		}
 
-		if res.StatusCode == http.StatusTooManyRequests {
-			resp := structs.TooManyRequests{}
-			err = json.NewDecoder(res.Body).Decode(&resp)
+		<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
 
-			if err != nil {
-				return res, fmt.Errorf("failed to decode body: %w", err)
-			}
-
-			<-time.After(time.Duration(resp.RetryAfter) * time.Millisecond)
-
-			return c.HandleRequest(req, true)
-		}
-	} else {
-		req.Header.Set("Rt-Priority", "true")
-		req.Header.Set("Rt-ResponseType", "RespondWithResponse")
-
-		_url, _ := url.Parse(c.restTunnelURL)
-
-		if c.reverse {
-			req.URL.Host = _url.Host
-			req.URL.Scheme = _url.Scheme
-		} else {
-			req.Header.Set("Rt-URL", req.URL.String())
-			req.URL = _url
-		}
-
-		if res, err = c.HTTP.Do(req); err != nil {
-			return res, fmt.Errorf("failed to do HTTP request: %w", err)
-		}
+		return c.HandleRequest(req, true)
 	}
 
 	if res.StatusCode == http.StatusUnauthorized {
@@ -166,29 +133,3 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 
 	return res, nil
 }
-
-// Sending webhook example
-// c := NewClient("", sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet(), false)
-// ctx := context.Background()
-
-// res, err := json.Marshal(structs.Message{
-// 	Content: "Hello World!",
-// 	Embeds: []structs.Embed{
-// 		{
-// 			Title:       "Test Embed",
-// 			Description: "Welcomer 7.0 webhook testing",
-// 		},
-// 	},
-// })
-// if err != nil {
-// 	sg.Logger.Error().Err(err).Msg("Failed to marshal event")
-// }
-
-// headers := map[string]string{
-// 	"content-type": "application/json",
-// }
-
-// b, err := c.Fetch(ctx, "POST", "/api/webhooks/.../...", bytes.NewBuffer(res), headers)
-// if err != nil {
-// 	sg.Logger.Error().Err(err).Msg("Failed to send webhook")
-// }

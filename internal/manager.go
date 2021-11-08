@@ -1,312 +1,254 @@
-package gateway
+package internal
 
 import (
+	"bytes"
 	"context"
-	"math"
+	"crypto/sha256"
+	"fmt"
 	"math/rand"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
+	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/accumulator"
-	bucketstore "github.com/TheRockettek/Sandwich-Daemon/pkg/bucketstore"
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/google/brotli/go/cbrotli"
 	"github.com/rs/zerolog"
-	"github.com/vmihailenco/msgpack"
+	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 )
 
 const (
-	maxClientNumber = 9999
+	ShardMaxRetries              = 5
+	ShardCompression             = true
+	ShardLargeThreshold          = 100
+	ShardMaxHeartbeatFailures    = 5
+	MessagingMaxClientNameNumber = 9999
+
+	StandardIdentifyLimit = 5
+	IdentifyRetry         = (StandardIdentifyLimit * time.Second)
+	IdentifyRateLimit     = (StandardIdentifyLimit * time.Second) + (500 * time.Millisecond)
 )
 
-// ManagerConfiguration represents the configuration for the manager.
-type ManagerConfiguration struct {
-	AutoStart bool `json:"auto_start" yaml:"auto_start" msgpack:"auto_start"`
-	// Boolean to start the Manager when the daemon starts
-	Persist bool `json:"persist" msgpack:"persist"`
-	// Boolean to dictate if configuration should be saved
-
-	Identifier  string `json:"identifier" msgpack:"identifier"`
-	DisplayName string `json:"display_name" yaml:"display_name" msgpack:"display_name"`
-	Token       string `json:"token" msgpack:"token"`
-
-	// Bot specific configuration
-	Bot struct {
-		DefaultPresence      *discord.UpdateStatus `json:"presence" yaml:"presence"`
-		Compression          bool                  `json:"compression" yaml:"compression"`
-		GuildSubscriptions   bool                  `json:"guild_subscriptions" yaml:"guild_subscriptions"`
-		Retries              int32                 `json:"retries" yaml:"retries"`
-		Intents              int                   `json:"intents" yaml:"intents"`
-		LargeThreshold       int                   `json:"large_threshold" yaml:"large_threshold"`
-		MaxHeartbeatFailures int                   `json:"max_heartbeat_failures" yaml:"max_heartbeat_failures"`
-	} `json:"bot" yaml:"bot"`
-
-	Caching struct {
-		CacheUsers     bool `json:"cache_users" yaml:"cache_users"`
-		CacheMembers   bool `json:"cache_members" yaml:"cache_members"`
-		RequestMembers bool `json:"request_members" yaml:"request_members"`
-		StoreMutuals   bool `json:"store_mutuals" yaml:"store_mutuals"`
-	} `json:"caching" yaml:"caching"`
-
-	Events struct {
-		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist"`     // Events completely ignored
-		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist"` // Events not sent to consumers
-	} `json:"events" yaml:"events"`
-
-	// Messaging specific configuration
-	Messaging struct {
-		ClientName string `json:"client_name" yaml:"client_name" msgpack:"client_name"`
-		// If empty, this will use SandwichConfiguration.NATS.Channel which all Managers
-		// should use by default.
-		ChannelName string `json:"channel_name" yaml:"channel_name" msgpack:"channel_name"`
-		// UseRandomSuffix will append numbers to the end of the client name in order to
-		// reduce likelihood of clashing cluster IDs.
-		UseRandomSuffix bool `json:"use_random_suffix" yaml:"use_random_suffix" msgpack:"use_random_suffix"`
-	} `json:"messaging" yaml:"messaging"`
-
-	// Sharding specific configuration
-	Sharding struct {
-		AutoSharded bool `json:"auto_sharded" yaml:"auto_sharded" msgpack:"auto_sharded"`
-		ShardCount  int  `json:"shard_count" yaml:"shard_count" msgpack:"shard_count"`
-	} `json:"sharding" msgpack:"sharding"`
-}
-
-// Manager represents a bot instance.
+// Manager represents a single application.
 type Manager struct {
 	ctx    context.Context
 	cancel func()
 
-	ErrorMu sync.RWMutex `json:"-"`
-	Error   string       `json:"error"`
+	Error *atomic.String `json:"error" yaml:"error"`
 
-	AnalyticsMu sync.RWMutex             `json:"-"`
-	Analytics   *accumulator.Accumulator `json:"-"`
+	Identifier *atomic.String `json:"-"`
 
 	Sandwich *Sandwich      `json:"-"`
 	Logger   zerolog.Logger `json:"-"`
 
-	ConfigurationMu sync.RWMutex             `json:"-"`
-	Configuration   *ManagerConfiguration    `json:"configuration"`
-	Buckets         *bucketstore.BucketStore `json:"-"`
+	configurationMu sync.RWMutex
+	Configuration   *ManagerConfiguration `json:"configuration" yaml:"configuration"`
 
-	ProducerClient MQClient `json:"-"` // Used to send messages to consumers
+	gatewayMu sync.RWMutex
+	Gateway   discord.GatewayBot `json:"gateway" yaml:"gateway"`
+
+	shardGroupsMu sync.RWMutex
+	ShardGroups   map[int64]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
+
+	ProducerClient MQClient `json:"-"`
 
 	Client *Client `json:"-"`
 
-	GatewayMu sync.RWMutex       `json:"-"`
-	Gateway   discord.GatewayBot `json:"gateway"`
+	shardGroupCounter *atomic.Int64
 
-	pp sync.Pool
+	eventBlacklistMu sync.RWMutex
+	eventBlacklist   []string
 
-	// ShardGroups contain the group of shards the Manager is managing. The reason
-	// we have a ShardGroup instead of a map/slice of shards is we can run multiple
-	// shard groups at once. This is used during rolling restarts where we would have
-	// a shard group of 160 and 176 active at the same time. Once the 176 shardgroup
-	// has finished ready, the other shard group will stop. 176 will not relay messages
-	// until it has removed the old shardgroup to reduce likelihood of duplicate messages.
-	// These messages will just be completely ignored as if it was in the EventBlacklist
-	ShardGroups       map[int32]*ShardGroup `json:"shard_groups"`
-	ShardGroupsMu     sync.RWMutex          `json:"-"`
-	ShardGroupIter    *int32                `json:"-"`
-	ShardGroupCounter sync.WaitGroup        `json:"-"`
+	produceBlacklistMu sync.RWMutex
+	produceBlacklist   []string
+}
 
-	EventBlacklistMu sync.RWMutex `json:"-"`
-	EventBlacklist   []string     `json:"-"`
+// ManagerConfiguration represents the configuration for the manager.
+type ManagerConfiguration struct {
+	// Unique name that will be referenced internally
+	Identifier string `json:"identifier" yaml:"identifier"`
+	// Non-unique name that is sent to consumers.
+	ProducerIdentifier string `json:"producer_identifier" yaml:"producer_identifier"`
 
-	ProduceBlacklistMu sync.RWMutex `json:"-"`
-	ProduceBlacklist   []string     `json:"-"`
+	FriendlyName string `json:"friendly_name" yaml:"friendly_name"`
+
+	Token     string `json:"token" yaml:"token"`
+	AutoStart bool   `json:"auto_start" yaml:"auto_start"`
+
+	// Bot specific configuration
+	Bot struct {
+		DefaultPresence      discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
+		Intents              int64                `json:"intents" yaml:"intents"`
+		ChunkGuildsOnStartup bool                 `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
+		// TODO: Guild chunking
+	} `json:"bot" yaml:"bot"`
+
+	Caching struct {
+		CacheUsers   bool `json:"cache_users" yaml:"cache_users"`
+		CacheMembers bool `json:"cache_members" yaml:"cache_members"`
+		StoreMutuals bool `json:"store_mutuals" yaml:"store_mutuals"`
+		// TODO: Flexible caching
+	} `json:"caching" yaml:"caching"`
+
+	Events struct {
+		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist"`
+		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist"`
+	} `json:"events" yaml:"events"`
+
+	Messaging struct {
+		ClientName      string `json:"client_name" yaml:"client_name"`
+		ChannelName     string `json:"channel_name" yaml:"channel_name"`
+		UseRandomSuffix bool   `json:"use_random_suffix" yaml:"use_random_suffix"`
+	} `json:"messaging" yaml:"messaging"`
+
+	Sharding struct {
+		AutoSharded bool   `json:"auto_sharded" yaml:"auto_sharded"`
+		ShardCount  int    `json:"shard_count" yaml:"shard_count"`
+		ShardIDs    string `json:"shard_ids" yaml:"shard_ids"`
+	} `json:"sharding" yaml:"sharding"`
 }
 
 // NewManager creates a new manager.
 func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager, err error) {
-	logger := sg.Logger.With().Str("manager", configuration.DisplayName).Logger()
+	logger := sg.Logger.With().Str("manager", configuration.Identifier).Logger()
 	logger.Info().Msg("Creating new manager")
 
 	mg = &Manager{
 		Sandwich: sg,
 		Logger:   logger,
 
-		ErrorMu: sync.RWMutex{},
-		Error:   "",
+		Error: atomic.NewString(""),
 
-		ConfigurationMu: sync.RWMutex{},
+		configurationMu: sync.RWMutex{},
 		Configuration:   configuration,
-		Buckets:         bucketstore.NewBucketStore(),
-		GatewayMu:       sync.RWMutex{},
-		Gateway:         discord.GatewayBot{},
 
-		pp: sync.Pool{
-			New: func() interface{} { return new(structs.SandwichPayload) },
-		},
+		Identifier: atomic.NewString(configuration.Identifier),
 
-		ShardGroups:       make(map[int32]*ShardGroup),
-		ShardGroupsMu:     sync.RWMutex{},
-		ShardGroupIter:    new(int32),
-		ShardGroupCounter: sync.WaitGroup{},
+		gatewayMu: sync.RWMutex{},
+		Gateway:   discord.GatewayBot{},
 
-		EventBlacklistMu: sync.RWMutex{},
-		EventBlacklist:   make([]string, 0),
+		shardGroupsMu: sync.RWMutex{},
+		ShardGroups:   make(map[int64]*ShardGroup),
 
-		ProduceBlacklistMu: sync.RWMutex{},
-		ProduceBlacklist:   make([]string, 0),
+		Client: NewClient(configuration.Token),
+
+		shardGroupCounter: &atomic.Int64{},
+
+		eventBlacklistMu: sync.RWMutex{},
+		eventBlacklist:   configuration.Events.EventBlacklist,
+
+		produceBlacklistMu: sync.RWMutex{},
+		produceBlacklist:   configuration.Events.ProduceBlacklist,
 	}
 
-	if sg.RestTunnelEnabled.IsSet() {
-		mg.Client = NewClient(configuration.Token, sg.Configuration.RestTunnel.URL, sg.RestTunnelReverse.IsSet(), true)
-	} else {
-		mg.Client = NewClient(configuration.Token, "", false, true)
-	}
+	mg.ctx, mg.cancel = context.WithCancel(sg.ctx)
 
-	err = mg.NormalizeConfiguration()
+	return mg, nil
+}
+
+// Initialize handles the start up process including connecting the message queue client.
+func (mg *Manager) Initialize() (err error) {
+	gateway, err := mg.GetGateway()
 	if err != nil {
-		mg.ErrorMu.Lock()
-		mg.Error = err.Error()
-		mg.ErrorMu.Unlock()
-
-		return nil, err
-	}
-
-	mg.ctx, mg.cancel = context.WithCancel(context.Background())
-
-	return mg, err
-}
-
-// NormalizeConfiguration fills in any defaults within the configuration.
-func (mg *Manager) NormalizeConfiguration() (err error) {
-	mg.ConfigurationMu.RLock()
-	defer mg.ConfigurationMu.RUnlock()
-	mg.Sandwich.ConfigurationMu.RLock()
-	defer mg.Sandwich.ConfigurationMu.RUnlock()
-
-	if mg.Configuration.Token == "" {
-		return xerrors.New("Manager configuration missing token")
-	}
-
-	mg.Configuration.Token = strings.TrimSpace(mg.Configuration.Token)
-
-	if mg.Configuration.Bot.MaxHeartbeatFailures < 1 {
-		mg.Configuration.Bot.MaxHeartbeatFailures = 1
-	}
-
-	if mg.Configuration.Bot.Retries < 1 {
-		mg.Configuration.Bot.Retries = 1
-	}
-
-	if mg.Configuration.Messaging.ClientName == "" {
-		return xerrors.New("Manager missing client name. Try sandwich")
-	}
-
-	// if mg.Configuration.Messaging.ChannelName == "" {
-	// 	mg.Configuration.Messaging.ChannelName = mg.Sandwich.Configuration.NATS.Channel
-	// 	mg.Logger.Info().Msg("Using global messaging channel")
-	// }
-
-	return err
-}
-
-// Open starts up the manager, initializes the config and will create a shardgroup.
-func (mg *Manager) Open() (err error) {
-	mg.Logger.Info().Msg("Starting up manager")
-
-	if mg.ctx == nil {
-		mg.ctx, mg.cancel = context.WithCancel(context.Background())
-	}
-
-	mg.Sandwich.ConfigurationMu.RLock()
-	defer mg.Sandwich.ConfigurationMu.RUnlock()
-	mg.ConfigurationMu.RLock()
-	defer mg.ConfigurationMu.RUnlock()
-
-	mg.AnalyticsMu.Lock()
-	mg.Analytics = accumulator.NewAccumulator(
-		mg.ctx,
-		Samples,
-		Interval,
-	)
-	mg.AnalyticsMu.Unlock()
-
-	var clientName string
-	if mg.Configuration.Messaging.UseRandomSuffix {
-		clientName = mg.Configuration.Messaging.ClientName + "-" + strconv.Itoa(rand.Intn(maxClientNumber)) //nolint:gosec
-	} else {
-		clientName = mg.Configuration.Messaging.ClientName
+		return err
 	}
 
 	producerClient, err := NewMQClient(mg.Sandwich.Configuration.Producer.Type)
 	if err != nil {
-		return xerrors.Errorf("manager open producer create: %w", err)
+		return err
 	}
 
-	mg.ProducerClient = producerClient
+	clientName := mg.Configuration.Messaging.ClientName
+	if mg.Configuration.Messaging.UseRandomSuffix {
+		clientName = clientName + "-" + strconv.Itoa(rand.Intn(MessagingMaxClientNameNumber))
+	}
 
-	err = mg.ProducerClient.Connect(
+	err = producerClient.Connect(
 		mg.ctx,
 		clientName,
 		mg.Sandwich.Configuration.Producer.Configuration,
 	)
 	if err != nil {
-		return xerrors.Errorf("manager open producer connect: %w", err)
+		mg.Logger.Error().Err(err).Msg("Failed to connect producer client")
+
+		return err
 	}
 
-	mg.EventBlacklistMu.Lock()
-	mg.EventBlacklist = mg.Configuration.Events.EventBlacklist
-	mg.EventBlacklistMu.Unlock()
+	mg.gatewayMu.Lock()
+	mg.Gateway = gateway
+	mg.gatewayMu.Unlock()
 
-	mg.ProduceBlacklistMu.Lock()
-	mg.ProduceBlacklist = mg.Configuration.Events.ProduceBlacklist
-	mg.ProduceBlacklistMu.Unlock()
-
-	mg.Gateway, err = mg.GetGateway()
+	mg.ProducerClient = producerClient
 
 	return err
 }
 
-// GatherShardCount returns the expected shardcount using the gateway object stored.
-func (mg *Manager) GatherShardCount() (shardCount int) {
-	mg.Sandwich.ConfigurationMu.RLock()
-	defer mg.Sandwich.ConfigurationMu.RUnlock()
-	mg.ConfigurationMu.RLock()
-	defer mg.ConfigurationMu.RUnlock()
-	mg.GatewayMu.RLock()
-	defer mg.GatewayMu.RUnlock()
+// Open handles retrieving shard counts and scaling.
+func (mg *Manager) Open() (err error) {
+	shardIDs, shardCount := mg.getInitialShardCount(
+		mg.Configuration.Sharding.ShardCount,
+		mg.Configuration.Sharding.ShardIDs,
+		mg.Configuration.Sharding.AutoSharded,
+	)
 
-	if mg.Configuration.Sharding.AutoSharded {
-		shardCount = mg.Gateway.Shards
-	} else {
-		shardCount = mg.Configuration.Sharding.ShardCount
+	sg := mg.Scale(shardIDs, shardCount)
+
+	ready, err := sg.Open()
+	if err != nil {
+		go mg.Sandwich.PublishSimpleWebhook(
+			"Failed to scale manager",
+			"`"+err.Error()+"`",
+			"Manager: "+mg.Configuration.Identifier,
+			EmbedColourDanger,
+		)
+
+		return err
 	}
 
-	shardCount = int(math.Ceil(float64(shardCount)/float64(mg.Gateway.SessionStartLimit.MaxConcurrency))) *
-		mg.Gateway.SessionStartLimit.MaxConcurrency
+	<-ready
+
+	return nil
+}
+
+// GetGateway returns the response from /gateway/bot.
+func (mg *Manager) GetGateway() (resp discord.GatewayBot, err error) {
+	mg.Sandwich.gatewayLimiter.Lock()
+	_, err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
+
+	mg.Logger.Info().
+		Int("maxConcurrency", resp.SessionStartLimit.MaxConcurrency).
+		Int("shards", resp.Shards).
+		Int("remaining", resp.SessionStartLimit.Remaining).
+		Msg("Received Gateway")
 
 	return
 }
 
-// Scale creates a new ShardGroup and removes old ones once it has finished.
-func (mg *Manager) Scale(shardIDs []int, shardCount int, start bool) (ready chan bool, err error) {
-	iter := atomic.AddInt32(mg.ShardGroupIter, 1) - 1
-	sg := mg.NewShardGroup(iter)
-	mg.ShardGroupsMu.Lock()
-	mg.ShardGroups[iter] = sg
-	mg.ShardGroupsMu.Unlock()
+// Scale handles the creation of new ShardGroups with a specified shard count and IDs.
+func (mg *Manager) Scale(shardIDs []int, shardCount int) (sg *ShardGroup) {
+	shardGroupID := mg.shardGroupCounter.Add(1)
+	sg = mg.NewShardGroup(shardGroupID, shardIDs, shardCount)
 
-	if start {
-		ready, err = sg.Open(shardIDs, shardCount)
-	}
+	mg.shardGroupsMu.Lock()
+	mg.ShardGroups[shardGroupID] = sg
+	mg.shardGroupsMu.Unlock()
 
-	return
+	return sg
 }
 
 // PublishEvent sends an event to consumers.
-func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err error) {
-	packet := mg.pp.Get().(*structs.SandwichPayload)
-	defer mg.pp.Put(packet)
+func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData interface{}) (err error) {
+	packet, _ := mg.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
+	defer mg.Sandwich.payloadPool.Put(packet)
 
-	mg.ConfigurationMu.RLock()
-	defer mg.ConfigurationMu.RUnlock()
+	mg.configurationMu.RLock()
+	identifier := mg.Configuration.ProducerIdentifier
+	channelName := mg.Configuration.Messaging.ChannelName
+	mg.configurationMu.RUnlock()
 
 	packet.Type = eventType
 	packet.Op = discord.GatewayOpDispatch
@@ -314,65 +256,180 @@ func (mg *Manager) PublishEvent(eventType string, eventData interface{}) (err er
 
 	packet.Metadata = structs.SandwichMetadata{
 		Version:    VERSION,
-		Identifier: mg.Configuration.Identifier,
+		Identifier: identifier,
 	}
 
-	// Clear extra values
+	// Clear currently unused values
 	packet.Sequence = 0
 	packet.Extra = nil
 	packet.Trace = nil
 
-	data, err := msgpack.Marshal(packet)
+	payload, err := json.Marshal(packet)
 	if err != nil {
-		return xerrors.Errorf("publishEvent marshal: %w", err)
+		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}
 
-	if mg.ProducerClient != nil {
-		err = mg.ProducerClient.Publish(
-			mg.ctx,
-			mg.Configuration.Messaging.ChannelName,
-			data,
-		)
-		if err != nil {
-			return xerrors.Errorf("publishEvent publish: %w", err)
-		}
+	var compressionOptions cbrotli.WriterOptions
+
+	if len(payload) > minPayloadCompressionSize {
+		compressionOptions = mg.Sandwich.DefaultCompressionOptions
 	} else {
-		return xerrors.New("publishEvent publish: No active stanClient")
+		compressionOptions = mg.Sandwich.FastCompressionOptions
+	}
+
+	result, err := cbrotli.Encode(payload, compressionOptions)
+	if err != nil {
+		return
+	}
+
+	err = mg.ProducerClient.Publish(
+		ctx,
+		channelName,
+		result,
+	)
+
+	if err != nil {
+		return xerrors.Errorf("publishEvent publish: %w", err)
 	}
 
 	return nil
 }
 
-// GenerateShardIDs returns a slice of shard ids the bot will use and accounts for clusters.
-func (mg *Manager) GenerateShardIDs(shardCount int) (shardIDs []int) {
-	for i := 0; i < shardCount; i++ {
-		shardIDs = append(shardIDs, i)
+// WaitForIdentify blocks until a shard can identify.
+func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
+	mg.Sandwich.configurationMu.RLock()
+	identifyURL := mg.Sandwich.Configuration.Identify.URL
+	identifyHeaders := mg.Sandwich.Configuration.Identify.Headers
+	token := mg.Configuration.Token
+	mg.Sandwich.configurationMu.RUnlock()
+
+	mg.gatewayMu.RLock()
+	maxConcurrency := mg.Gateway.SessionStartLimit.MaxConcurrency
+	mg.gatewayMu.RUnlock()
+
+	hash, err := quickHash(sha256.New(), token)
+	if err != nil {
+		return err
 	}
 
-	return
+	if identifyURL == "" {
+		identifyBucketName := fmt.Sprintf(
+			"identify:%s:%d",
+			hash,
+			shardID%mg.Gateway.SessionStartLimit.MaxConcurrency,
+		)
+
+		mg.Sandwich.IdentifyBuckets.CreateBucket(
+			identifyBucketName, 1, IdentifyRateLimit,
+		)
+
+		mg.Sandwich.IdentifyBuckets.WaitForBucket(identifyBucketName)
+	} else {
+		// Pass arguments to URL
+		sendURL := strings.Replace(identifyURL, "{shard_id}", strconv.Itoa(shardID), 0)
+		sendURL = strings.Replace(sendURL, "{shard_count}", strconv.Itoa(shardCount), 0)
+		sendURL = strings.Replace(sendURL, "{token}", token, 0)
+		sendURL = strings.Replace(sendURL, "{token_hash}", hash, 0)
+		sendURL = strings.Replace(sendURL, "{max_concurrency}", strconv.Itoa(maxConcurrency), 0)
+
+		_, sendURLErr := url.Parse(sendURL)
+		if sendURLErr != nil {
+			return nil
+		}
+
+		var body bytes.Buffer
+
+		var identifyResponse structs.IdentifyResponse
+
+		identifyPayload := structs.IdentifyPayload{
+			ShardID:        shardID,
+			ShardCount:     shardCount,
+			Token:          token,
+			TokenHash:      hash,
+			MaxConcurrency: maxConcurrency,
+		}
+
+		err = json.NewEncoder(&body).Encode(identifyPayload)
+		if err != nil {
+			return err
+		}
+
+		client := http.DefaultClient
+
+		for {
+			req, err := http.NewRequestWithContext(mg.ctx, "POST", sendURL, bytes.NewBuffer(body.Bytes()))
+			if err != nil {
+				return err
+			}
+
+			for k, v := range identifyHeaders {
+				req.Header.Set(k, v)
+			}
+
+			req.Header.Set("Content-Type", "application/json")
+
+			res, err := client.Do(req)
+			if err != nil {
+				mg.Logger.Warn().Err(err).Msg("Encountered error whilst identifying")
+				time.Sleep(IdentifyRetry)
+
+				continue
+			}
+
+			err = json.NewDecoder(res.Body).Decode(&identifyResponse)
+			if err != nil {
+				mg.Logger.Warn().Err(err).Msg("Failed to decode identify response")
+				time.Sleep(IdentifyRetry)
+
+				continue
+			}
+
+			res.Body.Close()
+
+			if identifyResponse.Success {
+				break
+			}
+
+			waitDuration := time.Millisecond * time.Duration(identifyResponse.Wait)
+
+			mg.Logger.Info().Dur("wait", waitDuration).Msg("Received wait on identify")
+
+			time.Sleep(waitDuration)
+		}
+	}
+
+	return nil
 }
 
-// Close will stop all shardgroups running.
 func (mg *Manager) Close() {
-	mg.Logger.Info().Msg("Closing down manager")
+	mg.Logger.Info().Msg("Closing manager shardgroups")
 
-	mg.ShardGroupsMu.RLock()
-	for _, shardGroup := range mg.ShardGroups {
-		shardGroup.Close()
+	mg.shardGroupsMu.RLock()
+	for _, sg := range mg.ShardGroups {
+		sg.Close()
 	}
-	mg.ShardGroupsMu.RUnlock()
+	mg.shardGroupsMu.RUnlock()
 
-	// cancel is not defined when a manager does not autostart
 	if mg.cancel != nil {
 		mg.cancel()
 	}
 }
 
-// GetGateway returns response from /gateway/bot.
-func (mg *Manager) GetGateway() (resp discord.GatewayBot, err error) {
-	_, err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
-	if err != nil {
-		return resp, xerrors.Errorf("get gateway fetchjson: %w", err)
+// getInitialShardCount returns the initial shard count and ids to use.
+func (mg *Manager) getInitialShardCount(customShardCount int, customShardIDs string, autoSharded bool) (shardIDs []int, shardCount int) {
+	if autoSharded {
+		shardCount = mg.Gateway.Shards
+
+		if customShardIDs == "" {
+			for i := 0; i < shardCount; i++ {
+				shardIDs = append(shardIDs, i)
+			}
+		} else {
+			shardIDs = returnRange(customShardIDs, shardCount)
+		}
+	} else {
+		shardCount = customShardCount
+		shardIDs = returnRange(customShardIDs, shardCount)
 	}
 
 	return

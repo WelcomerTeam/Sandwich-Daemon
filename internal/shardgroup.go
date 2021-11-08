@@ -1,239 +1,189 @@
-package gateway
+package internal
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/limiter"
-	"github.com/TheRockettek/Sandwich-Daemon/pkg/snowflake"
-	"github.com/TheRockettek/Sandwich-Daemon/structs"
-	discord "github.com/TheRockettek/Sandwich-Daemon/structs/discord"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/rs/zerolog"
-	"github.com/tevino/abool"
+	"go.uber.org/atomic"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
 
-// Total number of active goroutines chunking guilds per ShardGroup shard.
-var guildChunkLimiterCount = 16
-
-// ShardGroup groups a selection of shards.
+// ShardGroup represents a group of shards.
 type ShardGroup struct {
-	StatusMu sync.RWMutex             `json:"-"`
-	Status   structs.ShardGroupStatus `json:"status"`
-
-	ErrorMu sync.RWMutex `json:"-"`
-	Error   string       `json:"error"`
-
-	Start time.Time `json:"uptime"`
-
-	WaitingFor *int32 `json:"waiting_for"`
-
-	ID int32 `json:"id"` // track of shardgroups
+	Error *atomic.String `json:"error"`
 
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
 
+	Start time.Time `json:"start"`
+
+	WaitingFor *atomic.Int32 `json:"-"`
+
+	userMu sync.RWMutex  `json:"-"`
+	User   *discord.User `json:"user"`
+
+	ID int64 `json:"id"`
+
 	ShardCount int   `json:"shard_count"`
 	ShardIDs   []int `json:"shard_ids"`
 
-	ShardsMu sync.RWMutex   `json:"-"`
+	shardsMu sync.RWMutex   `json:"-"`
 	Shards   map[int]*Shard `json:"shards"`
 
-	GuildsMu sync.RWMutex                         `json:"-"`
-	Guilds   map[snowflake.ID]*discord.StateGuild `json:"-"`
+	ReadyWait *sync.WaitGroup `json:"-"`
 
-	// WaitGroup for detecting when all shards are ready
-	Wait *sync.WaitGroup `json:"-"`
-
-	// Mutex map to limit connections per max_concurrency connection
-	IdentifyBucket map[int]*sync.Mutex `json:"-"`
+	statusMu sync.RWMutex             `json:"-"`
+	Status   structs.ShardGroupStatus `json:"status"`
 
 	// MemberChunksCallback is used to signal when a guild is chunking.
-	MemberChunksCallbackMu sync.RWMutex                     `json:"-"`
-	MemberChunksCallback   map[snowflake.ID]*sync.WaitGroup `json:"-"`
+	memberChunksCallbackMu sync.RWMutex                          `json:"-"`
+	MemberChunksCallback   map[discord.Snowflake]*sync.WaitGroup `json:"-"`
 
 	// MemberChunksComplete is used to signal if a guild has recently
 	// been chunked. It is up to the guild task to remove this bool
 	// a few seconds after finishing chunking.
-	MemberChunksCompleteMu sync.RWMutex                       `json:"-"`
-	MemberChunksComplete   map[snowflake.ID]*abool.AtomicBool `json:"-"`
+	memberChunksCompleteMu sync.RWMutex                       `json:"-"`
+	MemberChunksComplete   map[discord.Snowflake]*atomic.Bool `json:"-"`
 
 	// MemberChunkCallbacks is used to signal when any MEMBER_CHUNK
 	// events are received for the specific guild.
-	MemberChunkCallbacksMu sync.RWMutex               `json:"-"`
-	MemberChunkCallbacks   map[snowflake.ID]chan bool `json:"-"`
+	memberChunkCallbacksMu sync.RWMutex                    `json:"-"`
+	MemberChunkCallbacks   map[discord.Snowflake]chan bool `json:"-"`
 
-	// ConcurrencyLimiter for total number of guilds that can be
-	// simultaneously chunked when no Wait provided.
-	ChunkLimiter *limiter.ConcurrencyLimiter `json:"-"`
-
-	// Used for detecting errors during shard startup
-	err chan error
-
-	// Used to close active goroutines
-	close chan void
-
-	floodgate *abool.AtomicBool
+	// Used to override when events can be processed.
+	// Used to orchestrate scaling of shardgroups.
+	floodgate *atomic.Bool
 }
 
 // NewShardGroup creates a new shardgroup.
-func (mg *Manager) NewShardGroup(id int32) *ShardGroup {
-	return &ShardGroup{
-		StatusMu: sync.RWMutex{},
-		Status:   structs.ShardGroupIdle,
-		ErrorMu:  sync.RWMutex{},
-		Error:    "",
-
-		WaitingFor: new(int32),
-
-		ID: id,
+func (mg *Manager) NewShardGroup(shardGroupID int64, shardIDs []int, shardCount int) (sg *ShardGroup) {
+	sg = &ShardGroup{
+		Error: &atomic.String{},
 
 		Manager: mg,
 		Logger:  mg.Logger,
 
-		ShardsMu: sync.RWMutex{},
+		Start: time.Now().UTC(),
+
+		WaitingFor: &atomic.Int32{},
+
+		ID: shardGroupID,
+
+		ShardCount: shardCount,
+		ShardIDs:   shardIDs,
+
+		shardsMu: sync.RWMutex{},
 		Shards:   make(map[int]*Shard),
 
-		GuildsMu: sync.RWMutex{},
-		Guilds:   make(map[snowflake.ID]*discord.StateGuild),
+		statusMu: sync.RWMutex{},
+		Status:   structs.ShardGroupStatusIdle,
 
-		Wait:           &sync.WaitGroup{},
-		IdentifyBucket: make(map[int]*sync.Mutex),
-		err:            make(chan error),
-		close:          make(chan void),
+		memberChunksCallbackMu: sync.RWMutex{},
+		MemberChunksCallback:   make(map[discord.Snowflake]*sync.WaitGroup),
 
-		MemberChunksCallbackMu: sync.RWMutex{},
-		MemberChunksCallback:   make(map[snowflake.ID]*sync.WaitGroup),
+		memberChunksCompleteMu: sync.RWMutex{},
+		MemberChunksComplete:   make(map[discord.Snowflake]*atomic.Bool),
 
-		MemberChunksCompleteMu: sync.RWMutex{},
-		MemberChunksComplete:   make(map[snowflake.ID]*abool.AtomicBool),
+		memberChunkCallbacksMu: sync.RWMutex{},
+		MemberChunkCallbacks:   make(map[discord.Snowflake]chan bool),
 
-		MemberChunkCallbacksMu: sync.RWMutex{},
-		MemberChunkCallbacks:   make(map[snowflake.ID]chan bool),
-
-		floodgate: abool.New(),
+		floodgate: &atomic.Bool{},
 	}
+
+	return sg
 }
 
-// Open starts up the shardgroup.
-func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err error) {
+// Open handles the startup of a shard group.
+// On startup of a shard group, the first shard is connected and ran to confirm token and such are valid.
+// If an issue occurs starting the first shard, open will return an error. Other shards will then connect
+// concurrently and will attempt to reconnect on error.
+// Once the shardgroup has fully finished connecting and are ready, then floodgate will be enabled allowing
+// their events to be handled.
+func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	sg.Start = time.Now().UTC()
 
-	sg.Manager.ShardGroupsMu.Lock()
-	for _, _sg := range sg.Manager.ShardGroups {
-		// We preferably do not want to mark an erroring shardgroup as replaced as it overwrites how it is displayed.
-		_sg.StatusMu.RLock()
-		shardNotErroring := _sg.Status != structs.ShardGroupError
-		_sg.StatusMu.RUnlock()
-
-		if shardNotErroring {
-			if err := _sg.SetStatus(structs.ShardGroupReplaced); err != nil {
-				_sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
-			}
+	sg.Manager.shardGroupsMu.RLock()
+	for _, shardGroup := range sg.Manager.ShardGroups {
+		if shardGroup.GetStatus() != structs.ShardGroupStatusErroring && shardGroup.ID != sg.ID {
+			shardGroup.SetStatus(structs.ShardGroupStatusMarkedForClosure)
 		}
 	}
-	sg.Manager.ShardGroupsMu.Unlock()
-
-	if err := sg.SetStatus(structs.ShardGroupStarting); err != nil {
-		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
-	}
-
-	sg.ShardCount = shardCount
-	sg.ShardIDs = shardIDs
-
-	sg.ChunkLimiter = limiter.NewConcurrencyLimiter("guild_chunks", guildChunkLimiterCount*len(shardIDs))
+	sg.Manager.shardGroupsMu.RUnlock()
 
 	ready = make(chan bool, 1)
 
-	sg.Logger.Info().Msgf("Starting ShardGroup with %d shards", len(sg.ShardIDs))
+	sg.Logger.Info().
+		Int("shardCount", sg.ShardCount).
+		Int("shardIds", len(sg.ShardIDs)).
+		Msg("Starting shardgroup")
 
-	sg.ShardsMu.Lock()
+	sg.shardsMu.Lock()
 	for _, shardID := range sg.ShardIDs {
 		shard := sg.NewShard(shardID)
 		sg.Shards[shardID] = shard
 	}
-	sg.ShardsMu.Unlock()
+	sg.shardsMu.Unlock()
 
-	// We will only close down the entire shardgroup in the event that the first
-	// shard fails to connect. This is to ensure that others are able to properly
-	// connect and not just another generic connect issue which would be annoying
-	// if 1 of your 250 shards die whilst starting up causing all the others to
-	// also be killed.
+	if len(sg.ShardIDs) == 0 {
+		return nil, ErrMissingShards
+	}
 
-	initialShard := sg.ShardIDs[0]
+	initialShard := sg.Shards[sg.ShardIDs[0]]
 
-	sg.ShardsMu.RLock()
-	shard := sg.Shards[initialShard]
-	sg.ShardsMu.RUnlock()
+	sg.SetStatus(structs.ShardGroupStatusConnecting)
 
 	for {
-		err = shard.Connect()
+		err = initialShard.Connect()
 
 		if err != nil && !xerrors.Is(err, context.Canceled) {
-			retries := atomic.LoadInt32(shard.Retries)
+			retriesRemaining := initialShard.RetriesRemaining.Load()
 
-			// In the event the first shard does not successfully connect, we will attempt a
-			// few more times in case it is one of those generic connection issues.
-			if retries > 0 {
+			if retriesRemaining > 0 {
 				sg.Logger.Error().Err(err).
-					Int32("retries", retries).
-					Msg("Failed to connect shard. Retrying...")
+					Int32("retries_remaining", retriesRemaining).
+					Msg("Failed to connect shard. Retrying")
 			} else {
 				sg.Logger.Error().Err(err).
 					Msg("Failed to connect shard. Cannot continue")
 
-				sg.ErrorMu.Lock()
-				sg.Error = err.Error()
-				sg.ErrorMu.Unlock()
+				sg.Error.Store(err.Error())
+
+				sg.SetStatus(structs.ShardGroupStatusErroring)
 
 				sg.Close()
-
-				if err := sg.SetStatus(structs.ShardGroupError); err != nil {
-					sg.Logger.Error().Err(err).
-						Msg("Encountered error setting shard group status")
-				}
-
-				for _, shard := range sg.Shards {
-					if err = shard.SetStatus(structs.ShardClosed); err != nil {
-						shard.Logger.Error().Err(err).
-							Msg("Encountered error setting shard status")
-					}
-				}
-
-				err = xerrors.Errorf("ShardGroup open: %w", err)
 
 				return
 			}
 
-			atomic.AddInt32(shard.Retries, -1)
-			sg.Logger.Debug().
-				Msgf("Shardgroup retries is now at %d", atomic.LoadInt32(shard.Retries))
+			initialShard.RetriesRemaining.Sub(1)
 		} else {
 			break
 		}
 	}
 
-	go shard.Open()
+	go initialShard.Open()
 
-	wg := sync.WaitGroup{}
+	connectGroup := sync.WaitGroup{}
 
 	for _, shardID := range sg.ShardIDs[1:] {
-		wg.Add(1)
+		connectGroup.Add(1)
 
 		go func(shardID int) {
-			sg.ShardsMu.RLock()
+			sg.shardsMu.RLock()
 			shard := sg.Shards[shardID]
-			sg.ShardsMu.RUnlock()
+			sg.shardsMu.RUnlock()
 
 			for {
-				err = shard.Connect()
-				if err != nil && !xerrors.Is(err, context.Canceled) {
-					sg.Logger.Warn().Err(err).
-						Int("shard_id", shardID).
-						Msgf("Failed to connect shard. Retrying...")
+				shardErr := shard.Connect()
+				if shardErr != nil && !xerrors.Is(shardErr, context.Canceled) {
+					sg.Logger.Warn().Err(shardErr).
+						Int("shardId", shardID).
+						Msgf("Failed to connect shard. Retrying")
 				} else {
 					go shard.Open()
 
@@ -241,87 +191,86 @@ func (sg *ShardGroup) Open(shardIDs []int, shardCount int) (ready chan bool, err
 				}
 			}
 
-			wg.Done()
+			connectGroup.Done()
 		}(shardID)
 	}
 
-	wg.Wait()
-	sg.Logger.Debug().Msgf("All shards are now listening")
+	connectGroup.Wait()
+	sg.Logger.Info().Msg("All shards have connected")
 
-	if err := sg.SetStatus(structs.ShardGroupConnecting); err != nil {
-		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
-	}
+	sg.SetStatus(structs.ShardGroupStatusConnected)
 
 	go func(sg *ShardGroup) {
-		sg.ShardsMu.RLock()
+		sg.shardsMu.RLock()
 		for _, shardID := range sg.ShardIDs {
 			shard := sg.Shards[shardID]
-			sg.Logger.Debug().Msgf("Waiting for shard %d to be ready", shard.ShardID)
-			atomic.StoreInt32(sg.WaitingFor, int32(shardID))
+			sg.WaitingFor.Store(int32(shardID))
 			shard.WaitForReady()
 		}
-		sg.ShardsMu.RUnlock()
+		sg.shardsMu.RUnlock()
 
-		sg.Logger.Debug().Msg("All shards in ShardGroup are ready")
+		sg.Logger.Info().Msg("All shards are now ready")
 
-		if err := sg.SetStatus(structs.ShardGroupReady); err != nil {
-			sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
-		}
-
-		// If a shardgroup has successfully started up, we can remove any manager errors.
-		sg.Manager.ErrorMu.Lock()
-		sg.Manager.Error = ""
-		sg.Manager.ErrorMu.Unlock()
-
-		sg.Manager.ShardGroupsMu.RLock()
-		for index, _sg := range sg.Manager.ShardGroups {
-			if _sg != sg {
-				_sg.floodgate.UnSet()
-				sg.Manager.Logger.Debug().Int32("index", index).Msg("Killed ShardGroup")
+		sg.Manager.shardGroupsMu.RLock()
+		for sgID, _sg := range sg.Manager.ShardGroups {
+			if sgID != sg.ID {
+				_sg.floodgate.Store(false)
 				_sg.Close()
 			}
 		}
-		sg.Manager.ShardGroupsMu.RUnlock()
+		sg.Manager.shardGroupsMu.RUnlock()
 
-		sg.floodgate.Set()
+		sg.floodgate.Store(true)
 		close(ready)
 	}(sg)
 
-	return ready, nil
+	return ready, err
 }
 
-// SetStatus changes the ShardGroup status.
-func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) (err error) {
-	sg.StatusMu.Lock()
+// Close closes all shards in a shardgroup.
+func (sg *ShardGroup) Close() {
+	sg.Logger.Info().Msgf("Closing shardgroup %d", sg.ID)
 
-	// If we have set the status already, do not do it again.
-	if status == sg.Status {
-		sg.StatusMu.Unlock()
+	sg.SetStatus(structs.ShardGroupStatusClosing)
 
-		return
+	closeWaiter := sync.WaitGroup{}
+
+	sg.shardsMu.RLock()
+	for _, sh := range sg.Shards {
+		closeWaiter.Add(1)
+
+		go func(sh *Shard) {
+			sh.Close(websocket.StatusNormalClosure)
+			closeWaiter.Done()
+		}(sh)
 	}
+	sg.shardsMu.RUnlock()
+
+	closeWaiter.Wait()
+
+	sg.SetStatus(structs.ShardGroupStatusClosed)
+}
+
+// SetStatus sets the status of the ShardGroup.
+func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
+	sg.statusMu.Lock()
+	defer sg.statusMu.Unlock()
+
+	sg.Logger.Debug().Int("status", int(status)).Msg("ShardGroup status changed")
 
 	sg.Status = status
-	sg.StatusMu.Unlock()
 
-	return sg.Manager.PublishEvent("SHARD_STATUS", structs.MessagingStatusUpdate{Status: int32(status)})
+	sg.Manager.Sandwich.PublishGlobalEvent("SW_SHARD_GROUP_STATUS_UPDATE", structs.ShardGroupStatusUpdate{
+		Manager:    sg.Manager.Identifier.Load(),
+		ShardGroup: sg.ID,
+		Status:     int(sg.Status),
+	})
 }
 
-// Close closes the shard group and finishes any shards.
-func (sg *ShardGroup) Close() {
-	sg.Logger.Info().Msg("Closing ShardGroup")
+// GetStatus returns the status of a ShardGroup.
+func (sg *ShardGroup) GetStatus() (status structs.ShardGroupStatus) {
+	sg.statusMu.RLock()
+	defer sg.statusMu.RUnlock()
 
-	if err := sg.SetStatus(structs.ShardGroupClosing); err != nil {
-		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
-	}
-
-	sg.ShardsMu.RLock()
-	for _, shard := range sg.Shards {
-		shard.Close(websocket.StatusNormalClosure)
-	}
-	sg.ShardsMu.RUnlock()
-
-	if err := sg.SetStatus(structs.ShardGroupClosed); err != nil {
-		sg.Logger.Error().Err(err).Msg("Encountered error setting shard group status")
-	}
+	return sg.Status
 }
