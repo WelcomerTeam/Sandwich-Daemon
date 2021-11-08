@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -481,7 +482,7 @@ func (sg *Sandwich) setupGRPC() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
 
-		return
+		return err
 	}
 
 	return nil
@@ -495,7 +496,6 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	prometheus.MustRegister(sandwichEventCount)
 	prometheus.MustRegister(sandwichEventInflightCount)
 	prometheus.MustRegister(sandwichEventBufferCount)
-	// prometheus.MustRegister(sandwichGuildEventCount)
 	prometheus.MustRegister(sandwichDispatchEventCount)
 	prometheus.MustRegister(sandwichGatewayLatency)
 	prometheus.MustRegister(sandwichUnavailableGuildCount)
