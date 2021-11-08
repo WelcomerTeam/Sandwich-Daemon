@@ -1,0 +1,70 @@
+logging:
+  level: debug
+  file_logging_enabled: true
+  encode_as_json: false
+  directory: logs
+  filename: sandwich
+  max_size: 10000000
+  max_backups: 7
+  max_age: 7
+  compress: true
+identify:
+  url: "http://127.0.0.1:5000/identify"
+  headers:
+    TEST: TEST
+producer:
+  type: stan
+  configuration:
+    address: 127.0.0.1:4222
+    channel: sandwich
+    cluster: cluster
+prometheus:
+  host: 127.0.0.1:15001
+grpc:
+  network: tcp4
+  host: 127.0.0.1:15000
+http:
+  host: 127.0.0.1:14999
+  enabled: true
+  oauth:
+    clientid: ""
+    clientsecret: ""
+    endpoint:
+      authurl: https://discord.com/api/oauth2/authorize?prompt=none
+      tokenurl: https://discord.com/api/oauth2/token
+    redirecturl: http://127.0.0.1:14999/callback
+    scopes:
+      - identify
+      - email
+  user_access:
+    - "143090142360371200"
+webhooks:
+managers:
+  - identifier: welcomer_beta
+    producer_identifier: welcomer
+    friendly_name: Welcomer Beta
+    token: TOKEN
+    auto_start: false
+    bot:
+      default_presence:
+        since: null
+        activities: []
+        status: ""
+        afk: false
+      intents: 32511
+      chunk_guilds_on_startup: false
+    caching:
+      cache_users: true
+      cache_members: true
+      store_mutuals: true
+    events:
+      event_blacklist: []
+      produce_blacklist: []
+    messaging:
+      client_name: welcomerBeta
+      channel_name: sandwich
+      use_random_suffix: true
+    sharding:
+      auto_sharded: false
+      shard_count: 4
+      shard_ids: "0-3"
