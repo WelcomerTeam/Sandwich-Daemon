@@ -19,8 +19,9 @@ A sandwich payload received by a consumer will be a JSON payload similar to a re
 Any extra data that sandwich includes will be under the keys `__extra, __sandwich, __sandwich_trace`.
 
 - `__extra`: This is the sandwich equivelant of the `d` key in the regular discord payload. This will include extra data that will be useful contextually, at the moment this will only be present on `_UPDATE` events and will include the previous state.
-- `__sandwich_trace`: This will include trace times.
+- `__sandwich_trace`: This will include trace times (will be introduced at a later point in time. This will be key pairs of map[string]int).
 - `__sandwich`: This includes any metadata that will be useful for consumers identifying the origin of the message. Metadata includes the keys `v,i,a,s`
+
   - `__sandwich.v`: The current version of Sandwich.
   - `__sandwich.i`: The ProducerIdentifier of a manager.
   - `__sandwich.a`: The Application name of a manager. This will be the regular identifier.
@@ -29,15 +30,16 @@ Any extra data that sandwich includes will be under the keys `__extra, __sandwic
   ```json
   {
     "op":0,
-    "d":...,
+    "d": ...,
     "s":117,
     "t":"MESSAGE_CREATE",
-    "__extra":null,
+    "__extra": null,
     "__sandwich":{
       "v":"1.0.1",
       "i":"welcomer",
       "a":"welcomer_dogfd",
       "s":[ 1, 0, 1 ]
     },
-    "__sandwich_trace":null
-  }```
+    "__sandwich_trace": null
+  }
+  ```
