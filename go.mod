@@ -10,7 +10,6 @@ require (
 	github.com/fasthttp/session/v2 v2.4.4
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/brotli/go/cbrotli v0.0.0-20210908071845-62662f87cdd9
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/nats-io/nats-server/v2 v2.3.4 // indirect

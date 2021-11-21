@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -18,7 +17,6 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
-	"github.com/google/brotli/go/cbrotli"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -36,7 +34,7 @@ import (
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.0.0"
+const VERSION = "1.0.1"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -45,9 +43,6 @@ const (
 	PermissionWrite    = 0o600
 
 	prometheusGatherInterval = 10 * time.Second
-
-	BrotliBestSpeed          = 0
-	BrotliDefaultCompression = 6
 )
 
 type Sandwich struct {
@@ -96,10 +91,6 @@ type Sandwich struct {
 	receivedPool sync.Pool
 	// SentPayload pool
 	sentPool sync.Pool
-
-	// Brotli writers pool
-	FastCompressionOptions    cbrotli.WriterOptions `json:"-"`
-	DefaultCompressionOptions cbrotli.WriterOptions `json:"-"`
 }
 
 // SandwichConfiguration represents the configuration file.
@@ -199,14 +190,6 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 		sentPool: sync.Pool{
 			New: func() interface{} { return new(discord.SentPayload) },
-		},
-
-		FastCompressionOptions: cbrotli.WriterOptions{
-			Quality: BrotliBestSpeed,
-		},
-
-		DefaultCompressionOptions: cbrotli.WriterOptions{
-			Quality: BrotliDefaultCompression,
 		},
 	}
 
@@ -418,6 +401,12 @@ func (sg *Sandwich) startManagers() (err error) {
 	sg.managersMu.Lock()
 
 	for _, managerConfiguration := range sg.Configuration.Managers {
+		if managerConfiguration.Identifier == "" {
+			sg.Logger.Warn().Msg("Manager does not have an identifier. Ignoring")
+
+			continue
+		}
+
 		if _, duplicate := sg.Managers[managerConfiguration.Identifier]; duplicate {
 			sg.Logger.Warn().
 				Str("identifier", managerConfiguration.Identifier).

@@ -124,7 +124,6 @@ export default {
       this.showLoading = true;
     },
     getManagerType(manager) {
-      console.log(manager);
       if (!manager.shard_groups || manager.shard_groups.length === 0) {
         return managerType[0];
       }

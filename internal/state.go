@@ -166,24 +166,27 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Gui
 }
 
 // SetGuild creates or updates a guild entry in the cache.
-func (ss *SandwichState) SetGuild(guild *discord.Guild) {
+func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 	ss.guildsMu.Lock()
 	defer ss.guildsMu.Unlock()
 
 	for _, role := range guild.Roles {
-		ss.SetGuildRole(guild.ID, role)
+		ss.SetGuildRole(ctx, guild.ID, role)
 	}
 
 	for _, channel := range guild.Channels {
-		ss.SetGuildChannel(&guild.ID, channel)
+		ss.SetGuildChannel(ctx, &guild.ID, channel)
 	}
 
 	for _, emoji := range guild.Emojis {
-		ss.SetGuildEmoji(guild.ID, emoji)
+		ss.SetGuildEmoji(ctx, guild.ID, emoji)
 	}
 
-	for _, member := range guild.Members {
-		ss.SetGuildMember(guild.ID, member)
+	if ctx.CacheMembers {
+		for _, member := range guild.Members {
+			ss.SetGuildMember(ctx, guild.ID, member)
+		}
+
 	}
 
 	ss.Guilds[guild.ID] = ss.GuildToState(guild)
@@ -279,7 +282,11 @@ func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID
 }
 
 // SetGuildMember creates or updates a guildMember entry in the cache. Adds user in guildMember object to cache.
-func (ss *SandwichState) SetGuildMember(guildID discord.Snowflake, guildMember *discord.GuildMember) {
+func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake, guildMember *discord.GuildMember) {
+	if !ctx.CacheMembers {
+		return
+	}
+
 	ss.guildMembersMu.Lock()
 	defer ss.guildMembersMu.Unlock()
 
@@ -298,7 +305,9 @@ func (ss *SandwichState) SetGuildMember(guildID discord.Snowflake, guildMember *
 
 	guildMembers.Members[guildMember.User.ID] = ss.GuildMemberToState(guildMember)
 
-	ss.SetUser(guildMember.User)
+	if ctx.CacheUsers {
+		ss.SetUser(ctx, guildMember.User)
+	}
 
 	return
 }
@@ -410,7 +419,7 @@ func (ss *SandwichState) GetGuildRole(guildID discord.Snowflake, roleID discord.
 }
 
 // SetGuildRole creates or updates a role entry in the cache.
-func (ss *SandwichState) SetGuildRole(guildID discord.Snowflake, role *discord.Role) {
+func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, role *discord.Role) {
 	ss.guildRolesMu.Lock()
 	defer ss.guildRolesMu.Unlock()
 
@@ -551,7 +560,7 @@ func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discor
 }
 
 // SetGuildEmoji creates or updates a emoji entry in the cache. Adds user in user object to cache.
-func (ss *SandwichState) SetGuildEmoji(guildID discord.Snowflake, emoji *discord.Emoji) {
+func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake, emoji *discord.Emoji) {
 	ss.guildEmojisMu.Lock()
 	defer ss.guildEmojisMu.Unlock()
 
@@ -570,8 +579,8 @@ func (ss *SandwichState) SetGuildEmoji(guildID discord.Snowflake, emoji *discord
 
 	guildEmojis.Emojis[emoji.ID] = ss.EmojiToState(emoji)
 
-	if emoji.User != nil {
-		ss.SetUser(emoji.User)
+	if emoji.User != nil && ctx.CacheUsers {
+		ss.SetUser(ctx, emoji.User)
 	}
 
 	return
@@ -686,7 +695,11 @@ func (ss *SandwichState) GetUser(userID discord.Snowflake) (user *discord.User, 
 }
 
 // SetUser creates or updates a user entry in the cache.
-func (ss *SandwichState) SetUser(user *discord.User) {
+func (ss *SandwichState) SetUser(ctx *StateCtx, user *discord.User) {
+	if !ctx.CacheUsers {
+		return
+	}
+
 	ss.usersMu.Lock()
 	defer ss.usersMu.Unlock()
 
@@ -845,7 +858,7 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 }
 
 // SetGuildChannel creates or updates a channel entry in the cache.
-func (ss *SandwichState) SetGuildChannel(guildIDPtr *discord.Snowflake, channel *discord.Channel) {
+func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snowflake, channel *discord.Channel) {
 	ss.guildChannelsMu.Lock()
 	defer ss.guildChannelsMu.Unlock()
 
@@ -872,9 +885,11 @@ func (ss *SandwichState) SetGuildChannel(guildIDPtr *discord.Snowflake, channel 
 
 	guildChannels.Channels[channel.ID] = ss.ChannelToState(channel)
 
-	for _, recipient := range channel.Recipients {
-		recipient := recipient
-		ss.SetUser(&recipient)
+	if ctx.CacheUsers {
+		for _, recipient := range channel.Recipients {
+			recipient := recipient
+			ss.SetUser(ctx, &recipient)
+		}
 	}
 
 	return
@@ -957,7 +972,11 @@ func (ss *SandwichState) GetUserMutualGuilds(userID discord.Snowflake) (guildIDs
 }
 
 // AddUserMutualGuild adds a mutual guild to a user.
-func (ss *SandwichState) AddUserMutualGuild(userID discord.Snowflake, guildID discord.Snowflake) {
+func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowflake, guildID discord.Snowflake) {
+	if !ctx.StoreMutuals {
+		return
+	}
+
 	ss.mutualsMu.Lock()
 	defer ss.mutualsMu.Unlock()
 

@@ -10,11 +10,11 @@ Includes an easy to use GRPC interface for fetching information from Sandwich in
 
 Sandwich can filter out events on an absolute level so it will not even know it received the event and also the possibility to internally process (such as add to state) but then not publish to a consumer.
 
-### Consuming
+## Consuming
 
 Consuming Sandwich Daemon events should be fairly similar to a regular discord payload however also include a few changes to both fit the purpose of sandwich and support forward compatibility.
 
-A sandwich payload received by a consumer will first be compressed with brotli so will need to be decompressed. Sandwich events will also include the exact same `op,d,s,t` keys from a regular discord payload and these should not be affected by sandwich between it receiving and it being published.
+A sandwich payload received by a consumer will be a JSON payload similar to a regular discord payload. Sandwich events will also include the exact same `op,d,s,t` keys from a regular discord payload and these should not be affected by sandwich between it receiving and it being published.
 
 Any extra data that sandwich includes will be under the keys `__extra, __sandwich, __sandwich_trace`.
 
@@ -25,3 +25,19 @@ Any extra data that sandwich includes will be under the keys `__extra, __sandwic
   - `__sandwich.i`: The ProducerIdentifier of a manager.
   - `__sandwich.a`: The Application name of a manager. This will be the regular identifier.
   - `__sandwich.s`: This is a list of integers. This represents: `shardgroupID, shardID, shardCount`
+
+  ```json
+  {
+    "op":0,
+    "d":...,
+    "s":117,
+    "t":"MESSAGE_CREATE",
+    "__extra":null,
+    "__sandwich":{
+      "v":"1.0.1",
+      "i":"welcomer",
+      "a":"welcomer_dogfd",
+      "s":[ 1, 0, 1 ]
+    },
+    "__sandwich_trace":null
+  }```

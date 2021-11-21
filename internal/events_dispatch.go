@@ -159,7 +159,7 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildCreatePayload.ID)
 
-	ctx.Sandwich.State.SetGuild(guildCreatePayload.Guild)
+	ctx.Sandwich.State.SetGuild(ctx, guildCreatePayload.Guild)
 
 	ctx.unavailableMu.Lock()
 	delete(ctx.Unavailable, guildCreatePayload.ID)
@@ -183,8 +183,10 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 		return
 	}
 
-	for _, member := range guildMembersChunkPayload.Members {
-		ctx.Sandwich.State.SetGuildMember(guildMembersChunkPayload.GuildID, member)
+	if ctx.CacheMembers {
+		for _, member := range guildMembersChunkPayload.Members {
+			ctx.Sandwich.State.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
+		}	
 	}
 
 	ctx.Logger.Debug().
@@ -207,7 +209,7 @@ func OnChannelCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, channelCreatePayload.GuildID)
 
-	ctx.Sandwich.State.SetGuildChannel(channelCreatePayload.GuildID, channelCreatePayload.Channel)
+	ctx.Sandwich.State.SetGuildChannel(ctx, channelCreatePayload.GuildID, channelCreatePayload.Channel)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -225,7 +227,7 @@ func OnChannelUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, channelUpdatePayload.GuildID)
 
 	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(channelUpdatePayload.GuildID, channelUpdatePayload.ID)
-	ctx.Sandwich.State.SetGuildChannel(channelUpdatePayload.GuildID, channelUpdatePayload.Channel)
+	ctx.Sandwich.State.SetGuildChannel(ctx, channelUpdatePayload.GuildID, channelUpdatePayload.Channel)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -370,7 +372,7 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildUpdatePayload.ID)
 
 	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildUpdatePayload.ID)
-	ctx.Sandwich.State.SetGuild(guildUpdatePayload)
+	ctx.Sandwich.State.SetGuild(ctx, guildUpdatePayload)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -446,7 +448,7 @@ func OnGuildEmojisUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	ctx.Sandwich.State.RemoveAllGuildEmojis(guildEmojisUpdatePayload.GuildID)
 
 	for _, emoji := range guildEmojisUpdatePayload.Emojis {
-		ctx.Sandwich.State.SetGuildEmoji(guildEmojisUpdatePayload.GuildID, emoji)
+		ctx.Sandwich.State.SetGuildEmoji(ctx, guildEmojisUpdatePayload.GuildID, emoji)
 	}
 
 	return structs.StateResult{
@@ -472,7 +474,7 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 
 	beforeGuild.Stickers = guildStickersUpdatePayload.Stickers
 
-	ctx.Sandwich.State.SetGuild(beforeGuild)
+	ctx.Sandwich.State.SetGuild(ctx, beforeGuild)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -507,8 +509,13 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberAddPayload.GuildID)
 
-	ctx.Sandwich.State.SetGuildMember(guildMemberAddPayload.GuildID, guildMemberAddPayload.GuildMember)
-	ctx.Sandwich.State.AddUserMutualGuild(guildMemberAddPayload.User.ID, guildMemberAddPayload.GuildID)
+	if ctx.CacheMembers {
+		ctx.Sandwich.State.SetGuildMember(ctx, guildMemberAddPayload.GuildID, guildMemberAddPayload.GuildMember)
+	}
+
+	if ctx.StoreMutuals {
+		ctx.Sandwich.State.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, guildMemberAddPayload.GuildID)
+	}
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -551,7 +558,9 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	beforeGuildMember, _ := ctx.Sandwich.State.GetGuildMember(
 		guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID)
 
-	ctx.Sandwich.State.SetGuildMember(guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
+		if ctx.CacheMembers {
+			ctx.Sandwich.State.SetGuildMember(ctx, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
+		}
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -571,7 +580,7 @@ func OnGuildRoleCreate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildRoleCreatePayload.GuildID)
 
-	ctx.Sandwich.State.SetGuildRole(guildRoleCreatePayload.GuildID, guildRoleCreatePayload.Role)
+	ctx.Sandwich.State.SetGuildRole(ctx, guildRoleCreatePayload.GuildID, guildRoleCreatePayload.Role)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -591,7 +600,7 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 	beforeRole, _ := ctx.Sandwich.State.GetGuildRole(
 		guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
 
-	ctx.Sandwich.State.SetGuildRole(guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
+	ctx.Sandwich.State.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
 	return structs.StateResult{
 		Data: msg.Data,

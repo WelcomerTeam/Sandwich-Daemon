@@ -147,7 +147,6 @@
           v-model="manager.caching.cache_users"
           name="cache_users"
           label="Cache Users"
-          :disabled="true"
           description="When enabled, will keep users in cache."
         />
         <text-input
@@ -155,7 +154,6 @@
           v-model="manager.caching.cache_members"
           name="cache_members"
           label="Cache Members"
-          :disabled="true"
           description="When enabled, will keep members in cache. Noop if cache users is disabled."
         />
         <text-input
@@ -163,7 +161,6 @@
           v-model="manager.caching.store_mutuals"
           name="store_mutuals"
           label="Store Mutuals"
-          :disabled="true"
           description="When enabled, will keep track of mutual guilds for a specific user. Rely on oauth2 instead of this. Noop if cache members or cache users is disabled."
         />
       </field-set>

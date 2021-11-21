@@ -22,7 +22,9 @@ type StateCtx struct {
 
 	*Shard
 
-	Vars map[string]interface{}
+	CacheUsers   bool
+	CacheMembers bool
+	StoreMutuals bool
 }
 
 // SandwichState stores the collective state of all ShardGroups
@@ -105,8 +107,18 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 		return
 	}
 
+	sh.Manager.configurationMu.RLock()
+	cacheUsers := sh.Manager.Configuration.Caching.CacheUsers
+	cacheMembers := sh.Manager.Configuration.Caching.CacheMembers
+	storeMutuals := sh.Manager.Configuration.Caching.StoreMutuals
+	sh.Manager.configurationMu.RUnlock()
+
 	result, continuable, err := StateDispatch(&StateCtx{
-		Shard: sh,
+		context:      ctx,
+		Shard:        sh,
+		CacheUsers:   cacheUsers,
+		CacheMembers: cacheMembers,
+		StoreMutuals: storeMutuals,
 	}, msg)
 
 	if err != nil {
@@ -137,7 +149,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 	packet.Sequence = msg.Sequence
 	packet.Type = msg.Type
 
-	// Setting result.Data will override what is sent to consumers
+	// Setting result.Data will override what is sent to consumers.
 	packet.Data = result.Data
 
 	// Extra contains any extra information such as before state and if it is a lazy guild.

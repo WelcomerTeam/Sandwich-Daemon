@@ -15,7 +15,6 @@ import (
 
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
-	"github.com/google/brotli/go/cbrotli"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
@@ -269,23 +268,10 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}
 
-	var compressionOptions cbrotli.WriterOptions
-
-	if len(payload) > minPayloadCompressionSize {
-		compressionOptions = mg.Sandwich.DefaultCompressionOptions
-	} else {
-		compressionOptions = mg.Sandwich.FastCompressionOptions
-	}
-
-	result, err := cbrotli.Encode(payload, compressionOptions)
-	if err != nil {
-		return
-	}
-
 	err = mg.ProducerClient.Publish(
 		ctx,
 		channelName,
-		result,
+		payload,
 	)
 
 	if err != nil {

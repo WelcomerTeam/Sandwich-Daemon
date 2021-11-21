@@ -339,6 +339,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	defer sg.managersMu.RUnlock()
 
 	managers := make([]*structs.StatusEndpointManager, 0, len(sg.Managers))
+	unsortedManagers := make(map[string]*structs.StatusEndpointManager, 0)
 
 	manager := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
@@ -347,12 +348,27 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 			for _, manager := range sg.Managers {
 				manager.configurationMu.RLock()
 				friendlyName := manager.Configuration.FriendlyName
+				keyName := manager.Configuration.FriendlyName + ":" + manager.Configuration.Identifier
 				manager.configurationMu.RUnlock()
 
-				managers = append(managers, &structs.StatusEndpointManager{
+				unsortedManagers[keyName] = &structs.StatusEndpointManager{
 					DisplayName: friendlyName,
 					ShardGroups: getManagerShardGroupStatus(manager),
-				})
+				}
+			}
+
+			// Sort manager list by friendly name.
+
+			managerList := []string{}
+
+			for managerName := range unsortedManagers {
+				managerList = append(managerList, managerName)
+			}
+
+			sort.Strings(managerList)
+
+			for _, keyName := range managerList {
+				managers = append(managers, unsortedManagers[keyName])
 			}
 
 			return structs.StatusEndpointResponse{

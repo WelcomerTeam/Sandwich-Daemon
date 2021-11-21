@@ -180,8 +180,6 @@ export default {
     onChange(event) {
       store.commit("setSelectedManager", event.target.value);
     },
-  },
-  methods: {
     createNewManager() {
       let newManagerConfiguration = {
         identifier: "",
@@ -196,7 +194,7 @@ export default {
         "Enter new manager identifier",
         ""
       );
-      if (newManagerConfiguration.identifier == "") {
+      if (!newManagerConfiguration.identifier) {
         return;
       }
 
@@ -204,7 +202,7 @@ export default {
         "Enter new manager producer identifier",
         newManagerConfiguration.producer_identifier
       );
-      if (newManagerConfiguration.producer_identifier == "") {
+      if (!newManagerConfiguration.producer_identifier) {
         return;
       }
 
@@ -212,7 +210,7 @@ export default {
         "Enter friendly name",
         newManagerConfiguration.identifier
       );
-      if (newManagerConfiguration.friendly_name == "") {
+      if (!newManagerConfiguration.friendly_name) {
         return;
       }
 

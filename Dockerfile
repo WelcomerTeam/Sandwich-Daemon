@@ -1,15 +1,15 @@
 FROM golang:1.17 AS build_base
 
-WORKDIR /go/brotli-cgo
+# WORKDIR /go/brotli-cgo
 
 RUN apt update -y \
     && apt install -y git build-essential cmake zlib1g-dev
 
-RUN cd /usr/local \
-    && git clone https://github.com/google/brotli \
-    && cd brotli && mkdir out && cd out && ../configure-cmake \
-    && make \
-    && make install
+# RUN cd /usr/local \
+#     && git clone https://github.com/google/brotli \
+#     && cd brotli && mkdir out && cd out && ../configure-cmake \
+#     && make \
+#     && make install
 
 WORKDIR /tmp/sandwich-daemon
 

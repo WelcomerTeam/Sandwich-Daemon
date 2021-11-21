@@ -18,6 +18,7 @@
         :placeholder="placeholder"
         :aria-describedby="name + '-description'"
         :value="modelValue"
+        :checked="modelValue"
         :disabled="disabled"
         @input="
           updateValue(
