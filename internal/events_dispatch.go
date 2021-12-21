@@ -30,6 +30,12 @@ func OnReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateRes
 
 	ctx.ShardGroup.userMu.Lock()
 	ctx.ShardGroup.User = &readyPayload.User
+	ctx.Manager.UserID.Store(int64(readyPayload.User.ID))
+
+	ctx.Manager.userMu.Lock()
+	ctx.Manager.User = readyPayload.User
+	ctx.Manager.userMu.Unlock()
+
 	ctx.ShardGroup.userMu.Unlock()
 
 	ctx.unavailableMu.Lock()
@@ -186,7 +192,7 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	if ctx.CacheMembers {
 		for _, member := range guildMembersChunkPayload.Members {
 			ctx.Sandwich.State.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
-		}	
+		}
 	}
 
 	ctx.Logger.Debug().
@@ -558,9 +564,9 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	beforeGuildMember, _ := ctx.Sandwich.State.GetGuildMember(
 		guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID)
 
-		if ctx.CacheMembers {
-			ctx.Sandwich.State.SetGuildMember(ctx, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
-		}
+	if ctx.CacheMembers {
+		ctx.Sandwich.State.SetGuildMember(ctx, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
+	}
 
 	return structs.StateResult{
 		Data: msg.Data,

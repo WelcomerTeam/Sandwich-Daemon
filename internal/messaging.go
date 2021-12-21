@@ -43,10 +43,15 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPaylo
 	application := sh.Manager.Identifier.Load()
 	sh.Manager.configurationMu.RUnlock()
 
+	sh.ShardGroup.userMu.RLock()
+	user := sh.ShardGroup.User
+	sh.ShardGroup.userMu.RUnlock()
+
 	packet.Metadata = structs.SandwichMetadata{
-		Version:     VERSION,
-		Identifier:  identifier,
-		Application: application,
+		Version:       VERSION,
+		Identifier:    identifier,
+		Application:   application,
+		ApplicationID: int64(user.ID),
 		Shard: [3]int{
 			int(sh.ShardGroup.ID),
 			sh.ShardID,

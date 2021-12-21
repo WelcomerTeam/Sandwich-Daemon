@@ -113,8 +113,15 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 	grpc.sg.managersMu.RLock()
 	for _, manager := range grpc.sg.Managers {
 		manager.configurationMu.RLock()
+
+		manager.userMu.RLock()
+		user := manager.User
+		manager.userMu.RUnlock()
+
 		identifiers[manager.Identifier.Load()] = structs.ManagerConsumerConfiguration{
 			Token: manager.Configuration.Token,
+			ID:    manager.UserID.Load(),
+			User:  user,
 		}
 		manager.configurationMu.RUnlock()
 	}

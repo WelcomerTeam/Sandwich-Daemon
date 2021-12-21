@@ -57,6 +57,11 @@ type Manager struct {
 
 	Client *Client `json:"-"`
 
+	UserID *atomic.Int64 `json:"id"`
+
+	userMu sync.RWMutex
+	User   discord.User `json:"user"`
+
 	shardGroupCounter *atomic.Int64
 
 	eventBlacklistMu sync.RWMutex
@@ -134,6 +139,11 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		ShardGroups:   make(map[int64]*ShardGroup),
 
 		Client: NewClient(configuration.Token),
+
+		UserID: &atomic.Int64{},
+
+		userMu: sync.RWMutex{},
+		User:   discord.User{},
 
 		shardGroupCounter: &atomic.Int64{},
 
@@ -254,8 +264,9 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	packet.Data = eventData
 
 	packet.Metadata = structs.SandwichMetadata{
-		Version:    VERSION,
-		Identifier: identifier,
+		Version:       VERSION,
+		Identifier:    identifier,
+		ApplicationID: mg.UserID.Load(),
 	}
 
 	// Clear currently unused values
@@ -396,9 +407,9 @@ func (mg *Manager) Close() {
 	}
 	mg.shardGroupsMu.RUnlock()
 
-	if mg.cancel != nil {
-		mg.cancel()
-	}
+	// if mg.cancel != nil {
+	// 	mg.cancel()
+	// }
 }
 
 // getInitialShardCount returns the initial shard count and ids to use.
