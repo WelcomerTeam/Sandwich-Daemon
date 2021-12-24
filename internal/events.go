@@ -20,6 +20,7 @@ var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPa
 type StateCtx struct {
 	context context.Context
 
+	Stateless bool
 	*Shard
 
 	CacheUsers   bool
@@ -120,7 +121,6 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 		CacheMembers: cacheMembers,
 		StoreMutuals: storeMutuals,
 	}, msg)
-
 	if err != nil {
 		if !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Str("data", strconv.B2S(msg.Data)).Msg("Encountered error whilst handling " + msg.Type)

@@ -399,7 +399,13 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildDeletePayload.ID)
 
 	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildDeletePayload.ID)
-	ctx.Sandwich.State.RemoveGuild(guildDeletePayload.ID)
+
+	// We do not remove the actual guild as other managers may be using it.
+	// Dereferencing it locally ensures that if other managers are using it,
+	// it will stay.
+	ctx.ShardGroup.guildsMu.Lock()
+	delete(ctx.ShardGroup.Guilds, guildDeletePayload.ID)
+	ctx.ShardGroup.guildsMu.Unlock()
 
 	return structs.StateResult{
 		Data: msg.Data,

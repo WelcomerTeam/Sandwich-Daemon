@@ -35,6 +35,9 @@ type ShardGroup struct {
 	shardsMu sync.RWMutex   `json:"-"`
 	Shards   map[int]*Shard `json:"shards"`
 
+	guildsMu sync.RWMutex               `json:"-"`
+	Guilds   map[discord.Snowflake]bool `json:"guilds"`
+
 	ReadyWait *sync.WaitGroup `json:"-"`
 
 	statusMu sync.RWMutex             `json:"-"`
@@ -79,6 +82,9 @@ func (mg *Manager) NewShardGroup(shardGroupID int64, shardIDs []int, shardCount 
 
 		shardsMu: sync.RWMutex{},
 		Shards:   make(map[int]*Shard),
+
+		guildsMu: sync.RWMutex{},
+		Guilds:   make(map[discord.Snowflake]bool),
 
 		statusMu: sync.RWMutex{},
 		Status:   structs.ShardGroupStatusIdle,
@@ -247,6 +253,10 @@ func (sg *ShardGroup) Close() {
 	sg.shardsMu.RUnlock()
 
 	closeWaiter.Wait()
+
+	sg.guildsMu.Lock()
+	sg.Guilds = make(map[discord.Snowflake]bool)
+	sg.guildsMu.Unlock()
 
 	sg.SetStatus(structs.ShardGroupStatusClosed)
 }

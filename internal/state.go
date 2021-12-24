@@ -170,6 +170,10 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 	ss.guildsMu.Lock()
 	defer ss.guildsMu.Unlock()
 
+	ctx.ShardGroup.guildsMu.Lock()
+	ctx.ShardGroup.Guilds[guild.ID] = true
+	ctx.ShardGroup.guildsMu.Unlock()
+
 	for _, role := range guild.Roles {
 		ss.SetGuildRole(ctx, guild.ID, role)
 	}
@@ -186,7 +190,6 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 		for _, member := range guild.Members {
 			ss.SetGuildMember(ctx, guild.ID, member)
 		}
-
 	}
 
 	ss.Guilds[guild.ID] = ss.GuildToState(guild)
@@ -195,16 +198,20 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 }
 
 // RemoveGuild removes a guild from the cache.
-func (ss *SandwichState) RemoveGuild(guildID discord.Snowflake) {
+func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
 	ss.guildsMu.Lock()
 	defer ss.guildsMu.Unlock()
 
-	if _, ok := ss.Guilds[guildID]; ok {
-		ss.RemoveAllGuildRoles(guildID)
-		ss.RemoveAllGuildChannels(guildID)
-		ss.RemoveAllGuildEmojis(guildID)
-		ss.RemoveAllGuildMembers(guildID)
+	if !ctx.Stateless {
+		ctx.ShardGroup.guildsMu.Lock()
+		delete(ctx.ShardGroup.Guilds, guildID)
+		ctx.ShardGroup.guildsMu.Unlock()
 	}
+
+	ss.RemoveAllGuildRoles(guildID)
+	ss.RemoveAllGuildChannels(guildID)
+	ss.RemoveAllGuildEmojis(guildID)
+	ss.RemoveAllGuildMembers(guildID)
 
 	delete(ss.Guilds, guildID)
 
@@ -943,10 +950,10 @@ func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildCh
 
 // RemoveAllGuildChannels removes all guildChannels of a specific guild from the cache.
 func (ss *SandwichState) RemoveAllGuildChannels(guildID discord.Snowflake) {
-	ss.guildEmojisMu.Lock()
-	defer ss.guildEmojisMu.Unlock()
+	ss.guildChannelsMu.Lock()
+	defer ss.guildChannelsMu.Unlock()
 
-	delete(ss.GuildEmojis, guildID)
+	delete(ss.GuildChannels, guildID)
 
 	return
 }

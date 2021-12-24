@@ -43,6 +43,7 @@ const (
 	PermissionWrite    = 0o600
 
 	prometheusGatherInterval = 10 * time.Second
+	cacheEjectorInterval     = 1 * time.Minute
 )
 
 type Sandwich struct {
@@ -505,6 +506,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	))
 
 	go sg.prometheusGatherer()
+	go sg.cacheEjector()
 
 	sg.Logger.Info().Msgf("Serving prometheus at %s", host)
 
@@ -545,6 +547,56 @@ func (sg *Sandwich) setupHTTP() (err error) {
 	}
 
 	return nil
+}
+
+func (sg *Sandwich) cacheEjector() {
+	t := time.NewTicker(cacheEjectorInterval)
+
+	for {
+		select {
+		case <-t.C:
+			allGuildIDs := make(map[discord.Snowflake]bool)
+
+			sg.managersMu.RLock()
+			for _, mg := range sg.Managers {
+				mg.shardGroupsMu.RLock()
+				for _, sg := range mg.ShardGroups {
+					sg.guildsMu.RLock()
+					for guildID, ok := range sg.Guilds {
+						if ok {
+							allGuildIDs[guildID] = true
+						}
+					}
+					sg.guildsMu.RUnlock()
+				}
+				mg.shardGroupsMu.RUnlock()
+			}
+			sg.managersMu.RUnlock()
+
+			ejectedGuilds := make([]discord.Snowflake, 0)
+
+			sg.State.guildsMu.RLock()
+			for guildID := range sg.State.Guilds {
+				if val, ok := allGuildIDs[guildID]; !val || !ok {
+					ejectedGuilds = append(ejectedGuilds, guildID)
+				}
+			}
+			sg.State.guildsMu.RUnlock()
+
+			ctx := &StateCtx{
+				Stateless: true,
+			}
+
+			for _, guildID := range ejectedGuilds {
+				sg.State.RemoveGuild(ctx, guildID)
+			}
+
+			sg.Logger.Debug().
+				Int("guildsEjected", len(ejectedGuilds)).
+				Int("guildsTotal", len(allGuildIDs)).
+				Msg("Ejected cache")
+		}
+	}
 }
 
 func (sg *Sandwich) prometheusGatherer() {
