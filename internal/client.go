@@ -3,15 +3,14 @@ package internal
 import (
 	"context"
 	"fmt"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
-
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
-	"golang.org/x/xerrors"
 )
 
 // Client represents the REST client.
@@ -29,8 +28,6 @@ type Client struct {
 	URLHost   string
 	URLScheme string
 	UserAgent string
-
-	isBot bool
 }
 
 // NewClient makes a new client.
@@ -115,7 +112,7 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 	}
 
 	if res.StatusCode == http.StatusTooManyRequests {
-		resp := discord.TooManyRequests{}
+		var resp discord.TooManyRequests
 		err = json.NewDecoder(res.Body).Decode(&resp)
 
 		if err != nil {

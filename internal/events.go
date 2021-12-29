@@ -2,13 +2,12 @@ package internal
 
 import (
 	"context"
-	"sync"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 	"golang.org/x/xerrors"
+	"sync"
 )
 
 // List of handlers for gateway events.
@@ -18,14 +17,13 @@ var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *S
 var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
-	context context.Context
-
-	Stateless bool
-	*Shard
-
 	CacheUsers   bool
 	CacheMembers bool
+	Stateless    bool
 	StoreMutuals bool
+
+	context context.Context
+	*Shard
 }
 
 // SandwichState stores the collective state of all ShardGroups
@@ -90,8 +88,6 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload) {
 				Msg("Gateway sent unknown packet")
 		}
 	}
-
-	return
 }
 
 // OnDispatch handles routing of discord event.

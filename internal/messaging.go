@@ -2,14 +2,9 @@ package internal
 
 import (
 	"context"
-
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/next/messaging"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"golang.org/x/xerrors"
-)
-
-const (
-	minPayloadCompressionSize = 1000000 // Apply higher level compression to payloads >1 Mb
 )
 
 type MQClient interface {

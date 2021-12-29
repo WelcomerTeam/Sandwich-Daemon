@@ -4,11 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
@@ -18,6 +13,10 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
 )
 
 const (
@@ -27,8 +26,7 @@ const (
 	// Time required before warning about an event taking too long.
 	DispatchWarningTimeout = 30 * time.Second
 
-	MessageChannelBuffer      = 64
-	MinPayloadCompressionSize = 1000000 // Applies higher compression to payloads larger than this in bytes
+	MessageChannelBuffer = 64
 
 	// Time necessary to abort chunking when no events have been received yet in this time frame.
 	InitialMemberChunkTimeout = 10 * time.Second
@@ -282,7 +280,7 @@ readyConsumer:
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
-	sh.HeartbeatInterval = helloResponse.HeartbeatInterval * time.Millisecond
+	sh.HeartbeatInterval = time.Duration(helloResponse.HeartbeatInterval) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
@@ -710,7 +708,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 
 	res, err := json.Marshal(i)
 	if err != nil {
-		return err
+		return xerrors.Errorf("Failed to marshal payload: %v", err)
 	}
 
 	if op != discord.GatewayOpHeartbeat {
@@ -725,7 +723,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 
 	err = wsConn.Write(ctx, websocket.MessageText, res)
 
-	return err
+	return xerrors.Errorf("Failed to write message: %v", err)
 }
 
 // decodeContent converts the stored msg into the passed interface.

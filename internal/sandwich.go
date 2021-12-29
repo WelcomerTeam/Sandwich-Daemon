@@ -2,18 +2,10 @@ package internal
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"os"
-	"path"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
@@ -29,12 +21,18 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
-
-	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"os"
+	"path"
+	"sync"
+	"time"
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.0.1"
+const VERSION = "1.0.2"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -44,6 +42,9 @@ const (
 
 	prometheusGatherInterval = 10 * time.Second
 	cacheEjectorInterval     = 1 * time.Minute
+
+	// Time to keep a member dedupe event for.
+	memberDedupeLength = 1 * time.Minute
 )
 
 type Sandwich struct {
@@ -74,6 +75,9 @@ type Sandwich struct {
 	globalPoolMu          sync.RWMutex
 	globalPool            map[int64]chan []byte
 	globalPoolAccumulator *atomic.Int64
+
+	memberDedupeMu sync.RWMutex
+	MemberDedupe   map[string]int64
 
 	State  *SandwichState `json:"-"`
 	Client *Client        `json:"-"`
@@ -169,6 +173,9 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 		globalPoolMu:          sync.RWMutex{},
 		globalPool:            make(map[int64]chan []byte),
 		globalPoolAccumulator: atomic.NewInt64(0),
+
+		memberDedupeMu: sync.RWMutex{},
+		MemberDedupe:   make(map[string]int64),
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
 
@@ -298,12 +305,12 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 
 	data, err := yaml.Marshal(configuration)
 	if err != nil {
-		return err
+		return xerrors.Errorf("Failed to marshal configuration: %v", err)
 	}
 
 	err = ioutil.WriteFile(path, data, PermissionWrite)
 	if err != nil {
-		return err
+		return xerrors.Errorf("Failed to write configuration to file: %v", err)
 	}
 
 	sg.PublishGlobalEvent("SW_CONFIGURATION_RELOAD", nil)
@@ -369,7 +376,7 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data interface{}) (err 
 
 	payload, err := json.Marshal(packet)
 	if err != nil {
-		return xerrors.Errorf("failed to marshal payload: %w", err)
+		return xerrors.Errorf("Failed to marshal packet: %w", err)
 	}
 
 	for _, pool := range sg.globalPool {
@@ -398,7 +405,7 @@ func (sg *Sandwich) Close() (err error) {
 	return nil
 }
 
-func (sg *Sandwich) startManagers() (err error) {
+func (sg *Sandwich) startManagers() {
 	sg.managersMu.Lock()
 
 	for _, managerConfiguration := range sg.Configuration.Managers {
@@ -446,7 +453,7 @@ func (sg *Sandwich) startManagers() (err error) {
 
 	sg.managersMu.Unlock()
 
-	return nil
+	return
 }
 
 func (sg *Sandwich) setupGRPC() (err error) {
@@ -472,7 +479,7 @@ func (sg *Sandwich) setupGRPC() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
 
-		return err
+		return xerrors.Errorf("Failed to server grpc: %v", err)
 	}
 
 	return nil
@@ -514,7 +521,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve prometheus server")
 
-		return err
+		return xerrors.Errorf("Failed to serve prometheus: %v", err)
 	}
 
 	return nil
@@ -534,7 +541,7 @@ func (sg *Sandwich) setupHTTP() (err error) {
 	if err = sg.SessionProvider.SetProvider(provider); err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to set session provider")
 
-		return err
+		return xerrors.Errorf("Failed to set session provider: %v", err)
 	}
 
 	sg.RouterHandler, sg.DistHandler = sg.NewRestRouter()
@@ -543,7 +550,7 @@ func (sg *Sandwich) setupHTTP() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to server http server")
 
-		return err
+		return xerrors.Errorf("Failed to serve webserver: %v", err)
 	}
 
 	return nil
@@ -555,6 +562,9 @@ func (sg *Sandwich) cacheEjector() {
 	for {
 		select {
 		case <-t.C:
+			now := time.Now().Unix()
+
+			// Guild Ejector
 			allGuildIDs := make(map[discord.Snowflake]bool)
 
 			sg.managersMu.RLock()
@@ -591,9 +601,29 @@ func (sg *Sandwich) cacheEjector() {
 				sg.State.RemoveGuild(ctx, guildID)
 			}
 
+			ejectedMemberDedupes := make([]string, 0)
+
+			// MemberDedup Ejector
+			sg.memberDedupeMu.RLock()
+			for i, t := range sg.MemberDedupe {
+				if now > t {
+					ejectedMemberDedupes = append(ejectedMemberDedupes, i)
+				}
+			}
+			sg.memberDedupeMu.RUnlock()
+
+			if len(ejectedMemberDedupes) > 0 {
+				sg.memberDedupeMu.Lock()
+				for _, i := range ejectedMemberDedupes {
+					delete(sg.MemberDedupe, i)
+				}
+				sg.memberDedupeMu.Unlock()
+			}
+
 			sg.Logger.Debug().
 				Int("guildsEjected", len(ejectedGuilds)).
 				Int("guildsTotal", len(allGuildIDs)).
+				Int("ejectedMemberDedupes", len(ejectedMemberDedupes)).
 				Msg("Ejected cache")
 		}
 	}
@@ -690,8 +720,35 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
 				Int64("eventsInflight", eventsInflight).
-				Int64("eventsBuffer", int64(eventsBuffer)).
+				Int("eventsBuffer", eventsBuffer).
 				Msg("Updated prometheus guages")
 		}
 	}
+}
+
+func createDedupeKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
+	return guildID.String() + ":" + memberID.String()
+}
+
+// AddMemberDedupe creates a new member dedupe.
+func (sg *Sandwich) AddMemberDedupe(guildID discord.Snowflake, memberID discord.Snowflake) {
+	sg.memberDedupeMu.Lock()
+	sg.MemberDedupe[createDedupeKey(guildID, memberID)] = time.Now().Add(memberDedupeLength).Unix()
+	sg.memberDedupeMu.Unlock()
+}
+
+// CheckMemberDedupe returns if a member dedupe is set. If true, event should be ignored.
+func (sg *Sandwich) CheckMemberDedupe(guildID discord.Snowflake, memberID discord.Snowflake) (shouldDedupe bool) {
+	sg.memberDedupeMu.RLock()
+	value := sg.MemberDedupe[createDedupeKey(guildID, memberID)]
+	sg.memberDedupeMu.RUnlock()
+
+	return time.Now().Unix() < value && value != 0
+}
+
+// RemoveMemberDedupe removes a member dedupe.
+func (sg *Sandwich) RemoveMemberDedupe(guildID discord.Snowflake, memberID discord.Snowflake) {
+	sg.memberDedupeMu.Lock()
+	delete(sg.MemberDedupe, createDedupeKey(guildID, memberID))
+	sg.memberDedupeMu.Unlock()
 }

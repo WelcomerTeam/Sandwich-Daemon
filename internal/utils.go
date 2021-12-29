@@ -1,29 +1,17 @@
 package internal
 
 import (
-	"context"
 	"encoding/hex"
+	"go.uber.org/atomic"
+	"golang.org/x/xerrors"
 	"hash"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"go.uber.org/atomic"
-)
-
-const (
-	daySeconds    = 86400
-	hourSeconds   = 3600
-	minuteSeconds = 60
 )
 
 type void struct{}
-
-type CtxGroup struct {
-	context context.Context
-	cancel  func()
-}
 
 func replaceIfEmpty(v string, s string) string {
 	if v == "" {
@@ -33,20 +21,12 @@ func replaceIfEmpty(v string, s string) string {
 	return v
 }
 
-func returnError(err error) string {
-	if err != nil {
-		return err.Error()
-	}
-
-	return ""
-}
-
 // quickHash returns hash from method and input.
 func quickHash(hashMethod hash.Hash, text string) (result string, err error) {
 	hashMethod.Reset()
 
 	if _, err := hashMethod.Write([]byte(text)); err != nil {
-		return "", err
+		return "", xerrors.Errorf("Failed to hash text: %v", err)
 	}
 
 	return hex.EncodeToString(hashMethod.Sum(nil)), nil

@@ -1,9 +1,5 @@
 package discord
 
-import (
-	"time"
-)
-
 // events.go contains the structures of all received events from discord
 
 // Empty structure.
@@ -11,7 +7,7 @@ type void struct{}
 
 // Hello represents a hello event when connecting.
 type Hello struct {
-	HeartbeatInterval time.Duration `json:"heartbeat_interval"`
+	HeartbeatInterval int `json:"heartbeat_interval"`
 }
 
 // Ready represents when the client has completed the initial handshake.

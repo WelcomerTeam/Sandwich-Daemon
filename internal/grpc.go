@@ -3,9 +3,6 @@ package internal
 import (
 	"bytes"
 	"context"
-	"strings"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
@@ -14,6 +11,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+	"strings"
+	"time"
 )
 
 var (
@@ -45,7 +44,7 @@ func onGRPCRequest() {
 	grpcCacheRequests.Inc()
 }
 
-func onGRPCHit(ok bool, guild_id int64) {
+func onGRPCHit(ok bool) {
 	if ok {
 		grpcCacheHits.Inc()
 	} else {
@@ -89,7 +88,7 @@ func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.S
 					Str("identifier", request.Identifier).
 					Msg("Encountered error on GRPC Listen")
 
-				return err
+				return xerrors.Errorf("Failed to send to listener: %v", err)
 			}
 		case <-ctx.Done():
 			return
@@ -108,7 +107,7 @@ func (grpc *routeSandwichServer) PostAnalytics(ctx context.Context, request *pb.
 func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context, request *pb.FetchConsumerConfigurationRequest) (response *pb.FetchConsumerConfigurationResponse, err error) {
 	// ConsumerConfiguration at the moment just contains the Version of the library
 	// along with a map of identifiers. The key is the application passed in metadata.
-	identifiers := make(map[string]structs.ManagerConsumerConfiguration, 0)
+	identifiers := make(map[string]structs.ManagerConsumerConfiguration)
 
 	grpc.sg.managersMu.RLock()
 	for _, manager := range grpc.sg.Managers {
@@ -174,7 +173,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 				}
 			}
 
-			onGRPCHit(ok, request.GuildID)
+			onGRPCHit(ok)
 		}
 	} else {
 		guildChannels, ok := grpc.sg.State.GetAllGuildChannels(discord.Snowflake(request.GuildID))
@@ -236,7 +235,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 				}
 			}
 
-			onGRPCHit(ok, request.GuildID)
+			onGRPCHit(ok)
 		}
 	} else {
 		guildEmojis, ok := grpc.sg.State.GetAllGuildEmojis(discord.Snowflake(request.GuildID))
@@ -298,7 +297,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 				}
 			}
 
-			onGRPCHit(ok, request.GuildID)
+			onGRPCHit(ok)
 		}
 	} else {
 		guildGuildMembers, ok := grpc.sg.State.GetAllGuildMembers(discord.Snowflake(request.GuildID))
@@ -353,7 +352,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 				}
 			}
 
-			onGRPCHit(ok, guildID)
+			onGRPCHit(ok)
 		}
 	} else {
 		if !hasQuery {
@@ -417,7 +416,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 				}
 			}
 
-			onGRPCHit(ok, request.GuildID)
+			onGRPCHit(ok)
 		}
 	} else {
 		guildRoles, ok := grpc.sg.State.GetAllGuildRoles(discord.Snowflake(request.GuildID))
@@ -591,16 +590,16 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 
 // Converts discord.Guild to gRPC counterpart.
 func (grpc *routeSandwichServer) GuildToGRPC(guild *discord.Guild) (sandwichGuild *pb.Guild, err error) {
-	guildJson, err := json.Marshal(guild)
+	guildJSON, err := json.Marshal(guild)
 	if err != nil {
 		return
 	}
 
 	sandwichGuild = &pb.Guild{}
 
-	err = protojson.Unmarshal(guildJson, sandwichGuild)
+	err = protojson.Unmarshal(guildJSON, sandwichGuild)
 	if err != nil {
-		return sandwichGuild, err
+		return sandwichGuild, xerrors.Errorf("Failed to unmarshal guild: %v", err)
 	}
 
 	return
@@ -608,16 +607,16 @@ func (grpc *routeSandwichServer) GuildToGRPC(guild *discord.Guild) (sandwichGuil
 
 // Converts discord.Channel to gRPC counterpart.
 func (grpc *routeSandwichServer) ChannelToGRPC(channel *discord.Channel) (sandwichChannel *pb.Channel, err error) {
-	channelJson, err := json.Marshal(channel)
+	channelJSON, err := json.Marshal(channel)
 	if err != nil {
 		return
 	}
 
 	sandwichChannel = &pb.Channel{}
 
-	err = protojson.Unmarshal(channelJson, sandwichChannel)
+	err = protojson.Unmarshal(channelJSON, sandwichChannel)
 	if err != nil {
-		return sandwichChannel, err
+		return sandwichChannel, xerrors.Errorf("Failed to unmarshal channel: %v", err)
 	}
 
 	return
@@ -625,16 +624,16 @@ func (grpc *routeSandwichServer) ChannelToGRPC(channel *discord.Channel) (sandwi
 
 // Converts discord.Emoji to gRPC counterpart.
 func (grpc *routeSandwichServer) EmojiToGRPC(emoji *discord.Emoji) (sandwichEmoji *pb.Emoji, err error) {
-	emojiJson, err := json.Marshal(emoji)
+	emojiJSON, err := json.Marshal(emoji)
 	if err != nil {
 		return
 	}
 
 	sandwichEmoji = &pb.Emoji{}
 
-	err = protojson.Unmarshal(emojiJson, sandwichEmoji)
+	err = protojson.Unmarshal(emojiJSON, sandwichEmoji)
 	if err != nil {
-		return sandwichEmoji, err
+		return sandwichEmoji, xerrors.Errorf("Failed to unmarshal emoji: %v", err)
 	}
 
 	return
@@ -642,16 +641,16 @@ func (grpc *routeSandwichServer) EmojiToGRPC(emoji *discord.Emoji) (sandwichEmoj
 
 // Converts discord.GuildMember to gRPC counterpart.
 func (grpc *routeSandwichServer) GuildMemberToGRPC(guildMember *discord.GuildMember) (sandwichGuildMember *pb.GuildMember, err error) {
-	guildMemberJson, err := json.Marshal(guildMember)
+	guildMemberJSON, err := json.Marshal(guildMember)
 	if err != nil {
 		return
 	}
 
 	sandwichGuildMember = &pb.GuildMember{}
 
-	err = protojson.Unmarshal(guildMemberJson, sandwichGuildMember)
+	err = protojson.Unmarshal(guildMemberJSON, sandwichGuildMember)
 	if err != nil {
-		return sandwichGuildMember, err
+		return sandwichGuildMember, xerrors.Errorf("Failed to unmarshal guild member: %v", err)
 	}
 
 	return
@@ -659,16 +658,16 @@ func (grpc *routeSandwichServer) GuildMemberToGRPC(guildMember *discord.GuildMem
 
 // Converts discord.Role to gRPC counterpart.
 func (grpc *routeSandwichServer) RoleToGRPC(role *discord.Role) (sandwichRole *pb.Role, err error) {
-	guildRole, err := json.Marshal(role)
+	guildRoleJSON, err := json.Marshal(role)
 	if err != nil {
 		return
 	}
 
 	sandwichRole = &pb.Role{}
 
-	err = protojson.Unmarshal(guildRole, sandwichRole)
+	err = protojson.Unmarshal(guildRoleJSON, sandwichRole)
 	if err != nil {
-		return sandwichRole, err
+		return sandwichRole, xerrors.Errorf("Failed to unmarshal guild role: %v", err)
 	}
 
 	return

@@ -6,6 +6,7 @@ cd ..
 echo "Simplify"
 gofmt -s -w .
 gofumpt -s -w .
+gci -w .
 
 echo "Docker build and push"
 docker build --tag 1345/sandwich-daemon:latest .

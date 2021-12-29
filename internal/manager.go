@@ -5,6 +5,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	"github.com/rs/zerolog"
+	"go.uber.org/atomic"
+	"golang.org/x/xerrors"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -12,12 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
-	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
-	"github.com/rs/zerolog"
-	"go.uber.org/atomic"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -184,7 +183,7 @@ func (mg *Manager) Initialize() (err error) {
 	if err != nil {
 		mg.Logger.Error().Err(err).Msg("Failed to connect producer client")
 
-		return err
+		return xerrors.Errorf("Failed to connect to producer: %v", err)
 	}
 
 	mg.gatewayMu.Lock()
@@ -193,7 +192,7 @@ func (mg *Manager) Initialize() (err error) {
 
 	mg.ProducerClient = producerClient
 
-	return err
+	return
 }
 
 // Open handles retrieving shard counts and scaling.
@@ -322,12 +321,12 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 
 		mg.Sandwich.IdentifyBuckets.WaitForBucket(identifyBucketName)
 	} else {
-		// Pass arguments to URL
-		sendURL := strings.Replace(identifyURL, "{shard_id}", strconv.Itoa(shardID), 0)
-		sendURL = strings.Replace(sendURL, "{shard_count}", strconv.Itoa(shardCount), 0)
-		sendURL = strings.Replace(sendURL, "{token}", token, 0)
-		sendURL = strings.Replace(sendURL, "{token_hash}", hash, 0)
-		sendURL = strings.Replace(sendURL, "{max_concurrency}", strconv.Itoa(maxConcurrency), 0)
+		// Pass arguments to URL.
+		sendURL := strings.ReplaceAll(identifyURL, "{shard_id}", strconv.Itoa(shardID))
+		sendURL = strings.ReplaceAll(sendURL, "{shard_count}", strconv.Itoa(shardCount))
+		sendURL = strings.ReplaceAll(sendURL, "{token}", token)
+		sendURL = strings.ReplaceAll(sendURL, "{token_hash}", hash)
+		sendURL = strings.ReplaceAll(sendURL, "{max_concurrency}", strconv.Itoa(maxConcurrency))
 
 		_, sendURLErr := url.Parse(sendURL)
 		if sendURLErr != nil {
@@ -348,7 +347,7 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 
 		err = json.NewEncoder(&body).Encode(identifyPayload)
 		if err != nil {
-			return err
+			return xerrors.Errorf("Failed to encode identify payload: %v", err)
 		}
 
 		client := http.DefaultClient
@@ -356,7 +355,7 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 		for {
 			req, err := http.NewRequestWithContext(mg.ctx, "POST", sendURL, bytes.NewBuffer(body.Bytes()))
 			if err != nil {
-				return err
+				return xerrors.Errorf("Failed to create request: %v", err)
 			}
 
 			for k, v := range identifyHeaders {
@@ -406,10 +405,6 @@ func (mg *Manager) Close() {
 		sg.Close()
 	}
 	mg.shardGroupsMu.RUnlock()
-
-	// if mg.cancel != nil {
-	// 	mg.cancel()
-	// }
 }
 
 // getInitialShardCount returns the initial shard count and ids to use.

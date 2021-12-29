@@ -2,10 +2,9 @@ package mqclients
 
 import (
 	"context"
-	"strconv"
-
 	"github.com/go-redis/redis/v8"
 	"golang.org/x/xerrors"
+	"strconv"
 )
 
 func init() {

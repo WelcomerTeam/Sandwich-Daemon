@@ -3,12 +3,11 @@ package internal
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"strconv"
+	"time"
 )
 
 const MagicDecimalBase = 10
@@ -108,7 +107,7 @@ func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload) 
 	sh.LastHeartbeatSent.Store(now)
 	sh.LastHeartbeatAck.Store(now)
 
-	sh.HeartbeatInterval = hello.HeartbeatInterval * time.Millisecond
+	sh.HeartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 

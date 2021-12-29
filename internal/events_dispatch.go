@@ -2,11 +2,10 @@ package internal
 
 import (
 	"context"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 // OnReady handles the READY event.
@@ -519,6 +518,21 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 		return
 	}
 
+	if !ctx.Sandwich.CheckMemberDedupe(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID) {
+		ctx.Sandwich.AddMemberDedupe(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
+
+		ctx.Sandwich.State.guildsMu.Lock()
+		guild, ok := ctx.Sandwich.State.Guilds[guildMemberAddPayload.GuildID]
+
+		if ok {
+			memberCount := *guild.MemberCount
+			memberCount++
+			guild.MemberCount = &memberCount
+			ctx.Sandwich.State.Guilds[guildMemberAddPayload.GuildID] = guild
+		}
+		ctx.Sandwich.State.guildsMu.Unlock()
+	}
+
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberAddPayload.GuildID)
 
 	if ctx.CacheMembers {
@@ -541,6 +555,8 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	if err != nil {
 		return
 	}
+
+	ctx.Sandwich.RemoveMemberDedupe(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberRemovePayload.GuildID)
 

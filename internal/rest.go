@@ -2,11 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"net/http"
-	"sort"
-	"strconv"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/fasthttp/router"
@@ -15,6 +10,10 @@ import (
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
+	"net/http"
+	"sort"
+	"strconv"
+	"time"
 )
 
 var (
@@ -23,7 +22,6 @@ var (
 
 	discordUserMeEndpoint = "https://discord.com/api/users/@me"
 
-	// When enabled, / will serve the dist folder.
 	EnableDistHandling = true
 	DistPath           = "sandwich/dist"
 
@@ -111,8 +109,6 @@ func (sg *Sandwich) requireDiscordAuthentication(h fasthttp.RequestHandler) fast
 		}
 
 		h(ctx)
-
-		return
 	})
 }
 
@@ -174,7 +170,7 @@ func (sg *Sandwich) authenticateValue(ctx *fasthttp.RequestCtx) (store *session.
 		}
 	}
 
-	return store, err
+	return store, nil
 }
 
 func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
@@ -339,7 +335,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	defer sg.managersMu.RUnlock()
 
 	managers := make([]*structs.StatusEndpointManager, 0, len(sg.Managers))
-	unsortedManagers := make(map[string]*structs.StatusEndpointManager, 0)
+	unsortedManagers := make(map[string]*structs.StatusEndpointManager)
 
 	manager := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
@@ -701,14 +697,6 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	manager.Client = NewClient(manager.Configuration.Token)
 	manager.configurationMu.RUnlock()
 
-	sg.configurationMu.Lock()
-	for _, configurationManager := range sg.Configuration.Managers {
-		if managerConfiguration.Identifier == configurationManager.Identifier {
-			configurationManager = manager.Configuration
-		}
-	}
-	sg.configurationMu.Unlock()
-
 	sg.configurationMu.RLock()
 	defer sg.configurationMu.RUnlock()
 
@@ -764,7 +752,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.Unlock()
 
 	sg.configurationMu.Lock()
-	sg.configurationMu.Unlock()
+	defer sg.configurationMu.Unlock()
 
 	managers := make([]*ManagerConfiguration, 0)
 

@@ -1,9 +1,6 @@
 package internal
 
 import (
-	"sync"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"github.com/rs/zerolog"
@@ -11,6 +8,8 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"sync"
+	"time"
 )
 
 // ShardGroup represents a group of shards.

@@ -2,13 +2,12 @@ package main
 
 import (
 	"flag"
+	internal "github.com/WelcomerTeam/Sandwich-Daemon/next/internal"
+	"github.com/rs/zerolog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	internal "github.com/WelcomerTeam/Sandwich-Daemon/next/internal"
-	"github.com/rs/zerolog"
 )
 
 func main() {

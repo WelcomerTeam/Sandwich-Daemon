@@ -1,9 +1,8 @@
 package structs
 
 import (
-	"sync"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"sync"
 )
 
 // StateResult represents the data a state handler would return which would be converted to

@@ -2,10 +2,9 @@ package mqclients
 
 import (
 	"context"
-	"strconv"
-
 	"github.com/segmentio/kafka-go"
 	"golang.org/x/xerrors"
+	"strconv"
 )
 
 func init() {

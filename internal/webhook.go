@@ -3,12 +3,11 @@ package internal
 import (
 	"bytes"
 	"context"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	"golang.org/x/xerrors"
 	"net/url"
 	"strings"
 	"time"
-
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
-	"golang.org/x/xerrors"
 )
 
 // Embed colours for webhooks.
@@ -48,10 +47,10 @@ func (sg *Sandwich) PublishWebhook(message discord.WebhookMessage) {
 	}
 }
 
-func (sg *Sandwich) SendWebhook(webhookUrl string, message discord.WebhookMessage) (status int, err error) {
-	webhookUrl = strings.TrimSpace(webhookUrl)
+func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessage) (status int, err error) {
+	webhookURL = strings.TrimSpace(webhookURL)
 
-	_, err = url.Parse(webhookUrl)
+	_, err = url.Parse(webhookURL)
 	if err != nil {
 		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
 	}
@@ -61,9 +60,9 @@ func (sg *Sandwich) SendWebhook(webhookUrl string, message discord.WebhookMessag
 		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
 	}
 
-	sg.webhookBuckets.CreateWaitForBucket(webhookUrl, WebhookRateLimitLimit, WebhookRateLimitDuration)
+	sg.webhookBuckets.CreateWaitForBucket(webhookURL, WebhookRateLimitLimit, WebhookRateLimitDuration)
 
-	_, status, err = sg.Client.Fetch(sg.ctx, "POST", webhookUrl, bytes.NewBuffer(res), map[string]string{
+	_, status, err = sg.Client.Fetch(sg.ctx, "POST", webhookURL, bytes.NewBuffer(res), map[string]string{
 		"Content-Type": "application/json",
 	})
 
