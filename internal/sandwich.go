@@ -32,7 +32,7 @@ import (
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.0.2"
+const VERSION = "1.0.3"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 

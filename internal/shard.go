@@ -722,8 +722,11 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 	sh.Logger.Trace().Msg("<<< " + gotils_strconv.B2S(res))
 
 	err = wsConn.Write(ctx, websocket.MessageText, res)
+	if err != nil {
+		return xerrors.Errorf("Failed to write message: %v", err)
+	}
 
-	return xerrors.Errorf("Failed to write message: %v", err)
+	return nil
 }
 
 // decodeContent converts the stored msg into the passed interface.
