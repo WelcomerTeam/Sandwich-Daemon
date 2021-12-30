@@ -59,6 +59,8 @@ func requestMatch(query string, id discord.Snowflake, name string) bool {
 
 // Listen delivers information to consumers.
 func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.Sandwich_ListenServer) (err error) {
+	onGRPCRequest()
+
 	globalPoolID := grpc.sg.globalPoolAccumulator.Add(1)
 	channel := make(chan []byte)
 
@@ -98,6 +100,8 @@ func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.S
 
 // PostAnalytics is used for consumers to provide information to Sandwich Daemon.
 func (grpc *routeSandwichServer) PostAnalytics(ctx context.Context, request *pb.PostAnalyticsRequest) (response *pb.BaseResponse, err error) {
+	onGRPCRequest()
+
 	// TODO
 
 	return nil, status.Errorf(codes.Unimplemented, "method PostAnalytics not implemented")
@@ -105,8 +109,11 @@ func (grpc *routeSandwichServer) PostAnalytics(ctx context.Context, request *pb.
 
 // FetchConsumerConfiguration returns the Consumer Configuration.
 func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context, request *pb.FetchConsumerConfigurationRequest) (response *pb.FetchConsumerConfigurationResponse, err error) {
+	onGRPCRequest()
+
 	// ConsumerConfiguration at the moment just contains the Version of the library
 	// along with a map of identifiers. The key is the application passed in metadata.
+
 	identifiers := make(map[string]structs.ManagerConsumerConfiguration)
 
 	grpc.sg.managersMu.RLock()
@@ -143,14 +150,14 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 // FetchGuildChannels returns guilds based on the guildID.
 // Takes either query or channelIDs. Empty query and empty channelIDs will return all.
 func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request *pb.FetchGuildChannelsRequest) (response *pb.ChannelsResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.ChannelsResponse{
 		GuildChannels: make(map[int64]*pb.Channel),
 		BaseResponse: &pb.BaseResponse{
 			Ok: false,
 		},
 	}
-
-	onGRPCRequest()
 
 	hasChannelIds := len(request.ChannelIDs) > 0
 	hasQuery := request.Query != ""
@@ -205,14 +212,14 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 // FetchGuildEmojis returns emojis based on the guildID.
 // Takes either query or emojiIDs. Empty query and empty emojiIDs will return all.
 func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *pb.FetchGuildEmojisRequest) (response *pb.EmojisResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.EmojisResponse{
 		GuildEmojis: make(map[int64]*pb.Emoji),
 		BaseResponse: &pb.BaseResponse{
 			Ok: false,
 		},
 	}
-
-	onGRPCRequest()
 
 	hasEmojiIds := len(request.EmojiIDs) > 0
 	hasQuery := request.Query != ""
@@ -267,14 +274,14 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 // FetchGuildMembers returns guild members based on the guildID.
 // Takes either query or userIDs. Empty query and empty userIDs will return all.
 func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request *pb.FetchGuildMembersRequest) (response *pb.GuildMembersResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.GuildMembersResponse{
 		GuildMembers: make(map[int64]*pb.GuildMember),
 		BaseResponse: &pb.BaseResponse{
 			Ok: false,
 		},
 	}
-
-	onGRPCRequest()
 
 	hasGuildMemberIds := len(request.UserIDs) > 0
 	hasQuery := request.Query != ""
@@ -328,14 +335,14 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 
 // FetchGuild returns guilds based on the guildIDs.
 func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.FetchGuildRequest) (response *pb.GuildsResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.GuildsResponse{
 		Guilds: make(map[int64]*pb.Guild),
 		BaseResponse: &pb.BaseResponse{
 			Ok: false,
 		},
 	}
-
-	onGRPCRequest()
 
 	hasGuildIds := len(request.GuildIDs) > 0
 	hasQuery := request.Query != ""
@@ -386,14 +393,14 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 // FetchGuildRoles returns roles based on the roleIDs.
 // Takes either query or roleIDs. Empty query and empty roleIDs will return all.
 func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *pb.FetchGuildRolesRequest) (response *pb.GuildRolesResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.GuildRolesResponse{
 		GuildRoles: make(map[int64]*pb.Role),
 		BaseResponse: &pb.BaseResponse{
 			Ok: false,
 		},
 	}
-
-	onGRPCRequest()
 
 	hasRoleIds := len(request.RoleIDs) > 0
 	hasQuery := request.Query != ""
@@ -449,6 +456,8 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 // Populates guildIDs with a list of snowflakes of all guilds.
 // If expand is passed and True, will also populate guilds with the guild object.
 func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request *pb.FetchMutualGuildsRequest) (response *pb.GuildsResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.GuildsResponse{
 		GuildIDs: make([]int64, 0),
 		Guilds:   make(map[int64]*pb.Guild),
@@ -456,8 +465,6 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 			Ok: false,
 		},
 	}
-
-	onGRPCRequest()
 
 	if request.UserID == 0 {
 		response.BaseResponse.Error = ErrNoUserIDPresent.Error()
@@ -491,6 +498,8 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 // RequestGuildChunk sends a guild chunk request.
 // Returns once the guild has been chunked.
 func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request *pb.RequestGuildChunkRequest) (response *pb.BaseResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.BaseResponse{
 		Ok:    false,
 		Error: "Not implemented",
@@ -503,6 +512,8 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 
 // SendWebsocketMessage manually sends a websocket message.
 func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, request *pb.SendWebsocketMessageRequest) (response *pb.BaseResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.BaseResponse{
 		Ok: false,
 	}
@@ -554,6 +565,8 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 // WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
 // WhereIsGuildLocations contains the manager, shardGroup and shardId.
 func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.WhereIsGuildRequest) (response *pb.WhereIsGuildResponse, err error) {
+	onGRPCRequest()
+
 	response = &pb.WhereIsGuildResponse{
 		Locations: make([]*pb.WhereIsGuildLocation, 0),
 		BaseResponse: &pb.BaseResponse{

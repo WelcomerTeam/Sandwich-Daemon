@@ -377,6 +377,40 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildUpdatePayload.ID)
 
 	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildUpdatePayload.ID)
+
+	// Preserve values only present in GUILD_CREATE events.
+	if guildUpdatePayload.StageInstances == nil {
+		guildUpdatePayload.StageInstances = beforeGuild.StageInstances
+	}
+
+	if guildUpdatePayload.Channels == nil {
+		guildUpdatePayload.Channels = beforeGuild.Channels
+	}
+
+	if guildUpdatePayload.Members == nil {
+		guildUpdatePayload.Members = beforeGuild.Members
+	}
+
+	if guildUpdatePayload.VoiceStates == nil {
+		guildUpdatePayload.VoiceStates = beforeGuild.VoiceStates
+	}
+
+	if guildUpdatePayload.MemberCount == nil {
+		guildUpdatePayload.MemberCount = beforeGuild.MemberCount
+	}
+
+	if guildUpdatePayload.Unavailable == nil {
+		guildUpdatePayload.Unavailable = beforeGuild.Unavailable
+	}
+
+	if guildUpdatePayload.Large == nil {
+		guildUpdatePayload.Large = beforeGuild.Large
+	}
+
+	if guildUpdatePayload.JoinedAt == nil {
+		guildUpdatePayload.JoinedAt = beforeGuild.JoinedAt
+	}
+
 	ctx.Sandwich.State.SetGuild(ctx, guildUpdatePayload)
 
 	return structs.StateResult{
@@ -518,17 +552,27 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 		return
 	}
 
-	if !ctx.Sandwich.CheckMemberDedupe(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID) {
-		ctx.Sandwich.AddMemberDedupe(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
+	ddRemoveKey := createDedupeMemberRemoveKey(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
+	ddAddKey := createDedupeMemberAddKey(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
+
+	if !ctx.Sandwich.CheckDedupe(ddAddKey) {
+		ctx.Sandwich.AddDedupe(ddAddKey)
+		ctx.Sandwich.RemoveDedupe(ddRemoveKey)
 
 		ctx.Sandwich.State.guildsMu.Lock()
 		guild, ok := ctx.Sandwich.State.Guilds[guildMemberAddPayload.GuildID]
 
 		if ok {
-			memberCount := *guild.MemberCount
-			memberCount++
-			guild.MemberCount = &memberCount
-			ctx.Sandwich.State.Guilds[guildMemberAddPayload.GuildID] = guild
+			if guild.MemberCount != nil {
+				memberCount := *guild.MemberCount
+				memberCount++
+				guild.MemberCount = &memberCount
+				ctx.Sandwich.State.Guilds[guildMemberAddPayload.GuildID] = guild
+			} else {
+				ctx.Sandwich.Logger.Fatal().
+					Int("guildID", int(guild.ID)).
+					Msg("Guild does not reference member count")
+			}
 		}
 		ctx.Sandwich.State.guildsMu.Unlock()
 	}
@@ -556,8 +600,30 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 		return
 	}
 
-	ctx.Sandwich.RemoveMemberDedupe(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
+	ddRemoveKey := createDedupeMemberRemoveKey(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
+	ddAddKey := createDedupeMemberAddKey(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 
+	if !ctx.Sandwich.CheckDedupe(ddRemoveKey) {
+		ctx.Sandwich.AddDedupe(ddRemoveKey)
+		ctx.Sandwich.RemoveDedupe(ddAddKey)
+
+		ctx.Sandwich.State.guildsMu.Lock()
+		guild, ok := ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID]
+
+		if ok {
+			if guild.MemberCount != nil {
+				memberCount := *guild.MemberCount
+				memberCount--
+				guild.MemberCount = &memberCount
+				ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID] = guild
+			} else {
+				ctx.Sandwich.Logger.Fatal().
+					Int("guildID", int(guild.ID)).
+					Msg("Guild does not reference member count")
+			}
+		}
+		ctx.Sandwich.State.guildsMu.Unlock()
+	}
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberRemovePayload.GuildID)
 
 	guildMember, _ := ctx.Sandwich.State.GetGuildMember(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)

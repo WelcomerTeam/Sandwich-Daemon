@@ -188,8 +188,6 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 	}
 
 	defer func() {
-		recover()
-
 		var log *zerolog.Event
 
 		processingMS := time.Since(start).Milliseconds()

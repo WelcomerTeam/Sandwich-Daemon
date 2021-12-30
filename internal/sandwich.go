@@ -32,7 +32,7 @@ import (
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.0.3"
+const VERSION = "1.0.4"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -76,8 +76,8 @@ type Sandwich struct {
 	globalPool            map[int64]chan []byte
 	globalPoolAccumulator *atomic.Int64
 
-	memberDedupeMu sync.RWMutex
-	MemberDedupe   map[string]int64
+	dedupeMu sync.RWMutex
+	Dedupe   map[string]int64
 
 	State  *SandwichState `json:"-"`
 	Client *Client        `json:"-"`
@@ -174,8 +174,8 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 		globalPool:            make(map[int64]chan []byte),
 		globalPoolAccumulator: atomic.NewInt64(0),
 
-		memberDedupeMu: sync.RWMutex{},
-		MemberDedupe:   make(map[string]int64),
+		dedupeMu: sync.RWMutex{},
+		Dedupe:   make(map[string]int64),
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
 
@@ -601,29 +601,29 @@ func (sg *Sandwich) cacheEjector() {
 				sg.State.RemoveGuild(ctx, guildID)
 			}
 
-			ejectedMemberDedupes := make([]string, 0)
+			ejectedDedupes := make([]string, 0)
 
 			// MemberDedup Ejector
-			sg.memberDedupeMu.RLock()
-			for i, t := range sg.MemberDedupe {
+			sg.dedupeMu.RLock()
+			for i, t := range sg.Dedupe {
 				if now > t {
-					ejectedMemberDedupes = append(ejectedMemberDedupes, i)
+					ejectedDedupes = append(ejectedDedupes, i)
 				}
 			}
-			sg.memberDedupeMu.RUnlock()
+			sg.dedupeMu.RUnlock()
 
-			if len(ejectedMemberDedupes) > 0 {
-				sg.memberDedupeMu.Lock()
-				for _, i := range ejectedMemberDedupes {
-					delete(sg.MemberDedupe, i)
+			if len(ejectedDedupes) > 0 {
+				sg.dedupeMu.Lock()
+				for _, i := range ejectedDedupes {
+					delete(sg.Dedupe, i)
 				}
-				sg.memberDedupeMu.Unlock()
+				sg.dedupeMu.Unlock()
 			}
 
 			sg.Logger.Debug().
 				Int("guildsEjected", len(ejectedGuilds)).
 				Int("guildsTotal", len(allGuildIDs)).
-				Int("ejectedMemberDedupes", len(ejectedMemberDedupes)).
+				Int("ejectedDedupes", len(ejectedDedupes)).
 				Msg("Ejected cache")
 		}
 	}
@@ -726,29 +726,33 @@ func (sg *Sandwich) prometheusGatherer() {
 	}
 }
 
-func createDedupeKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
-	return guildID.String() + ":" + memberID.String()
+func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
+	return "MA:" + guildID.String() + ":" + memberID.String()
 }
 
-// AddMemberDedupe creates a new member dedupe.
-func (sg *Sandwich) AddMemberDedupe(guildID discord.Snowflake, memberID discord.Snowflake) {
-	sg.memberDedupeMu.Lock()
-	sg.MemberDedupe[createDedupeKey(guildID, memberID)] = time.Now().Add(memberDedupeLength).Unix()
-	sg.memberDedupeMu.Unlock()
+func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
+	return "MR:" + guildID.String() + ":" + memberID.String()
 }
 
-// CheckMemberDedupe returns if a member dedupe is set. If true, event should be ignored.
-func (sg *Sandwich) CheckMemberDedupe(guildID discord.Snowflake, memberID discord.Snowflake) (shouldDedupe bool) {
-	sg.memberDedupeMu.RLock()
-	value := sg.MemberDedupe[createDedupeKey(guildID, memberID)]
-	sg.memberDedupeMu.RUnlock()
+// AddMemberDedupe creates a new dedupe.
+func (sg *Sandwich) AddDedupe(key string) {
+	sg.dedupeMu.Lock()
+	sg.Dedupe[key] = time.Now().Add(memberDedupeLength).Unix()
+	sg.dedupeMu.Unlock()
+}
+
+// CheckMemberDedupe returns if a dedupe is set. If true, event should be ignored.
+func (sg *Sandwich) CheckDedupe(key string) (shouldDedupe bool) {
+	sg.dedupeMu.RLock()
+	value := sg.Dedupe[key]
+	sg.dedupeMu.RUnlock()
 
 	return time.Now().Unix() < value && value != 0
 }
 
-// RemoveMemberDedupe removes a member dedupe.
-func (sg *Sandwich) RemoveMemberDedupe(guildID discord.Snowflake, memberID discord.Snowflake) {
-	sg.memberDedupeMu.Lock()
-	delete(sg.MemberDedupe, createDedupeKey(guildID, memberID))
-	sg.memberDedupeMu.Unlock()
+// RemoveMemberDedupe removes a dedupe.
+func (sg *Sandwich) RemoveDedupe(key string) {
+	sg.dedupeMu.Lock()
+	delete(sg.Dedupe, key)
+	sg.dedupeMu.Unlock()
 }
