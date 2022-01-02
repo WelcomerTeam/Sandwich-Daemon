@@ -573,7 +573,7 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 		},
 	}
 
-	manager, err := sg.NewManager(&defaultConfiguration)
+	manager := sg.NewManager(&defaultConfiguration)
 
 	sg.managersMu.Lock()
 	sg.Managers[createManagerArguments.Identifier] = manager
@@ -692,7 +692,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	}
 
 	manager.configurationMu.RLock()
-	manager.Client = NewClient(manager.Configuration.Token)
+	manager.Client = NewClient(baseURL, manager.Configuration.Token)
 	manager.configurationMu.RUnlock()
 
 	sg.configurationMu.RLock()

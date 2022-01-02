@@ -24,6 +24,11 @@ type SandwichClient interface {
 	PostAnalytics(ctx context.Context, in *PostAnalyticsRequest, opts ...grpc.CallOption) (*BaseResponse, error)
 	// FetchConsumerConfiguration returns the Consumer Configuration.
 	FetchConsumerConfiguration(ctx context.Context, in *FetchConsumerConfigurationRequest, opts ...grpc.CallOption) (*FetchConsumerConfigurationResponse, error)
+	// FetchUser returns users based on userIDs.
+	// Takes either query or userIDs. Empty query or empty roleIDs will return nothing.
+	// When CreateDMChannel is True, DM channels will be created for a user if it does not exist.
+	// CreateDMChannel does not work with queries, only userIDs.
+	FetchUsers(ctx context.Context, in *FetchUsersRequest, opts ...grpc.CallOption) (*UsersResponse, error)
 	// FetchGuildChannels returns guilds based on the guildID.
 	// Takes either query or channelIDs. Empty query and empty channelIDs will return all.
 	FetchGuildChannels(ctx context.Context, in *FetchGuildChannelsRequest, opts ...grpc.CallOption) (*ChannelsResponse, error)
@@ -104,6 +109,15 @@ func (c *sandwichClient) PostAnalytics(ctx context.Context, in *PostAnalyticsReq
 func (c *sandwichClient) FetchConsumerConfiguration(ctx context.Context, in *FetchConsumerConfigurationRequest, opts ...grpc.CallOption) (*FetchConsumerConfigurationResponse, error) {
 	out := new(FetchConsumerConfigurationResponse)
 	err := c.cc.Invoke(ctx, "/sandwich.Sandwich/FetchConsumerConfiguration", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sandwichClient) FetchUsers(ctx context.Context, in *FetchUsersRequest, opts ...grpc.CallOption) (*UsersResponse, error) {
+	out := new(UsersResponse)
+	err := c.cc.Invoke(ctx, "/sandwich.Sandwich/FetchUsers", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +215,11 @@ type SandwichServer interface {
 	PostAnalytics(context.Context, *PostAnalyticsRequest) (*BaseResponse, error)
 	// FetchConsumerConfiguration returns the Consumer Configuration.
 	FetchConsumerConfiguration(context.Context, *FetchConsumerConfigurationRequest) (*FetchConsumerConfigurationResponse, error)
+	// FetchUser returns users based on userIDs.
+	// Takes either query or userIDs. Empty query or empty roleIDs will return nothing.
+	// When CreateDMChannel is True, DM channels will be created for a user if it does not exist.
+	// CreateDMChannel does not work with queries, only userIDs.
+	FetchUsers(context.Context, *FetchUsersRequest) (*UsersResponse, error)
 	// FetchGuildChannels returns guilds based on the guildID.
 	// Takes either query or channelIDs. Empty query and empty channelIDs will return all.
 	FetchGuildChannels(context.Context, *FetchGuildChannelsRequest) (*ChannelsResponse, error)
@@ -243,6 +262,10 @@ func (UnimplementedSandwichServer) PostAnalytics(context.Context, *PostAnalytics
 
 func (UnimplementedSandwichServer) FetchConsumerConfiguration(context.Context, *FetchConsumerConfigurationRequest) (*FetchConsumerConfigurationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchConsumerConfiguration not implemented")
+}
+
+func (UnimplementedSandwichServer) FetchUsers(context.Context, *FetchUsersRequest) (*UsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FetchUsers not implemented")
 }
 
 func (UnimplementedSandwichServer) FetchGuildChannels(context.Context, *FetchGuildChannelsRequest) (*ChannelsResponse, error) {
@@ -346,6 +369,24 @@ func _Sandwich_FetchConsumerConfiguration_Handler(srv interface{}, ctx context.C
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SandwichServer).FetchConsumerConfiguration(ctx, req.(*FetchConsumerConfigurationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Sandwich_FetchUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FetchUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SandwichServer).FetchUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/sandwich.Sandwich/FetchUsers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SandwichServer).FetchUsers(ctx, req.(*FetchUsersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -526,6 +567,10 @@ var Sandwich_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FetchConsumerConfiguration",
 			Handler:    _Sandwich_FetchConsumerConfiguration_Handler,
+		},
+		{
+			MethodName: "FetchUsers",
+			Handler:    _Sandwich_FetchUsers_Handler,
 		},
 		{
 			MethodName: "FetchGuildChannels",

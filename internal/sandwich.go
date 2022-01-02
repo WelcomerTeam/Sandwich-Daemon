@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"sync"
@@ -44,8 +45,14 @@ const (
 	cacheEjectorInterval     = 1 * time.Minute
 
 	// Time to keep a member dedupe event for.
-	memberDedupeLength = 1 * time.Minute
+	memberDedupeExpiration = 1 * time.Minute
+	memberDMExpiration     = 30 * time.Minute
 )
+
+var baseURL = url.URL{
+	Host:   "discord.com",
+	Scheme: "https",
+}
 
 type Sandwich struct {
 	sync.Mutex
@@ -150,6 +157,9 @@ type SandwichConfiguration struct {
 		UserAccess []string `json:"user_access" yaml:"user_access"`
 	} `json:"http" yaml:"http"`
 
+	// BaseURL to send HTTP requests to. If empty, will use https://discord.com
+	BaseURL string `json:"base" yaml:"base"`
+
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
@@ -183,8 +193,6 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 		State: NewSandwichState(),
 
-		Client: NewClient(""),
-
 		webhookBuckets: bucketstore.NewBucketStore(),
 		statusCache:    NewInterfaceCache(),
 
@@ -215,6 +223,13 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 	defer sg.configurationMu.Unlock()
 
 	sg.Configuration = configuration
+
+	if confBaseURL, err := url.Parse(configuration.BaseURL); err == nil {
+		baseURL = *confBaseURL
+		sg.Logger.Info().Str("url", baseURL.String()).Msg("BaseURL changed")
+	}
+
+	sg.Client = NewClient(baseURL, "")
 
 	zlLevel, err := zerolog.ParseLevel(sg.Configuration.Logging.Level)
 	if err != nil {
@@ -428,32 +443,23 @@ func (sg *Sandwich) startManagers() {
 			)
 		}
 
-		manager, err := sg.NewManager(managerConfiguration)
-		if err != nil {
-			sg.Logger.Error().Err(err).Msg("Failed to create manager")
-
-			continue
-		}
+		manager := sg.NewManager(managerConfiguration)
 
 		sg.Managers[managerConfiguration.Identifier] = manager
 
-		err = manager.Initialize()
+		err := manager.Initialize()
 		if err != nil {
 			manager.Error.Store(err.Error())
 
 			manager.Logger.Error().Err(err).Msg("Failed to initialize manager")
 
 			go sg.PublishSimpleWebhook("Failed to open manager", "`"+err.Error()+"`", "", EmbedColourDanger)
-		} else {
-			if managerConfiguration.AutoStart {
-				go manager.Open()
-			}
+		} else if managerConfiguration.AutoStart {
+			go manager.Open()
 		}
 	}
 
 	sg.managersMu.Unlock()
-
-	return
 }
 
 func (sg *Sandwich) setupGRPC() (err error) {
@@ -737,7 +743,7 @@ func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Sno
 // AddMemberDedupe creates a new dedupe.
 func (sg *Sandwich) AddDedupe(key string) {
 	sg.dedupeMu.Lock()
-	sg.Dedupe[key] = time.Now().Add(memberDedupeLength).Unix()
+	sg.Dedupe[key] = time.Now().Add(memberDedupeExpiration).Unix()
 	sg.dedupeMu.Unlock()
 }
 

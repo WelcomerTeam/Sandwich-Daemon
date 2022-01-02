@@ -8,6 +8,7 @@ logging:
   max_backups: 7
   max_age: 7
   compress: true
+base: "https://discord.com"
 identify:
   url: "http://127.0.0.1:5000/identify"
   headers:

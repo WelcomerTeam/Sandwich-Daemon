@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -31,14 +32,14 @@ type Client struct {
 }
 
 // NewClient makes a new client.
-func NewClient(token string) *Client {
+func NewClient(baseURL url.URL, token string) *Client {
 	return &Client{
 		mu:         sync.Mutex{},
 		Token:      token,
 		HTTP:       http.DefaultClient,
 		APIVersion: "9",
-		URLHost:    "discord.com",
-		URLScheme:  "https",
+		URLHost:    baseURL.Host,
+		URLScheme:  baseURL.Scheme,
 		UserAgent:  "Sandwich/" + VERSION + " (github.com/WelcomerTeam/Sandwich-Daemon)",
 	}
 }

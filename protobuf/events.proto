@@ -15,6 +15,12 @@ service Sandwich {
   // FetchConsumerConfiguration returns the Consumer Configuration.
   rpc FetchConsumerConfiguration(FetchConsumerConfigurationRequest) returns (FetchConsumerConfigurationResponse) {}
 
+  // FetchUser returns users based on userIDs.
+  // Takes either query or userIDs. Empty query or empty roleIDs will return nothing.
+  // When CreateDMChannel is True, DM channels will be created for a user if it does not exist.
+  // CreateDMChannel does not work with queries, only userIDs.
+  rpc FetchUsers(FetchUsersRequest) returns (UsersResponse) {}
+
   // FetchGuildChannels returns guilds based on the guildID.
   // Takes either query or channelIDs. Empty query and empty channelIDs will return all.
   rpc FetchGuildChannels(FetchGuildChannelsRequest) returns (ChannelsResponse) {}
@@ -62,6 +68,11 @@ message ChannelsResponse {
   map<int64, Channel> guildChannels = 2;
 }
 
+message UsersResponse {
+  BaseResponse baseResponse = 1;
+  map<int64, User> users = 2;
+}
+
 message EmojisResponse {
   BaseResponse baseResponse = 1;
   map<int64, Emoji> guildEmojis = 2;
@@ -85,6 +96,13 @@ message FetchGuildEmojisRequest {
   int64 guildID = 1;
   repeated int64 emojiIDs = 2;
   string query = 3;
+}
+
+message FetchUsersRequest {
+  repeated int64 userIDs = 1;
+  string query = 2;
+  bool createDMChannel = 3;
+  string token = 4;
 }
 
 message FetchGuildMembersRequest {

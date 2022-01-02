@@ -542,6 +542,7 @@ message User {
   int64 flags = 12 [json_name="flags"];
   int64 premiumType = 13 [json_name="premium_type"];
   int64 publicFlags = 14 [json_name="public_flags"];
+  int64 DMChannelID = 15 [json_name="dm_channel_id"];
 }
 
 message VoiceState {

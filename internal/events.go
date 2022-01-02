@@ -47,6 +47,9 @@ type SandwichState struct {
 	usersMu sync.RWMutex
 	Users   map[discord.Snowflake]*structs.StateUser
 
+	dmChannelsMu sync.RWMutex
+	dmChannels   map[discord.Snowflake]*structs.StateDMChannel
+
 	mutualsMu sync.RWMutex
 	Mutuals   map[discord.Snowflake]*structs.StateMutualGuilds
 }
@@ -70,6 +73,9 @@ func NewSandwichState() (st *SandwichState) {
 
 		usersMu: sync.RWMutex{},
 		Users:   make(map[discord.Snowflake]*structs.StateUser),
+
+		dmChannelsMu: sync.RWMutex{},
+		dmChannels:   make(map[discord.Snowflake]*structs.StateDMChannel),
 
 		mutualsMu: sync.RWMutex{},
 		Mutuals:   make(map[discord.Snowflake]*structs.StateMutualGuilds),

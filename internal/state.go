@@ -4,6 +4,7 @@ import (
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
 	"sync"
+	"time"
 )
 
 //
@@ -639,6 +640,7 @@ func (ss *SandwichState) UserFromState(userState *structs.StateUser) (user *disc
 		Flags:         userState.Flags,
 		PremiumType:   userState.PremiumType,
 		PublicFlags:   userState.PublicFlags,
+		DMChannelID:   userState.DMChannelID,
 	}
 }
 
@@ -659,6 +661,7 @@ func (ss *SandwichState) UserToState(user *discord.User) (userState *structs.Sta
 		Flags:         user.Flags,
 		PremiumType:   user.PremiumType,
 		PublicFlags:   user.PublicFlags,
+		DMChannelID:   user.DMChannelID,
 	}
 }
 
@@ -929,6 +932,49 @@ func (ss *SandwichState) RemoveAllGuildChannels(guildID discord.Snowflake) {
 	defer ss.guildChannelsMu.Unlock()
 
 	delete(ss.GuildChannels, guildID)
+}
+
+// GetDMChannel returns the DM channel of a user.
+func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discord.Channel, ok bool) {
+	ss.dmChannelsMu.RLock()
+	dmChannel, ok := ss.dmChannels[userID]
+	ss.dmChannelsMu.RUnlock()
+
+	if !ok || dmChannel.ExpiresAt < time.Now().Unix() {
+		ok = false
+
+		return
+	}
+
+	channel = dmChannel.Channel
+	dmChannel.ExpiresAt = time.Now().Add(memberDMExpiration).Unix()
+
+	ss.dmChannelsMu.Lock()
+	ss.dmChannels[userID] = dmChannel
+	ss.dmChannelsMu.Unlock()
+
+	return
+}
+
+// AddDMChannel adds a DM channel to a user.
+func (ss *SandwichState) AddDMChannel(userID discord.Snowflake, channel *discord.Channel) {
+	ss.dmChannelsMu.Lock()
+	defer ss.dmChannelsMu.Unlock()
+
+	dmChannel := &structs.StateDMChannel{
+		Channel:   channel,
+		ExpiresAt: time.Now().Add(memberDMExpiration).Unix(),
+	}
+
+	ss.dmChannels[userID] = dmChannel
+}
+
+// RemoveDMChannel removes a DM channel from a user.
+func (ss *SandwichState) RemoveDMChannel(userID discord.Snowflake) {
+	ss.dmChannelsMu.Lock()
+	defer ss.dmChannelsMu.Unlock()
+
+	delete(ss.dmChannels, userID)
 }
 
 // GetUserMutualGuilds returns a list of snowflakes of mutual guilds a member is seen on.

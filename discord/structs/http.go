@@ -25,3 +25,8 @@ type TooManyRequests struct {
 	RetryAfter int    `json:"retry_after"`
 	Global     bool   `json:"global"`
 }
+
+// CreateDMChannel create a new DM channel with a user. Returns a DM channel object.
+type CreateDMChannel struct {
+	RecipientID Snowflake `json:"recipient_id"`
+}

@@ -68,6 +68,12 @@ type StateGuild struct {
 	Stickers       []discord.Sticker       `json:"stickers"`
 }
 
+type StateDMChannel struct {
+	*discord.Channel
+
+	ExpiresAt int64 `json:"expires_at"`
+}
+
 type StateMutualGuilds struct {
 	GuildsMu sync.RWMutex `json:"-"`
 
@@ -182,4 +188,5 @@ type StateUser struct {
 	Banner        *string                  `json:"banner"`
 	Locale        *string                  `json:"locale"`
 	Email         *string                  `json:"email"`
+	DMChannelID   *discord.Snowflake       `json:"dm_channel_id"`
 }

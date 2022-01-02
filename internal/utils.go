@@ -5,6 +5,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"hash"
+	"math/rand"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,6 +49,13 @@ func returnRange(_range string, max int) (result []int) {
 	}
 
 	return result
+}
+
+func randomHex(len int) (result string) {
+	buf := make([]byte, len)
+	rand.Read(buf)
+
+	return hex.EncodeToString(buf)
 }
 
 // webhookTime returns a formatted time.Time as a time accepted by webhooks.

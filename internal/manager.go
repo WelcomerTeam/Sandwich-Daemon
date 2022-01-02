@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -116,7 +115,7 @@ type ManagerConfiguration struct {
 }
 
 // NewManager creates a new manager.
-func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager, err error) {
+func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager) {
 	logger := sg.Logger.With().Str("manager", configuration.Identifier).Logger()
 	logger.Info().Msg("Creating new manager")
 
@@ -137,7 +136,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		shardGroupsMu: sync.RWMutex{},
 		ShardGroups:   make(map[int64]*ShardGroup),
 
-		Client: NewClient(configuration.Token),
+		Client: NewClient(baseURL, configuration.Token),
 
 		UserID: &atomic.Int64{},
 
@@ -155,7 +154,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 
 	mg.ctx, mg.cancel = context.WithCancel(sg.ctx)
 
-	return mg, nil
+	return mg
 }
 
 // Initialize handles the start up process including connecting the message queue client.
@@ -172,7 +171,7 @@ func (mg *Manager) Initialize() (err error) {
 
 	clientName := mg.Configuration.Messaging.ClientName
 	if mg.Configuration.Messaging.UseRandomSuffix {
-		clientName = clientName + "-" + strconv.Itoa(rand.Intn(MessagingMaxClientNameNumber))
+		clientName = clientName + "-" + randomHex(6)
 	}
 
 	err = producerClient.Connect(
@@ -192,7 +191,7 @@ func (mg *Manager) Initialize() (err error) {
 
 	mg.ProducerClient = producerClient
 
-	return
+	return nil
 }
 
 // Open handles retrieving shard counts and scaling.
@@ -231,7 +230,7 @@ func (mg *Manager) GetGateway() (resp discord.GatewayBot, err error) {
 		Int("maxConcurrency", resp.SessionStartLimit.MaxConcurrency).
 		Int("shards", resp.Shards).
 		Int("remaining", resp.SessionStartLimit.Remaining).
-		Msg("Received Gateway")
+		Msg("Received gateway")
 
 	return
 }
@@ -319,7 +318,7 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 			identifyBucketName, 1, IdentifyRateLimit,
 		)
 
-		mg.Sandwich.IdentifyBuckets.WaitForBucket(identifyBucketName)
+		_ = mg.Sandwich.IdentifyBuckets.WaitForBucket(identifyBucketName)
 	} else {
 		// Pass arguments to URL.
 		sendURL := strings.ReplaceAll(identifyURL, "{shard_id}", strconv.Itoa(shardID))
@@ -330,7 +329,7 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 
 		_, sendURLErr := url.Parse(sendURL)
 		if sendURLErr != nil {
-			return nil
+			return xerrors.Errorf("Failed to create valid identify URL: %v", err)
 		}
 
 		var body bytes.Buffer

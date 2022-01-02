@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+	"io"
 	"strings"
 	"time"
 )
@@ -140,11 +141,94 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 
 	var b bytes.Buffer
 
-	json.NewEncoder(&b).Encode(sandwichConsumerConfiguration)
+	err = json.NewEncoder(&b).Encode(sandwichConsumerConfiguration)
+	if err != nil {
+		grpc.sg.Logger.Warn().Err(err).Msg("Failed to marshal consumer configuration")
+	}
 
 	return &pb.FetchConsumerConfigurationResponse{
 		File: b.Bytes(),
 	}, nil
+}
+
+// FetchUsers returns users based on query or userID.
+// If CreateDMChannel is set, will also create new DM channels (if not already).
+func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.FetchUsersRequest) (response *pb.UsersResponse, err error) {
+	onGRPCRequest()
+
+	response = &pb.UsersResponse{
+		Users: make(map[int64]*pb.User),
+		BaseResponse: &pb.BaseResponse{
+			Ok: false,
+		},
+	}
+
+	hasQuery := request.Query != ""
+	fetchDMChannels := request.CreateDMChannel && !hasQuery && request.Token != ""
+	userIDs := make([]discord.Snowflake, 0)
+
+	var client *Client
+	if fetchDMChannels {
+		client = NewClient(baseURL, request.Token)
+	}
+
+	if hasQuery {
+		grpc.sg.State.usersMu.RLock()
+		for _, user := range grpc.sg.State.Users {
+			if requestMatch(request.Query, user.ID, user.Username) {
+				userIDs = append(userIDs, user.ID)
+			}
+		}
+		grpc.sg.State.usersMu.RUnlock()
+	} else {
+		for _, userID := range request.UserIDs {
+			userIDs = append(userIDs, discord.Snowflake(userID))
+		}
+	}
+
+	for _, userID := range userIDs {
+		user, ok := grpc.sg.State.GetUser(userID)
+		if ok {
+			if fetchDMChannels && user.DMChannelID == nil {
+				var resp discord.Channel
+
+				var body io.ReadWriter
+
+				err = json.NewEncoder(body).Encode(discord.CreateDMChannel{
+					RecipientID: user.ID,
+				})
+				if err != nil {
+					grpc.sg.Logger.Warn().Err(err).Int64("userID", int64(user.ID)).Msg("Failed to marshal create dm channel request")
+
+					continue
+				}
+
+				_, err = client.FetchJSON(ctx, "GET", "/users/@me/channels", body, nil, &resp)
+				if err != nil {
+					grpc.sg.Logger.Warn().Err(err).Int64("userID", int64(user.ID)).Msg("Failed to create DM channel for user")
+
+					continue
+				}
+
+				user.DMChannelID = &resp.ID
+
+				grpc.sg.State.SetUser(&StateCtx{CacheUsers: true}, user)
+			}
+
+			grpcUser, err := grpc.UserToGRPC(user)
+			if err == nil {
+				response.Users[int64(user.ID)] = grpcUser
+			} else {
+				grpc.sg.Logger.Warn().Err(err).Msg("Failed to convert discord.User to pb.User")
+			}
+		}
+
+		onGRPCHit(ok)
+	}
+
+	response.BaseResponse.Ok = true
+
+	return response, nil
 }
 
 // FetchGuildChannels returns guilds based on the guildID.
@@ -599,6 +683,23 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 	response.BaseResponse.Ok = true
 
 	return response, nil
+}
+
+// Converts discord.User to gRPC counterpart.
+func (grpc *routeSandwichServer) UserToGRPC(user *discord.User) (sandwichUser *pb.User, err error) {
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return
+	}
+
+	sandwichUser = &pb.User{}
+
+	err = protojson.Unmarshal(userJSON, sandwichUser)
+	if err != nil {
+		return sandwichUser, xerrors.Errorf("Failed to unmarshal user: %v", err)
+	}
+
+	return
 }
 
 // Converts discord.Guild to gRPC counterpart.

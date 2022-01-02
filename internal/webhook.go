@@ -60,7 +60,7 @@ func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessag
 		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
 	}
 
-	sg.webhookBuckets.CreateWaitForBucket(webhookURL, WebhookRateLimitLimit, WebhookRateLimitDuration)
+	_ = sg.webhookBuckets.CreateWaitForBucket(webhookURL, WebhookRateLimitLimit, WebhookRateLimitDuration)
 
 	_, status, err = sg.Client.Fetch(sg.ctx, "POST", webhookURL, bytes.NewBuffer(res), map[string]string{
 		"Content-Type": "application/json",

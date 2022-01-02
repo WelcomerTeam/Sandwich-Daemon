@@ -49,4 +49,5 @@ type User struct {
 	Flags         *UserFlags       `json:"flags,omitempty"`
 	PremiumType   *UserPremiumType `json:"premium_type,omitempty"`
 	PublicFlags   *UserFlags       `json:"public_flags,omitempty"`
+	DMChannelID   *Snowflake       `json:"dm_channel_id,omitempty"`
 }
