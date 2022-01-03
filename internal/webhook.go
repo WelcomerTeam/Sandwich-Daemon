@@ -3,7 +3,7 @@ package internal
 import (
 	"bytes"
 	"context"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	"golang.org/x/xerrors"
 	"net/url"
 	"strings"

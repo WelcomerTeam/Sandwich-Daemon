@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 	"strconv"

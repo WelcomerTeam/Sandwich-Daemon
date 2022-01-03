@@ -56,12 +56,6 @@ func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, clientName string, ar
 		return xerrors.New("kafkaMQ connect: string type assertion failed for Address")
 	}
 
-	var topic string
-
-	if topic, ok = GetEntry(args, "Topic").(string); !ok {
-		return xerrors.New("kafkaMQ connect: string type assertion failed for Topic")
-	}
-
 	var balancer kafka.Balancer
 
 	if balancerStr, ok := GetEntry(args, "Balancer").(string); ok {
@@ -80,7 +74,6 @@ func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, clientName string, ar
 
 	kafkaMQ.KafkaClient = &kafka.Writer{
 		Addr:     kafka.TCP(address),
-		Topic:    topic,
 		Balancer: balancer,
 		Async:    async,
 	}

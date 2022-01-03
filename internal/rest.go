@@ -2,8 +2,8 @@ package internal
 
 import (
 	"fmt"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
-	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
 	"github.com/rs/zerolog"

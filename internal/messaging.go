@@ -2,8 +2,8 @@ package internal
 
 import (
 	"context"
-	messaging "github.com/WelcomerTeam/Sandwich-Daemon/next/messaging"
-	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/xerrors"
 )
 

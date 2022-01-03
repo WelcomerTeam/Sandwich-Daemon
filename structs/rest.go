@@ -1,6 +1,6 @@
 package structs
 
-import discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+import discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 
 type BaseRestResponse struct {
 	Ok    bool        `json:"ok"`

@@ -2,8 +2,8 @@ package internal
 
 import (
 	"context"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
-	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/xerrors"
 	"time"
 )

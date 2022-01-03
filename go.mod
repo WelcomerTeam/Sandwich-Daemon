@@ -1,4 +1,4 @@
-module github.com/WelcomerTeam/Sandwich-Daemon/next
+module github.com/WelcomerTeam/Sandwich-Daemon
 
 go 1.16
 

@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	internal "github.com/WelcomerTeam/Sandwich-Daemon/next/internal"
+	internal "github.com/WelcomerTeam/Sandwich-Daemon/internal"
 	"github.com/rs/zerolog"
 	"os"
 	"os/signal"

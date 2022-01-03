@@ -2,11 +2,11 @@ package internal
 
 import (
 	"context"
+	structs "github.com/TheRockettek/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
-	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
-	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
 	jsoniter "github.com/json-iterator/go"

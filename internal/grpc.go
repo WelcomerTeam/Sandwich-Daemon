@@ -3,9 +3,9 @@ package internal
 import (
 	"bytes"
 	"context"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
-	pb "github.com/WelcomerTeam/Sandwich-Daemon/next/protobuf"
-	"github.com/WelcomerTeam/Sandwich-Daemon/next/structs"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"

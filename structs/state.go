@@ -1,7 +1,7 @@
 package structs
 
 import (
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/next/discord/structs"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	"sync"
 )
 
