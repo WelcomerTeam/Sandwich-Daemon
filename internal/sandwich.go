@@ -33,9 +33,7 @@ import (
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.0.5"
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+const VERSION = "1.0.6"
 
 const (
 	PermissionsDefault = 0o744
@@ -373,7 +371,7 @@ func (sg *Sandwich) Open() (err error) {
 }
 
 // PublishGlobalEvent publishes an event to all Consumers.
-func (sg *Sandwich) PublishGlobalEvent(eventType string, data interface{}) (err error) {
+func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessage) (err error) {
 	sg.globalPoolMu.RLock()
 	defer sg.globalPoolMu.RUnlock()
 
@@ -389,7 +387,7 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data interface{}) (err 
 		Version: VERSION,
 	}
 
-	payload, err := json.Marshal(packet)
+	payload, err := jsoniter.Marshal(packet)
 	if err != nil {
 		return xerrors.Errorf("Failed to marshal packet: %w", err)
 	}

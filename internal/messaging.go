@@ -4,6 +4,7 @@ import (
 	"context"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 )
 
@@ -52,7 +53,7 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPaylo
 		},
 	}
 
-	payload, err := json.Marshal(packet)
+	payload, err := jsoniter.Marshal(packet)
 	if err != nil {
 		return xerrors.Errorf("failed to marshal payload: %w", err)
 	}

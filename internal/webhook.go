@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"net/url"
 	"strings"
@@ -55,7 +56,7 @@ func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessag
 		return -1, xerrors.Errorf("failed to parse webhook URL: %w", err)
 	}
 
-	res, err := json.Marshal(message)
+	res, err := jsoniter.Marshal(message)
 	if err != nil {
 		return -1, xerrors.Errorf("failed to marshal webhook message: %w", err)
 	}

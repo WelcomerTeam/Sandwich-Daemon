@@ -6,6 +6,7 @@ import (
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
@@ -141,7 +142,7 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 
 	var b bytes.Buffer
 
-	err = json.NewEncoder(&b).Encode(sandwichConsumerConfiguration)
+	err = jsoniter.NewEncoder(&b).Encode(sandwichConsumerConfiguration)
 	if err != nil {
 		grpc.sg.Logger.Warn().Err(err).Msg("Failed to marshal consumer configuration")
 	}
@@ -194,7 +195,7 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 
 				var body io.ReadWriter
 
-				err = json.NewEncoder(body).Encode(discord.CreateDMChannel{
+				err = jsoniter.NewEncoder(body).Encode(discord.CreateDMChannel{
 					RecipientID: user.ID,
 				})
 				if err != nil {
@@ -687,7 +688,7 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 
 // Converts discord.User to gRPC counterpart.
 func (grpc *routeSandwichServer) UserToGRPC(user *discord.User) (sandwichUser *pb.User, err error) {
-	userJSON, err := json.Marshal(user)
+	userJSON, err := jsoniter.Marshal(user)
 	if err != nil {
 		return
 	}
@@ -704,7 +705,7 @@ func (grpc *routeSandwichServer) UserToGRPC(user *discord.User) (sandwichUser *p
 
 // Converts discord.Guild to gRPC counterpart.
 func (grpc *routeSandwichServer) GuildToGRPC(guild *discord.Guild) (sandwichGuild *pb.Guild, err error) {
-	guildJSON, err := json.Marshal(guild)
+	guildJSON, err := jsoniter.Marshal(guild)
 	if err != nil {
 		return
 	}
@@ -721,7 +722,7 @@ func (grpc *routeSandwichServer) GuildToGRPC(guild *discord.Guild) (sandwichGuil
 
 // Converts discord.Channel to gRPC counterpart.
 func (grpc *routeSandwichServer) ChannelToGRPC(channel *discord.Channel) (sandwichChannel *pb.Channel, err error) {
-	channelJSON, err := json.Marshal(channel)
+	channelJSON, err := jsoniter.Marshal(channel)
 	if err != nil {
 		return
 	}
@@ -738,7 +739,7 @@ func (grpc *routeSandwichServer) ChannelToGRPC(channel *discord.Channel) (sandwi
 
 // Converts discord.Emoji to gRPC counterpart.
 func (grpc *routeSandwichServer) EmojiToGRPC(emoji *discord.Emoji) (sandwichEmoji *pb.Emoji, err error) {
-	emojiJSON, err := json.Marshal(emoji)
+	emojiJSON, err := jsoniter.Marshal(emoji)
 	if err != nil {
 		return
 	}
@@ -755,7 +756,7 @@ func (grpc *routeSandwichServer) EmojiToGRPC(emoji *discord.Emoji) (sandwichEmoj
 
 // Converts discord.GuildMember to gRPC counterpart.
 func (grpc *routeSandwichServer) GuildMemberToGRPC(guildMember *discord.GuildMember) (sandwichGuildMember *pb.GuildMember, err error) {
-	guildMemberJSON, err := json.Marshal(guildMember)
+	guildMemberJSON, err := jsoniter.Marshal(guildMember)
 	if err != nil {
 		return
 	}
@@ -772,7 +773,7 @@ func (grpc *routeSandwichServer) GuildMemberToGRPC(guildMember *discord.GuildMem
 
 // Converts discord.Role to gRPC counterpart.
 func (grpc *routeSandwichServer) RoleToGRPC(role *discord.Role) (sandwichRole *pb.Role, err error) {
-	guildRoleJSON, err := json.Marshal(role)
+	guildRoleJSON, err := jsoniter.Marshal(role)
 	if err != nil {
 		return
 	}

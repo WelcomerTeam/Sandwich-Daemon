@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 	"strconv"
@@ -65,7 +66,7 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 }
 
 func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
-	resumable := json.Get(msg.Data, "d").ToBool()
+	resumable := jsoniter.Get(msg.Data, "d").ToBool()
 	if !resumable {
 		sh.SessionID.Store("")
 		sh.Sequence.Store(0)

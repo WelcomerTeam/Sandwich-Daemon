@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
@@ -81,7 +82,7 @@ func (c *Client) FetchJSON(ctx context.Context, method string, url string, body 
 		return
 	}
 
-	err = json.Unmarshal(responseBody, &structure)
+	err = jsoniter.Unmarshal(responseBody, &structure)
 	if err != nil {
 		return -1, fmt.Errorf("failed to unmarshal body: %w", err)
 	}
@@ -114,7 +115,7 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 
 	if res.StatusCode == http.StatusTooManyRequests {
 		var resp discord.TooManyRequests
-		err = json.NewDecoder(res.Body).Decode(&resp)
+		err = jsoniter.NewDecoder(res.Body).Decode(&resp)
 
 		if err != nil {
 			return res, fmt.Errorf("failed to decode body: %w", err)

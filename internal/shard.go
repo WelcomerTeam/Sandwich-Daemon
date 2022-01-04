@@ -8,6 +8,7 @@ import (
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/czlib"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"go.uber.org/atomic"
@@ -603,7 +604,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 
 			msg, _ := sh.Sandwich.receivedPool.Get().(*discord.GatewayPayload)
 
-			connectionErr = json.Unmarshal(data, &msg)
+			connectionErr = jsoniter.Unmarshal(data, &msg)
 			if connectionErr != nil {
 				sh.Logger.Error().Err(connectionErr).Msg("Failed to unmarshal message")
 
@@ -706,7 +707,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 		}
 	}()
 
-	res, err := json.Marshal(i)
+	res, err := jsoniter.Marshal(i)
 	if err != nil {
 		return xerrors.Errorf("Failed to marshal payload: %v", err)
 	}
@@ -731,7 +732,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 
 // decodeContent converts the stored msg into the passed interface.
 func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err error) {
-	err = json.Unmarshal(msg.Data, &out)
+	err = jsoniter.Unmarshal(msg.Data, &out)
 	if err != nil {
 		sh.Logger.Error().Err(err).Str("type", msg.Type).Msg("Failed to decode event")
 	}
@@ -903,12 +904,14 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) {
 
 	sh.Status = status
 
-	sh.Manager.Sandwich.PublishGlobalEvent("SW_SHARD_STATUS_UPDATE", structs.ShardStatusUpdate{
+	payload, _ := jsoniter.Marshal(structs.ShardStatusUpdate{
 		Manager:    sh.Manager.Identifier.Load(),
 		ShardGroup: sh.ShardGroup.ID,
 		Shard:      sh.ShardID,
 		Status:     int(sh.Status),
 	})
+
+	sh.Manager.Sandwich.PublishGlobalEvent("SW_SHARD_STATUS_UPDATE", jsoniter.RawMessage(payload))
 }
 
 // GetStatus returns the status of a ShardGroup.

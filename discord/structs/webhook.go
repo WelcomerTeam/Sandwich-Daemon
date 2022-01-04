@@ -1,5 +1,7 @@
 package discord
 
+import jsoniter "github.com/json-iterator/go"
+
 // webhook.go represents all structures to create a webhook and interact with it.
 
 // WebhookType is the type of webhook.
@@ -34,5 +36,5 @@ type WebhookMessage struct {
 	Embeds          []*Embed                  `json:"embeds,omitempty"`
 	AllowedMentions []*MessageAllowedMentions `json:"allowed_mentions,omitempty"`
 	Components      []*InteractionComponent   `json:"components,omitempty"`
-	// PayloadJSON     *json.RawMessage          `json:"payload_json,omitempty"`
+	PayloadJSON     *jsoniter.RawMessage      `json:"payload_json,omitempty"`
 }

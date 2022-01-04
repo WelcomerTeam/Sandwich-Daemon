@@ -171,7 +171,7 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	ctx.unavailableMu.Unlock()
 
 	return structs.StateResult{
-		Data: guildCreatePayload,
+		Data: msg.Data,
 		Extra: map[string]interface{}{
 			"lazy": guildCreatePayload.Lazy,
 		},
