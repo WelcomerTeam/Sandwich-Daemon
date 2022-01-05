@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.0.6"
+const VERSION = "1.0.7"
 
 const (
 	PermissionsDefault = 0o744
@@ -381,7 +381,7 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 	packet.Op = discord.GatewayOpDispatch
 	packet.Type = eventType
 	packet.Data = data
-	packet.Extra = make(map[string]interface{})
+	packet.Extra = make(map[string]jsoniter.RawMessage)
 
 	packet.Metadata = structs.SandwichMetadata{
 		Version: VERSION,

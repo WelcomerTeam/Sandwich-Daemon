@@ -41,19 +41,13 @@ type ApplicationCommandUpdate *ApplicationCommand
 type ApplicationCommandDelete *ApplicationCommand
 
 // ChannelCreate represents a channel create event.
-type ChannelCreate struct {
-	*Channel
-}
+type ChannelCreate *Channel
 
 // ChannelUpdate represents a channel update event.
-type ChannelUpdate struct {
-	*Channel
-}
+type ChannelUpdate *Channel
 
 // ChannelDelete represents a channel delete event.
-type ChannelDelete struct {
-	*Channel
-}
+type ChannelDelete *Channel
 
 // ChannelPinsUpdate represents a channel pins update event.
 type ChannelPinsUpdate struct {
@@ -63,19 +57,13 @@ type ChannelPinsUpdate struct {
 }
 
 // ThreadCreate represents a thread create event.
-type ThreadCreate struct {
-	*Channel
-}
+type ThreadCreate *Channel
 
 // ThreadUpdate represents a thread update event.
-type ThreadUpdate struct {
-	*Channel
-}
+type ThreadUpdate *Channel
 
 // ThreadDelete represents a thread delete event.
-type ThreadDelete struct {
-	*Channel
-}
+type ThreadDelete *Channel
 
 // ThreadListSync represents a thread list sync event.
 type ThreadListSync struct {
@@ -146,8 +134,8 @@ type GuildMemberAdd struct {
 
 // GuildMemberRemove represents a guild member remove event.
 type GuildMemberRemove struct {
-	GuildID Snowflake `json:"guild_id"`
 	User    *User     `json:"user"`
+	GuildID Snowflake `json:"guild_id"`
 }
 
 // GuildMemberUpdate represents a guild member update event.

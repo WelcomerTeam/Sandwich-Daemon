@@ -10,7 +10,7 @@ import (
 // a sandwich payload.
 type StateResult struct {
 	Data  jsoniter.RawMessage
-	Extra map[string]interface{}
+	Extra map[string]jsoniter.RawMessage
 }
 
 type StateGuild struct {

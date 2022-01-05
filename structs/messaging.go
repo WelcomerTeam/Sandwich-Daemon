@@ -22,7 +22,7 @@ type SandwichPayload struct {
 	Sequence int64               `json:"s"`
 	Type     string              `json:"t"`
 
-	Extra    map[string]interface{} `json:"__extra"`
-	Metadata SandwichMetadata       `json:"__sandwich"`
-	Trace    map[string]int         `json:"__sandwich_trace"`
+	Extra    map[string]jsoniter.RawMessage `json:"__extra"`
+	Metadata SandwichMetadata               `json:"__sandwich"`
+	Trace    map[string]int                 `json:"__sandwich_trace"`
 }

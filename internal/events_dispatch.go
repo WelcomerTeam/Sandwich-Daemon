@@ -170,11 +170,16 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	delete(ctx.Unavailable, guildCreatePayload.ID)
 	ctx.unavailableMu.Unlock()
 
+	extra, err := makeExtra(map[string]interface{}{
+		"lazy": guildCreatePayload.Lazy,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"lazy": guildCreatePayload.Lazy,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -214,7 +219,7 @@ func OnChannelCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, channelCreatePayload.GuildID)
 
-	ctx.Sandwich.State.SetGuildChannel(ctx, channelCreatePayload.GuildID, channelCreatePayload.Channel)
+	ctx.Sandwich.State.SetGuildChannel(ctx, channelCreatePayload.GuildID, channelCreatePayload)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -232,13 +237,18 @@ func OnChannelUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, channelUpdatePayload.GuildID)
 
 	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(channelUpdatePayload.GuildID, channelUpdatePayload.ID)
-	ctx.Sandwich.State.SetGuildChannel(ctx, channelUpdatePayload.GuildID, channelUpdatePayload.Channel)
+	ctx.Sandwich.State.SetGuildChannel(ctx, channelUpdatePayload.GuildID, channelUpdatePayload)
+
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeChannel,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
 
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeChannel,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -255,11 +265,16 @@ func OnChannelDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(channelDeletePayload.GuildID, channelDeletePayload.ID)
 	ctx.Sandwich.State.RemoveGuildChannel(channelDeletePayload.GuildID, channelDeletePayload.ID)
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeChannel,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeChannel,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -413,11 +428,16 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	ctx.Sandwich.State.SetGuild(ctx, guildUpdatePayload)
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeGuild,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeGuild,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -440,11 +460,16 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	delete(ctx.ShardGroup.Guilds, guildDeletePayload.ID)
 	ctx.ShardGroup.guildsMu.Unlock()
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeGuild,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeGuild,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -496,11 +521,16 @@ func OnGuildEmojisUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 		ctx.Sandwich.State.SetGuildEmoji(ctx, guildEmojisUpdatePayload.GuildID, emoji)
 	}
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeEmojis,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeEmojis,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -521,11 +551,16 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 
 	ctx.Sandwich.State.SetGuild(ctx, beforeGuild)
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeStickers,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeStickers,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -631,11 +666,16 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	ctx.Sandwich.State.RemoveGuildMember(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 	ctx.Sandwich.State.RemoveUserMutualGuild(guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": guildMember,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": guildMember,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -656,11 +696,16 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 		ctx.Sandwich.State.SetGuildMember(ctx, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
 	}
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeGuildMember,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeGuildMember,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -696,11 +741,16 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 
 	ctx.Sandwich.State.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeRole,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeRole,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -1018,11 +1068,16 @@ func OnUserUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.Sta
 
 	beforeUser, _ := ctx.Sandwich.State.GetUser(userUpdatePayload.ID)
 
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeUser,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
-		Extra: map[string]interface{}{
-			"before": beforeUser,
-		},
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 

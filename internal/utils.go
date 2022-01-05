@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/hex"
+	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"hash"
@@ -61,6 +62,22 @@ func randomHex(len int) (result string) {
 // webhookTime returns a formatted time.Time as a time accepted by webhooks.
 func webhookTime(_time time.Time) string {
 	return _time.Format("2006-01-02T15:04:05Z")
+}
+
+// makeExtra converts from interfaces to RawMessages. Used for extra data in payloads.
+func makeExtra(extra map[string]interface{}) (out map[string]jsoniter.RawMessage, err error) {
+	out = make(map[string]jsoniter.RawMessage)
+
+	for k, v := range extra {
+		p, err := jsoniter.Marshal(v)
+		if err != nil {
+			return out, xerrors.Errorf("Failed to marshal extra: %v", err)
+		}
+
+		out[k] = p
+	}
+
+	return
 }
 
 // Simple orchestrator to close long running tasks
