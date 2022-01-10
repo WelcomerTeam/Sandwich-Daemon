@@ -37,16 +37,16 @@ func OnReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateRes
 
 	ctx.ShardGroup.userMu.Unlock()
 
-	ctx.unavailableMu.Lock()
+	ctx.lazyMu.Lock()
 	ctx.guildsMu.Lock()
 
 	for _, guild := range readyPayload.Guilds {
-		ctx.Unavailable[guild.ID] = true
+		ctx.Lazy[guild.ID] = true
 		ctx.Guilds[guild.ID] = true
 	}
 
 	ctx.guildsMu.Unlock()
-	ctx.unavailableMu.Unlock()
+	ctx.lazyMu.Unlock()
 
 	guildCreateEvents := 0
 
@@ -166,12 +166,19 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	ctx.Sandwich.State.SetGuild(ctx, guildCreatePayload.Guild)
 
+	ctx.lazyMu.Lock()
+	lazy := ctx.Lazy[guildCreatePayload.ID]
+	delete(ctx.Lazy, guildCreatePayload.ID)
+	ctx.lazyMu.Unlock()
+
 	ctx.unavailableMu.Lock()
+	unavailable := ctx.Unavailable[guildCreatePayload.ID]
 	delete(ctx.Unavailable, guildCreatePayload.ID)
 	ctx.unavailableMu.Unlock()
 
 	extra, err := makeExtra(map[string]interface{}{
-		"lazy": guildCreatePayload.Lazy,
+		"lazy":        lazy,
+		"unavailable": unavailable,
 	})
 	if err != nil {
 		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
@@ -316,8 +323,18 @@ func OnThreadUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 		return
 	}
 
+	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(threadUpdatePayload.GuildID, threadUpdatePayload.ID)
+
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeChannel,
+	})
+	if err != nil {
+		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+	}
+
 	return structs.StateResult{
-		Data: msg.Data,
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
@@ -453,12 +470,16 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildDeletePayload.ID)
 
-	// We do not remove the actual guild as other managers may be using it.
-	// Dereferencing it locally ensures that if other managers are using it,
-	// it will stay.
-	ctx.ShardGroup.guildsMu.Lock()
-	delete(ctx.ShardGroup.Guilds, guildDeletePayload.ID)
-	ctx.ShardGroup.guildsMu.Unlock()
+	if guildDeletePayload.Unavailable {
+		ctx.Unavailable[guildDeletePayload.ID] = true
+	} else {
+		// We do not remove the actual guild as other managers may be using it.
+		// Dereferencing it locally ensures that if other managers are using it,
+		// it will stay.
+		ctx.ShardGroup.guildsMu.Lock()
+		delete(ctx.ShardGroup.Guilds, guildDeletePayload.ID)
+		ctx.ShardGroup.guildsMu.Unlock()
+	}
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeGuild,
@@ -1089,7 +1110,9 @@ func OnVoiceStateUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struc
 		return
 	}
 
-	defer ctx.OnGuildDispatchEvent(msg.Type, voiceStateUpdatePayload.GuildID)
+	if voiceStateUpdatePayload.GuildID != nil {
+		defer ctx.OnGuildDispatchEvent(msg.Type, *voiceStateUpdatePayload.GuildID)
+	}
 
 	return structs.StateResult{
 		Data: msg.Data,

@@ -74,7 +74,10 @@ type ThreadListSync struct {
 }
 
 // ThreadMemberUpdate represents a thread member update event.
-type ThreadMemberUpdate *ThreadMember
+type ThreadMemberUpdate struct {
+	*ThreadMember
+	GuildID Snowflake `json:"guild_id"`
+}
 
 // ThreadMembersUpdate represents a thread members update event.
 type ThreadMembersUpdate struct {
@@ -88,7 +91,6 @@ type ThreadMembersUpdate struct {
 // GuildCreate represents a guild create event.
 type GuildCreate struct {
 	*Guild
-	Lazy bool `json:"lazy"` // Internal use.
 }
 
 // GuildUpdate represents a guild update event.
@@ -286,21 +288,7 @@ type TypingStart struct {
 type UserUpdate *User
 
 // VoiceStateUpdate represents the voice state update event.
-type VoiceStateUpdate struct {
-	GuildID                 Snowflake    `json:"guild_id"`
-	ChannelID               *Snowflake   `json:"channel_id,omitempty"`
-	UserID                  Snowflake    `json:"user_id"`
-	Member                  *GuildMember `json:"member,omitempty"`
-	SessionID               string       `json:"session_id"`
-	Deaf                    bool         `json:"deaf"`
-	Mute                    bool         `json:"mute"`
-	SelfDeaf                bool         `json:"self_deaf"`
-	SelfMute                bool         `json:"self_mute"`
-	SelfStream              *bool        `json:"self_stream,omitempty"`
-	SelfVideo               bool         `json:"self_video"`
-	Suppress                bool         `json:"suppress"`
-	RequestToSpeakTimestamp string       `json:"request_to_speak_timestamp"`
-}
+type VoiceStateUpdate *VoiceState
 
 // VoiceServerUpdate represents a voice server update event.
 type VoiceServerUpdate struct {

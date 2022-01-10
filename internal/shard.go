@@ -54,7 +54,7 @@ const (
 
 // Shard represents the shard object.
 type Shard struct {
-	ctx    context.Context `json:"-"`
+	ctx    context.Context
 	cancel func()
 
 	RoutineDeadSignal   DeadSignal `json:"-"`
@@ -81,29 +81,34 @@ type Shard struct {
 	// Duration since last heartbeat Ack beforereconnecting.
 	HeartbeatFailureInterval time.Duration `json:"-"`
 
-	unavailableMu sync.RWMutex               `json:"-"`
+	// Map of guilds that are currently unavailable.
+	unavailableMu sync.RWMutex
 	Unavailable   map[discord.Snowflake]bool `json:"unavailable"`
 
+	// Map of guilds that have were present in ready and not received yet.
+	lazyMu sync.RWMutex
+	Lazy   map[discord.Snowflake]bool `json:"lazy"`
+
 	// Stores a local list of all guilds in the shard.d
-	guildsMu sync.RWMutex               `json:"-"`
+	guildsMu sync.RWMutex
 	Guilds   map[discord.Snowflake]bool `json:"guilds"`
 
-	statusMu sync.RWMutex        `json:"-"`
+	statusMu sync.RWMutex
 	Status   structs.ShardStatus `json:"status"`
 
-	channelMu sync.RWMutex                `json:"-"`
+	channelMu sync.RWMutex
 	MessageCh chan discord.GatewayPayload `json:"-"`
 	ErrorCh   chan error                  `json:"-"`
 
 	Sequence  *atomic.Int64  `json:"-"`
 	SessionID *atomic.String `json:"-"`
 
-	wsConnMu sync.RWMutex    `json:"-"`
-	wsConn   *websocket.Conn `json:"-"`
+	wsConnMu sync.RWMutex
+	wsConn   *websocket.Conn
 
-	wsRatelimit *limiter.DurationLimiter `json:"-"`
+	wsRatelimit *limiter.DurationLimiter
 
-	ready chan void `json:"-"`
+	ready chan void
 }
 
 // NewShard creates a new shard object.
@@ -129,6 +134,9 @@ func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 
 		unavailableMu: sync.RWMutex{},
 		Unavailable:   make(map[discord.Snowflake]bool),
+
+		lazyMu: sync.RWMutex{},
+		Lazy:   make(map[discord.Snowflake]bool),
 
 		guildsMu: sync.RWMutex{},
 		Guilds:   make(map[discord.Snowflake]bool),

@@ -141,29 +141,35 @@ type UnavailableGuild struct {
 
 // GuildMember represents a guild member on Discord.
 type GuildMember struct {
-	User *User   `json:"user"`
+	User *User   `json:"user,omitempty"`
 	Nick *string `json:"nick,omitempty"`
 
 	Roles []Snowflake `json:"roles"`
 
-	JoinedAt     string  `json:"joined_at"`
-	PremiumSince *string `json:"premium_since,omitempty"`
-	Deaf         bool    `json:"deaf"`
-	Mute         bool    `json:"mute"`
-	Pending      *bool   `json:"pending,omitempty"`
-	Permissions  *string `json:"permissions,omitempty"`
+	JoinedAt string `json:"joined_at"`
+	Deaf     bool   `json:"deaf"`
+	Mute     bool   `json:"mute"`
+
+	Avatar                     *string `json:"avatar,omitempty"`
+	Permissions                *string `json:"permissions,omitempty"`
+	PremiumSince               *string `json:"premium_since,omitempty"`
+	CommunicationDisabledUntil *string `json:"communication_disabled_until,omitempty"`
+	Pending                    *bool   `json:"pending,omitempty"`
 }
 
 // VoiceState represents the voice state on Discord.
 type VoiceState struct {
-	GuildID   *Snowflake   `json:"guild_id,omitempty"`
-	ChannelID Snowflake    `json:"channel_id"`
-	UserID    Snowflake    `json:"user_id"`
-	Member    *GuildMember `json:"member,omitempty"`
-	SessionID string       `json:"session_id"`
-	Deaf      bool         `json:"deaf"`
-	Mute      bool         `json:"mute"`
-	SelfDeaf  bool         `json:"self_deaf"`
-	SelfMute  bool         `json:"self_mute"`
-	Suppress  bool         `json:"suppress"`
+	GuildID                 *Snowflake   `json:"guild_id,omitempty"`
+	ChannelID               Snowflake    `json:"channel_id"`
+	UserID                  Snowflake    `json:"user_id"`
+	Member                  *GuildMember `json:"member,omitempty"`
+	SessionID               string       `json:"session_id"`
+	Deaf                    bool         `json:"deaf"`
+	Mute                    bool         `json:"mute"`
+	SelfDeaf                bool         `json:"self_deaf"`
+	SelfMute                bool         `json:"self_mute"`
+	SelfStream              *bool        `json:"self_stream,omitempty"`
+	SelfVideo               bool         `json:"self_video"`
+	Suppress                bool         `json:"suppress"`
+	RequestToSpeakTimestamp string       `json:"request_to_speak_timestamp"`
 }
