@@ -276,7 +276,7 @@ func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
 		Status:     int(sg.Status),
 	})
 
-	_ = sg.Manager.Sandwich.PublishGlobalEvent("SW_SHARD_GROUP_STATUS_UPDATE", jsoniter.RawMessage(payload))
+	_ = sg.Manager.Sandwich.PublishGlobalEvent(structs.SandwichEventShardGroupStatusUpdate, jsoniter.RawMessage(payload))
 }
 
 // GetStatus returns the status of a ShardGroup.

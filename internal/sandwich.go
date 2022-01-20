@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.0.8"
+const VERSION = "1.0.9"
 
 const (
 	PermissionsDefault = 0o744
@@ -326,7 +326,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return xerrors.Errorf("Failed to write configuration to file: %v", err)
 	}
 
-	sg.PublishGlobalEvent("SW_CONFIGURATION_RELOAD", nil)
+	_ = sg.PublishGlobalEvent(structs.SandwichEventConfigurationReload, nil)
 
 	return nil
 }
