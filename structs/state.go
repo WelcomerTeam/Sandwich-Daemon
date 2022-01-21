@@ -176,7 +176,7 @@ type StateChannel struct {
 
 type StateUser struct {
 	ID            discord.Snowflake        `json:"id"`
-	Bot           *bool                    `json:"bot"`
+	Bot           bool                     `json:"bot"`
 	System        *bool                    `json:"system"`
 	Verified      *bool                    `json:"verified"`
 	MFAEnabled    *bool                    `json:"mfa_enabled"`

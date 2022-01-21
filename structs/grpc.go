@@ -64,7 +64,7 @@ type SendWebsocketMessageRequest struct {
 }
 
 type RequestGuildChunkRequest struct {
-	GuildId int64
+	GuildID int64
 }
 
 // Responses.
@@ -108,7 +108,7 @@ type WhereIsGuildResponse struct {
 type WhereIsGuildLocation struct {
 	Manager    string
 	ShardGroup int
-	ShardId    int
+	ShardID    int
 }
 
 type FetchConsumerConfigurationResponse struct {

@@ -39,7 +39,7 @@ type User struct {
 	Username      string           `json:"username"`
 	Discriminator string           `json:"discriminator"`
 	Avatar        string           `json:"avatar"`
-	Bot           *bool            `json:"bot,omitempty"`
+	Bot           bool             `json:"bot"`
 	System        *bool            `json:"system,omitempty"`
 	MFAEnabled    *bool            `json:"mfa_enabled,omitempty"`
 	Banner        *string          `json:"banner,omitempty"`

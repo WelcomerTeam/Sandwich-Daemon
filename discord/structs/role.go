@@ -4,15 +4,16 @@ package discord
 
 // Role represents a role on Discord.
 type Role struct {
-	ID          Snowflake `json:"id"`
-	Name        string    `json:"name"`
-	Color       int       `json:"color"`
-	Hoist       bool      `json:"hoist"`
-	Position    int       `json:"position"`
-	Permissions int       `json:"permissions"`
-	Managed     bool      `json:"managed"`
-	Mentionable bool      `json:"mentionable"`
-	Tags        *RoleTag  `json:"tags,omitempty"`
+	ID          Snowflake  `json:"id"`
+	GuildID     *Snowflake `json:"guild_id,omitempty"`
+	Name        string     `json:"name"`
+	Color       int        `json:"color"`
+	Hoist       bool       `json:"hoist"`
+	Position    int        `json:"position"`
+	Permissions int        `json:"permissions"`
+	Managed     bool       `json:"managed"`
+	Mentionable bool       `json:"mentionable"`
+	Tags        *RoleTag   `json:"tags,omitempty"`
 }
 
 // RoleTag represents extra information about a role.
