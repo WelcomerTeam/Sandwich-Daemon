@@ -157,7 +157,7 @@ type Interaction struct {
 	Type          *InteractionType `json:"type,omitempty"`
 	Data          *InteractionData `json:"data,omitempty"`
 
-	GuildID   Snowflake    `json:"guild_id,omitempty"`
+	GuildID   *Snowflake   `json:"guild_id,omitempty"`
 	ChannelID Snowflake    `json:"channel_id,omitempty"`
 	Member    *GuildMember `json:"member,omitempty"`
 	User      *User        `json:"user,omitempty"`
@@ -208,6 +208,7 @@ type ApplicationSelectOption struct {
 // Integration represents the structure of an integration.
 type Integration struct {
 	ID              Snowflake       `json:"id"`
+	GuildID         *Snowflake      `json:"guild_id,omitempty"`
 	Name            string          `json:"name"`
 	Type            IntegrationType `json:"type"`
 	Enabled         bool            `json:"enabled"`

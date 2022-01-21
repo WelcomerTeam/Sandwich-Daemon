@@ -144,6 +144,8 @@ type GuildMember struct {
 	User *User   `json:"user,omitempty"`
 	Nick *string `json:"nick,omitempty"`
 
+	GuildID *Snowflake `json:"guild_id,omitempty"`
+
 	Roles []Snowflake `json:"roles"`
 
 	JoinedAt string `json:"joined_at"`

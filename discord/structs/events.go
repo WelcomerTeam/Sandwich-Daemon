@@ -74,10 +74,7 @@ type ThreadListSync struct {
 }
 
 // ThreadMemberUpdate represents a thread member update event.
-type ThreadMemberUpdate struct {
-	*ThreadMember
-	GuildID Snowflake `json:"guild_id"`
-}
+type ThreadMemberUpdate *ThreadMember
 
 // ThreadMembersUpdate represents a thread members update event.
 type ThreadMembersUpdate struct {
@@ -89,9 +86,7 @@ type ThreadMembersUpdate struct {
 }
 
 // GuildCreate represents a guild create event.
-type GuildCreate struct {
-	*Guild
-}
+type GuildCreate *Guild
 
 // GuildUpdate represents a guild update event.
 type GuildUpdate *Guild
@@ -129,10 +124,7 @@ type GuildIntegrationsUpdate struct {
 }
 
 // GuildMemberAdd represents a guild member add event.
-type GuildMemberAdd struct {
-	*GuildMember
-	GuildID Snowflake `json:"guild_id"`
-}
+type GuildMemberAdd *GuildMember
 
 // GuildMemberRemove represents a guild member remove event.
 type GuildMemberRemove struct {
@@ -143,7 +135,6 @@ type GuildMemberRemove struct {
 // GuildMemberUpdate represents a guild member update event.
 type GuildMemberUpdate struct {
 	*GuildMember
-	GuildID Snowflake `json:"guild_id"`
 }
 
 // GuildMembersChunk represents a guild members chunk event.
@@ -158,16 +149,10 @@ type GuildMembersChunk struct {
 }
 
 // GuildRoleCreate represents a guild role create event.
-type GuildRoleCreate struct {
-	GuildID Snowflake `json:"guild_id"`
-	Role    *Role     `json:"role"`
-}
+type GuildRoleCreate *Role
 
 // GuildRoleUpdate represents a guild role update event.
-type GuildRoleUpdate struct {
-	GuildID Snowflake `json:"guild_id"`
-	Role    *Role     `json:"role"`
-}
+type GuildRoleUpdate *Role
 
 // GuildRoleDelete represents a guild role delete event.
 type GuildRoleDelete struct {
@@ -176,16 +161,10 @@ type GuildRoleDelete struct {
 }
 
 // IntegrationCreate represents the integration create event.
-type IntegrationCreate struct {
-	*Integration
-	GuildID Snowflake `json:"guild_id"`
-}
+type IntegrationCreate *Integration
 
 // IntegrationUpdate represents the integration update event.
-type IntegrationUpdate struct {
-	*Integration
-	GuildID Snowflake `json:"guild_id"`
-}
+type IntegrationUpdate *Integration
 
 // IntegrationDelete represents the integration delete event.
 type IntegrationDelete struct {
@@ -299,8 +278,8 @@ type VoiceServerUpdate struct {
 
 // WebhookUpdate represents a webhook update packet.
 type WebhookUpdate struct {
-	GuildID   Snowflake `json:"guild_id"`
 	ChannelID Snowflake `json:"channel_id"`
+	GuildID   Snowflake `json:"guild_id"`
 }
 
 // GuildJoinRequestDelete represents a guild join request delete event.

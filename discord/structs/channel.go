@@ -93,6 +93,7 @@ type ThreadMetadata struct {
 type ThreadMember struct {
 	ID            *Snowflake `json:"id,omitempty"`
 	UserID        *Snowflake `json:"user_id,omitempty"`
+	GuildID       *Snowflake `json:"guild_id,omitempty"`
 	JoinTimestamp string     `json:"join_timestamp"`
 	Flags         int        `json:"flags"`
 }

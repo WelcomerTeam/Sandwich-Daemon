@@ -164,7 +164,7 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildCreatePayload.ID)
 
-	ctx.Sandwich.State.SetGuild(ctx, guildCreatePayload.Guild)
+	ctx.Sandwich.State.SetGuild(ctx, guildCreatePayload)
 
 	ctx.lazyMu.Lock()
 	lazy := ctx.Lazy[guildCreatePayload.ID]
@@ -608,22 +608,22 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 		return
 	}
 
-	ddRemoveKey := createDedupeMemberRemoveKey(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
-	ddAddKey := createDedupeMemberAddKey(guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
+	ddRemoveKey := createDedupeMemberRemoveKey(*guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
+	ddAddKey := createDedupeMemberAddKey(*guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
 
 	if !ctx.Sandwich.CheckDedupe(ddAddKey) {
 		ctx.Sandwich.AddDedupe(ddAddKey)
 		ctx.Sandwich.RemoveDedupe(ddRemoveKey)
 
 		ctx.Sandwich.State.guildsMu.Lock()
-		guild, ok := ctx.Sandwich.State.Guilds[guildMemberAddPayload.GuildID]
+		guild, ok := ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID]
 
 		if ok {
 			if guild.MemberCount != nil {
 				memberCount := *guild.MemberCount
 				memberCount++
 				guild.MemberCount = &memberCount
-				ctx.Sandwich.State.Guilds[guildMemberAddPayload.GuildID] = guild
+				ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID] = guild
 			} else {
 				ctx.Sandwich.Logger.Fatal().
 					Int("guildID", int(guild.ID)).
@@ -633,14 +633,14 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 		ctx.Sandwich.State.guildsMu.Unlock()
 	}
 
-	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberAddPayload.GuildID)
+	defer ctx.OnGuildDispatchEvent(msg.Type, *guildMemberAddPayload.GuildID)
 
 	if ctx.CacheMembers {
-		ctx.Sandwich.State.SetGuildMember(ctx, guildMemberAddPayload.GuildID, guildMemberAddPayload.GuildMember)
+		ctx.Sandwich.State.SetGuildMember(ctx, *guildMemberAddPayload.GuildID, guildMemberAddPayload)
 	}
 
 	if ctx.StoreMutuals {
-		ctx.Sandwich.State.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, guildMemberAddPayload.GuildID)
+		ctx.Sandwich.State.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, *guildMemberAddPayload.GuildID)
 	}
 
 	return structs.StateResult{
@@ -708,13 +708,13 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 		return
 	}
 
-	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberUpdatePayload.GuildID)
+	defer ctx.OnGuildDispatchEvent(msg.Type, *guildMemberUpdatePayload.GuildID)
 
 	beforeGuildMember, _ := ctx.Sandwich.State.GetGuildMember(
-		guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID)
+		*guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID)
 
 	if ctx.CacheMembers {
-		ctx.Sandwich.State.SetGuildMember(ctx, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
+		ctx.Sandwich.State.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
 	}
 
 	extra, err := makeExtra(map[string]interface{}{
@@ -738,9 +738,9 @@ func OnGuildRoleCreate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 		return
 	}
 
-	defer ctx.OnGuildDispatchEvent(msg.Type, guildRoleCreatePayload.GuildID)
+	defer ctx.OnGuildDispatchEvent(msg.Type, *guildRoleCreatePayload.GuildID)
 
-	ctx.Sandwich.State.SetGuildRole(ctx, guildRoleCreatePayload.GuildID, guildRoleCreatePayload.Role)
+	ctx.Sandwich.State.SetGuildRole(ctx, *guildRoleCreatePayload.GuildID, guildRoleCreatePayload)
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -755,12 +755,12 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 		return
 	}
 
-	defer ctx.OnGuildDispatchEvent(msg.Type, guildRoleUpdatePayload.GuildID)
+	defer ctx.OnGuildDispatchEvent(msg.Type, *guildRoleUpdatePayload.GuildID)
 
 	beforeRole, _ := ctx.Sandwich.State.GetGuildRole(
-		guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
+		*guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.ID)
 
-	ctx.Sandwich.State.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
+	ctx.Sandwich.State.SetGuildRole(ctx, *guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload)
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeRole,
