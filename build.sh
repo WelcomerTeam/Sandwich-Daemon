@@ -3,17 +3,8 @@ cd sandwich
 yarn build
 cd ..
 
-echo "Simplify - gofmt"
-gofmt -l -s -w .
-
-echo "Simplify - gofumpt"
-gofumpt -l -s -w .
-
-echo "Simplify - gci"
-gci -w .
-
-echo "Simplify - goimports"
-goimports -l -w .
+echo "Simplify"
+gofmt -l -s -w . && gofumpt -l -s -w . && gci -w . && goimports -l -w .
 
 echo "Docker build and push"
 docker build --tag 1345/sandwich-daemon:latest .
