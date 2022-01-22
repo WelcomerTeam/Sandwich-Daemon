@@ -137,7 +137,7 @@ message ChannelDelete {
 
 message ChannelOverwrite {
   int64 id = 1 [json_name="id"];
-  string type = 2 [json_name="type"];
+  int64 type = 2 [json_name="type"];
   int64 allow = 3 [json_name="allow_new"];
   int64 deny = 4 [json_name="deny_new"];
 }
