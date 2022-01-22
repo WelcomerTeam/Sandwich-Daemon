@@ -53,9 +53,15 @@ func onGRPCHit(ok bool) {
 	}
 }
 
-// Returns if the query matches the ID or contains part of query.
-func requestMatch(query string, id discord.Snowflake, name string) bool {
-	return query == id.String() || strings.Contains(norm.NFKD.String(name), query)
+// Returns if the query matches the matches input.
+func requestMatch(query string, matches ...string) bool {
+	for _, match := range matches {
+		if query == match || strings.Contains(norm.NFKD.String(match), query) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Listen delivers information to consumers.
@@ -175,7 +181,7 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 	if hasQuery {
 		grpc.sg.State.usersMu.RLock()
 		for _, user := range grpc.sg.State.Users {
-			if requestMatch(request.Query, user.ID, user.Username) {
+			if requestMatch(request.Query, user.ID.String(), user.Username, user.Username+"#"+user.Discriminator) {
 				userIDs = append(userIDs, user.ID)
 			}
 		}
@@ -277,7 +283,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 		request.Query = norm.NFKD.String(request.Query)
 
 		for _, guildChannel := range guildChannels {
-			if !hasQuery || requestMatch(request.Query, guildChannel.ID, guildChannel.Name) {
+			if !hasQuery || requestMatch(request.Query, guildChannel.ID.String(), guildChannel.Name) {
 				grpcChannel, err := pb.ChannelToGRPC(guildChannel)
 				if err == nil {
 					response.GuildChannels[int64(guildChannel.ID)] = grpcChannel
@@ -339,7 +345,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 		request.Query = norm.NFKD.String(request.Query)
 
 		for _, guildEmoji := range guildEmojis {
-			if !hasQuery || requestMatch(request.Query, guildEmoji.ID, guildEmoji.Name) {
+			if !hasQuery || requestMatch(request.Query, guildEmoji.ID.String(), guildEmoji.Name) {
 				grpcEmoji, err := pb.EmojiToGRPC(guildEmoji)
 				if err == nil {
 					response.GuildEmojis[int64(guildEmoji.ID)] = grpcEmoji
@@ -401,7 +407,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 		request.Query = norm.NFKD.String(request.Query)
 
 		for _, guildMember := range guildGuildMembers {
-			if !hasQuery || requestMatch(request.Query, guildMember.User.ID, *guildMember.Nick+guildMember.User.Username) {
+			if !hasQuery || requestMatch(request.Query, guildMember.User.ID.String(), *guildMember.Nick+guildMember.User.Username) {
 				grpcGuildMember, err := pb.GuildMemberToGRPC(guildMember)
 				if err == nil {
 					response.GuildMembers[int64(guildMember.User.ID)] = grpcGuildMember
@@ -458,7 +464,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 		defer grpc.sg.State.guildsMu.RUnlock()
 
 		for _, guild := range grpc.sg.State.Guilds {
-			if requestMatch(request.Query, guild.ID, guild.Name) {
+			if requestMatch(request.Query, guild.ID.String(), guild.Name) {
 				grpcGuild, err := pb.GuildToGRPC(grpc.sg.State.GuildFromState(guild))
 				if err == nil {
 					response.Guilds[int64(guild.ID)] = grpcGuild
@@ -520,7 +526,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 		request.Query = norm.NFKD.String(request.Query)
 
 		for _, guildRole := range guildRoles {
-			if !hasQuery || requestMatch(request.Query, guildRole.ID, guildRole.Name) {
+			if !hasQuery || requestMatch(request.Query, guildRole.ID.String(), guildRole.Name) {
 				grpcRole, err := pb.RoleToGRPC(guildRole)
 				if err == nil {
 					response.GuildRoles[int64(guildRole.ID)] = grpcRole
