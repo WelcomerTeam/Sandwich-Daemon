@@ -48,8 +48,14 @@ const (
 )
 
 var baseURL = url.URL{
-	Host:   "discord.com",
 	Scheme: "https",
+	Host:   "discord.com",
+}
+
+var gatewayURL = url.URL{
+	Scheme:   "wss",
+	Host:     "gateway.discord.gg",
+	RawQuery: "v=9&encoding=json",
 }
 
 type Sandwich struct {
@@ -66,7 +72,7 @@ type Sandwich struct {
 	configurationMu sync.RWMutex
 	Configuration   *SandwichConfiguration `json:"configuration" yaml:"configuration"`
 
-	gatewayLimiter limiter.DurationLimiter `json:"-"`
+	gatewayLimiter limiter.DurationLimiter
 
 	ProducerClient *MQClient `json:"-"`
 
@@ -158,6 +164,8 @@ type SandwichConfiguration struct {
 	// BaseURL to send HTTP requests to. If empty, will use https://discord.com
 	BaseURL string `json:"base" yaml:"base"`
 
+	GatewayURL string `json:"gateway" yaml:"gateway"`
+
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
@@ -222,9 +230,18 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 	sg.Configuration = configuration
 
-	if confBaseURL, err := url.Parse(configuration.BaseURL); err == nil {
-		baseURL = *confBaseURL
-		sg.Logger.Info().Str("url", baseURL.String()).Msg("BaseURL changed")
+	if configuration.GatewayURL != "" {
+		if confGatewayURL, err := url.Parse(configuration.GatewayURL); err == nil {
+			gatewayURL = *confGatewayURL
+			sg.Logger.Info().Str("url", confGatewayURL.String()).Msg("Gateway URL changed")
+		}
+	}
+
+	if configuration.BaseURL != "" {
+		if confBaseURL, err := url.Parse(configuration.BaseURL); err == nil {
+			baseURL = *confBaseURL
+			sg.Logger.Info().Str("url", baseURL.String()).Msg("Base URL changed")
+		}
 	}
 
 	sg.Client = NewClient(baseURL, "")

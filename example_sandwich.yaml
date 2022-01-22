@@ -9,6 +9,7 @@ logging:
   max_age: 7
   compress: true
 base: "https://discord.com"
+gateway: "wss://gateway.discord.gg/?v=9&encoding=json"
 identify:
   url: "http://127.0.0.1:5000/identify"
   headers:

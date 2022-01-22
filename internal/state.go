@@ -940,14 +940,14 @@ func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discor
 	dmChannel, ok := ss.dmChannels[userID]
 	ss.dmChannelsMu.RUnlock()
 
-	if !ok || dmChannel.ExpiresAt < time.Now().Unix() {
+	if !ok || int64(dmChannel.ExpiresAt) < time.Now().Unix() {
 		ok = false
 
 		return
 	}
 
 	channel = dmChannel.Channel
-	dmChannel.ExpiresAt = time.Now().Add(memberDMExpiration).Unix()
+	dmChannel.ExpiresAt = discord.Int64(time.Now().Add(memberDMExpiration).Unix())
 
 	ss.dmChannelsMu.Lock()
 	ss.dmChannels[userID] = dmChannel
@@ -963,7 +963,7 @@ func (ss *SandwichState) AddDMChannel(userID discord.Snowflake, channel *discord
 
 	dmChannel := &structs.StateDMChannel{
 		Channel:   channel,
-		ExpiresAt: time.Now().Add(memberDMExpiration).Unix(),
+		ExpiresAt: discord.Int64(time.Now().Add(memberDMExpiration).Unix()),
 	}
 
 	ss.dmChannels[userID] = dmChannel

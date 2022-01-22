@@ -148,7 +148,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 
 	// Directly copy op, sequence and type from original message.
 	packet.Op = msg.Op
-	packet.Sequence = msg.Sequence
+	packet.Sequence = int(msg.Sequence)
 	packet.Type = msg.Type
 
 	// Setting result.Data will override what is sent to consumers.

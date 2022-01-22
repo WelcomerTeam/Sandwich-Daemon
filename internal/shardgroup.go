@@ -27,7 +27,7 @@ type ShardGroup struct {
 	userMu sync.RWMutex  `json:"-"`
 	User   *discord.User `json:"user"`
 
-	ID int64 `json:"id,string"`
+	ID int64 `json:"id"`
 
 	ShardCount int   `json:"shard_count"`
 	ShardIDs   []int `json:"shard_ids"`

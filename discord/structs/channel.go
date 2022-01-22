@@ -70,16 +70,24 @@ type Channel struct {
 	DefaultAutoArchiveDuration int             `json:"default_auto_archive_duration"`
 
 	// Slash Commands
-	Permissions *int64 `json:"permissions,omitempty"`
+	Permissions *Int64 `json:"permissions,omitempty"`
 }
 
 // ChannelOverwrite represents a permission overwrite for a channel.
 type ChannelOverwrite struct {
-	ID    Snowflake `json:"id"`
-	Type  string    `json:"type"`
-	Allow int64     `json:"allow_new"`
-	Deny  int64     `json:"deny_new"`
+	ID    Snowflake            `json:"id"`
+	Type  *ChannelOverrideType `json:"type"`
+	Allow Int64                `json:"allow"`
+	Deny  Int64                `json:"deny"`
 }
+
+// ChannelOverrideType represents the target of a channel override.
+type ChannelOverrideType uint8
+
+const (
+	ChannelOverrideTypeRole ChannelOverrideType = iota
+	ChannelOverrideTypeMember
+)
 
 // ThreadMetadata contains thread-specific channel fields.
 type ThreadMetadata struct {

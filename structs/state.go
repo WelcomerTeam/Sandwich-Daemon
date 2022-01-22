@@ -18,8 +18,8 @@ type StateGuild struct {
 	Large         *bool `json:"large"`
 	Unavailable   *bool `json:"unavailable"`
 
-	AFKTimeout  int    `json:"afk_timeout"`
-	Permissions *int64 `json:"permissions,omitempty"`
+	AFKTimeout  int            `json:"afk_timeout"`
+	Permissions *discord.Int64 `json:"permissions,omitempty"`
 
 	NSFWLevel *discord.GuildNSFWLevelType `json:"nsfw_level"`
 	ID        discord.Snowflake           `json:"id"`
@@ -72,7 +72,7 @@ type StateGuild struct {
 type StateDMChannel struct {
 	*discord.Channel
 
-	ExpiresAt int64 `json:"expires_at"`
+	ExpiresAt discord.Int64 `json:"expires_at"`
 }
 
 type StateMutualGuilds struct {
@@ -93,7 +93,7 @@ type StateGuildMember struct {
 	JoinedAt     string              `json:"joined_at"`
 	Pending      *bool               `json:"pending"`
 	PremiumSince *string             `json:"premium_since"`
-	Permissions  *int64              `json:"permissions"`
+	Permissions  *discord.Int64      `json:"permissions"`
 	Nick         *string             `json:"nick"`
 	UserID       discord.Snowflake   `json:"user_id"`
 	Roles        []discord.Snowflake `json:"roles"`
@@ -111,7 +111,7 @@ type StateRole struct {
 	Mentionable bool              `json:"mentionable"`
 	Color       int               `json:"color"`
 	Position    int               `json:"position"`
-	Permissions int64             `json:"permissions"`
+	Permissions discord.Int64     `json:"permissions"`
 	ID          discord.Snowflake `json:"id"`
 	Tags        *discord.RoleTag  `json:"tags"`
 	Name        string            `json:"name"`
@@ -171,7 +171,7 @@ type StateChannel struct {
 	// DefaultAutoArchiveDuration int                     `json:"default_auto_archive_duration"`
 
 	// Slash Commands.
-	Permissions *int64 `json:"permissions,string"`
+	Permissions *discord.Int64 `json:"permissions"`
 }
 
 type StateUser struct {

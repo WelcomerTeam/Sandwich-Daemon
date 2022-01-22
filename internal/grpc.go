@@ -684,8 +684,8 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 				if _, ok := shard.Guilds[discord.Snowflake(request.GuildID)]; ok {
 					response.Locations = append(response.Locations, &pb.WhereIsGuildLocation{
 						Manager:    manager.Identifier.Load(),
-						ShardGroup: shardGroup.ID,
-						ShardId:    shard.ShardGroup.ID,
+						ShardGroup: int64(shardGroup.ID),
+						ShardId:    int64(shard.ShardGroup.ID),
 					})
 				}
 				shard.guildsMu.RUnlock()

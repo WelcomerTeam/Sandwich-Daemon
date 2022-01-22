@@ -50,7 +50,7 @@ type SandwichConsumerConfiguration struct {
 
 type ManagerConsumerConfiguration struct {
 	Token string            `json:"token"`
-	ID    discord.Snowflake `json:"id,string"`
+	ID    discord.Snowflake `json:"id"`
 	User  discord.User      `json:"user"`
 }
 

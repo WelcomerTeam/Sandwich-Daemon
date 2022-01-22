@@ -35,6 +35,14 @@ const (
 	ApplicationCommandOptionTypeNumber
 )
 
+// ApplicationCommandPermissionType represents the target for a command permission.
+type ApplicationCommandPermissionType uint8
+
+const (
+	ApplicationCommandPermissionTypeRole ApplicationCommandPermissionType = 1 + iota
+	ApplicationCommandPermissionTypeUser
+)
+
 // InteractionType represents the type of interaction.
 type InteractionType uint8
 
@@ -102,7 +110,7 @@ type Application struct {
 	PrimarySKUID Snowflake `json:"primary_sku_id,omitempty"`
 	Slug         string    `json:"slug,omitempty"`
 	CoverImage   string    `json:"cover_image,omitempty"`
-	Flags        int64     `json:"flags,string"`
+	Flags        int       `json:"flags"`
 }
 
 // ApplicationTeam represents the team of an application.
@@ -117,7 +125,7 @@ type ApplicationTeam struct {
 // ApplicationTeamMembers represents a member of a team.
 type ApplicationTeamMember struct {
 	MembershipState ApplicationTeamMemberState `json:"membership_state"`
-	Permissions     []string                   `json:"permissions"`
+	Permissions     []int64                    `json:"permissions"`
 	TeamID          Snowflake                  `json:"team_id"`
 	User            *User                      `json:"user"`
 }
@@ -134,14 +142,33 @@ type ApplicationCommand struct {
 	DefaultPermission *bool                       `json:"default_permission"`
 }
 
+// GuildApplicationCommandPermissions represent a guilds application permissions.
+type GuildApplicationCommandPermissions struct {
+	ID            Snowflake                        `json:"id"`
+	ApplicationID Snowflake                        `json:"application_id"`
+	GuildID       Snowflake                        `json:"guild_id"`
+	Permissions   []*ApplicationCommandPermissions `json:"permissions"`
+}
+
+// ApplicationCommandPermissions represents the rules for enabling or disabling a command.
+type ApplicationCommandPermissions struct {
+	ID      Snowflake                        `json:"id"`
+	Type    ApplicationCommandPermissionType `json:"type"`
+	Allowed bool                             `json:"permission"`
+}
+
 // ApplicationCommandOption represents the options for an application command.
 type ApplicationCommandOption struct {
-	Type        ApplicationCommandOptionType      `json:"type"`
-	Name        string                            `json:"name"`
-	Description string                            `json:"description"`
-	Required    *bool                             `json:"required,omitempty"`
-	Choices     []*ApplicationCommandOptionChoice `json:"choices,omitempty"`
-	Options     []*ApplicationCommandOption       `json:"options,omitempty"`
+	Type         ApplicationCommandOptionType      `json:"type"`
+	Name         string                            `json:"name"`
+	Description  string                            `json:"description"`
+	Autocomplete bool                              `json:"autocomplete"`
+	Required     *bool                             `json:"required,omitempty"`
+	Choices      []*ApplicationCommandOptionChoice `json:"choices,omitempty"`
+	Options      []*ApplicationCommandOption       `json:"options,omitempty"`
+	ChannelType  *ChannelType                      `json:"channel_types,omitempty"`
+	MinValue     *int                              `json:"min_value,omitempty"`
+	MaxValue     *int                              `json:"max_value,omitempty"`
 }
 
 // ApplicationCommandOptionChoice represents the different choices.
@@ -168,15 +195,15 @@ type Interaction struct {
 
 // InteractionData represents the structure of interaction data.
 type InteractionData struct {
-	ID            Snowflake                 `json:"id"`
-	Name          string                    `json:"name"`
-	Type          ApplicationCommandType    `json:"type"`
-	Resolved      *InteractionResolvedData  `json:"resolved,omitempty"`
-	Options       []InteractionDataOption   `json:"option,omitempty"`
-	CustomID      *string                   `json:"custom_id,omitempty"`
-	ComponentType *ApplicationCommandType   `json:"component_type,omitempty"`
-	Values        []ApplicationSelectOption `json:"values,omitempty"`
-	TargetID      *Snowflake                `json:"target_id,omitempty"`
+	ID            Snowflake                  `json:"id"`
+	Name          string                     `json:"name"`
+	Type          ApplicationCommandType     `json:"type"`
+	Resolved      *InteractionResolvedData   `json:"resolved,omitempty"`
+	Options       []*InteractionDataOption   `json:"option,omitempty"`
+	CustomID      *string                    `json:"custom_id,omitempty"`
+	ComponentType *ApplicationCommandType    `json:"component_type,omitempty"`
+	Values        []*ApplicationSelectOption `json:"values,omitempty"`
+	TargetID      *Snowflake                 `json:"target_id,omitempty"`
 }
 
 // InteractionDataOption represents the structure of an interaction option.
@@ -184,7 +211,8 @@ type InteractionDataOption struct {
 	Name    string                       `json:"name"`
 	Type    ApplicationCommandOptionType `json:"type"`
 	Value   interface{}                  `json:"value"`
-	Options []InteractionDataOption      `json:"options,omitempty"`
+	Options []*InteractionDataOption     `json:"options,omitempty"`
+	Focused bool                         `json:"focused"`
 }
 
 // InteractionResolvedData represents any extra payload data for an interaction.

@@ -14,7 +14,7 @@ import (
 const MagicDecimalBase = 10
 
 func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload) error {
-	sh.Sequence.Store(msg.Sequence)
+	sh.Sequence.Store(int64(msg.Sequence))
 
 	go func(msg discord.GatewayPayload) {
 		sh.Sandwich.EventsInflight.Inc()
@@ -130,7 +130,7 @@ func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPa
 
 	sandwichGatewayLatency.WithLabelValues(
 		sh.Manager.Identifier.Load(),
-		strconv.FormatInt(sh.ShardGroup.ID, MagicDecimalBase),
+		strconv.FormatInt(int64(sh.ShardGroup.ID), MagicDecimalBase),
 		strconv.Itoa(sh.ShardID),
 	).Set(float64(heartbeatRTT))
 

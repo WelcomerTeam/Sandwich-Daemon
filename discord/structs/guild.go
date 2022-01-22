@@ -80,7 +80,7 @@ type Guild struct {
 
 	Owner       *bool      `json:"owner,omitempty"`
 	OwnerID     *Snowflake `json:"owner_id,omitempty"`
-	Permissions *int64     `json:"permissions,omitempty"`
+	Permissions *Int64     `json:"permissions,omitempty"`
 	Region      string     `json:"region"`
 
 	AFKChannelID *Snowflake `json:"afk_channel_id,omitempty"`
@@ -153,7 +153,7 @@ type GuildMember struct {
 	Mute     bool   `json:"mute"`
 
 	Avatar                     *string `json:"avatar,omitempty"`
-	Permissions                *int64  `json:"permissions,omitempty"`
+	Permissions                *Int64  `json:"permissions,omitempty"`
 	PremiumSince               *string `json:"premium_since,omitempty"`
 	CommunicationDisabledUntil *string `json:"communication_disabled_until,omitempty"`
 	Pending                    *bool   `json:"pending,omitempty"`

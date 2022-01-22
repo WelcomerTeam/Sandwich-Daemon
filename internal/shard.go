@@ -227,15 +227,13 @@ readyConsumer:
 
 	sh.ctx, sh.cancel = context.WithCancel(sh.Manager.ctx)
 
-	sh.Manager.gatewayMu.RLock()
-	gatewayURL := sh.Manager.Gateway.URL
-	sh.Manager.gatewayMu.RUnlock()
-
 	defer func() {
 		if err != nil && sh.hasWsConn() {
 			sh.CloseWS(websocket.StatusNormalClosure)
 		}
 	}()
+
+	gatewayURL := gatewayURL.String()
 
 	if !sh.hasWsConn() {
 		errorCh, messageCh, err := sh.FeedWebsocket(sh.ctx, gatewayURL, nil)
@@ -678,7 +676,7 @@ func (sh *Shard) Resume(ctx context.Context) (err error) {
 	err = sh.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
 		Token:     token,
 		SessionID: sh.SessionID.Load(),
-		Sequence:  sh.Sequence.Load(),
+		Sequence:  int(sh.Sequence.Load()),
 	})
 
 	return err
