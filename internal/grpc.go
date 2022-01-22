@@ -11,7 +11,6 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"io"
 	"strings"
 	"time"
@@ -216,7 +215,7 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 				grpc.sg.State.SetUser(&StateCtx{CacheUsers: true}, user)
 			}
 
-			grpcUser, err := UserToGRPC(user)
+			grpcUser, err := pb.UserToGRPC(user)
 			if err == nil {
 				response.Users[int64(user.ID)] = grpcUser
 			} else {
@@ -257,7 +256,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 		for _, channelID := range request.ChannelIDs {
 			guildChannel, ok := grpc.sg.State.GetGuildChannel((*discord.Snowflake)(&request.GuildID), discord.Snowflake(channelID))
 			if ok {
-				grpcChannel, err := ChannelToGRPC(guildChannel)
+				grpcChannel, err := pb.ChannelToGRPC(guildChannel)
 				if err == nil {
 					response.GuildChannels[int64(guildChannel.ID)] = grpcChannel
 				} else {
@@ -279,7 +278,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 
 		for _, guildChannel := range guildChannels {
 			if !hasQuery || requestMatch(request.Query, guildChannel.ID, guildChannel.Name) {
-				grpcChannel, err := ChannelToGRPC(guildChannel)
+				grpcChannel, err := pb.ChannelToGRPC(guildChannel)
 				if err == nil {
 					response.GuildChannels[int64(guildChannel.ID)] = grpcChannel
 				} else {
@@ -319,7 +318,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 		for _, emojiID := range request.EmojiIDs {
 			guildEmoji, ok := grpc.sg.State.GetGuildEmoji(discord.Snowflake(request.GuildID), discord.Snowflake(emojiID))
 			if ok {
-				grpcEmoji, err := EmojiToGRPC(guildEmoji)
+				grpcEmoji, err := pb.EmojiToGRPC(guildEmoji)
 				if err == nil {
 					response.GuildEmojis[int64(guildEmoji.ID)] = grpcEmoji
 				} else {
@@ -341,7 +340,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 
 		for _, guildEmoji := range guildEmojis {
 			if !hasQuery || requestMatch(request.Query, guildEmoji.ID, guildEmoji.Name) {
-				grpcEmoji, err := EmojiToGRPC(guildEmoji)
+				grpcEmoji, err := pb.EmojiToGRPC(guildEmoji)
 				if err == nil {
 					response.GuildEmojis[int64(guildEmoji.ID)] = grpcEmoji
 				} else {
@@ -381,7 +380,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 		for _, GuildMemberID := range request.UserIDs {
 			guildMember, ok := grpc.sg.State.GetGuildMember(discord.Snowflake(request.GuildID), discord.Snowflake(GuildMemberID))
 			if ok {
-				grpcGuildMember, err := GuildMemberToGRPC(guildMember)
+				grpcGuildMember, err := pb.GuildMemberToGRPC(guildMember)
 				if err == nil {
 					response.GuildMembers[int64(guildMember.User.ID)] = grpcGuildMember
 				} else {
@@ -403,7 +402,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 
 		for _, guildMember := range guildGuildMembers {
 			if !hasQuery || requestMatch(request.Query, guildMember.User.ID, *guildMember.Nick+guildMember.User.Username) {
-				grpcGuildMember, err := GuildMemberToGRPC(guildMember)
+				grpcGuildMember, err := pb.GuildMemberToGRPC(guildMember)
 				if err == nil {
 					response.GuildMembers[int64(guildMember.User.ID)] = grpcGuildMember
 				} else {
@@ -436,7 +435,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 		for _, guildID := range request.GuildIDs {
 			guild, ok := grpc.sg.State.GetGuild(discord.Snowflake(guildID))
 			if ok {
-				grpcGuild, err := GuildToGRPC(guild)
+				grpcGuild, err := pb.GuildToGRPC(guild)
 				if err == nil {
 					response.Guilds[int64(guild.ID)] = grpcGuild
 				} else {
@@ -460,7 +459,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 
 		for _, guild := range grpc.sg.State.Guilds {
 			if requestMatch(request.Query, guild.ID, guild.Name) {
-				grpcGuild, err := GuildToGRPC(grpc.sg.State.GuildFromState(guild))
+				grpcGuild, err := pb.GuildToGRPC(grpc.sg.State.GuildFromState(guild))
 				if err == nil {
 					response.Guilds[int64(guild.ID)] = grpcGuild
 				} else {
@@ -500,7 +499,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 		for _, roleID := range request.RoleIDs {
 			guildRole, ok := grpc.sg.State.GetGuildRole(discord.Snowflake(request.GuildID), discord.Snowflake(roleID))
 			if ok {
-				grpcRole, err := RoleToGRPC(guildRole)
+				grpcRole, err := pb.RoleToGRPC(guildRole)
 				if err == nil {
 					response.GuildRoles[int64(guildRole.ID)] = grpcRole
 				} else {
@@ -522,7 +521,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 
 		for _, guildRole := range guildRoles {
 			if !hasQuery || requestMatch(request.Query, guildRole.ID, guildRole.Name) {
-				grpcRole, err := RoleToGRPC(guildRole)
+				grpcRole, err := pb.RoleToGRPC(guildRole)
 				if err == nil {
 					response.GuildRoles[int64(guildRole.ID)] = grpcRole
 				} else {
@@ -563,7 +562,7 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 		if request.Expand {
 			guild, ok := grpc.sg.State.GetGuild(guildID)
 			if ok {
-				grpcGuild, err := GuildToGRPC(guild)
+				grpcGuild, err := pb.GuildToGRPC(guild)
 				if err == nil {
 					response.Guilds[int64(guildID)] = grpcGuild
 				} else {
@@ -684,212 +683,4 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 	response.BaseResponse.Ok = true
 
 	return response, nil
-}
-
-// discord.* -> gRPC Converters.
-
-// Converts discord.User to gRPC counterpart.
-func UserToGRPC(user *discord.User) (sandwichUser *pb.User, err error) {
-	userJSON, err := jsoniter.Marshal(user)
-	if err != nil {
-		return
-	}
-
-	sandwichUser = &pb.User{}
-
-	err = protojson.Unmarshal(userJSON, sandwichUser)
-	if err != nil {
-		return sandwichUser, xerrors.Errorf("Failed to unmarshal user: %v", err)
-	}
-
-	return
-}
-
-// Converts discord.Guild to gRPC counterpart.
-func GuildToGRPC(guild *discord.Guild) (sandwichGuild *pb.Guild, err error) {
-	guildJSON, err := jsoniter.Marshal(guild)
-	if err != nil {
-		return
-	}
-
-	sandwichGuild = &pb.Guild{}
-
-	err = protojson.Unmarshal(guildJSON, sandwichGuild)
-	if err != nil {
-		return sandwichGuild, xerrors.Errorf("Failed to unmarshal guild: %v", err)
-	}
-
-	return
-}
-
-// Converts discord.Channel to gRPC counterpart.
-func ChannelToGRPC(channel *discord.Channel) (sandwichChannel *pb.Channel, err error) {
-	channelJSON, err := jsoniter.Marshal(channel)
-	if err != nil {
-		return
-	}
-
-	sandwichChannel = &pb.Channel{}
-
-	err = protojson.Unmarshal(channelJSON, sandwichChannel)
-	if err != nil {
-		return sandwichChannel, xerrors.Errorf("Failed to unmarshal channel: %v", err)
-	}
-
-	return
-}
-
-// Converts discord.Emoji to gRPC counterpart.
-func EmojiToGRPC(emoji *discord.Emoji) (sandwichEmoji *pb.Emoji, err error) {
-	emojiJSON, err := jsoniter.Marshal(emoji)
-	if err != nil {
-		return
-	}
-
-	sandwichEmoji = &pb.Emoji{}
-
-	err = protojson.Unmarshal(emojiJSON, sandwichEmoji)
-	if err != nil {
-		return sandwichEmoji, xerrors.Errorf("Failed to unmarshal emoji: %v", err)
-	}
-
-	return
-}
-
-// Converts discord.GuildMember to gRPC counterpart.
-func GuildMemberToGRPC(guildMember *discord.GuildMember) (sandwichGuildMember *pb.GuildMember, err error) {
-	guildMemberJSON, err := jsoniter.Marshal(guildMember)
-	if err != nil {
-		return
-	}
-
-	sandwichGuildMember = &pb.GuildMember{}
-
-	err = protojson.Unmarshal(guildMemberJSON, sandwichGuildMember)
-	if err != nil {
-		return sandwichGuildMember, xerrors.Errorf("Failed to unmarshal guild member: %v", err)
-	}
-
-	return
-}
-
-// Converts discord.Role to gRPC counterpart.
-func RoleToGRPC(role *discord.Role) (sandwichRole *pb.Role, err error) {
-	guildRoleJSON, err := jsoniter.Marshal(role)
-	if err != nil {
-		return
-	}
-
-	sandwichRole = &pb.Role{}
-
-	err = protojson.Unmarshal(guildRoleJSON, sandwichRole)
-	if err != nil {
-		return sandwichRole, xerrors.Errorf("Failed to unmarshal guild role: %v", err)
-	}
-
-	return
-}
-
-// gRPC -> discord.* Converters.
-
-// Converts gRPC to discord.User counterpart.
-func GRPCToUser(sandwichUser *pb.User) (user *discord.User, err error) {
-	userJSON, err := protojson.Marshal(sandwichUser)
-	if err != nil {
-		return
-	}
-
-	user = &discord.User{}
-
-	err = jsoniter.Unmarshal(userJSON, user)
-	if err != nil {
-		return user, xerrors.Errorf("Failed to unmarshal user: %v", err)
-	}
-
-	return
-}
-
-// Converts gRPC to discord.Guild counterpart.
-func GRPCToGuild(sandwichGuild *pb.Guild) (guild *discord.Guild, err error) {
-	guildJSON, err := protojson.Marshal(sandwichGuild)
-	if err != nil {
-		return
-	}
-
-	guild = &discord.Guild{}
-
-	err = jsoniter.Unmarshal(guildJSON, guild)
-	if err != nil {
-		return guild, xerrors.Errorf("Failed to unmarshal guild: %v", err)
-	}
-
-	return
-}
-
-// Converts gRPC to discord.Channel counterpart.
-func GRPCToChannel(sandwichChannel *pb.Channel) (channel *discord.Channel, err error) {
-	channelJSON, err := protojson.Marshal(sandwichChannel)
-	if err != nil {
-		return
-	}
-
-	channel = &discord.Channel{}
-
-	err = jsoniter.Unmarshal(channelJSON, channel)
-	if err != nil {
-		return channel, xerrors.Errorf("Failed to unmarshal channel: %v", err)
-	}
-
-	return
-}
-
-// Converts gRPC to discord.Emoji counterpart.
-func GRPCToEmoji(sandwichEmoji *pb.Emoji) (emoji *discord.Emoji, err error) {
-	emojiJSON, err := protojson.Marshal(sandwichEmoji)
-	if err != nil {
-		return
-	}
-
-	emoji = &discord.Emoji{}
-
-	err = jsoniter.Unmarshal(emojiJSON, emoji)
-	if err != nil {
-		return emoji, xerrors.Errorf("Failed to unmarshal emoji: %v", err)
-	}
-
-	return
-}
-
-// Converts gRPC to discord.GuildMember counterpart.
-func GRPCToGuildMember(sandwichGuildMember *pb.GuildMember) (guildMember *discord.GuildMember, err error) {
-	guildMemberJSON, err := protojson.Marshal(sandwichGuildMember)
-	if err != nil {
-		return
-	}
-
-	guildMember = &discord.GuildMember{}
-
-	err = jsoniter.Unmarshal(guildMemberJSON, guildMember)
-	if err != nil {
-		return guildMember, xerrors.Errorf("Failed to unmarshal guild member: %v", err)
-	}
-
-	return
-}
-
-// Converts gRPC to discord.Role counterpart.
-func GRPCToRole(sandwichRole *pb.Role) (role *discord.Role, err error) {
-	guildRoleJSON, err := protojson.Marshal(sandwichRole)
-	if err != nil {
-		return
-	}
-
-	role = &discord.Role{}
-
-	err = jsoniter.Unmarshal(guildRoleJSON, role)
-	if err != nil {
-		return role, xerrors.Errorf("Failed to unmarshal guild role: %v", err)
-	}
-
-	return
 }
