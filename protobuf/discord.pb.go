@@ -6413,68 +6413,71 @@ func file_discord_proto_rawDescGZIP() []byte {
 	return file_discord_proto_rawDescData
 }
 
-var file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
-var file_discord_proto_goTypes = []interface{}{
-	(*Account)(nil),                        // 0: sandwich.Account
-	(*Activity)(nil),                       // 1: sandwich.Activity
-	(*Application)(nil),                    // 2: sandwich.Application
-	(*ApplicationCommand)(nil),             // 3: sandwich.ApplicationCommand
-	(*ApplicationCommandOption)(nil),       // 4: sandwich.ApplicationCommandOption
-	(*ApplicationCommandOptionChoice)(nil), // 5: sandwich.ApplicationCommandOptionChoice
-	(*ApplicationSelectOption)(nil),        // 6: sandwich.ApplicationSelectOption
-	(*ApplicationTeam)(nil),                // 7: sandwich.ApplicationTeam
-	(*ApplicationTeamMember)(nil),          // 8: sandwich.ApplicationTeamMember
-	(*Assets)(nil),                         // 9: sandwich.Assets
-	(*Channel)(nil),                        // 10: sandwich.Channel
-	(*ChannelCreate)(nil),                  // 11: sandwich.ChannelCreate
-	(*ChannelDelete)(nil),                  // 12: sandwich.ChannelDelete
-	(*ChannelOverwrite)(nil),               // 13: sandwich.ChannelOverwrite
-	(*ChannelPinsUpdate)(nil),              // 14: sandwich.ChannelPinsUpdate
-	(*ChannelUpdate)(nil),                  // 15: sandwich.ChannelUpdate
-	(*ClientStatus)(nil),                   // 16: sandwich.ClientStatus
-	(*Embed)(nil),                          // 17: sandwich.Embed
-	(*EmbedAuthor)(nil),                    // 18: sandwich.EmbedAuthor
-	(*EmbedField)(nil),                     // 19: sandwich.EmbedField
-	(*EmbedFooter)(nil),                    // 20: sandwich.EmbedFooter
-	(*EmbedImage)(nil),                     // 21: sandwich.EmbedImage
-	(*EmbedProvider)(nil),                  // 22: sandwich.EmbedProvider
-	(*EmbedThumbnail)(nil),                 // 23: sandwich.EmbedThumbnail
-	(*EmbedVideo)(nil),                     // 24: sandwich.EmbedVideo
-	(*Emoji)(nil),                          // 25: sandwich.Emoji
-	(*Gateway)(nil),                        // 26: sandwich.Gateway
-	(*GatewayBot)(nil),                     // 27: sandwich.GatewayBot
-	(*GatewayBotSessionStartLimit)(nil),    // 28: sandwich.GatewayBotSessionStartLimit
-	(*GatewayPayload)(nil),                 // 29: sandwich.GatewayPayload
-	(*Guild)(nil),                          // 30: sandwich.Guild
-	(*GuildMember)(nil),                    // 31: sandwich.GuildMember
-	(*Interaction)(nil),                    // 32: sandwich.Interaction
-	(*InteractionComponent)(nil),           // 33: sandwich.InteractionComponent
-	(*InteractionData)(nil),                // 34: sandwich.InteractionData
-	(*InteractionDataOption)(nil),          // 35: sandwich.InteractionDataOption
-	(*InteractionResolvedData)(nil),        // 36: sandwich.InteractionResolvedData
-	(*Message)(nil),                        // 37: sandwich.Message
-	(*MessageActivity)(nil),                // 38: sandwich.MessageActivity
-	(*MessageAllowedMentions)(nil),         // 39: sandwich.MessageAllowedMentions
-	(*MessageAttachment)(nil),              // 40: sandwich.MessageAttachment
-	(*MessageChannelMention)(nil),          // 41: sandwich.MessageChannelMention
-	(*MessageReaction)(nil),                // 42: sandwich.MessageReaction
-	(*MessageReference)(nil),               // 43: sandwich.MessageReference
-	(*Party)(nil),                          // 44: sandwich.Party
-	(*Role)(nil),                           // 45: sandwich.Role
-	(*RoleTag)(nil),                        // 46: sandwich.RoleTag
-	(*Secrets)(nil),                        // 47: sandwich.Secrets
-	(*StageInstance)(nil),                  // 48: sandwich.StageInstance
-	(*Sticker)(nil),                        // 49: sandwich.Sticker
-	(*ThreadMember)(nil),                   // 50: sandwich.ThreadMember
-	(*ThreadMetadata)(nil),                 // 51: sandwich.ThreadMetadata
-	(*Timestamps)(nil),                     // 52: sandwich.Timestamps
-	(*UnavailableGuild)(nil),               // 53: sandwich.UnavailableGuild
-	(*UpdateStatus)(nil),                   // 54: sandwich.UpdateStatus
-	(*User)(nil),                           // 55: sandwich.User
-	(*VoiceState)(nil),                     // 56: sandwich.VoiceState
-	(*Webhook)(nil),                        // 57: sandwich.Webhook
-	(*WebhookMessage)(nil),                 // 58: sandwich.WebhookMessage
-}
+var (
+	file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
+	file_discord_proto_goTypes  = []interface{}{
+		(*Account)(nil),                        // 0: sandwich.Account
+		(*Activity)(nil),                       // 1: sandwich.Activity
+		(*Application)(nil),                    // 2: sandwich.Application
+		(*ApplicationCommand)(nil),             // 3: sandwich.ApplicationCommand
+		(*ApplicationCommandOption)(nil),       // 4: sandwich.ApplicationCommandOption
+		(*ApplicationCommandOptionChoice)(nil), // 5: sandwich.ApplicationCommandOptionChoice
+		(*ApplicationSelectOption)(nil),        // 6: sandwich.ApplicationSelectOption
+		(*ApplicationTeam)(nil),                // 7: sandwich.ApplicationTeam
+		(*ApplicationTeamMember)(nil),          // 8: sandwich.ApplicationTeamMember
+		(*Assets)(nil),                         // 9: sandwich.Assets
+		(*Channel)(nil),                        // 10: sandwich.Channel
+		(*ChannelCreate)(nil),                  // 11: sandwich.ChannelCreate
+		(*ChannelDelete)(nil),                  // 12: sandwich.ChannelDelete
+		(*ChannelOverwrite)(nil),               // 13: sandwich.ChannelOverwrite
+		(*ChannelPinsUpdate)(nil),              // 14: sandwich.ChannelPinsUpdate
+		(*ChannelUpdate)(nil),                  // 15: sandwich.ChannelUpdate
+		(*ClientStatus)(nil),                   // 16: sandwich.ClientStatus
+		(*Embed)(nil),                          // 17: sandwich.Embed
+		(*EmbedAuthor)(nil),                    // 18: sandwich.EmbedAuthor
+		(*EmbedField)(nil),                     // 19: sandwich.EmbedField
+		(*EmbedFooter)(nil),                    // 20: sandwich.EmbedFooter
+		(*EmbedImage)(nil),                     // 21: sandwich.EmbedImage
+		(*EmbedProvider)(nil),                  // 22: sandwich.EmbedProvider
+		(*EmbedThumbnail)(nil),                 // 23: sandwich.EmbedThumbnail
+		(*EmbedVideo)(nil),                     // 24: sandwich.EmbedVideo
+		(*Emoji)(nil),                          // 25: sandwich.Emoji
+		(*Gateway)(nil),                        // 26: sandwich.Gateway
+		(*GatewayBot)(nil),                     // 27: sandwich.GatewayBot
+		(*GatewayBotSessionStartLimit)(nil),    // 28: sandwich.GatewayBotSessionStartLimit
+		(*GatewayPayload)(nil),                 // 29: sandwich.GatewayPayload
+		(*Guild)(nil),                          // 30: sandwich.Guild
+		(*GuildMember)(nil),                    // 31: sandwich.GuildMember
+		(*Interaction)(nil),                    // 32: sandwich.Interaction
+		(*InteractionComponent)(nil),           // 33: sandwich.InteractionComponent
+		(*InteractionData)(nil),                // 34: sandwich.InteractionData
+		(*InteractionDataOption)(nil),          // 35: sandwich.InteractionDataOption
+		(*InteractionResolvedData)(nil),        // 36: sandwich.InteractionResolvedData
+		(*Message)(nil),                        // 37: sandwich.Message
+		(*MessageActivity)(nil),                // 38: sandwich.MessageActivity
+		(*MessageAllowedMentions)(nil),         // 39: sandwich.MessageAllowedMentions
+		(*MessageAttachment)(nil),              // 40: sandwich.MessageAttachment
+		(*MessageChannelMention)(nil),          // 41: sandwich.MessageChannelMention
+		(*MessageReaction)(nil),                // 42: sandwich.MessageReaction
+		(*MessageReference)(nil),               // 43: sandwich.MessageReference
+		(*Party)(nil),                          // 44: sandwich.Party
+		(*Role)(nil),                           // 45: sandwich.Role
+		(*RoleTag)(nil),                        // 46: sandwich.RoleTag
+		(*Secrets)(nil),                        // 47: sandwich.Secrets
+		(*StageInstance)(nil),                  // 48: sandwich.StageInstance
+		(*Sticker)(nil),                        // 49: sandwich.Sticker
+		(*ThreadMember)(nil),                   // 50: sandwich.ThreadMember
+		(*ThreadMetadata)(nil),                 // 51: sandwich.ThreadMetadata
+		(*Timestamps)(nil),                     // 52: sandwich.Timestamps
+		(*UnavailableGuild)(nil),               // 53: sandwich.UnavailableGuild
+		(*UpdateStatus)(nil),                   // 54: sandwich.UpdateStatus
+		(*User)(nil),                           // 55: sandwich.User
+		(*VoiceState)(nil),                     // 56: sandwich.VoiceState
+		(*Webhook)(nil),                        // 57: sandwich.Webhook
+		(*WebhookMessage)(nil),                 // 58: sandwich.WebhookMessage
+	}
+)
+
 var file_discord_proto_depIdxs = []int32{
 	52, // 0: sandwich.Activity.timestamps:type_name -> sandwich.Timestamps
 	44, // 1: sandwich.Activity.party:type_name -> sandwich.Party
