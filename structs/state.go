@@ -1,9 +1,10 @@
 package structs
 
 import (
+	"sync"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	jsoniter "github.com/json-iterator/go"
-	"sync"
 )
 
 // StateResult represents the data a state handler would return which would be converted to
@@ -18,8 +19,8 @@ type StateGuild struct {
 	Large         *bool `json:"large"`
 	Unavailable   *bool `json:"unavailable"`
 
-	AFKTimeout  int  `json:"afk_timeout"`
-	Permissions *int `json:"permissions,omitempty"`
+	AFKTimeout  int     `json:"afk_timeout"`
+	Permissions *string `json:"permissions,omitempty"`
 
 	NSFWLevel *discord.GuildNSFWLevelType `json:"nsfw_level"`
 	ID        discord.Snowflake           `json:"id"`

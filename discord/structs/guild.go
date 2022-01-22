@@ -80,7 +80,7 @@ type Guild struct {
 
 	Owner       *bool      `json:"owner,omitempty"`
 	OwnerID     *Snowflake `json:"owner_id,omitempty"`
-	Permissions *int       `json:"permissions,omitempty"`
+	Permissions *string    `json:"permissions,omitempty"`
 	Region      string     `json:"region"`
 
 	AFKChannelID *Snowflake `json:"afk_channel_id,omitempty"`

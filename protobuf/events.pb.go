@@ -1725,11 +1725,11 @@ var file_events_proto_rawDesc = []byte{
 	0x65, 0x72, 0x65, 0x49, 0x73, 0x47, 0x75, 0x69, 0x6c, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x1a, 0x1e, 0x2e, 0x73, 0x61, 0x6e, 0x64, 0x77, 0x69, 0x63, 0x68, 0x2e, 0x57, 0x68, 0x65,
 	0x72, 0x65, 0x49, 0x73, 0x47, 0x75, 0x69, 0x6c, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x42, 0x40, 0x5a, 0x3e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x65, 0x22, 0x00, 0x42, 0x3b, 0x5a, 0x39, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
 	0x6d, 0x2f, 0x57, 0x65, 0x6c, 0x63, 0x6f, 0x6d, 0x65, 0x72, 0x54, 0x65, 0x61, 0x6d, 0x2f, 0x53,
-	0x61, 0x6e, 0x64, 0x77, 0x69, 0x63, 0x68, 0x2d, 0x44, 0x61, 0x65, 0x6d, 0x6f, 0x6e, 0x2f, 0x6e,
-	0x65, 0x78, 0x74, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x73, 0x61, 0x6e,
-	0x64, 0x77, 0x69, 0x63, 0x68, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x6e, 0x64, 0x77, 0x69, 0x63, 0x68, 0x2d, 0x44, 0x61, 0x65, 0x6d, 0x6f, 0x6e, 0x2f, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x73, 0x61, 0x6e, 0x64, 0x77, 0x69, 0x63, 0x68,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1744,49 +1744,46 @@ func file_events_proto_rawDescGZIP() []byte {
 	return file_events_proto_rawDescData
 }
 
-var (
-	file_events_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
-	file_events_proto_goTypes  = []interface{}{
-		(*BaseResponse)(nil),                       // 0: sandwich.BaseResponse
-		(*ChannelsResponse)(nil),                   // 1: sandwich.ChannelsResponse
-		(*UsersResponse)(nil),                      // 2: sandwich.UsersResponse
-		(*EmojisResponse)(nil),                     // 3: sandwich.EmojisResponse
-		(*FetchConsumerConfigurationRequest)(nil),  // 4: sandwich.FetchConsumerConfigurationRequest
-		(*FetchConsumerConfigurationResponse)(nil), // 5: sandwich.FetchConsumerConfigurationResponse
-		(*FetchGuildChannelsRequest)(nil),          // 6: sandwich.FetchGuildChannelsRequest
-		(*FetchGuildEmojisRequest)(nil),            // 7: sandwich.FetchGuildEmojisRequest
-		(*FetchUsersRequest)(nil),                  // 8: sandwich.FetchUsersRequest
-		(*FetchGuildMembersRequest)(nil),           // 9: sandwich.FetchGuildMembersRequest
-		(*FetchGuildRequest)(nil),                  // 10: sandwich.FetchGuildRequest
-		(*FetchGuildRolesRequest)(nil),             // 11: sandwich.FetchGuildRolesRequest
-		(*FetchMutualGuildsRequest)(nil),           // 12: sandwich.FetchMutualGuildsRequest
-		(*GuildMembersResponse)(nil),               // 13: sandwich.GuildMembersResponse
-		(*GuildResponse)(nil),                      // 14: sandwich.GuildResponse
-		(*GuildRolesResponse)(nil),                 // 15: sandwich.GuildRolesResponse
-		(*GuildsResponse)(nil),                     // 16: sandwich.GuildsResponse
-		(*RequestGuildChunkRequest)(nil),           // 17: sandwich.RequestGuildChunkRequest
-		(*SendWebsocketMessageRequest)(nil),        // 18: sandwich.SendWebsocketMessageRequest
-		(*WhereIsGuildLocation)(nil),               // 19: sandwich.WhereIsGuildLocation
-		(*WhereIsGuildRequest)(nil),                // 20: sandwich.WhereIsGuildRequest
-		(*WhereIsGuildResponse)(nil),               // 21: sandwich.WhereIsGuildResponse
-		(*ListenRequest)(nil),                      // 22: sandwich.ListenRequest
-		(*ListenResponse)(nil),                     // 23: sandwich.ListenResponse
-		(*PostAnalyticsRequest)(nil),               // 24: sandwich.PostAnalyticsRequest
-		nil,                                        // 25: sandwich.ChannelsResponse.GuildChannelsEntry
-		nil,                                        // 26: sandwich.UsersResponse.UsersEntry
-		nil,                                        // 27: sandwich.EmojisResponse.GuildEmojisEntry
-		nil,                                        // 28: sandwich.GuildMembersResponse.GuildMembersEntry
-		nil,                                        // 29: sandwich.GuildRolesResponse.GuildRolesEntry
-		nil,                                        // 30: sandwich.GuildsResponse.GuildsEntry
-		(*Guild)(nil),                              // 31: sandwich.Guild
-		(*Channel)(nil),                            // 32: sandwich.Channel
-		(*User)(nil),                               // 33: sandwich.User
-		(*Emoji)(nil),                              // 34: sandwich.Emoji
-		(*GuildMember)(nil),                        // 35: sandwich.GuildMember
-		(*Role)(nil),                               // 36: sandwich.Role
-	}
-)
-
+var file_events_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_events_proto_goTypes = []interface{}{
+	(*BaseResponse)(nil),                       // 0: sandwich.BaseResponse
+	(*ChannelsResponse)(nil),                   // 1: sandwich.ChannelsResponse
+	(*UsersResponse)(nil),                      // 2: sandwich.UsersResponse
+	(*EmojisResponse)(nil),                     // 3: sandwich.EmojisResponse
+	(*FetchConsumerConfigurationRequest)(nil),  // 4: sandwich.FetchConsumerConfigurationRequest
+	(*FetchConsumerConfigurationResponse)(nil), // 5: sandwich.FetchConsumerConfigurationResponse
+	(*FetchGuildChannelsRequest)(nil),          // 6: sandwich.FetchGuildChannelsRequest
+	(*FetchGuildEmojisRequest)(nil),            // 7: sandwich.FetchGuildEmojisRequest
+	(*FetchUsersRequest)(nil),                  // 8: sandwich.FetchUsersRequest
+	(*FetchGuildMembersRequest)(nil),           // 9: sandwich.FetchGuildMembersRequest
+	(*FetchGuildRequest)(nil),                  // 10: sandwich.FetchGuildRequest
+	(*FetchGuildRolesRequest)(nil),             // 11: sandwich.FetchGuildRolesRequest
+	(*FetchMutualGuildsRequest)(nil),           // 12: sandwich.FetchMutualGuildsRequest
+	(*GuildMembersResponse)(nil),               // 13: sandwich.GuildMembersResponse
+	(*GuildResponse)(nil),                      // 14: sandwich.GuildResponse
+	(*GuildRolesResponse)(nil),                 // 15: sandwich.GuildRolesResponse
+	(*GuildsResponse)(nil),                     // 16: sandwich.GuildsResponse
+	(*RequestGuildChunkRequest)(nil),           // 17: sandwich.RequestGuildChunkRequest
+	(*SendWebsocketMessageRequest)(nil),        // 18: sandwich.SendWebsocketMessageRequest
+	(*WhereIsGuildLocation)(nil),               // 19: sandwich.WhereIsGuildLocation
+	(*WhereIsGuildRequest)(nil),                // 20: sandwich.WhereIsGuildRequest
+	(*WhereIsGuildResponse)(nil),               // 21: sandwich.WhereIsGuildResponse
+	(*ListenRequest)(nil),                      // 22: sandwich.ListenRequest
+	(*ListenResponse)(nil),                     // 23: sandwich.ListenResponse
+	(*PostAnalyticsRequest)(nil),               // 24: sandwich.PostAnalyticsRequest
+	nil,                                        // 25: sandwich.ChannelsResponse.GuildChannelsEntry
+	nil,                                        // 26: sandwich.UsersResponse.UsersEntry
+	nil,                                        // 27: sandwich.EmojisResponse.GuildEmojisEntry
+	nil,                                        // 28: sandwich.GuildMembersResponse.GuildMembersEntry
+	nil,                                        // 29: sandwich.GuildRolesResponse.GuildRolesEntry
+	nil,                                        // 30: sandwich.GuildsResponse.GuildsEntry
+	(*Guild)(nil),                              // 31: sandwich.Guild
+	(*Channel)(nil),                            // 32: sandwich.Channel
+	(*User)(nil),                               // 33: sandwich.User
+	(*Emoji)(nil),                              // 34: sandwich.Emoji
+	(*GuildMember)(nil),                        // 35: sandwich.GuildMember
+	(*Role)(nil),                               // 36: sandwich.Role
+}
 var file_events_proto_depIdxs = []int32{
 	0,  // 0: sandwich.ChannelsResponse.baseResponse:type_name -> sandwich.BaseResponse
 	25, // 1: sandwich.ChannelsResponse.guildChannels:type_name -> sandwich.ChannelsResponse.GuildChannelsEntry
