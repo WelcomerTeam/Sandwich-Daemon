@@ -49,9 +49,9 @@ type SandwichConsumerConfiguration struct {
 }
 
 type ManagerConsumerConfiguration struct {
-	Token string       `json:"token"`
-	ID    int64        `json:"id"`
-	User  discord.User `json:"user"`
+	Token string            `json:"token"`
+	ID    discord.Snowflake `json:"id,string"`
+	User  discord.User      `json:"user"`
 }
 
 type CreateManagerArguments struct {

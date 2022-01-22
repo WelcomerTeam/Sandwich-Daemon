@@ -15,6 +15,6 @@ type IdentifyResponse struct {
 
 	// If Success is false and this is passed,
 	// a value of 5000 represents waiting 5 seconds.
-	Wait    int64  `json:"wait"`
+	Wait    int64  `json:"wait,string"`
 	Message string `json:"message"`
 }

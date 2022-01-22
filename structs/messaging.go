@@ -7,10 +7,10 @@ import (
 
 // SandwichMetadata represents the identification information that consumers will use.
 type SandwichMetadata struct {
-	Version       string `json:"v"`
-	Identifier    string `json:"i"`
-	Application   string `json:"a"`
-	ApplicationID int64  `json:"id"`
+	Version       string            `json:"v"`
+	Identifier    string            `json:"i"`
+	Application   string            `json:"a"`
+	ApplicationID discord.Snowflake `json:"id,string"`
 	// ShardGroup ID, Shard ID, Shard Count
 	Shard [3]int `json:"s"`
 }
@@ -19,7 +19,7 @@ type SandwichMetadata struct {
 type SandwichPayload struct {
 	Op       discord.GatewayOp   `json:"op"`
 	Data     jsoniter.RawMessage `json:"d"`
-	Sequence int64               `json:"s"`
+	Sequence int64               `json:"s,string"`
 	Type     string              `json:"t"`
 
 	Extra    map[string]jsoniter.RawMessage `json:"__extra"`

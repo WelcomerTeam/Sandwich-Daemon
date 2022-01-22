@@ -87,7 +87,7 @@ message ApplicationTeam {
 
 message ApplicationTeamMember {
   int64 membershipState = 1 [json_name="membership_state"];
-  repeated string permissions = 2 [json_name="permissions"];
+  repeated int64 permissions = 2 [json_name="permissions"];
   int64 teamID = 3 [json_name="team_id"];
   User user = 4 [json_name="user"];
 }
@@ -124,7 +124,7 @@ message Channel {
   ThreadMetadata threadMetadata = 22 [json_name="thread_metadata"];
   ThreadMember threadMember = 23 [json_name="member"];
   int64 defaultAutoArchiveDuration = 24 [json_name="default_auto_archive_duration"];
-  string permissions = 25 [json_name="permissions"];
+  int64 permissions = 25 [json_name="permissions"];
 }
 
 message ChannelCreate {
@@ -262,7 +262,7 @@ message Guild {
   string discoverySplash = 6 [json_name="discovery_splash"];
   bool owner = 7 [json_name="owner"];
   int64 ownerID = 8 [json_name="owner_id"];
-  string permissions = 9 [json_name="permissions"];
+  int64 permissions = 9 [json_name="permissions"];
   string region = 10 [json_name="region"];
   int64 afkChannelID = 11 [json_name="afk_channel_id"];
   int64 afkTimeout = 12 [json_name="afk_timeout"];
@@ -313,7 +313,7 @@ message GuildMember {
   bool deaf = 6 [json_name="deaf"];
   bool mute = 7 [json_name="mute"];
   bool pending = 8 [json_name="pending"];
-  string permissions = 9 [json_name="permissions"];
+  int64 permissions = 9 [json_name="permissions"];
 }
 
 message Interaction {
@@ -455,7 +455,7 @@ message Role {
   int64 color = 3 [json_name="color"];
   bool hoist = 4 [json_name="hoist"];
   int64 position = 5 [json_name="position"];
-  string permissions = 6 [json_name="permissions"];
+  int64 permissions = 6 [json_name="permissions"];
   bool managed = 7 [json_name="managed"];
   bool mentionable = 8 [json_name="mentionable"];
   RoleTag tags = 9 [json_name="tags"];

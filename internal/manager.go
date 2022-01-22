@@ -265,7 +265,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	packet.Metadata = structs.SandwichMetadata{
 		Version:       VERSION,
 		Identifier:    identifier,
-		ApplicationID: mg.UserID.Load(),
+		ApplicationID: discord.Snowflake(mg.UserID.Load()),
 	}
 
 	// Clear currently unused values

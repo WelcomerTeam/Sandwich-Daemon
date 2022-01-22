@@ -10,7 +10,7 @@ type Role struct {
 	Color       int        `json:"color"`
 	Hoist       bool       `json:"hoist"`
 	Position    int        `json:"position"`
-	Permissions int        `json:"permissions"`
+	Permissions int64      `json:"permissions"`
 	Managed     bool       `json:"managed"`
 	Mentionable bool       `json:"mentionable"`
 	Tags        *RoleTag   `json:"tags,omitempty"`

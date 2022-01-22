@@ -102,7 +102,7 @@ type Application struct {
 	PrimarySKUID Snowflake `json:"primary_sku_id,omitempty"`
 	Slug         string    `json:"slug,omitempty"`
 	CoverImage   string    `json:"cover_image,omitempty"`
-	Flags        int64     `json:"flags"`
+	Flags        int64     `json:"flags,string"`
 }
 
 // ApplicationTeam represents the team of an application.

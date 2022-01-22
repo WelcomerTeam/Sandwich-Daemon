@@ -42,26 +42,3 @@ func (s Snowflake) MarshalJSON() ([]byte, error) {
 func (s *Snowflake) String() string {
 	return strconv.FormatInt(int64(*s), decimalBase)
 }
-
-// JSON-Marshal compatable Int64.
-type jInt64 int64
-
-func (s *jInt64) UnmarshalJSON(b []byte) error {
-	i, err := strconv.ParseInt(gotils_strconv.B2S(b[1:len(b)-1]), decimalBase, bitSize)
-	if err != nil {
-		return err
-	}
-
-	*s = jInt64(i)
-
-	return nil
-}
-
-func (s jInt64) MarshalJSON() ([]byte, error) {
-	buff := make([]byte, 0, maxInt64JsonLength)
-	buff = append(buff, '"')
-	buff = strconv.AppendInt(buff, int64(s), decimalBase)
-	buff = append(buff, '"')
-
-	return buff, nil
-}

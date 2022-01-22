@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
@@ -45,7 +46,7 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPaylo
 		Version:       VERSION,
 		Identifier:    identifier,
 		Application:   application,
-		ApplicationID: userID,
+		ApplicationID: discord.Snowflake(userID),
 		Shard: [3]int{
 			int(sh.ShardGroup.ID),
 			sh.ShardID,

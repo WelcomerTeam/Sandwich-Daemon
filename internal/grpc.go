@@ -133,7 +133,7 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 
 		identifiers[manager.Identifier.Load()] = structs.ManagerConsumerConfiguration{
 			Token: manager.Configuration.Token,
-			ID:    manager.UserID.Load(),
+			ID:    manager.User.ID,
 			User:  user,
 		}
 		manager.configurationMu.RUnlock()

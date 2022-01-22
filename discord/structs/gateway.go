@@ -69,7 +69,7 @@ const (
 type GatewayPayload struct {
 	Op       GatewayOp           `json:"op"`
 	Data     jsoniter.RawMessage `json:"d"`
-	Sequence int64               `json:"s"`
+	Sequence int64               `json:"s,string"`
 	Type     string              `json:"t"`
 }
 
@@ -89,7 +89,7 @@ type Identify struct {
 	LargeThreshold int                 `json:"large_threshold"`
 	Shard          [2]int              `json:"shard,omitempty"`
 	Presence       *UpdateStatus       `json:"presence,omitempty"`
-	Intents        int64               `json:"intents"`
+	Intents        int64               `json:"intents,string"`
 }
 
 // IdentifyProperties are the extra properties sent in the identify packet.
@@ -103,7 +103,7 @@ type IdentifyProperties struct {
 type Resume struct {
 	Token     string `json:"token"`
 	SessionID string `json:"session_id"`
-	Sequence  int64  `json:"seq"`
+	Sequence  int64  `json:"seq,string"`
 }
 
 // Heartbeat represents the heartbeat packet.
