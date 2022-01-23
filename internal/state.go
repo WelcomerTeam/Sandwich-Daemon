@@ -1,10 +1,11 @@
 package internal
 
 import (
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"sync"
 	"time"
+
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 )
 
 //
@@ -22,6 +23,7 @@ func (ss *SandwichState) GuildFromState(guildState *structs.StateGuild) (guild *
 		Splash:          guildState.Splash,
 		DiscoverySplash: guildState.DiscoverySplash,
 
+		Owner:       guildState.Owner,
 		OwnerID:     guildState.OwnerID,
 		Permissions: guildState.Permissions,
 		Region:      guildState.Region,
@@ -35,8 +37,6 @@ func (ss *SandwichState) GuildFromState(guildState *structs.StateGuild) (guild *
 		VerificationLevel:           guildState.VerificationLevel,
 		DefaultMessageNotifications: guildState.DefaultMessageNotifications,
 		ExplicitContentFilter:       guildState.ExplicitContentFilter,
-
-		Features: guildState.Features,
 
 		MFALevel:           guildState.MFALevel,
 		ApplicationID:      guildState.ApplicationID,
@@ -54,18 +54,21 @@ func (ss *SandwichState) GuildFromState(guildState *structs.StateGuild) (guild *
 		VanityURLCode: guildState.VanityURLCode,
 		Description:   guildState.Description,
 		Banner:        guildState.Banner,
-		PremiumTier:   guildState.PremiumTier,
 
-		PremiumSubscriptionCount: guildState.PremiumSubscriptionCount,
-		PreferredLocale:          guildState.PreferredLocale,
-		PublicUpdatesChannelID:   guildState.PublicUpdatesChannelID,
-		MaxVideoChannelUsers:     guildState.MaxVideoChannelUsers,
-		ApproximateMemberCount:   guildState.ApproximateMemberCount,
-		ApproximatePresenceCount: guildState.ApproximatePresenceCount,
+		PremiumTier:               guildState.PremiumTier,
+		PremiumSubscriptionCount:  guildState.PremiumSubscriptionCount,
+		PreferredLocale:           guildState.PreferredLocale,
+		PublicUpdatesChannelID:    guildState.PublicUpdatesChannelID,
+		MaxVideoChannelUsers:      guildState.MaxVideoChannelUsers,
+		ApproximateMemberCount:    guildState.ApproximateMemberCount,
+		ApproximatePresenceCount:  guildState.ApproximatePresenceCount,
+		NSFWLevel:                 guildState.NSFWLevel,
+		PremiumProgressBarEnabled: guildState.PremiumProgressBarEnabled,
 
-		NSFWLevel:      guildState.NSFWLevel,
-		StageInstances: make([]*discord.StageInstance, 0),
-		Stickers:       make([]*discord.Sticker, 0),
+		Features:             guildState.Features,
+		StageInstances:       make([]*discord.StageInstance, 0, len(guildState.StageInstances)),
+		Stickers:             make([]*discord.Sticker, 0, len(guildState.Stickers)),
+		GuildScheduledEvents: make([]*discord.ScheduledEvent, 0, len(guildState.GuildScheduledEvents)),
 	}
 
 	for _, stageInstance := range guildState.StageInstances {
@@ -76,6 +79,11 @@ func (ss *SandwichState) GuildFromState(guildState *structs.StateGuild) (guild *
 	for _, sticker := range guildState.Stickers {
 		sticker := sticker
 		guild.Stickers = append(guild.Stickers, &sticker)
+	}
+
+	for _, scheduledEvent := range guildState.GuildScheduledEvents {
+		scheduledEvent := scheduledEvent
+		guild.GuildScheduledEvents = append(guild.GuildScheduledEvents, &scheduledEvent)
 	}
 
 	return guild
@@ -364,30 +372,34 @@ func (ss *SandwichState) RemoveAllGuildMembers(guildID discord.Snowflake) {
 // RoleFromState converts the structs.StateRole into a discord.Role, for use within the application.
 func (ss *SandwichState) RoleFromState(guildState *structs.StateRole) (guild *discord.Role) {
 	return &discord.Role{
-		ID:          guildState.ID,
-		Name:        guildState.Name,
-		Color:       guildState.Color,
-		Hoist:       guildState.Hoist,
-		Position:    guildState.Position,
-		Permissions: guildState.Permissions,
-		Managed:     guildState.Managed,
-		Mentionable: guildState.Mentionable,
-		Tags:        guildState.Tags,
+		ID:           guildState.ID,
+		Name:         guildState.Name,
+		Color:        guildState.Color,
+		Hoist:        guildState.Hoist,
+		Icon:         guildState.Icon,
+		UnicodeEmoji: guildState.UnicodeEmoji,
+		Position:     guildState.Position,
+		Permissions:  guildState.Permissions,
+		Managed:      guildState.Managed,
+		Mentionable:  guildState.Mentionable,
+		Tags:         guildState.Tags,
 	}
 }
 
 // RoleFromState converts from discord.Role to structs.StateRole, for storing in cache.
 func (ss *SandwichState) RoleToState(guild *discord.Role) (guildState *structs.StateRole) {
 	return &structs.StateRole{
-		ID:          guild.ID,
-		Name:        guild.Name,
-		Color:       guild.Color,
-		Hoist:       guild.Hoist,
-		Position:    guild.Position,
-		Permissions: guild.Permissions,
-		Managed:     guild.Managed,
-		Mentionable: guild.Mentionable,
-		Tags:        guild.Tags,
+		ID:           guild.ID,
+		Name:         guild.Name,
+		Color:        guild.Color,
+		Hoist:        guild.Hoist,
+		Icon:         guild.Icon,
+		UnicodeEmoji: guild.UnicodeEmoji,
+		Position:     guild.Position,
+		Permissions:  guild.Permissions,
+		Managed:      guild.Managed,
+		Mentionable:  guild.Mentionable,
+		Tags:         guild.Tags,
 	}
 }
 
@@ -494,28 +506,28 @@ func (ss *SandwichState) EmojiFromState(guildState *structs.StateEmoji) (guild *
 			ID: guildState.UserID,
 		},
 		RequireColons: guildState.RequireColons,
-		Managed:       &guildState.Managed,
-		Animated:      &guildState.Animated,
-		Available:     &guildState.Available,
+		Managed:       guildState.Managed,
+		Animated:      guildState.Animated,
+		Available:     guildState.Available,
 	}
 }
 
 // EmojiFromState converts from discord.Emoji to structs.StateEmoji, for storing in cache.
 // This does not add the user to the cache.
 // This will not populate the user object from cache, it will be an empty object with only an ID.
-func (ss *SandwichState) EmojiToState(guild *discord.Emoji) (guildState *structs.StateEmoji) {
+func (ss *SandwichState) EmojiToState(emoji *discord.Emoji) (guildState *structs.StateEmoji) {
 	guildState = &structs.StateEmoji{
-		ID:            guild.ID,
-		Name:          guild.Name,
-		Roles:         guild.Roles,
-		RequireColons: guild.RequireColons,
-		Managed:       *guild.Managed,
-		Animated:      *guild.Animated,
-		Available:     *guild.Available,
+		ID:            emoji.ID,
+		Name:          emoji.Name,
+		Roles:         emoji.Roles,
+		RequireColons: emoji.RequireColons,
+		Managed:       emoji.Managed,
+		Animated:      emoji.Animated,
+		Available:     emoji.Available,
 	}
 
-	if guild.User != nil {
-		guildState.UserID = guild.User.ID
+	if emoji.User != nil {
+		guildState.UserID = emoji.User.ID
 	}
 
 	return guildState
@@ -634,6 +646,7 @@ func (ss *SandwichState) UserFromState(userState *structs.StateUser) (user *disc
 		System:        userState.System,
 		MFAEnabled:    userState.MFAEnabled,
 		Banner:        userState.Banner,
+		AccentColour:  userState.AccentColour,
 		Locale:        userState.Locale,
 		Verified:      userState.Verified,
 		Email:         userState.Email,
@@ -655,6 +668,7 @@ func (ss *SandwichState) UserToState(user *discord.User) (userState *structs.Sta
 		System:        user.System,
 		MFAEnabled:    user.MFAEnabled,
 		Banner:        user.Banner,
+		AccentColour:  user.AccentColour,
 		Locale:        user.Locale,
 		Verified:      user.Verified,
 		Email:         user.Email,
@@ -709,35 +723,32 @@ func (ss *SandwichState) RemoveUser(userID discord.Snowflake) {
 // This will not populate the recipient user object from cache.
 func (ss *SandwichState) ChannelFromState(guildState *structs.StateChannel) (guild *discord.Channel) {
 	guild = &discord.Channel{
-		ID:                   guildState.ID,
-		Type:                 guildState.Type,
-		GuildID:              guildState.GuildID,
-		Position:             guildState.Position,
-		PermissionOverwrites: make([]*discord.ChannelOverwrite, 0),
-		Name:                 guildState.Name,
-		Topic:                guildState.Topic,
-		NSFW:                 guildState.NSFW,
-		// LastMessageID:        guildState.LastMessageID,
-		Bitrate:          guildState.Bitrate,
-		UserLimit:        guildState.UserLimit,
-		RateLimitPerUser: guildState.RateLimitPerUser,
-		Recipients:       make([]discord.User, 0),
-		Icon:             guildState.Icon,
-		OwnerID:          guildState.OwnerID,
-		// ApplicationID:        guildState.ApplicationID,
-		ParentID: guildState.ParentID,
-		// LastPinTimestamp:     guildState.LastPinTimestamp,
-
-		// RTCRegion: guildState.RTCRegion,
-		// VideoQualityMode: guildState.VideoQualityMode,
-
-		// MessageCount:               guildState.MessageCount,
-		// MemberCount:                guildState.MemberCount,
-		ThreadMetadata: guildState.ThreadMetadata,
-		// ThreadMember:               guildState.ThreadMember,
-		// DefaultAutoArchiveDuration: guildState.DefaultAutoArchiveDuration,
-
-		Permissions: guildState.Permissions,
+		ID:                         guildState.ID,
+		Type:                       guildState.Type,
+		GuildID:                    guildState.GuildID,
+		Position:                   guildState.Position,
+		PermissionOverwrites:       make([]*discord.ChannelOverwrite, 0, len(guildState.PermissionOverwrites)),
+		Name:                       guildState.Name,
+		Topic:                      guildState.Topic,
+		NSFW:                       guildState.NSFW,
+		LastMessageID:              guildState.LastMessageID,
+		Bitrate:                    guildState.Bitrate,
+		UserLimit:                  guildState.UserLimit,
+		RateLimitPerUser:           guildState.RateLimitPerUser,
+		Recipients:                 make([]*discord.User, 0, len(guildState.Recipients)),
+		Icon:                       guildState.Icon,
+		OwnerID:                    guildState.OwnerID,
+		ApplicationID:              guildState.ApplicationID,
+		ParentID:                   guildState.ParentID,
+		LastPinTimestamp:           guildState.LastPinTimestamp,
+		RTCRegion:                  guildState.RTCRegion,
+		VideoQualityMode:           guildState.VideoQualityMode,
+		MessageCount:               guildState.MessageCount,
+		MemberCount:                guildState.MemberCount,
+		ThreadMetadata:             guildState.ThreadMetadata,
+		ThreadMember:               guildState.ThreadMember,
+		DefaultAutoArchiveDuration: guildState.DefaultAutoArchiveDuration,
+		Permissions:                guildState.Permissions,
 	}
 
 	for _, permissionOverride := range guildState.PermissionOverwrites {
@@ -745,11 +756,11 @@ func (ss *SandwichState) ChannelFromState(guildState *structs.StateChannel) (gui
 		guild.PermissionOverwrites = append(guild.PermissionOverwrites, &permissionOverride)
 	}
 
-	// for _, recepientID := range guildState.RecipientIDs {
-	// 	guild.Recipients = append(guild.Recipients, &discord.User{
-	// 		ID: *recepientID,
-	// 	})
-	// }
+	for _, recepientID := range guildState.Recipients {
+		guild.Recipients = append(guild.Recipients, &discord.User{
+			ID: recepientID,
+		})
+	}
 
 	return guild
 }
@@ -830,12 +841,12 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 
 	guildChannel = ss.ChannelFromState(stateGuildChannel)
 
-	newRecepients := make([]discord.User, 0)
+	newRecepients := make([]*discord.User, 0)
 
 	for _, recipient := range guildChannel.Recipients {
 		recipientUser, ok := ss.GetUser(recipient.ID)
 		if ok {
-			recipient = *recipientUser
+			recipient = recipientUser
 		}
 
 		newRecepients = append(newRecepients, recipient)
@@ -877,7 +888,7 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 	if ctx.CacheUsers {
 		for _, recipient := range channel.Recipients {
 			recipient := recipient
-			ss.SetUser(ctx, &recipient)
+			ss.SetUser(ctx, recipient)
 		}
 	}
 }

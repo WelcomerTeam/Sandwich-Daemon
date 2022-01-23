@@ -2,10 +2,11 @@ package internal
 
 import (
 	"context"
+	"time"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 // OnReady handles the READY event.
@@ -427,21 +428,12 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 		guildUpdatePayload.VoiceStates = beforeGuild.VoiceStates
 	}
 
-	if guildUpdatePayload.MemberCount == nil {
+	if guildUpdatePayload.MemberCount == 0 {
 		guildUpdatePayload.MemberCount = beforeGuild.MemberCount
 	}
 
-	if guildUpdatePayload.Unavailable == nil {
-		guildUpdatePayload.Unavailable = beforeGuild.Unavailable
-	}
-
-	if guildUpdatePayload.Large == nil {
-		guildUpdatePayload.Large = beforeGuild.Large
-	}
-
-	if guildUpdatePayload.JoinedAt == nil {
-		guildUpdatePayload.JoinedAt = beforeGuild.JoinedAt
-	}
+	guildUpdatePayload.Large = beforeGuild.Large
+	guildUpdatePayload.JoinedAt = beforeGuild.JoinedAt
 
 	ctx.Sandwich.State.SetGuild(ctx, guildUpdatePayload)
 
@@ -619,16 +611,8 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 		guild, ok := ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID]
 
 		if ok {
-			if guild.MemberCount != nil {
-				memberCount := *guild.MemberCount
-				memberCount++
-				guild.MemberCount = &memberCount
-				ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID] = guild
-			} else {
-				ctx.Sandwich.Logger.Fatal().
-					Int64("guildID", int64(guild.ID)).
-					Msg("Guild does not reference member count")
-			}
+			guild.MemberCount++
+			ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID] = guild
 		}
 		ctx.Sandwich.State.guildsMu.Unlock()
 	}
@@ -667,16 +651,8 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 		guild, ok := ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID]
 
 		if ok {
-			if guild.MemberCount != nil {
-				memberCount := *guild.MemberCount
-				memberCount--
-				guild.MemberCount = &memberCount
-				ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID] = guild
-			} else {
-				ctx.Sandwich.Logger.Fatal().
-					Int64("guildID", int64(guild.ID)).
-					Msg("Guild does not reference member count")
-			}
+			guild.MemberCount--
+			ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID] = guild
 		}
 		ctx.Sandwich.State.guildsMu.Unlock()
 	}
@@ -860,7 +836,9 @@ func OnInviteCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 		return
 	}
 
-	defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteCreatePayload.GuildID)
+	if inviteCreatePayload.GuildID != nil {
+		defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteCreatePayload.GuildID)
+	}
 
 	return structs.StateResult{
 		Data: msg.Data,
@@ -875,7 +853,9 @@ func OnInviteDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 		return
 	}
 
-	defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteDeletePayload.GuildID)
+	if inviteDeletePayload.GuildID != nil {
+		defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteDeletePayload.GuildID)
+	}
 
 	return structs.StateResult{
 		Data: msg.Data,

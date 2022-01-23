@@ -40,37 +40,32 @@ const (
 
 // Channel represents a Discord channel.
 type Channel struct {
-	ID                   Snowflake           `json:"id"`
-	Type                 ChannelType         `json:"type"`
-	GuildID              *Snowflake          `json:"guild_id,omitempty"`
-	Position             *int                `json:"position,omitempty"`
-	PermissionOverwrites []*ChannelOverwrite `json:"permission_overwrites,omitempty"`
-	Name                 string              `json:"name"`
-	Topic                *string             `json:"topic,omitempty"`
-	NSFW                 *bool               `json:"nsfw,omitempty"`
-	LastMessageID        *string             `json:"last_message_id,omitempty"`
-	Bitrate              *int                `json:"bitrate,omitempty"`
-	UserLimit            *int                `json:"user_limit,omitempty"`
-	RateLimitPerUser     *int                `json:"rate_limit_per_user,omitempty"`
-	Recipients           []User              `json:"recipients,omitempty"`
-	Icon                 *string             `json:"icon,omitempty"`
-	OwnerID              *Snowflake          `json:"owner_id,omitempty"`
-	ApplicationID        *Snowflake          `json:"application_id,omitempty"`
-	ParentID             *Snowflake          `json:"parent_id,omitempty"`
-	LastPinTimestamp     *string             `json:"last_pin_timestamp,omitempty"`
-
-	RTCRegion *string `json:"rtc_region,omitempty"`
-	// VideoQualityMode *VideoQualityMode `json:"video_quality_mode,omitempty"`
-
-	// Threads
-	MessageCount               *int            `json:"message_count,omitempty"`
-	MemberCount                *int            `json:"member_count,omitempty"`
-	ThreadMetadata             *ThreadMetadata `json:"thread_metadata,omitempty"`
-	ThreadMember               *ThreadMember   `json:"member,omitempty"`
-	DefaultAutoArchiveDuration int32           `json:"default_auto_archive_duration"`
-
-	// Slash Commands
-	Permissions *Int64 `json:"permissions,omitempty"`
+	ID                         Snowflake           `json:"id"`
+	GuildID                    *Snowflake          `json:"guild_id,omitempty"`
+	Type                       ChannelType         `json:"type"`
+	Position                   int32               `json:"position,omitempty"`
+	PermissionOverwrites       []*ChannelOverwrite `json:"permission_overwrites,omitempty"`
+	Name                       string              `json:"name,omitempty"`
+	Topic                      string              `json:"topic,omitempty"`
+	NSFW                       bool                `json:"nsfw"`
+	LastMessageID              string              `json:"last_message_id,omitempty"`
+	Bitrate                    int32               `json:"bitrate,omitempty"`
+	UserLimit                  int32               `json:"user_limit,omitempty"`
+	RateLimitPerUser           int32               `json:"rate_limit_per_user,omitempty"`
+	Recipients                 []*User             `json:"recipients,omitempty"`
+	Icon                       string              `json:"icon,omitempty"`
+	OwnerID                    *Snowflake          `json:"owner_id,omitempty"`
+	ApplicationID              *Snowflake          `json:"application_id,omitempty"`
+	ParentID                   *Snowflake          `json:"parent_id,omitempty"`
+	LastPinTimestamp           string              `json:"last_pin_timestamp,omitempty"`
+	RTCRegion                  string              `json:"rtc_region,omitempty"`
+	VideoQualityMode           *VideoQualityMode   `json:"video_quality_mode,omitempty"`
+	MessageCount               int32               `json:"message_count,omitempty"`
+	MemberCount                int32               `json:"member_count,omitempty"`
+	ThreadMetadata             *ThreadMetadata     `json:"thread_metadata,omitempty"`
+	ThreadMember               *ThreadMember       `json:"member,omitempty"`
+	DefaultAutoArchiveDuration int32               `json:"default_auto_archive_duration,omitempty"`
+	Permissions                *Int64              `json:"permissions,omitempty"`
 }
 
 // ChannelOverwrite represents a permission overwrite for a channel.
@@ -94,7 +89,7 @@ type ThreadMetadata struct {
 	Archived            bool   `json:"archived"`
 	AutoArchiveDuration int32  `json:"auto_archive_duration"`
 	ArchiveTimestamp    string `json:"archive_timestamp"`
-	Locked              *bool  `json:"locked,omitempty"`
+	Locked              bool   `json:"locked"`
 }
 
 // ThreadMember is used to indicate whether a user has joined a thread or not.
@@ -108,10 +103,10 @@ type ThreadMember struct {
 
 // StageInstance represents a stage channel instance.
 type StageInstance struct {
-	ID                   Snowflake                `json:"id"`
-	GuildID              Snowflake                `json:"guild_id"`
-	ChannelID            Snowflake                `json:"channel_id"`
-	Topic                string                   `json:"topic"`
-	PrivacyLabel         StageChannelPrivacyLevel `json:"privacy_level"`
-	DiscoverableDisabled bool                     `json:"discoverable_disabled"`
+	ID                   Snowflake                 `json:"id"`
+	GuildID              Snowflake                 `json:"guild_id"`
+	ChannelID            Snowflake                 `json:"channel_id"`
+	Topic                string                    `json:"topic"`
+	PrivacyLabel         *StageChannelPrivacyLevel `json:"privacy_level"`
+	DiscoverableDisabled bool                      `json:"discoverable_disabled"`
 }

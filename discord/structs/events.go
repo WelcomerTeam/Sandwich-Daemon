@@ -16,7 +16,7 @@ type Ready struct {
 	User        User                `json:"user"`
 	Guilds      []*UnavailableGuild `json:"guilds"`
 	SessionID   string              `json:"session_id"`
-	Shard       []int               `json:"shard,omitempty"`
+	Shard       []int32             `json:"shard,omitempty"`
 	Application Application         `json:"application"`
 }
 
@@ -53,7 +53,7 @@ type ChannelDelete *Channel
 type ChannelPinsUpdate struct {
 	GuildID          Snowflake `json:"guild_id"`
 	ChannelID        Snowflake `json:"channel_id"`
-	LastPinTimestamp *string   `json:"last_pin_timestamp,omitempty"`
+	LastPinTimestamp string    `json:"last_pin_timestamp"`
 }
 
 // ThreadCreate represents a thread create event.
@@ -145,7 +145,7 @@ type GuildMembersChunk struct {
 	ChunkCount int32            `json:"chunk_count"`
 	NotFound   []Snowflake      `json:"not_found,omitempty"`
 	Presences  []PresenceStatus `json:"presences,omitempty"`
-	Nonce      *string          `json:"nonce,omitempty"`
+	Nonce      string           `json:"nonce"`
 }
 
 // GuildRoleCreate represents a guild role create event.

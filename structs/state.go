@@ -1,9 +1,10 @@
 package structs
 
 import (
+	"sync"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	jsoniter "github.com/json-iterator/go"
-	"sync"
 )
 
 // StateResult represents the data a state handler would return which would be converted to
@@ -11,62 +12,6 @@ import (
 type StateResult struct {
 	Data  jsoniter.RawMessage
 	Extra map[string]jsoniter.RawMessage
-}
-
-type StateGuild struct {
-	WidgetEnabled *bool `json:"widget_enabled"`
-	Large         *bool `json:"large"`
-	Unavailable   *bool `json:"unavailable"`
-
-	AFKTimeout  int32          `json:"afk_timeout"`
-	Permissions *discord.Int64 `json:"permissions,omitempty"`
-
-	NSFWLevel *discord.GuildNSFWLevelType `json:"nsfw_level"`
-	ID        discord.Snowflake           `json:"id"`
-
-	Name            string `json:"name"`
-	Icon            string `json:"icon"`
-	Splash          string `json:"splash"`
-	DiscoverySplash string `json:"discovery_splash"`
-	Region          string `json:"region"`
-	Description     string `json:"description"`
-	Banner          string `json:"banner"`
-
-	MFALevel                    discord.MFALevel                   `json:"mfa_level"`
-	VerificationLevel           discord.VerificationLevel          `json:"verification_level"`
-	DefaultMessageNotifications discord.MessageNotificationLevel   `json:"default_message_notifications"`
-	ExplicitContentFilter       discord.ExplicitContentFilterLevel `json:"explicit_content_filter"`
-
-	MemberCount              *int `json:"member_count"`
-	PremiumSubscriptionCount *int `json:"premium_subscription_count"`
-	MaxVideoChannelUsers     *int `json:"max_video_channel_users"`
-	ApproximateMemberCount   *int `json:"approximate_member_count"`
-	ApproximatePresenceCount *int `json:"approximate_presence_count"`
-	MaxPresences             *int `json:"max_presences"`
-	MaxMembers               *int `json:"max_members"`
-
-	IconHash        *string `json:"icon_hash"`
-	JoinedAt        *string `json:"joined_at"`
-	VanityURLCode   *string `json:"vanity_url_code"`
-	PreferredLocale *string `json:"preferred_locale"`
-
-	PremiumTier        *discord.PremiumTier        `json:"premium_tier"`
-	SystemChannelFlags *discord.SystemChannelFlags `json:"system_channel_flags"`
-
-	PublicUpdatesChannelID *discord.Snowflake `json:"public_updates_channel_id"`
-	OwnerID                *discord.Snowflake `json:"owner_id"`
-	AFKChannelID           *discord.Snowflake `json:"afk_channel_id"`
-	WidgetChannelID        *discord.Snowflake `json:"widget_channel_id"`
-	ApplicationID          *discord.Snowflake `json:"application_id"`
-	SystemChannelID        *discord.Snowflake `json:"system_channel_id"`
-	RulesChannelID         *discord.Snowflake `json:"rules_channel_id"`
-
-	RoleIDs        []discord.Snowflake     `json:"role_ids"`
-	EmojiIDs       []discord.Snowflake     `json:"emoji_ids"`
-	Features       []string                `json:"features"`
-	ChannelIDs     []discord.Snowflake     `json:"channel_ids"`
-	StageInstances []discord.StageInstance `json:"stage_instances"`
-	Stickers       []discord.Sticker       `json:"stickers"`
 }
 
 type StateDMChannel struct {
@@ -87,34 +32,10 @@ type StateGuildMembers struct {
 	Members map[discord.Snowflake]*StateGuildMember `json:"members"`
 }
 
-type StateGuildMember struct {
-	Deaf         bool                `json:"deaf"`
-	Mute         bool                `json:"mute"`
-	JoinedAt     string              `json:"joined_at"`
-	Pending      *bool               `json:"pending"`
-	PremiumSince *string             `json:"premium_since"`
-	Permissions  *discord.Int64      `json:"permissions"`
-	Nick         *string             `json:"nick"`
-	UserID       discord.Snowflake   `json:"user_id"`
-	Roles        []discord.Snowflake `json:"roles"`
-}
-
 type StateGuildRoles struct {
 	RolesMu sync.RWMutex `json:"-"`
 
 	Roles map[discord.Snowflake]*StateRole `json:"roles"`
-}
-
-type StateRole struct {
-	Hoist       bool              `json:"hoist"`
-	Managed     bool              `json:"managed"`
-	Mentionable bool              `json:"mentionable"`
-	Color       int32             `json:"color"`
-	Position    int32             `json:"position"`
-	Permissions discord.Int64     `json:"permissions"`
-	ID          discord.Snowflake `json:"id"`
-	Tags        *discord.RoleTag  `json:"tags"`
-	Name        string            `json:"name"`
 }
 
 type StateGuildEmojis struct {
@@ -123,71 +44,157 @@ type StateGuildEmojis struct {
 	Emojis map[discord.Snowflake]*StateEmoji `json:"emoji"`
 }
 
-type StateEmoji struct {
-	ID            discord.Snowflake   `json:"id"`
-	Name          string              `json:"name"`
-	Roles         []discord.Snowflake `json:"roles"`
-	UserID        discord.Snowflake   `json:"user"`
-	RequireColons *bool               `json:"require_colons"`
-	Managed       bool                `json:"managed"`
-	Animated      bool                `json:"animated"`
-	Available     bool                `json:"available"`
-}
-
 type StateGuildChannels struct {
 	ChannelsMu sync.RWMutex `json:"-"`
 
 	Channels map[discord.Snowflake]*StateChannel `json:"channels"`
 }
 
+
+type StateGuild struct {
+	ID              discord.Snowflake `json:"id"`
+	Name            string            `json:"name"`
+	Icon            string            `json:"icon"`
+	IconHash        string            `json:"icon_hash"`
+	Splash          string            `json:"splash"`
+	DiscoverySplash string            `json:"discovery_splash"`
+
+	Owner       bool               `json:"owner"`
+	OwnerID     *discord.Snowflake `json:"owner_id,omitempty"`
+	Permissions *discord.Int64     `json:"permissions,omitempty"`
+	Region      string             `json:"region"`
+
+	AFKChannelID *discord.Snowflake `json:"afk_channel_id,omitempty"`
+	AFKTimeout   int32              `json:"afk_timeout"`
+
+	WidgetEnabled   bool               `json:"widget_enabled"`
+	WidgetChannelID *discord.Snowflake `json:"widget_channel_id,omitempty"`
+
+	VerificationLevel           discord.VerificationLevel          `json:"verification_level"`
+	DefaultMessageNotifications discord.MessageNotificationLevel   `json:"default_message_notifications"`
+	ExplicitContentFilter       discord.ExplicitContentFilterLevel `json:"explicit_content_filter"`
+
+	MFALevel           discord.MFALevel            `json:"mfa_level"`
+	ApplicationID      *discord.Snowflake          `json:"application_id,omitempty"`
+	SystemChannelID    *discord.Snowflake          `json:"system_channel_id,omitempty"`
+	SystemChannelFlags *discord.SystemChannelFlags `json:"system_channel_flags,omitempty"`
+	RulesChannelID     *discord.Snowflake          `json:"rules_channel_id,omitempty"`
+
+	JoinedAt    string `json:"joined_at"`
+	Large       bool   `json:"large"`
+	Unavailable bool   `json:"unavailable"`
+	MemberCount int32  `json:"member_count"`
+
+	MaxPresences  int    `json:"max_presences"`
+	MaxMembers    int    `json:"max_members"`
+	VanityURLCode string `json:"vanity_url_code"`
+	Description   string `json:"description"`
+	Banner        string `json:"banner"`
+
+	PremiumTier               *discord.PremiumTier        `json:"premium_tier,omitempty"`
+	PremiumSubscriptionCount  int                         `json:"premium_subscription_count"`
+	PreferredLocale           string                      `json:"preferred_locale"`
+	PublicUpdatesChannelID    *discord.Snowflake          `json:"public_updates_channel_id,omitempty"`
+	MaxVideoChannelUsers      int                         `json:"max_video_channel_users"`
+	ApproximateMemberCount    int                         `json:"approximate_member_count"`
+	ApproximatePresenceCount  int                         `json:"approximate_presence_count"`
+	NSFWLevel                 *discord.GuildNSFWLevelType `json:"nsfw_level"`
+	PremiumProgressBarEnabled bool                        `json:"premium_progress_bar_enabled"`
+
+	RoleIDs    []discord.Snowflake `json:"role_ids"`
+	EmojiIDs   []discord.Snowflake `json:"emoji_ids"`
+	ChannelIDs []discord.Snowflake `json:"channel_ids"`
+
+	Features             []string                 `json:"features"`
+	StageInstances       []discord.StageInstance  `json:"stage_instances"`
+	Stickers             []discord.Sticker        `json:"stickers"`
+	GuildScheduledEvents []discord.ScheduledEvent `json:"guild_scheduled_events"`
+}
+
+type StateGuildMember struct {
+	UserID                     discord.Snowflake   `json:"user_id"`
+	Nick                       string              `json:"nick"`
+	Avatar                     string              `json:"avatar,omitempty"`
+	Roles                      []discord.Snowflake `json:"roles"`
+	JoinedAt                   string              `json:"joined_at"`
+	PremiumSince               string              `json:"premium_since"`
+	Deaf                       bool                `json:"deaf"`
+	Mute                       bool                `json:"mute"`
+	Pending                    bool                `json:"pending"`
+	Permissions                *discord.Int64      `json:"permissions"`
+	CommunicationDisabledUntil string              `json:"communication_disabled_until,omitempty"`
+}
+
+type StateRole struct {
+	ID           discord.Snowflake `json:"id"`
+	Name         string            `json:"name"`
+	Color        int32             `json:"color"`
+	Hoist        bool              `json:"hoist"`
+	Icon         string            `json:"icon"`
+	UnicodeEmoji string            `json:"unicode_emoji"`
+	Position     int32             `json:"position"`
+	Permissions  discord.Int64     `json:"permissions"`
+	Managed      bool              `json:"managed"`
+	Mentionable  bool              `json:"mentionable"`
+	Tags         *discord.RoleTag  `json:"tags"`
+}
+
+type StateEmoji struct {
+	ID            discord.Snowflake   `json:"id"`
+	GuildID       discord.Snowflake   `json:"guild_id"`
+	Name          string              `json:"name"`
+	Roles         []discord.Snowflake `json:"roles,omitempty"`
+	UserID        discord.Snowflake   `json:"user"`
+	RequireColons bool                `json:"require_colons"`
+	Managed       bool                `json:"managed"`
+	Animated      bool                `json:"animated"`
+	Available     bool                `json:"available"`
+}
+
 type StateChannel struct {
-	ID                   discord.Snowflake          `json:"id"`
-	Type                 discord.ChannelType        `json:"type"`
-	GuildID              *discord.Snowflake         `json:"guild_id"`
-	Position             *int                       `json:"position"`
-	PermissionOverwrites []discord.ChannelOverwrite `json:"permission_overwrites"`
-	Name                 string                     `json:"name"`
-	Topic                *string                    `json:"topic"`
-	NSFW                 *bool                      `json:"nsfw"`
-	// LastMessageID        *string                     `json:"last_message_id"`
-	Bitrate          *int `json:"bitrate"`
-	UserLimit        *int `json:"user_limit"`
-	RateLimitPerUser *int `json:"rate_limit_per_user"`
-	// RecipientIDs         []discord.Snowflake        `json:"recipient_ids"`
-	Icon    *string            `json:"icon"`
-	OwnerID *discord.Snowflake `json:"owner_id"`
-	// ApplicationID        *discord.Snowflake          `json:"application_id"`
-	ParentID *discord.Snowflake `json:"parent_id"`
-	// LastPinTimestamp     *string                     `json:"last_pin_timestamp"`
-
-	// RTCRegion *string `json:"rtc_region"`
-	// VideoQualityMode *discord.VideoQualityMode `json:"video_quality_mode"`
-
-	// Threads.
-	// MessageCount               *int                    `json:"message_count"`
-	// MemberCount                *int                    `json:"member_count"`
-	ThreadMetadata *discord.ThreadMetadata `json:"thread_metadata"`
-	// ThreadMember               *discord.ThreadMember   `json:"member"`
-	// DefaultAutoArchiveDuration int32                     `json:"default_auto_archive_duration"`
-
-	// Slash Commands.
-	Permissions *discord.Int64 `json:"permissions"`
+	ID                         discord.Snowflake          `json:"id"`
+	Type                       discord.ChannelType        `json:"type"`
+	GuildID                    *discord.Snowflake         `json:"guild_id,omitempty"`
+	Position                   int32                      `json:"position,omitempty"`
+	PermissionOverwrites       []discord.ChannelOverwrite `json:"permission_overwrites,omitempty"`
+	Name                       string                     `json:"name,omitempty"`
+	Topic                      string                     `json:"topic,omitempty"`
+	NSFW                       bool                       `json:"nsfw"`
+	LastMessageID              string                     `json:"last_message_id,omitempty"`
+	Bitrate                    int32                      `json:"bitrate,omitempty"`
+	UserLimit                  int32                      `json:"user_limit,omitempty"`
+	RateLimitPerUser           int32                      `json:"rate_limit_per_user,omitempty"`
+	Recipients                 []discord.Snowflake        `json:"recipients,omitempty"`
+	Icon                       string                     `json:"icon,omitempty"`
+	OwnerID                    *discord.Snowflake         `json:"owner_id,omitempty"`
+	ApplicationID              *discord.Snowflake         `json:"application_id,omitempty"`
+	ParentID                   *discord.Snowflake         `json:"parent_id,omitempty"`
+	LastPinTimestamp           string                     `json:"last_pin_timestamp,omitempty"`
+	RTCRegion                  string                     `json:"rtc_region,omitempty"`
+	VideoQualityMode           *discord.VideoQualityMode  `json:"video_quality_mode,omitempty"`
+	MessageCount               int32                      `json:"message_count,omitempty"`
+	MemberCount                int32                      `json:"member_count,omitempty"`
+	ThreadMetadata             *discord.ThreadMetadata    `json:"thread_metadata,omitempty"`
+	ThreadMember               *discord.ThreadMember      `json:"member,omitempty"`
+	DefaultAutoArchiveDuration int32                      `json:"default_auto_archive_duration,omitempty"`
+	Permissions                *discord.Int64             `json:"permissions,omitempty"`
 }
 
 type StateUser struct {
 	ID            discord.Snowflake        `json:"id"`
-	Bot           bool                     `json:"bot"`
-	System        *bool                    `json:"system"`
-	Verified      *bool                    `json:"verified"`
-	MFAEnabled    *bool                    `json:"mfa_enabled"`
-	Flags         *discord.UserFlags       `json:"flags"`
-	PremiumType   *discord.UserPremiumType `json:"premium_type"`
-	PublicFlags   *discord.UserFlags       `json:"public_flags"`
-	Username      string                   `json:"username"`
-	Discriminator string                   `json:"discriminator"`
-	Avatar        string                   `json:"avatar"`
-	Banner        *string                  `json:"banner"`
-	Locale        *string                  `json:"locale"`
-	Email         *string                  `json:"email"`
-	DMChannelID   *discord.Snowflake       `json:"dm_channel_id"`
+	Username      string           `json:"username"`
+	Discriminator string           `json:"discriminator"`
+	Avatar        string           `json:"avatar"`
+	Bot           bool             `json:"bot"`
+	System        bool             `json:"system,omitempty"`
+	MFAEnabled    bool             `json:"mfa_enabled,omitempty"`
+	Banner        string           `json:"banner,omitempty"`
+	AccentColour  int32            `json:"accent_color"`
+	Locale        string           `json:"locale,omitempty"`
+	Verified      bool             `json:"verified,omitempty"`
+	Email         string           `json:"email,omitempty"`
+	Flags         *discord.UserFlags       `json:"flags,omitempty"`
+	PremiumType   *discord.UserPremiumType `json:"premium_type,omitempty"`
+	PublicFlags   *discord.UserFlags       `json:"public_flags,omitempty"`
+	DMChannelID   *discord.Snowflake       `json:"dm_channel_id,omitempty"`
 }

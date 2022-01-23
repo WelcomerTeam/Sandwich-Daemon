@@ -250,56 +250,45 @@ type SandwichServer interface {
 }
 
 // UnimplementedSandwichServer must be embedded to have forward compatible implementations.
-type UnimplementedSandwichServer struct{}
+type UnimplementedSandwichServer struct {
+}
 
 func (UnimplementedSandwichServer) Listen(*ListenRequest, Sandwich_ListenServer) error {
 	return status.Errorf(codes.Unimplemented, "method Listen not implemented")
 }
-
 func (UnimplementedSandwichServer) PostAnalytics(context.Context, *PostAnalyticsRequest) (*BaseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PostAnalytics not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchConsumerConfiguration(context.Context, *FetchConsumerConfigurationRequest) (*FetchConsumerConfigurationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchConsumerConfiguration not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchUsers(context.Context, *FetchUsersRequest) (*UsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchUsers not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchGuildChannels(context.Context, *FetchGuildChannelsRequest) (*ChannelsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchGuildChannels not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchGuildEmojis(context.Context, *FetchGuildEmojisRequest) (*EmojisResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchGuildEmojis not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchGuildMembers(context.Context, *FetchGuildMembersRequest) (*GuildMembersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchGuildMembers not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchGuild(context.Context, *FetchGuildRequest) (*GuildsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchGuild not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchGuildRoles(context.Context, *FetchGuildRolesRequest) (*GuildRolesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchGuildRoles not implemented")
 }
-
 func (UnimplementedSandwichServer) FetchMutualGuilds(context.Context, *FetchMutualGuildsRequest) (*GuildsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchMutualGuilds not implemented")
 }
-
 func (UnimplementedSandwichServer) RequestGuildChunk(context.Context, *RequestGuildChunkRequest) (*BaseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestGuildChunk not implemented")
 }
-
 func (UnimplementedSandwichServer) SendWebsocketMessage(context.Context, *SendWebsocketMessageRequest) (*BaseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendWebsocketMessage not implemented")
 }
-
 func (UnimplementedSandwichServer) WhereIsGuild(context.Context, *WhereIsGuildRequest) (*WhereIsGuildResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WhereIsGuild not implemented")
 }

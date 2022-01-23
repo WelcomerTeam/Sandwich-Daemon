@@ -3,6 +3,10 @@ package internal
 import (
 	"bytes"
 	"context"
+	"io"
+	"strings"
+	"time"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
@@ -11,9 +15,6 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"io"
-	"strings"
-	"time"
 )
 
 var (
@@ -424,8 +425,8 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 }
 
 func guildMemberMatch(query string, guildMember *discord.GuildMember) (ok bool) {
-	if guildMember.Nick != nil {
-		return requestMatch(query, *guildMember.Nick, guildMember.User.Username,
+	if guildMember.Nick != "" {
+		return requestMatch(query, guildMember.Nick, guildMember.User.Username,
 			guildMember.User.Username+"#"+guildMember.User.Discriminator, guildMember.User.ID.String())
 	}
 
