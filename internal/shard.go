@@ -4,11 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
@@ -20,6 +15,10 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
 )
 
 const (
@@ -661,7 +660,7 @@ func (sh *Shard) Identify(ctx context.Context) (err error) {
 		LargeThreshold: GatewayLargeThreshold,
 		Shard:          [2]int32{sh.ShardID, sh.ShardGroup.ShardCount},
 		Presence:       &presence,
-		Intents:        int64(intents),
+		Intents:        intents,
 	})
 
 	return err

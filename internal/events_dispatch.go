@@ -2,11 +2,10 @@ package internal
 
 import (
 	"context"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 // OnReady handles the READY event.
@@ -209,8 +208,8 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 
 	ctx.Logger.Debug().
 		Int("memberCount", len(guildMembersChunkPayload.Members)).
-		Int64("chunkIndex", int64(guildMembersChunkPayload.ChunkIndex)).
-		Int64("chunkCount", int64(guildMembersChunkPayload.ChunkCount)).
+		Int32("chunkIndex", guildMembersChunkPayload.ChunkIndex).
+		Int32("chunkCount", guildMembersChunkPayload.ChunkCount).
 		Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
 		Msg("Chunked guild members")
 
@@ -627,7 +626,7 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 				ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID] = guild
 			} else {
 				ctx.Sandwich.Logger.Fatal().
-					Int("guildID", int(guild.ID)).
+					Int64("guildID", int64(guild.ID)).
 					Msg("Guild does not reference member count")
 			}
 		}
@@ -675,7 +674,7 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 				ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID] = guild
 			} else {
 				ctx.Sandwich.Logger.Fatal().
-					Int("guildID", int(guild.ID)).
+					Int64("guildID", int64(guild.ID)).
 					Msg("Guild does not reference member count")
 			}
 		}

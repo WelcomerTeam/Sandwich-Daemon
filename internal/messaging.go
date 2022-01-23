@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"

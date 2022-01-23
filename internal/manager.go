@@ -5,19 +5,18 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 const (
@@ -86,7 +85,7 @@ type ManagerConfiguration struct {
 	// Bot specific configuration
 	Bot struct {
 		DefaultPresence      discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
-		Intents              discord.Int64        `json:"intents" yaml:"intents"`
+		Intents              int32                `json:"intents" yaml:"intents"`
 		ChunkGuildsOnStartup bool                 `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
 		// TODO: Guild chunking
 	} `json:"bot" yaml:"bot"`

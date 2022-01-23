@@ -2,11 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"net/http"
-	"sort"
-	"strconv"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
@@ -16,6 +11,10 @@ import (
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
+	"net/http"
+	"sort"
+	"strconv"
+	"time"
 )
 
 var (

@@ -87,9 +87,9 @@ type Identify struct {
 	Properties     *IdentifyProperties `json:"properties"`
 	Compress       bool                `json:"compress"`
 	LargeThreshold int32               `json:"large_threshold"`
-	Shard          [2]int32              `json:"shard,omitempty"`
+	Shard          [2]int32            `json:"shard,omitempty"`
 	Presence       *UpdateStatus       `json:"presence,omitempty"`
-	Intents        int64               `json:"intents"`
+	Intents        int32               `json:"intents"`
 }
 
 // IdentifyProperties are the extra properties sent in the identify packet.

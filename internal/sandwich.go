@@ -2,16 +2,6 @@ package internal
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/interfacecache"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
@@ -32,10 +22,19 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"sync"
+	"time"
 )
 
 // VERSION follows semantic versionining.
-const VERSION = "1.1.6"
+const VERSION = "1.2"
 
 const (
 	PermissionsDefault = 0o744
@@ -86,8 +85,8 @@ type Sandwich struct {
 	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
 
 	globalPoolMu          sync.RWMutex
-	globalPool            map[int64]chan []byte
-	globalPoolAccumulator *atomic.Int64
+	globalPool            map[int32]chan []byte
+	globalPoolAccumulator *atomic.Int32
 
 	dedupeMu sync.RWMutex
 	Dedupe   map[string]int64
@@ -189,8 +188,8 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 		Managers:   make(map[string]*Manager),
 
 		globalPoolMu:          sync.RWMutex{},
-		globalPool:            make(map[int64]chan []byte),
-		globalPoolAccumulator: atomic.NewInt64(0),
+		globalPool:            make(map[int32]chan []byte),
+		globalPoolAccumulator: atomic.NewInt32(0),
 
 		dedupeMu: sync.RWMutex{},
 		Dedupe:   make(map[string]int64),

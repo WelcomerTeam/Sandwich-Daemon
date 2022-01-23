@@ -3,13 +3,12 @@ package internal
 import (
 	"bytes"
 	"context"
-	"net/url"
-	"strings"
-	"time"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
+	"net/url"
+	"strings"
+	"time"
 )
 
 // Embed colours for webhooks.

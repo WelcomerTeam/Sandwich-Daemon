@@ -6500,63 +6500,66 @@ func file_discord_proto_rawDescGZIP() []byte {
 	return file_discord_proto_rawDescData
 }
 
-var file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
-var file_discord_proto_goTypes = []interface{}{
-	(*Application)(nil),                        // 0: sandwich.Application
-	(*ApplicationTeam)(nil),                    // 1: sandwich.ApplicationTeam
-	(*ApplicationTeamMember)(nil),              // 2: sandwich.ApplicationTeamMember
-	(*ApplicationCommand)(nil),                 // 3: sandwich.ApplicationCommand
-	(*GuildApplicationCommandPermissions)(nil), // 4: sandwich.GuildApplicationCommandPermissions
-	(*ApplicationCommandPermissions)(nil),      // 5: sandwich.ApplicationCommandPermissions
-	(*ApplicationCommandOption)(nil),           // 6: sandwich.ApplicationCommandOption
-	(*ApplicationCommandOptionChoice)(nil),     // 7: sandwich.ApplicationCommandOptionChoice
-	(*Interaction)(nil),                        // 8: sandwich.Interaction
-	(*InteractionData)(nil),                    // 9: sandwich.InteractionData
-	(*InteractionDataOption)(nil),              // 10: sandwich.InteractionDataOption
-	(*InteractionResolvedData)(nil),            // 11: sandwich.InteractionResolvedData
-	(*ApplicationSelectOption)(nil),            // 12: sandwich.ApplicationSelectOption
-	(*Integration)(nil),                        // 13: sandwich.Integration
-	(*IntegrationAccount)(nil),                 // 14: sandwich.IntegrationAccount
-	(*InteractionComponent)(nil),               // 15: sandwich.InteractionComponent
-	(*Channel)(nil),                            // 16: sandwich.Channel
-	(*ChannelOverwrite)(nil),                   // 17: sandwich.ChannelOverwrite
-	(*ThreadMetadata)(nil),                     // 18: sandwich.ThreadMetadata
-	(*ThreadMember)(nil),                       // 19: sandwich.ThreadMember
-	(*StageInstance)(nil),                      // 20: sandwich.StageInstance
-	(*Embed)(nil),                              // 21: sandwich.Embed
-	(*EmbedFooter)(nil),                        // 22: sandwich.EmbedFooter
-	(*EmbedImage)(nil),                         // 23: sandwich.EmbedImage
-	(*EmbedThumbnail)(nil),                     // 24: sandwich.EmbedThumbnail
-	(*EmbedVideo)(nil),                         // 25: sandwich.EmbedVideo
-	(*EmbedProvider)(nil),                      // 26: sandwich.EmbedProvider
-	(*EmbedAuthor)(nil),                        // 27: sandwich.EmbedAuthor
-	(*EmbedField)(nil),                         // 28: sandwich.EmbedField
-	(*Emoji)(nil),                              // 29: sandwich.Emoji
-	(*Guild)(nil),                              // 30: sandwich.Guild
-	(*UnavailableGuild)(nil),                   // 31: sandwich.UnavailableGuild
-	(*GuildMember)(nil),                        // 32: sandwich.GuildMember
-	(*VoiceState)(nil),                         // 33: sandwich.VoiceState
-	(*Invite)(nil),                             // 34: sandwich.Invite
-	(*Message)(nil),                            // 35: sandwich.Message
-	(*MessageChannelMention)(nil),              // 36: sandwich.MessageChannelMention
-	(*MessageReference)(nil),                   // 37: sandwich.MessageReference
-	(*MessageReaction)(nil),                    // 38: sandwich.MessageReaction
-	(*MessageAllowedMentions)(nil),             // 39: sandwich.MessageAllowedMentions
-	(*MessageAttachment)(nil),                  // 40: sandwich.MessageAttachment
-	(*MessageActivity)(nil),                    // 41: sandwich.MessageActivity
-	(*Activity)(nil),                           // 42: sandwich.Activity
-	(*Timestamps)(nil),                         // 43: sandwich.Timestamps
-	(*Party)(nil),                              // 44: sandwich.Party
-	(*Assets)(nil),                             // 45: sandwich.Assets
-	(*Secrets)(nil),                            // 46: sandwich.Secrets
-	(*ClientStatus)(nil),                       // 47: sandwich.ClientStatus
-	(*Role)(nil),                               // 48: sandwich.Role
-	(*RoleTag)(nil),                            // 49: sandwich.RoleTag
-	(*Sticker)(nil),                            // 50: sandwich.Sticker
-	(*User)(nil),                               // 51: sandwich.User
-	(*Webhook)(nil),                            // 52: sandwich.Webhook
-	(*WebhookMessage)(nil),                     // 53: sandwich.WebhookMessage
-}
+var (
+	file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
+	file_discord_proto_goTypes  = []interface{}{
+		(*Application)(nil),                        // 0: sandwich.Application
+		(*ApplicationTeam)(nil),                    // 1: sandwich.ApplicationTeam
+		(*ApplicationTeamMember)(nil),              // 2: sandwich.ApplicationTeamMember
+		(*ApplicationCommand)(nil),                 // 3: sandwich.ApplicationCommand
+		(*GuildApplicationCommandPermissions)(nil), // 4: sandwich.GuildApplicationCommandPermissions
+		(*ApplicationCommandPermissions)(nil),      // 5: sandwich.ApplicationCommandPermissions
+		(*ApplicationCommandOption)(nil),           // 6: sandwich.ApplicationCommandOption
+		(*ApplicationCommandOptionChoice)(nil),     // 7: sandwich.ApplicationCommandOptionChoice
+		(*Interaction)(nil),                        // 8: sandwich.Interaction
+		(*InteractionData)(nil),                    // 9: sandwich.InteractionData
+		(*InteractionDataOption)(nil),              // 10: sandwich.InteractionDataOption
+		(*InteractionResolvedData)(nil),            // 11: sandwich.InteractionResolvedData
+		(*ApplicationSelectOption)(nil),            // 12: sandwich.ApplicationSelectOption
+		(*Integration)(nil),                        // 13: sandwich.Integration
+		(*IntegrationAccount)(nil),                 // 14: sandwich.IntegrationAccount
+		(*InteractionComponent)(nil),               // 15: sandwich.InteractionComponent
+		(*Channel)(nil),                            // 16: sandwich.Channel
+		(*ChannelOverwrite)(nil),                   // 17: sandwich.ChannelOverwrite
+		(*ThreadMetadata)(nil),                     // 18: sandwich.ThreadMetadata
+		(*ThreadMember)(nil),                       // 19: sandwich.ThreadMember
+		(*StageInstance)(nil),                      // 20: sandwich.StageInstance
+		(*Embed)(nil),                              // 21: sandwich.Embed
+		(*EmbedFooter)(nil),                        // 22: sandwich.EmbedFooter
+		(*EmbedImage)(nil),                         // 23: sandwich.EmbedImage
+		(*EmbedThumbnail)(nil),                     // 24: sandwich.EmbedThumbnail
+		(*EmbedVideo)(nil),                         // 25: sandwich.EmbedVideo
+		(*EmbedProvider)(nil),                      // 26: sandwich.EmbedProvider
+		(*EmbedAuthor)(nil),                        // 27: sandwich.EmbedAuthor
+		(*EmbedField)(nil),                         // 28: sandwich.EmbedField
+		(*Emoji)(nil),                              // 29: sandwich.Emoji
+		(*Guild)(nil),                              // 30: sandwich.Guild
+		(*UnavailableGuild)(nil),                   // 31: sandwich.UnavailableGuild
+		(*GuildMember)(nil),                        // 32: sandwich.GuildMember
+		(*VoiceState)(nil),                         // 33: sandwich.VoiceState
+		(*Invite)(nil),                             // 34: sandwich.Invite
+		(*Message)(nil),                            // 35: sandwich.Message
+		(*MessageChannelMention)(nil),              // 36: sandwich.MessageChannelMention
+		(*MessageReference)(nil),                   // 37: sandwich.MessageReference
+		(*MessageReaction)(nil),                    // 38: sandwich.MessageReaction
+		(*MessageAllowedMentions)(nil),             // 39: sandwich.MessageAllowedMentions
+		(*MessageAttachment)(nil),                  // 40: sandwich.MessageAttachment
+		(*MessageActivity)(nil),                    // 41: sandwich.MessageActivity
+		(*Activity)(nil),                           // 42: sandwich.Activity
+		(*Timestamps)(nil),                         // 43: sandwich.Timestamps
+		(*Party)(nil),                              // 44: sandwich.Party
+		(*Assets)(nil),                             // 45: sandwich.Assets
+		(*Secrets)(nil),                            // 46: sandwich.Secrets
+		(*ClientStatus)(nil),                       // 47: sandwich.ClientStatus
+		(*Role)(nil),                               // 48: sandwich.Role
+		(*RoleTag)(nil),                            // 49: sandwich.RoleTag
+		(*Sticker)(nil),                            // 50: sandwich.Sticker
+		(*User)(nil),                               // 51: sandwich.User
+		(*Webhook)(nil),                            // 52: sandwich.Webhook
+		(*WebhookMessage)(nil),                     // 53: sandwich.WebhookMessage
+	}
+)
+
 var file_discord_proto_depIdxs = []int32{
 	51, // 0: sandwich.Application.Owner:type_name -> sandwich.User
 	1,  // 1: sandwich.Application.Team:type_name -> sandwich.ApplicationTeam
