@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
@@ -14,10 +20,6 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
@@ -57,15 +59,15 @@ type Shard struct {
 	ctx    context.Context
 	cancel func()
 
-	RoutineDeadSignal   DeadSignal `json:"-"`
-	HeartbeatDeadSignal DeadSignal `json:"-"`
+	RoutineDeadSignal   deadlock.DeadSignal `json:"-"`
+	HeartbeatDeadSignal deadlock.DeadSignal `json:"-"`
 
 	Start            time.Time     `json:"start"`
 	RetriesRemaining *atomic.Int32 `json:"-"`
 
 	Logger zerolog.Logger `json:"-"`
 
-	ShardID int `json:"shard_id"`
+	ShardID int32 `json:"shard_id"`
 
 	Sandwich   *Sandwich   `json:"-"`
 	Manager    *Manager    `json:"-"`
@@ -100,7 +102,7 @@ type Shard struct {
 	MessageCh chan discord.GatewayPayload `json:"-"`
 	ErrorCh   chan error                  `json:"-"`
 
-	Sequence  *atomic.Int64  `json:"-"`
+	Sequence  *atomic.Int32  `json:"-"`
 	SessionID *atomic.String `json:"-"`
 
 	wsConnMu sync.RWMutex
@@ -112,11 +114,11 @@ type Shard struct {
 }
 
 // NewShard creates a new shard object.
-func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
-	logger := sg.Logger.With().Int("shardId", shardID).Logger()
+func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
+	logger := sg.Logger.With().Int32("shardId", shardID).Logger()
 	sh = &Shard{
-		RoutineDeadSignal:   DeadSignal{},
-		HeartbeatDeadSignal: DeadSignal{},
+		RoutineDeadSignal:   deadlock.DeadSignal{},
+		HeartbeatDeadSignal: deadlock.DeadSignal{},
 
 		RetriesRemaining: atomic.NewInt32(ShardConnectRetries),
 
@@ -146,7 +148,7 @@ func (sg *ShardGroup) NewShard(shardID int) (sh *Shard) {
 
 		channelMu: sync.RWMutex{},
 
-		Sequence:  &atomic.Int64{},
+		Sequence:  &atomic.Int32{},
 		SessionID: &atomic.String{},
 
 		wsConnMu: sync.RWMutex{},
@@ -298,7 +300,7 @@ readyConsumer:
 
 	sh.Logger.Debug().
 		Dur("interval", sh.HeartbeatInterval).
-		Int64("sequence", sequence).
+		Int32("sequence", sequence).
 		Msg("Received HELLO event")
 
 	if sessionID == "" || sequence == 0 {
@@ -657,9 +659,9 @@ func (sh *Shard) Identify(ctx context.Context) (err error) {
 		},
 		Compress:       true,
 		LargeThreshold: GatewayLargeThreshold,
-		Shard:          [2]int{sh.ShardID, sh.ShardGroup.ShardCount},
+		Shard:          [2]int32{sh.ShardID, sh.ShardGroup.ShardCount},
 		Presence:       &presence,
-		Intents:        intents,
+		Intents:        int64(intents),
 	})
 
 	return err
@@ -676,7 +678,7 @@ func (sh *Shard) Resume(ctx context.Context) (err error) {
 	err = sh.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
 		Token:     token,
 		SessionID: sh.SessionID.Load(),
-		Sequence:  int(sh.Sequence.Load()),
+		Sequence:  sh.Sequence.Load(),
 	})
 
 	return err
@@ -914,7 +916,7 @@ func (sh *Shard) SetStatus(status structs.ShardStatus) {
 		Manager:    sh.Manager.Identifier.Load(),
 		ShardGroup: sh.ShardGroup.ID,
 		Shard:      sh.ShardID,
-		Status:     int(sh.Status),
+		Status:     sh.Status,
 	})
 
 	_ = sh.Manager.Sandwich.PublishGlobalEvent(structs.SandwichEventShardStatusUpdate, jsoniter.RawMessage(payload))

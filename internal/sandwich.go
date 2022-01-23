@@ -2,7 +2,18 @@ package internal
 
 import (
 	"context"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"sync"
+	"time"
+
 	"github.com/WelcomerTeam/RealRock/bucketstore"
+	"github.com/WelcomerTeam/RealRock/interfacecache"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
@@ -21,15 +32,6 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"sync"
-	"time"
 )
 
 // VERSION follows semantic versionining.
@@ -78,7 +80,7 @@ type Sandwich struct {
 
 	IdentifyBuckets *bucketstore.BucketStore `json:"-"`
 
-	EventsInflight *atomic.Int64 `json:"-"`
+	EventsInflight *atomic.Int32 `json:"-"`
 
 	managersMu sync.RWMutex
 	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
@@ -94,7 +96,7 @@ type Sandwich struct {
 	Client *Client        `json:"-"`
 
 	webhookBuckets *bucketstore.BucketStore
-	statusCache    *interfaceCache
+	statusCache    *interfacecache.InterfaceCache
 
 	SessionProvider *session.Session
 
@@ -195,12 +197,12 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
 
-		EventsInflight: atomic.NewInt64(0),
+		EventsInflight: atomic.NewInt32(0),
 
 		State: NewSandwichState(),
 
 		webhookBuckets: bucketstore.NewBucketStore(),
-		statusCache:    NewInterfaceCache(),
+		statusCache:    interfacecache.NewInterfaceCache(),
 
 		payloadPool: sync.Pool{
 			New: func() interface{} { return new(structs.SandwichPayload) },
@@ -740,40 +742,9 @@ func (sg *Sandwich) prometheusGatherer() {
 				Int("emojis", stateEmojis).
 				Int("users", stateUsers).
 				Int("channels", stateChannels).
-				Int64("eventsInflight", eventsInflight).
+				Int32("eventsInflight", eventsInflight).
 				Int("eventsBuffer", eventsBuffer).
 				Msg("Updated prometheus guages")
 		}
 	}
-}
-
-func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
-	return "MA:" + guildID.String() + ":" + memberID.String()
-}
-
-func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
-	return "MR:" + guildID.String() + ":" + memberID.String()
-}
-
-// AddMemberDedupe creates a new dedupe.
-func (sg *Sandwich) AddDedupe(key string) {
-	sg.dedupeMu.Lock()
-	sg.Dedupe[key] = time.Now().Add(memberDedupeExpiration).Unix()
-	sg.dedupeMu.Unlock()
-}
-
-// CheckMemberDedupe returns if a dedupe is set. If true, event should be ignored.
-func (sg *Sandwich) CheckDedupe(key string) (shouldDedupe bool) {
-	sg.dedupeMu.RLock()
-	value := sg.Dedupe[key]
-	sg.dedupeMu.RUnlock()
-
-	return time.Now().Unix() < value && value != 0
-}
-
-// RemoveMemberDedupe removes a dedupe.
-func (sg *Sandwich) RemoveDedupe(key string) {
-	sg.dedupeMu.Lock()
-	delete(sg.Dedupe, key)
-	sg.dedupeMu.Unlock()
 }

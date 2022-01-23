@@ -18,7 +18,7 @@ type StatusEndpointManager struct {
 }
 
 type StatusEndpointShardGroup struct {
-	ShardGroupID int `json:"id"`
+	ShardGroupID int32 `json:"id"`
 
 	// ShardID, Status, Latency (in milliseconds), Guilds, Uptime (in milliseconds)
 	Shards [][5]int `json:"shards"`
@@ -38,7 +38,7 @@ type DashboardGetResponse struct {
 
 type CreateManagerShardGroupArguments struct {
 	ShardIDs    string `json:"shard_ids"`
-	ShardCount  int    `json:"shard_count"`
+	ShardCount  int32  `json:"shard_count"`
 	AutoSharded bool   `json:"auto_sharded"`
 	Identifier  string `json:"identifier"`
 }

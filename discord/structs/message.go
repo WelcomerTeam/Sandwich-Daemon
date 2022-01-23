@@ -116,7 +116,7 @@ type MessageReference struct {
 
 // MessageReaction represents a reaction to a message on Discord.
 type MessageReaction struct {
-	Count int    `json:"count"`
+	Count int32  `json:"count"`
 	Me    bool   `json:"me"`
 	Emoji *Emoji `json:"emoji"`
 }
@@ -133,11 +133,11 @@ type MessageAllowedMentions struct {
 type MessageAttachment struct {
 	ID       Snowflake `json:"id"`
 	Filename string    `json:"filename"`
-	Size     int       `json:"size"`
+	Size     int32     `json:"size"`
 	URL      string    `json:"url"`
 	ProxyURL string    `json:"proxy_url"`
-	Height   int       `json:"height"`
-	Width    int       `json:"width"`
+	Height   int32     `json:"height"`
+	Width    int32     `json:"width"`
 }
 
 // MessageActivity represents a message activity on Discord.

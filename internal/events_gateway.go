@@ -3,18 +3,19 @@ package internal
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"strconv"
-	"time"
 )
 
 const MagicDecimalBase = 10
 
 func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload) error {
-	sh.Sequence.Store(int64(msg.Sequence))
+	sh.Sequence.Store(msg.Sequence)
 
 	go func(msg discord.GatewayPayload) {
 		sh.Sandwich.EventsInflight.Inc()
@@ -131,7 +132,7 @@ func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPa
 	sandwichGatewayLatency.WithLabelValues(
 		sh.Manager.Identifier.Load(),
 		strconv.FormatInt(int64(sh.ShardGroup.ID), MagicDecimalBase),
-		strconv.Itoa(sh.ShardID),
+		strconv.Itoa(int(sh.ShardID)),
 	).Set(float64(heartbeatRTT))
 
 	return

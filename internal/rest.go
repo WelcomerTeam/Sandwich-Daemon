@@ -2,6 +2,11 @@ package internal
 
 import (
 	"fmt"
+	"net/http"
+	"sort"
+	"strconv"
+	"time"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
@@ -11,10 +16,6 @@ import (
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
-	"net/http"
-	"sort"
-	"strconv"
-	"time"
 )
 
 var (
@@ -116,7 +117,7 @@ func (sg *Sandwich) requireDiscordAuthentication(h fasthttp.RequestHandler) fast
 func writeResponse(ctx *fasthttp.RequestCtx, statusCode int, i interface{}) {
 	body, err := jsoniter.Marshal(i)
 	if err == nil {
-		ctx.Write(body)
+		_, _ = ctx.Write(body)
 		ctx.SetStatusCode(statusCode)
 	} else {
 		ctx.SetStatusCode(http.StatusInternalServerError)
@@ -417,24 +418,27 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*structs.Status
 
 	sort.Ints(sortedShardGroupIDs)
 
-	for _, shardGroupID := range sortedShardGroupIDs {
-		shardGroup := manager.ShardGroups[int64(shardGroupID)]
+	for _, _shardGroupID := range sortedShardGroupIDs {
+		shardGroupID := int32(_shardGroupID)
+		shardGroup := manager.ShardGroups[shardGroupID]
 
 		shardGroup.shardsMu.RLock()
 		statusShardGroup := &structs.StatusEndpointShardGroup{
-			ShardGroupID: int(shardGroup.ID),
+			ShardGroupID: shardGroup.ID,
 			Shards:       make([][5]int, 0, len(shardGroup.Shards)),
 			Status:       shardGroup.Status,
 		}
 
 		sortedShardIDs := make([]int, 0, len(shardGroup.Shards))
 		for shardID := range shardGroup.Shards {
-			sortedShardIDs = append(sortedShardIDs, shardID)
+			sortedShardIDs = append(sortedShardIDs, int(shardID))
 		}
 
 		sort.Ints(sortedShardIDs)
 
-		for _, shardID := range sortedShardIDs {
+		for _, intShardID := range sortedShardIDs {
+			shardID := int32(intShardID)
+
 			shard := shardGroup.Shards[shardID]
 
 			shard.statusMu.RLock()
@@ -443,7 +447,7 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*structs.Status
 
 			shard.guildsMu.RLock()
 			statusShardGroup.Shards = append(statusShardGroup.Shards, [5]int{
-				shard.ShardID,
+				int(shard.ShardID),
 				int(shardStatus),
 				int(shard.LastHeartbeatAck.Load().Sub(shard.LastHeartbeatSent.Load()).Milliseconds()),
 				len(shard.Guilds),
@@ -825,7 +829,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	)
 
 	sg.Logger.Debug().
-		Interface("shardIDs", shardIDs).Int("shardCount", shardCount).
+		Interface("shardIDs", shardIDs).Int32("shardCount", shardCount).
 		Str("identifier", manager.Identifier.Load()).Msg("Creating new ShardGroup")
 
 	shardGroup := manager.Scale(shardIDs, shardCount)

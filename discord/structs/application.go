@@ -1,5 +1,7 @@
 package discord
 
+import jsoniter "github.com/json-iterator/go"
+
 // application.go represents the application object and interactions.
 
 // ApplicationTeamMemberState represents the state of a member in a team.
@@ -110,7 +112,7 @@ type Application struct {
 	PrimarySKUID Snowflake `json:"primary_sku_id,omitempty"`
 	Slug         string    `json:"slug,omitempty"`
 	CoverImage   string    `json:"cover_image,omitempty"`
-	Flags        int       `json:"flags"`
+	Flags        int32     `json:"flags"`
 }
 
 // ApplicationTeam represents the team of an application.
@@ -125,7 +127,7 @@ type ApplicationTeam struct {
 // ApplicationTeamMembers represents a member of a team.
 type ApplicationTeamMember struct {
 	MembershipState ApplicationTeamMemberState `json:"membership_state"`
-	Permissions     []int64                    `json:"permissions"`
+	Permissions     []string                   `json:"permissions"`
 	TeamID          Snowflake                  `json:"team_id"`
 	User            *User                      `json:"user"`
 }
@@ -173,8 +175,8 @@ type ApplicationCommandOption struct {
 
 // ApplicationCommandOptionChoice represents the different choices.
 type ApplicationCommandOptionChoice struct {
-	Name  string      `json:"name"`
-	Value interface{} `json:"value"`
+	Name  string              `json:"name"`
+	Value jsoniter.RawMessage `json:"value"`
 }
 
 // Interaction represents the structure of an interaction.
@@ -189,7 +191,7 @@ type Interaction struct {
 	Member    *GuildMember `json:"member,omitempty"`
 	User      *User        `json:"user,omitempty"`
 	Token     string       `json:"token"`
-	Version   int          `json:"version"`
+	Version   int32        `json:"version"`
 	Message   *Message     `json:"message,omitempty"`
 }
 
@@ -245,11 +247,11 @@ type Integration struct {
 	EnableEmoticons *bool           `json:"enable_emoticons,omitempty"`
 
 	ExpireBehavior    *IntegrationExpireBehavior `json:"expire_behavior,omitempty"`
-	ExpireGracePeriod int                        `json:"expire_grace_period"`
+	ExpireGracePeriod int32                      `json:"expire_grace_period"`
 	User              *User                      `json:"user,omitempty"`
 	Account           IntegrationAccount         `json:"account"`
 	SyncedAt          *string                    `json:"synced_at,omitempty"`
-	SubscriberCount   int                        `json:"subscriber_count,omitempty"`
+	SubscriberCount   int32                      `json:"subscriber_count,omitempty"`
 	Revoked           *bool                      `json:"revoked,omitempty"`
 	Application       *Application               `json:"application,omitempty"`
 }

@@ -69,7 +69,7 @@ const (
 type GatewayPayload struct {
 	Op       GatewayOp           `json:"op"`
 	Data     jsoniter.RawMessage `json:"d"`
-	Sequence int                 `json:"s"`
+	Sequence int32               `json:"s"`
 	Type     string              `json:"t"`
 }
 
@@ -86,8 +86,8 @@ type Identify struct {
 	Token          string              `json:"token"`
 	Properties     *IdentifyProperties `json:"properties"`
 	Compress       bool                `json:"compress"`
-	LargeThreshold int                 `json:"large_threshold"`
-	Shard          [2]int              `json:"shard,omitempty"`
+	LargeThreshold int32               `json:"large_threshold"`
+	Shard          [2]int32              `json:"shard,omitempty"`
 	Presence       *UpdateStatus       `json:"presence,omitempty"`
 	Intents        int64               `json:"intents"`
 }
@@ -103,7 +103,7 @@ type IdentifyProperties struct {
 type Resume struct {
 	Token     string `json:"token"`
 	SessionID string `json:"session_id"`
-	Sequence  int    `json:"seq"`
+	Sequence  int32  `json:"seq"`
 }
 
 // Heartbeat represents the heartbeat packet.
@@ -113,7 +113,7 @@ type Heartbeat int
 type RequestGuildMembers struct {
 	GuildID   Snowflake   `json:"guild_id"`
 	Query     string      `json:"query"`
-	Limit     int         `json:"limit"`
+	Limit     int32       `json:"limit"`
 	Presences bool        `json:"presences"`
 	Nonce     string      `json:"nonce"`
 	UserIDs   []Snowflake `json:"user_ids"`

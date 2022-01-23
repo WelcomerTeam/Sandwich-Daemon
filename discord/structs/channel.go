@@ -67,7 +67,7 @@ type Channel struct {
 	MemberCount                *int            `json:"member_count,omitempty"`
 	ThreadMetadata             *ThreadMetadata `json:"thread_metadata,omitempty"`
 	ThreadMember               *ThreadMember   `json:"member,omitempty"`
-	DefaultAutoArchiveDuration int             `json:"default_auto_archive_duration"`
+	DefaultAutoArchiveDuration int32           `json:"default_auto_archive_duration"`
 
 	// Slash Commands
 	Permissions *Int64 `json:"permissions,omitempty"`
@@ -92,7 +92,7 @@ const (
 // ThreadMetadata contains thread-specific channel fields.
 type ThreadMetadata struct {
 	Archived            bool   `json:"archived"`
-	AutoArchiveDuration int    `json:"auto_archive_duration"`
+	AutoArchiveDuration int32  `json:"auto_archive_duration"`
 	ArchiveTimestamp    string `json:"archive_timestamp"`
 	Locked              *bool  `json:"locked,omitempty"`
 }
@@ -103,7 +103,7 @@ type ThreadMember struct {
 	UserID        *Snowflake `json:"user_id,omitempty"`
 	GuildID       *Snowflake `json:"guild_id,omitempty"`
 	JoinTimestamp string     `json:"join_timestamp"`
-	Flags         int        `json:"flags"`
+	Flags         int32      `json:"flags"`
 }
 
 // StageInstance represents a stage channel instance.

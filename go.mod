@@ -4,14 +4,13 @@ go 1.16
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
-	github.com/WelcomerTeam/RealRock v0.0.0-20210907123922-8bdb1f691d11
+	github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/fasthttp/router v1.4.3
 	github.com/fasthttp/session/v2 v2.4.4
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/json-iterator/go v1.1.12
-	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/nats-io/nats-server/v2 v2.3.4 // indirect
 	github.com/nats-io/nats-streaming-server v0.22.1 // indirect
 	github.com/nats-io/nats.go v1.12.3
@@ -21,9 +20,9 @@ require (
 	github.com/prometheus/common v0.31.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/zerolog v1.25.0
-	github.com/savsgio/gotils v0.0.0-20210921075833-21a6215cb0e4
+	github.com/savsgio/gotils v0.0.0-20211223103454-d0aaa54c5899
 	github.com/segmentio/kafka-go v0.4.20
-	github.com/valyala/fasthttp v1.31.0
+	github.com/valyala/fasthttp v1.32.0
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6

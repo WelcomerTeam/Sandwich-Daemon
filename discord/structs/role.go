@@ -7,9 +7,9 @@ type Role struct {
 	ID          Snowflake  `json:"id"`
 	GuildID     *Snowflake `json:"guild_id,omitempty"`
 	Name        string     `json:"name"`
-	Color       int        `json:"color"`
+	Color       int32      `json:"color"`
 	Hoist       bool       `json:"hoist"`
-	Position    int        `json:"position"`
+	Position    int32      `json:"position"`
 	Permissions Int64      `json:"permissions"`
 	Managed     bool       `json:"managed"`
 	Mentionable bool       `json:"mentionable"`

@@ -3,579 +3,616 @@ package sandwich;
 
 option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/protobuf/sandwich";
 
-message Account {
-  string id = 1 [json_name="id"];
-  string name = 2 [json_name="name"];
-}
-
-message Activity {
-  string name = 1 [json_name="name"];
-  int64 type = 2 [json_name="type"];
-  string url = 3 [json_name="url"];
-  Timestamps timestamps = 4 [json_name="timestamps"];
-  int64 applicationID = 5 [json_name="application_id"];
-  string details = 6 [json_name="details"];
-  string state = 7 [json_name="state"];
-  Party party = 8 [json_name="party"];
-  Assets assets = 9 [json_name="assets"];
-  Secrets secrets = 10 [json_name="secrets"];
-  bool instance = 11 [json_name="instance"];
-  int64 flags = 12 [json_name="flags"];
-}
+// structs\application.go
 
 message Application {
-  int64 id = 1 [json_name="id"];
-  string name = 2 [json_name="name"];
-  string icon = 3 [json_name="icon"];
-  string description = 4 [json_name="description"];
-  repeated string rpcOrigins = 5 [json_name="rpc_origins"]; 
-  bool botPublic = 6 [json_name="bot_public"]; 
-  bool botRequireCodeGrant = 7 [json_name="bot_require_code_grant"]; 
-  string termsOfServiceURL = 8 [json_name="terms_of_service"]; 
-  string privacyPolicyURL = 9 [json_name="privacy_policy_url"]; 
-  User owner = 10 [json_name="owner"]; 
-  string summary = 11 [json_name="summary"]; 
-  string verifyKey = 12 [json_name="verify_key"]; 
-  ApplicationTeam team = 13 [json_name="team"]; 
-  int64 guildID = 14 [json_name="guild_id"]; 
-  int64 primarySKUID = 15 [json_name="primary_sku_id"]; 
-  string slug = 16 [json_name="slug"]; 
-  string coverImage = 17 [json_name="cover_image"]; 
-  int64 flags = 18 [json_name="flags"]; 
-}
-
-message ApplicationCommand {
-  int64 id = 1 [json_name="id"];
-  int64 type = 2 [json_name="type"];
-  int64 applicationID = 3 [json_name="application_id"];
-  int64 guildID = 4 [json_name="guild_id"];
-  string name = 5 [json_name="name"];
-  string description = 6 [json_name="description"];
-  repeated ApplicationCommandOption options = 7 [json_name="options"];
-  bool defaultPermission = 8 [json_name="default_permission"];
-}
-
-message ApplicationCommandOption {
-  int64 type = 1 [json_name="type"]; 
-  string name = 2 [json_name="name"]; 
-  string description = 3 [json_name="description"]; 
-  bool required = 4 [json_name="required"]; 
-  repeated ApplicationCommandOptionChoice choices = 5 [json_name="choices"]; 
-  repeated ApplicationCommandOption options = 6 [json_name="options"]; 
-}
-
-message ApplicationCommandOptionChoice {
-  string name = 1 [json_name="name"];
-  bytes value = 2 [json_name="value"];
-}
-
-message ApplicationSelectOption {
-  string label = 1 [json_name="label"];
-  string value = 2 [json_name="value"];
-  string description = 3 [json_name="description"];
-  Emoji emoji = 4 [json_name="emoji"];
-  bool default = 5 [json_name="default"];
+  int64 ID = 1 [json_name="id"];
+  string Name = 2 [json_name="name"];
+  string Icon = 3 [json_name="icon"];
+  string Description = 4 [json_name="description"];
+  repeated string RPCOrigins = 5 [json_name="rpc_origins"];
+  bool BotPublic = 6 [json_name="bot_public"];
+  bool BotRequireCodeGrant = 7 [json_name="bot_require_code_grant"];
+  string TermsOfServiceURL = 8 [json_name="terms_of_service"];
+  string PrivacyPolicyURL = 9 [json_name="privacy_policy_url"];
+  User Owner = 10 [json_name="owner"];
+  string Summary = 11 [json_name="summary"];
+  string VerifyKey = 12 [json_name="verify_key"];
+  ApplicationTeam Team = 13 [json_name="team"];
+  int64 GuildID = 14 [json_name="guild_id"];
+  int64 PrimarySKUID = 15 [json_name="primary_sku_id"];
+  string Slug = 16 [json_name="slug"];
+  string CoverImage = 17 [json_name="cover_image"];
+  int32 Flags = 18 [json_name="flags"];
 }
 
 message ApplicationTeam {
-  string icon = 1 [json_name="icon"];
-  int64 id = 2 [json_name="id"];
-  repeated ApplicationTeamMember members = 3 [json_name="members"];
-  string name = 4 [json_name="name"];
-  int64 ownerUserID = 5 [json_name="owner_user_id"];
+  string Icon = 1 [json_name="icon"];
+  int64 ID = 2 [json_name="id"];
+  repeated ApplicationTeamMember Members = 3 [json_name="members"];
+  string Name = 4 [json_name="name"];
+  int64 OwnerUserID = 5 [json_name="owner_user_id"];
 }
 
 message ApplicationTeamMember {
-  int64 membershipState = 1 [json_name="membership_state"];
-  repeated int64 permissions = 2 [json_name="permissions"];
-  int64 teamID = 3 [json_name="team_id"];
-  User user = 4 [json_name="user"];
+  int32 MembershipState = 1 [json_name="membership_state"];
+  repeated string Permissions = 2 [json_name="permissions"];
+  int64 TeamID = 3 [json_name="team_id"];
+  User User = 4 [json_name="user"];
 }
 
-message Assets {
-  string largeImage = 1 [json_name="large_image"];
-  string largeText = 2 [json_name="large_text"];
-  string smallImage = 3 [json_name="small_image"];
-  string smallText = 4 [json_name="small_text"];
+message ApplicationCommand {
+  int64 ID = 1 [json_name="id"];
+  int32 Type = 2 [json_name="type"];
+  int64 ApplicationID = 3 [json_name="application_id"];
+  int64 GuildID = 4 [json_name="guild_id"];
+  string Name = 5 [json_name="name"];
+  string Description = 6 [json_name="description"];
+  repeated ApplicationCommandOption Options = 7 [json_name="options"];
+  bool DefaultPermission = 8 [json_name="default_permission"];
 }
 
-message Channel {
-  int64 id = 1 [json_name="id"];
-  int64 type = 2 [json_name="type"];
-  int64 guildID = 3 [json_name="guild_id"];
-  int64 position = 4 [json_name="position"];
-  repeated ChannelOverwrite permissionOverwrites = 5 [json_name="permission_overwrites"];
-  string name = 6 [json_name="name"];
-  string topic = 7 [json_name="topic"];
-  bool NSFW = 8 [json_name="nsfw"];
-  string lastMessageID = 9 [json_name="last_message_id"];
-  int64 bitrate = 10 [json_name="bitrate"];
-  int64 userLimit = 11 [json_name="user_limit"];
-  int64 rateLimitPerUser = 12 [json_name="rate_limit_per_user"];
-  repeated User recipients = 13 [json_name="recipients"];
-  string icon = 14 [json_name="icon"];
-  int64 ownerID = 15 [json_name="owner_id"];
-  int64 applicationID = 16 [json_name="application_id"];
-  int64 parentID = 17 [json_name="parent_id"];
-  string lastPinTimestamp = 18 [json_name="last_pin_timestamp"];
-  string rtcRegion = 19 [json_name="rtc_region"];
-  int64 messageCount = 20 [json_name="message_count"];
-  int64 memberCount = 21 [json_name="member_count"];
-  ThreadMetadata threadMetadata = 22 [json_name="thread_metadata"];
-  ThreadMember threadMember = 23 [json_name="member"];
-  int64 defaultAutoArchiveDuration = 24 [json_name="default_auto_archive_duration"];
-  int64 permissions = 25 [json_name="permissions"];
+message GuildApplicationCommandPermissions {
+  int64 ID = 1 [json_name="id"];
+  int64 ApplicationID = 2 [json_name="application_id"];
+  int64 GuildID = 3 [json_name="guild_id"];
+  repeated ApplicationCommandPermissions Permissions = 4 [json_name="permissions"];
 }
 
-message ChannelCreate {
-  Channel channel = 1 [json_name="channel"];
+message ApplicationCommandPermissions {
+  int64 ID = 1 [json_name="id"];
+  int32 Type = 2 [json_name="type"];
+  bool Allowed = 3 [json_name="permission"];
 }
 
-message ChannelDelete {
-  Channel channel = 1 [json_name="channel"];
+message ApplicationCommandOption {
+  int32 Type = 1 [json_name="type"];
+  string Name = 2 [json_name="name"];
+  string Description = 3 [json_name="description"];
+  bool Autocomplete = 4 [json_name="autocomplete"];
+  bool Required = 5 [json_name="required"];
+  repeated ApplicationCommandOptionChoice Choices = 6 [json_name="choices"];
+  repeated ApplicationCommandOption Options = 7 [json_name="options"];
+  int32 ChannelType = 8 [json_name="channel_types"];
+  int32 MinValue = 9 [json_name="min_value"];
+  int32 MaxValue = 10 [json_name="max_value"];
 }
 
-message ChannelOverwrite {
-  int64 id = 1 [json_name="id"];
-  int64 type = 2 [json_name="type"];
-  int64 allow = 3 [json_name="allow_new"];
-  int64 deny = 4 [json_name="deny_new"];
-}
-
-message ChannelPinsUpdate {
-  int64 guildID = 1 [json_name="guild_id"];
-  int64 channelID = 2 [json_name="channel_id"];
-  string lastPinTimestamp = 3 [json_name="last_pin_timestamp"];
-}
-
-message ChannelUpdate {
-  Channel channel = 1 [json_name="channel"];
-}
-
-message ClientStatus {
-  string desktop = 1 [json_name="desktop"];
-  string mobile = 2 [json_name="mobile"];
-  string web = 3 [json_name="web"];
-}
-
-message Embed {
-  string title = 1 [json_name="title"];
-  string type = 2 [json_name="type"];
-  string description = 3 [json_name="description"];
-  string url = 4 [json_name="url"];
-  string timestamp = 5 [json_name="timestamp"];
-  int64 color = 6 [json_name="color"];
-  EmbedFooter footer = 7 [json_name="footer"];
-  EmbedImage image = 8 [json_name="image"];
-  EmbedThumbnail thumbnail = 9 [json_name="thumbnail"];
-  EmbedVideo video = 10 [json_name="video"];
-  EmbedProvider provider = 11 [json_name="provider"];
-  EmbedAuthor author = 12 [json_name="author"];
-  repeated EmbedField fields = 13 [json_name="fields"];
-}
-
-message EmbedAuthor {
-  string name = 1 [json_name="name"];
-  string url = 2 [json_name="url"];
-  string iconURL = 3 [json_name="icon_url"];
-  string proxyIconURL = 4 [json_name="proxy_icon_url"];
-}
-
-message EmbedField {
-  string name = 1 [json_name="name"];
-  string value = 2 [json_name="value"];
-  bool inline = 3 [json_name="inline"];
-}
-
-message EmbedFooter {
-  string text = 1 [json_name="text"];
-  string iconURL = 2 [json_name="icon_url"];
-  string proxyIconURL = 3 [json_name="proxy_icon_url"];
-}
-
-message EmbedImage {
-  string url = 1 [json_name="url"];
-  string proxyURL = 2 [json_name="proxy_url"];
-  int64 height = 3 [json_name="height"];
-  int64 width = 4 [json_name="width"];
-}
-
-message EmbedProvider {
-  string name = 1 [json_name="name"];
-  string url = 2 [json_name="url"];
-}
-
-message EmbedThumbnail {
-  string url = 1 [json_name="url"];
-  string proxyURL = 2 [json_name="proxy_url"];
-  int64 height = 3 [json_name="height"];
-  int64 width = 4 [json_name="width"];
-}
-
-message EmbedVideo {
-  string url = 1 [json_name="url"];
-  int64 height = 2 [json_name="height"];
-  int64 width = 3 [json_name="width"];
-}
-
-message Emoji {
-  int64 id = 1 [json_name="id"];
-  string name = 2 [json_name="name"];
-  repeated int64 roles = 3 [json_name="roles"];
-  User user = 4 [json_name="user"];
-  bool requireColons = 5 [json_name="require_colons"];
-  bool managed = 6 [json_name="managed"];
-  bool animated = 7 [json_name="animated"];
-  bool available = 8 [json_name="available"];
-}
-
-message Gateway {
-  string url = 1 [json_name="url"];
-}
-
-message GatewayBot {
-  string url = 1 [json_name="url"];
-  int64 shards = 2 [json_name="shards"];
-  GatewayBotSessionStartLimit sessionStartLimit = 3 [json_name="session_start_limit"];
-}
-
-message GatewayBotSessionStartLimit {
-  int64 total = 1 [json_name="total"];
-  int64 remaining = 2 [json_name="remaining"];
-  int64 resetAfter = 3 [json_name="reset_after"];
-  int64 maxConcurrency = 4 [json_name="max_concurrency"];
-}
-
-message GatewayPayload {
-  int64 op = 1 [json_name="op"];
-  bytes data = 2 [json_name="d"];
-  int64 sequence = 3 [json_name="s"];
-  string type = 4 [json_name="t"];
-}
-
-message Guild {
-  int64 id = 1 [json_name="id"];
-  string name = 2 [json_name="name"];
-  string icon = 3 [json_name="icon"];
-  string iconHash = 4 [json_name="icon_hash"];
-  string splash = 5 [json_name="splash"];
-  string discoverySplash = 6 [json_name="discovery_splash"];
-  bool owner = 7 [json_name="owner"];
-  int64 ownerID = 8 [json_name="owner_id"];
-  int64 permissions = 9 [json_name="permissions"];
-  string region = 10 [json_name="region"];
-  int64 afkChannelID = 11 [json_name="afk_channel_id"];
-  int64 afkTimeout = 12 [json_name="afk_timeout"];
-  bool widgetEnabled = 13 [json_name="widget_enabled"];
-  int64 widgetChannelID = 14 [json_name="widget_channel_id"];
-  int64 verificationLevel = 15 [json_name="verification_level"];
-  int64 defaultMessageNotifications = 16 [json_name="default_message_notifications"];
-  int64 explicitContentFilter = 17 [json_name="explicit_content_filter"];
-  repeated Role roles = 18 [json_name="roles"];
-  repeated Emoji emojis = 19 [json_name="emojis"];
-  repeated string features = 20 [json_name="features"];
-  int64 mfaLevel = 21 [json_name="mfa_level"];
-  int64 applicationID = 22 [json_name="application_id"];
-  int64 systemChannelID = 23 [json_name="system_channel_id"];
-  int64 systemChannelFlags = 24 [json_name="system_channel_flags"];
-  int64 rulesChannelID = 25 [json_name="rules_channel_id"];
-  string joinedAt = 26 [json_name="joined_at"];
-  bool large = 27 [json_name="large"];
-  bool unavailable = 28 [json_name="unavailable"];
-  int64 memberCount = 29 [json_name="member_count"];
-  repeated VoiceState voiceStates = 30 [json_name="voice_states"];
-  repeated GuildMember members = 31 [json_name="members"];
-  repeated Channel channels = 32 [json_name="channels"];
-  repeated Activity presences = 33 [json_name="presences"];
-  string description = 34 [json_name="description"];
-  string banner = 35 [json_name="banner"];
-  int64 maxPresences = 36 [json_name="max_presences"];
-  int64 maxMembers = 37 [json_name="max_members"];
-  string vanityURLCode = 38 [json_name="vanity_url_code"];
-  int64 premiumTier = 39 [json_name="premium_tier"];
-  int64 premiumSubscriptionCount = 40 [json_name="premium_subscription_count"];
-  string preferredLocale = 41 [json_name="preferred_locale"];
-  int64 publicUpdatesChannelID = 42 [json_name="public_updates_channel_id"];
-  int64 maxVideoChannelUsers = 43 [json_name="max_video_channel_users"];
-  int64 approximateMemberCount = 44 [json_name="approximate_member_count"];
-  int64 approximatePresenceCount = 45 [json_name="approximate_presence_count"];
-  int64 nsfwLevel = 46 [json_name="nsfw_level"];
-  repeated StageInstance stageInstances = 47 [json_name="stage_instances"];
-  repeated Sticker stickers = 48 [json_name="stickers"];
-}
-
-message GuildMember {
-  User user = 1 [json_name="user"];
-  string nick = 2 [json_name="nick"];
-  repeated int64 roles = 3 [json_name="roles"];
-  string joinedAt = 4 [json_name="joined_at"];
-  string premiumSince = 5 [json_name="premium_since"];
-  bool deaf = 6 [json_name="deaf"];
-  bool mute = 7 [json_name="mute"];
-  bool pending = 8 [json_name="pending"];
-  int64 permissions = 9 [json_name="permissions"];
+message ApplicationCommandOptionChoice {
+  string Name = 1 [json_name="name"];
+  string Value = 2 [json_name="value"];
 }
 
 message Interaction {
-  int64 id = 1 [json_name="id"];
-  int64 applicationID = 2 [json_name="application_id"];
-  int64 type = 3 [json_name="type"];
-  InteractionData data = 4 [json_name="data"];
-  int64 guildID = 5 [json_name="guild_id"];
-  int64 channelID = 6 [json_name="channel_id"];
-  GuildMember member = 7 [json_name="member"];
-  User user = 8 [json_name="user"];
-  string token = 9 [json_name="token"];
-  int64 version = 10 [json_name="version"];
-  Message message = 11 [json_name="message"];
-}
-
-message InteractionComponent {
-  int64 type = 1 [json_name="type"];
-  string customID = 2 [json_name="custom_id"];
-  bool disabled = 3 [json_name="disabled"];
-  int64 style = 4 [json_name="style"];
-  string label = 5 [json_name="label"];
-  Emoji emoji = 6 [json_name="emoji"];
-  string url = 7 [json_name="url"];
-  repeated ApplicationSelectOption options = 8 [json_name="options"];
-  string placeholder = 9 [json_name="placeholder"];
-  int64 minValues = 10 [json_name="min_values"];
-  int64 maxValues = 11 [json_name="max_values"];
-  repeated InteractionComponent components = 12 [json_name="components"];
+  int64 ID = 1 [json_name="id"];
+  int64 ApplicationID = 2 [json_name="application_id"];
+  int32 Type = 3 [json_name="type"];
+  InteractionData Data = 4 [json_name="data"];
+  int64 GuildID = 5 [json_name="guild_id"];
+  int64 ChannelID = 6 [json_name="channel_id"];
+  GuildMember Member = 7 [json_name="member"];
+  User User = 8 [json_name="user"];
+  string Token = 9 [json_name="token"];
+  int32 Version = 10 [json_name="version"];
+  Message Message = 11 [json_name="message"];
 }
 
 message InteractionData {
-  int64 id = 1 [json_name="id"];
-  string name = 2 [json_name="name"];
-  int64 type = 3 [json_name="type"];
-  InteractionResolvedData resolved = 4 [json_name="resolved"];
-  repeated InteractionDataOption options = 5 [json_name="option"];
-  string customID = 6 [json_name="custom_id"];
-  int64 componentType = 7 [json_name="component_type"];
-  repeated ApplicationSelectOption values = 8 [json_name="values"];
-  int64 targetID = 9 [json_name="target_id"];
+  int64 ID = 1 [json_name="id"];
+  string Name = 2 [json_name="name"];
+  int32 Type = 3 [json_name="type"];
+  InteractionResolvedData Resolved = 4 [json_name="resolved"];
+  repeated InteractionDataOption Options = 5 [json_name="option"];
+  string CustomID = 6 [json_name="custom_id"];
+  int32 ComponentType = 7 [json_name="component_type"];
+  repeated ApplicationSelectOption Values = 8 [json_name="values"];
+  int64 TargetID = 9 [json_name="target_id"];
 }
 
 message InteractionDataOption {
-  string name = 1 [json_name="name"];
-  int64 type = 2 [json_name="type"];
-  bytes value = 3 [json_name="value"];
-  repeated InteractionDataOption options = 4 [json_name="options"];
+  string Name = 1 [json_name="name"];
+  int32 Type = 2 [json_name="type"];
+  string Value = 3 [json_name="value"];
+  repeated InteractionDataOption Options = 4 [json_name="options"];
+  bool Focused = 5 [json_name="focused"];
 }
 
 message InteractionResolvedData {
-  repeated User users = 1 [json_name="users"];
-  repeated GuildMember members = 2 [json_name="members"];
-  repeated Role roles = 3 [json_name="roles"];
-  repeated Channel channels = 4 [json_name="channels"];
-  repeated Message messages = 5 [json_name="messages"];
+  repeated User Users = 1 [json_name="users"];
+  repeated GuildMember Members = 2 [json_name="members"];
+  repeated Role Roles = 3 [json_name="roles"];
+  repeated Channel Channels = 4 [json_name="channels"];
+  repeated Message Messages = 5 [json_name="messages"];
 }
 
-message Message {
-  int64 id = 1 [json_name="id"];
-  int64 channelID = 2 [json_name="channel_id"];
-  int64 guildID = 3 [json_name="guild_id"];
-  User author = 4 [json_name="author"];
-  GuildMember member = 5 [json_name="member"];
-  string content = 6 [json_name="content"];
-  string timestamp = 7 [json_name="timestamp"];
-  string editedTimestamp = 8 [json_name="edited_timestamp"];
-  bool TTS = 9 [json_name="tts"];
-  bool mentionEveryone = 10 [json_name="mention_everyone"];
-  repeated User mentions = 11 [json_name="mentions"];
-  repeated int64 mentionRoles = 12 [json_name="mention_roles"];
-  repeated MessageChannelMention mentionChannels = 13 [json_name="mention_channels"];
-  repeated MessageAttachment attachments = 14 [json_name="attachments"];
-  repeated Embed embeds = 15 [json_name="embeds"];
-  repeated MessageReaction reactions = 16 [json_name="reactions"];
-  int64 nonce = 17 [json_name="nonce"];
-  bool pinned = 18 [json_name="pinned"];
-  int64 webhookID = 19 [json_name="webhook_id"];
-  int64 type = 20 [json_name="type"];
-  MessageActivity activity = 21 [json_name="activity"];
-  Application application = 22 [json_name="application"];
-  repeated MessageReference messageReference = 23 [json_name="message_referenced"];
-  int64 flags = 24 [json_name="flags"];
-  repeated InteractionComponent components = 25 [json_name="components"];
-  repeated Sticker stickers = 26 [json_name="stickers"];
-  Message referencedMessage = 27 [json_name="referenced_message"];
+message ApplicationSelectOption {
+  string Label = 1 [json_name="label"];
+  string Value = 2 [json_name="value"];
+  string Description = 3 [json_name="description"];
+  Emoji Emoji = 4 [json_name="emoji"];
+  bool Default = 5 [json_name="default"];
 }
 
-message MessageActivity {
-  int64 type = 1 [json_name="type"];
-  string partyID = 2 [json_name="party_id"];
+message Integration {
+  int64 ID = 1 [json_name="id"];
+  int64 GuildID = 2 [json_name="guild_id"];
+  string Name = 3 [json_name="name"];
+  string Type = 4 [json_name="type"];
+  bool Enabled = 5 [json_name="enabled"];
+  bool Syncing = 6 [json_name="syncing"];
+  int64 RoleID = 7 [json_name="role_id"];
+  bool EnableEmoticons = 8 [json_name="enable_emoticons"];
+  int32 ExpireBehavior = 9 [json_name="expire_behavior"];
+  int32 ExpireGracePeriod = 10 [json_name="expire_grace_period"];
+  User User = 11 [json_name="user"];
+  IntegrationAccount Account = 12 [json_name="account"];
+  string SyncedAt = 13 [json_name="synced_at"];
+  int32 SubscriberCount = 14 [json_name="subscriber_count"];
+  bool Revoked = 15 [json_name="revoked"];
+  Application Application = 16 [json_name="application"];
 }
 
-message MessageAllowedMentions {
-  repeated string parse = 1 [json_name="parse"];
-  repeated int64 roles = 2 [json_name="roles"];
-  repeated int64 users = 3 [json_name="users"];
-  bool repliedUser = 4 [json_name="replied_user"];
+message IntegrationAccount {
+  string ID = 1 [json_name="id"];
+  string Name = 2 [json_name="name"];
 }
 
-message MessageAttachment {
-  int64 id = 1 [json_name="id"];
-  string filename = 2 [json_name="filename"];
-  int64 size = 3 [json_name="size"];
-  string url = 4 [json_name="url"];
-  string proxyURL = 5 [json_name="proxy_url"];
-  int64 height = 6 [json_name="height"];
-  int64 width = 7 [json_name="width"];
+message InteractionComponent {
+  int32 Type = 1 [json_name="type"];
+  string CustomID = 2 [json_name="custom_id"];
+  bool Disabled = 3 [json_name="disabled"];
+  int32 Style = 4 [json_name="style"];
+  string Label = 5 [json_name="label"];
+  Emoji Emoji = 6 [json_name="emoji"];
+  string URL = 7 [json_name="url"];
+  repeated ApplicationSelectOption Options = 8 [json_name="options"];
+  string Placeholder = 9 [json_name="placeholder"];
+  int32 MinValues = 10 [json_name="min_values"];
+  int32 MaxValues = 11 [json_name="max_values"];
+  repeated InteractionComponent Components = 12 [json_name="components"];
 }
 
-message MessageChannelMention {
-  int64 id = 1 [json_name="id"];
-  int64 guildID = 2 [json_name="guild_id"];
-  int64 type = 3 [json_name="type"];
-  string name = 4 [json_name="name"];
+// structs\channel.go
+
+message Channel {
+  int64 ID = 1 [json_name="id"];
+  int32 Type = 2 [json_name="type"];
+  int64 GuildID = 3 [json_name="guild_id"];
+  int32 Position = 4 [json_name="position"];
+  repeated ChannelOverwrite PermissionOverwrites = 5 [json_name="permission_overwrites"];
+  string Name = 6 [json_name="name"];
+  string Topic = 7 [json_name="topic"];
+  bool NSFW = 8 [json_name="nsfw"];
+  string LastMessageID = 9 [json_name="last_message_id"];
+  int32 Bitrate = 10 [json_name="bitrate"];
+  int32 UserLimit = 11 [json_name="user_limit"];
+  int32 RateLimitPerUser = 12 [json_name="rate_limit_per_user"];
+  repeated User Recipients = 13 [json_name="recipients"];
+  string Icon = 14 [json_name="icon"];
+  int64 OwnerID = 15 [json_name="owner_id"];
+  int64 ApplicationID = 16 [json_name="application_id"];
+  int64 ParentID = 17 [json_name="parent_id"];
+  string LastPinTimestamp = 18 [json_name="last_pin_timestamp"];
+  string RTCRegion = 19 [json_name="rtc_region"];
+  int32 MessageCount = 20 [json_name="message_count"];
+  int32 MemberCount = 21 [json_name="member_count"];
+  ThreadMetadata ThreadMetadata = 22 [json_name="thread_metadata"];
+  ThreadMember ThreadMember = 23 [json_name="member"];
+  int32 DefaultAutoArchiveDuration = 24 [json_name="default_auto_archive_duration"];
+  int64 Permissions = 25 [json_name="permissions"];
 }
 
-message MessageReaction {
-  int64 count = 1 [json_name="count"];
-  bool me = 2 [json_name="me"];
-  Emoji emoji = 3 [json_name="emoji"];
-}
-
-message MessageReference {
-  int64 id = 1 [json_name="message_id"];
-  int64 channelID = 2 [json_name="channel_id"];
-  int64 guildID = 3 [json_name="guild_id"];
-  bool failIfNotExists = 4 [json_name="fail_if_not_exists"];
-}
-
-message Party {
-  string id = 1 [json_name="id"];
-  repeated int64 size = 2 [json_name="size"];
-}
-
-message Role {
-  int64 id = 1 [json_name="id"];
-  string name = 2 [json_name="name"];
-  int64 color = 3 [json_name="color"];
-  bool hoist = 4 [json_name="hoist"];
-  int64 position = 5 [json_name="position"];
-  int64 permissions = 6 [json_name="permissions"];
-  bool managed = 7 [json_name="managed"];
-  bool mentionable = 8 [json_name="mentionable"];
-  RoleTag tags = 9 [json_name="tags"];
-}
-
-message RoleTag {
-  bool premiumSubscriber = 1 [json_name="premium_subscriber"];
-  int64 botID = 2 [json_name="bot_id"];
-  int64 integrationID = 3 [json_name="integration_id"];
-}
-
-message Secrets {
-  string join = 1 [json_name="join"];
-  string spectate = 2 [json_name="spectate"];
-  string match = 3 [json_name="match"];
-}
-
-message StageInstance {
-  int64 id = 1 [json_name="id"];
-  int64 guildID = 2 [json_name="guild_id"];
-  int64 channelID = 3 [json_name="channel_id"];
-  string topic = 4 [json_name="topic"];
-  int64 privacyLabel = 5 [json_name="privacy_level"];
-  bool discoverableDisabled = 6 [json_name="discoverable_disabled"];
-}
-
-message Sticker {
-  int64 id = 1 [json_name="id"];
-  int64 packID = 2 [json_name="pack_id"];
-  string name = 3 [json_name="name"];
-  string description = 4 [json_name="description"];
-  string tags = 5 [json_name="tags"];
-  int64 type = 6 [json_name="type"];
-  int64 formatType = 7 [json_name="format_type"];
-  bool available = 8 [json_name="available"];
-  int64 guildID = 9 [json_name="guild_id"];
-  User user = 10 [json_name="user"];
-  int64 sortValue = 11 [json_name="sort_value"];
-}
-
-message ThreadMember {
-  int64 id = 1 [json_name="id"];
-  int64 userID = 2 [json_name="user_id"];
-  string joinTimestamp = 3 [json_name="join_timestamp"];
-  int64 flags = 4 [json_name="flags"];
+message ChannelOverwrite {
+  int64 ID = 1 [json_name="id"];
+  int32 Type = 2 [json_name="type"];
+  int64 Allow = 3 [json_name="allow"];
+  int64 Deny = 4 [json_name="deny"];
 }
 
 message ThreadMetadata {
-  bool archived = 1 [json_name="archived"];
-  int64 autoArchiveDuration = 2 [json_name="auto_archive_duration"];
-  string archiveTimestamp = 3 [json_name="archive_timestamp"];
-  bool locked = 4 [json_name="locked"];
+  bool Archived = 1 [json_name="archived"];
+  int32 AutoArchiveDuration = 2 [json_name="auto_archive_duration"];
+  string ArchiveTimestamp = 3 [json_name="archive_timestamp"];
+  bool Locked = 4 [json_name="locked"];
 }
 
-message Timestamps {
-  int64 start = 1 [json_name="start"];
-  int64 end = 2 [json_name="end"];
+message ThreadMember {
+  int64 ID = 1 [json_name="id"];
+  int64 UserID = 2 [json_name="user_id"];
+  int64 GuildID = 3 [json_name="guild_id"];
+  string JoinTimestamp = 4 [json_name="join_timestamp"];
+  int32 Flags = 5 [json_name="flags"];
+}
+
+message StageInstance {
+  int64 ID = 1 [json_name="id"];
+  int64 GuildID = 2 [json_name="guild_id"];
+  int64 ChannelID = 3 [json_name="channel_id"];
+  string Topic = 4 [json_name="topic"];
+  int32 PrivacyLabel = 5 [json_name="privacy_level"];
+  bool DiscoverableDisabled = 6 [json_name="discoverable_disabled"];
+}
+
+// structs\embed.go
+
+message Embed {
+  string Title = 1 [json_name="title"];
+  string Type = 2 [json_name="type"];
+  string Description = 3 [json_name="description"];
+  string URL = 4 [json_name="url"];
+  string Timestamp = 5 [json_name="timestamp"];
+  int32 Color = 6 [json_name="color"];
+  EmbedFooter Footer = 7 [json_name="footer"];
+  EmbedImage Image = 8 [json_name="image"];
+  EmbedThumbnail Thumbnail = 9 [json_name="thumbnail"];
+  EmbedVideo Video = 10 [json_name="video"];
+  EmbedProvider Provider = 11 [json_name="provider"];
+  EmbedAuthor Author = 12 [json_name="author"];
+  repeated EmbedField Fields = 13 [json_name="fields"];
+}
+
+message EmbedFooter {
+  string Text = 1 [json_name="text"];
+  string IconURL = 2 [json_name="icon_url"];
+  string ProxyIconURL = 3 [json_name="proxy_icon_url"];
+}
+
+message EmbedImage {
+  string URL = 1 [json_name="url"];
+  string ProxyURL = 2 [json_name="proxy_url"];
+  int32 Height = 3 [json_name="height"];
+  int32 Width = 4 [json_name="width"];
+}
+
+message EmbedThumbnail {
+  string URL = 1 [json_name="url"];
+  string ProxyURL = 2 [json_name="proxy_url"];
+  int32 Height = 3 [json_name="height"];
+  int32 Width = 4 [json_name="width"];
+}
+
+message EmbedVideo {
+  string URL = 1 [json_name="url"];
+  int32 Height = 2 [json_name="height"];
+  int32 Width = 3 [json_name="width"];
+}
+
+message EmbedProvider {
+  string Name = 1 [json_name="name"];
+  string URL = 2 [json_name="url"];
+}
+
+message EmbedAuthor {
+  string Name = 1 [json_name="name"];
+  string URL = 2 [json_name="url"];
+  string IconURL = 3 [json_name="icon_url"];
+  string ProxyIconURL = 4 [json_name="proxy_icon_url"];
+}
+
+message EmbedField {
+  string Name = 1 [json_name="name"];
+  string Value = 2 [json_name="value"];
+  bool Inline = 3 [json_name="inline"];
+}
+
+// structs\emoji.go
+
+message Emoji {
+  int64 ID = 1 [json_name="id"];
+  int64 GuildID = 2 [json_name="guild_id"];
+  string Name = 3 [json_name="name"];
+  repeated int64 Roles = 4 [json_name="roles"];
+  User User = 5 [json_name="user"];
+  bool RequireColons = 6 [json_name="require_colons"];
+  bool Managed = 7 [json_name="managed"];
+  bool Animated = 8 [json_name="animated"];
+  bool Available = 9 [json_name="available"];
+}
+
+// structs\guild.go
+
+message Guild {
+  int64 ID = 1 [json_name="id"];
+  string Name = 2 [json_name="name"];
+  string Icon = 3 [json_name="icon"];
+  string IconHash = 4 [json_name="icon_hash"];
+  string Splash = 5 [json_name="splash"];
+  string DiscoverySplash = 6 [json_name="discovery_splash"];
+  bool Owner = 7 [json_name="owner"];
+  int64 OwnerID = 8 [json_name="owner_id"];
+  int64 Permissions = 9 [json_name="permissions"];
+  string Region = 10 [json_name="region"];
+  int64 AFKChannelID = 11 [json_name="afk_channel_id"];
+  int32 AFKTimeout = 12 [json_name="afk_timeout"];
+  bool WidgetEnabled = 13 [json_name="widget_enabled"];
+  int64 WidgetChannelID = 14 [json_name="widget_channel_id"];
+  int32 VerificationLevel = 15 [json_name="verification_level"];
+  int32 DefaultMessageNotifications = 16 [json_name="default_message_notifications"];
+  int32 ExplicitContentFilter = 17 [json_name="explicit_content_filter"];
+  repeated Role Roles = 18 [json_name="roles"];
+  repeated Emoji Emojis = 19 [json_name="emojis"];
+  repeated string Features = 20 [json_name="features"];
+  int32 MFALevel = 21 [json_name="mfa_level"];
+  int64 ApplicationID = 22 [json_name="application_id"];
+  int64 SystemChannelID = 23 [json_name="system_channel_id"];
+  int32 SystemChannelFlags = 24 [json_name="system_channel_flags"];
+  int64 RulesChannelID = 25 [json_name="rules_channel_id"];
+  string JoinedAt = 26 [json_name="joined_at"];
+  bool Large = 27 [json_name="large"];
+  bool Unavailable = 28 [json_name="unavailable"];
+  int32 MemberCount = 29 [json_name="member_count"];
+  repeated VoiceState VoiceStates = 30 [json_name="voice_states"];
+  repeated GuildMember Members = 31 [json_name="members"];
+  repeated Channel Channels = 32 [json_name="channels"];
+  repeated Activity Presences = 33 [json_name="presences"];
+  string Description = 34 [json_name="description"];
+  string Banner = 35 [json_name="banner"];
+  int32 MaxPresences = 36 [json_name="max_presences"];
+  int32 MaxMembers = 37 [json_name="max_members"];
+  string VanityURLCode = 38 [json_name="vanity_url_code"];
+  int32 PremiumTier = 39 [json_name="premium_tier"];
+  int32 PremiumSubscriptionCount = 40 [json_name="premium_subscription_count"];
+  string PreferredLocale = 41 [json_name="preferred_locale"];
+  int64 PublicUpdatesChannelID = 42 [json_name="public_updates_channel_id"];
+  int32 MaxVideoChannelUsers = 43 [json_name="max_video_channel_users"];
+  int32 ApproximateMemberCount = 44 [json_name="approximate_member_count"];
+  int32 ApproximatePresenceCount = 45 [json_name="approximate_presence_count"];
+  int32 NSFWLevel = 46 [json_name="nsfw_level"];
+  repeated StageInstance StageInstances = 47 [json_name="stage_instances"];
+  repeated Sticker Stickers = 48 [json_name="stickers"];
 }
 
 message UnavailableGuild {
-  int64 id = 1 [json_name="id"];
-  bool unavailable = 2 [json_name="unavailable"];
+  int64 ID = 1 [json_name="id"];
+  bool Unavailable = 2 [json_name="unavailable"];
 }
 
-message UpdateStatus {
-  int64 since = 1 [json_name="since"];
-  Activity game = 2 [json_name="game"];
-  string status = 3 [json_name="status"];
-  bool AFK = 4 [json_name="afk"];
-}
-
-message User {
-  int64 id = 1 [json_name="id"];
-  string username = 2 [json_name="username"];
-  string discriminator = 3 [json_name="discriminator"];
-  string avatar = 4 [json_name="avatar"];
-  bool bot = 5 [json_name="bot"];
-  bool system = 6 [json_name="system"];
-  bool MFAEnabled = 7 [json_name="mfa_enabled"];
-  string banner = 8 [json_name="banner"];
-  string locale = 9 [json_name="locale"];
-  bool verified = 10 [json_name="verified"];
-  string email = 11 [json_name="email"];
-  int64 flags = 12 [json_name="flags"];
-  int64 premiumType = 13 [json_name="premium_type"];
-  int64 publicFlags = 14 [json_name="public_flags"];
-  int64 DMChannelID = 15 [json_name="dm_channel_id"];
+message GuildMember {
+  User User = 1 [json_name="user"];
+  string Nick = 2 [json_name="nick"];
+  int64 GuildID = 3 [json_name="guild_id"];
+  repeated int64 Roles = 4 [json_name="roles"];
+  string JoinedAt = 5 [json_name="joined_at"];
+  bool Deaf = 6 [json_name="deaf"];
+  bool Mute = 7 [json_name="mute"];
+  string Avatar = 8 [json_name="avatar"];
+  int64 Permissions = 9 [json_name="permissions"];
+  string PremiumSince = 10 [json_name="premium_since"];
+  string CommunicationDisabledUntil = 11 [json_name="communication_disabled_until"];
+  bool Pending = 12 [json_name="pending"];
 }
 
 message VoiceState {
-  int64 guildID = 1 [json_name="guild_id"];
-  int64 channelID = 2 [json_name="channel_id"];
-  int64 userID = 3 [json_name="user_id"];
-  GuildMember member = 4 [json_name="member"];
-  string sessionID = 5 [json_name="session_id"];
-  bool deaf = 6 [json_name="deaf"];
-  bool mute = 7 [json_name="mute"];
-  bool selfDeaf = 8 [json_name="self_deaf"];
-  bool selfMute = 9 [json_name="self_mute"];
-  bool suppress = 10 [json_name="suppress"];
+  int64 GuildID = 1 [json_name="guild_id"];
+  int64 ChannelID = 2 [json_name="channel_id"];
+  int64 UserID = 3 [json_name="user_id"];
+  GuildMember Member = 4 [json_name="member"];
+  string SessionID = 5 [json_name="session_id"];
+  bool Deaf = 6 [json_name="deaf"];
+  bool Mute = 7 [json_name="mute"];
+  bool SelfDeaf = 8 [json_name="self_deaf"];
+  bool SelfMute = 9 [json_name="self_mute"];
+  bool SelfStream = 10 [json_name="self_stream"];
+  bool SelfVideo = 11 [json_name="self_video"];
+  bool Suppress = 12 [json_name="suppress"];
+  string RequestToSpeakTimestamp = 13 [json_name="request_to_speak_timestamp"];
 }
 
+// structs\invites.go
+
+message Invite {
+  int64 ChannelID = 1 [json_name="channel_id"];
+  string Code = 2 [json_name="code"];
+  string CreatedAt = 3 [json_name="created_at"];
+  int64 GuildID = 4 [json_name="guild_id"];
+  User Inviter = 5 [json_name="inviter"];
+  int32 MaxAge = 6 [json_name="max_age"];
+  int32 MaxUses = 7 [json_name="max_uses"];
+  int32 TargetType = 8 [json_name="target_type"];
+  User TargetUser = 9 [json_name="target_user"];
+  Application TargetApplication = 10 [json_name="target_application"];
+  bool Temporary = 11 [json_name="temporary"];
+  int32 Uses = 12 [json_name="uses"];
+}
+
+// structs\message.go
+
+message Message {
+  int64 ID = 1 [json_name="id"];
+  int64 ChannelID = 2 [json_name="channel_id"];
+  int64 GuildID = 3 [json_name="guild_id"];
+  User Author = 4 [json_name="author"];
+  GuildMember Member = 5 [json_name="member"];
+  string Content = 6 [json_name="content"];
+  string Timestamp = 7 [json_name="timestamp"];
+  string EditedTimestamp = 8 [json_name="edited_timestamp"];
+  bool TTS = 9 [json_name="tts"];
+  bool MentionEveryone = 10 [json_name="mention_everyone"];
+  repeated User Mentions = 11 [json_name="mentions"];
+  repeated int64 MentionRoles = 12 [json_name="mention_roles"];
+  repeated MessageChannelMention MentionChannels = 13 [json_name="mention_channels"];
+  repeated MessageAttachment Attachments = 14 [json_name="attachments"];
+  repeated Embed Embeds = 15 [json_name="embeds"];
+  repeated MessageReaction Reactions = 16 [json_name="reactions"];
+  int64 Nonce = 17 [json_name="nonce"];
+  bool Pinned = 18 [json_name="pinned"];
+  int64 WebhookID = 19 [json_name="webhook_id"];
+  int32 Type = 20 [json_name="type"];
+  MessageActivity Activity = 21 [json_name="activity"];
+  Application Application = 22 [json_name="application"];
+  repeated MessageReference MessageReference = 23 [json_name="message_referenced"];
+  int32 Flags = 24 [json_name="flags"];
+  repeated InteractionComponent Components = 25 [json_name="components"];
+  repeated Sticker Stickers = 26 [json_name="stickers"];
+  Message ReferencedMessage = 27 [json_name="referenced_message"];
+}
+
+message MessageChannelMention {
+  int64 ID = 1 [json_name="id"];
+  int64 GuildID = 2 [json_name="guild_id"];
+  int32 Type = 3 [json_name="type"];
+  string Name = 4 [json_name="name"];
+}
+
+message MessageReference {
+  int64 ID = 1 [json_name="message_id"];
+  int64 ChannelID = 2 [json_name="channel_id"];
+  int64 GuildID = 3 [json_name="guild_id"];
+  bool FailIfNotExists = 4 [json_name="fail_if_not_exists"];
+}
+
+message MessageReaction {
+  int32 Count = 1 [json_name="count"];
+  bool Me = 2 [json_name="me"];
+  Emoji Emoji = 3 [json_name="emoji"];
+}
+
+message MessageAllowedMentions {
+  repeated string Parse = 1 [json_name="parse"];
+  repeated int64 Roles = 2 [json_name="roles"];
+  repeated int64 Users = 3 [json_name="users"];
+  bool RepliedUser = 4 [json_name="replied_user"];
+}
+
+message MessageAttachment {
+  int64 ID = 1 [json_name="id"];
+  string Filename = 2 [json_name="filename"];
+  int32 Size = 3 [json_name="size"];
+  string URL = 4 [json_name="url"];
+  string ProxyURL = 5 [json_name="proxy_url"];
+  int32 Height = 6 [json_name="height"];
+  int32 Width = 7 [json_name="width"];
+}
+
+message MessageActivity {
+  int32 Type = 1 [json_name="type"];
+  string PartyID = 2 [json_name="party_id"];
+}
+
+// structs\presence.go
+
+message Activity {
+  string Name = 1 [json_name="name"];
+  int32 Type = 2 [json_name="type"];
+  string URL = 3 [json_name="url"];
+  Timestamps Timestamps = 4 [json_name="timestamps"];
+  int64 ApplicationID = 5 [json_name="application_id"];
+  string Details = 6 [json_name="details"];
+  string State = 7 [json_name="state"];
+  Party Party = 8 [json_name="party"];
+  Assets Assets = 9 [json_name="assets"];
+  Secrets Secrets = 10 [json_name="secrets"];
+  bool Instance = 11 [json_name="instance"];
+  int32 Flags = 12 [json_name="flags"];
+}
+
+message Timestamps {
+  int32 Start = 1 [json_name="start"];
+  int32 End = 2 [json_name="end"];
+}
+
+message Party {
+  string ID = 1 [json_name="id"];
+  repeated int32 Size = 2 [json_name="size"];
+}
+
+message Assets {
+  string LargeImage = 1 [json_name="large_image"];
+  string LargeText = 2 [json_name="large_text"];
+  string SmallImage = 3 [json_name="small_image"];
+  string SmallText = 4 [json_name="small_text"];
+}
+
+message Secrets {
+  string Join = 1 [json_name="join"];
+  string Spectate = 2 [json_name="spectate"];
+  string Match = 3 [json_name="match"];
+}
+
+message ClientStatus {
+  string Desktop = 1 [json_name="desktop"];
+  string Mobile = 2 [json_name="mobile"];
+  string Web = 3 [json_name="web"];
+}
+
+// structs\role.go
+
+message Role {
+  int64 ID = 1 [json_name="id"];
+  int64 GuildID = 2 [json_name="guild_id"];
+  string Name = 3 [json_name="name"];
+  int32 Color = 4 [json_name="color"];
+  bool Hoist = 5 [json_name="hoist"];
+  int32 Position = 6 [json_name="position"];
+  int64 Permissions = 7 [json_name="permissions"];
+  bool Managed = 8 [json_name="managed"];
+  bool Mentionable = 9 [json_name="mentionable"];
+  RoleTag Tags = 10 [json_name="tags"];
+}
+
+message RoleTag {
+  bool PremiumSubscriber = 1 [json_name="premium_subscriber"];
+  int64 BotID = 2 [json_name="bot_id"];
+  int64 IntegrationID = 3 [json_name="integration_id"];
+}
+
+// structs\sticker.go
+
+message Sticker {
+  int64 ID = 1 [json_name="id"];
+  int64 PackID = 2 [json_name="pack_id"];
+  string Name = 3 [json_name="name"];
+  string Description = 4 [json_name="description"];
+  string Tags = 5 [json_name="tags"];
+  int32 Type = 6 [json_name="type"];
+  int32 FormatType = 7 [json_name="format_type"];
+  bool Available = 8 [json_name="available"];
+  int64 GuildID = 9 [json_name="guild_id"];
+  User User = 10 [json_name="user"];
+  int32 SortValue = 11 [json_name="sort_value"];
+}
+
+// structs\user.go
+
+message User {
+  int64 ID = 1 [json_name="id"];
+  string Username = 2 [json_name="username"];
+  string Discriminator = 3 [json_name="discriminator"];
+  string Avatar = 4 [json_name="avatar"];
+  bool Bot = 5 [json_name="bot"];
+  bool System = 6 [json_name="system"];
+  bool MFAEnabled = 7 [json_name="mfa_enabled"];
+  string Banner = 8 [json_name="banner"];
+  string Locale = 9 [json_name="locale"];
+  bool Verified = 10 [json_name="verified"];
+  string Email = 11 [json_name="email"];
+  int32 Flags = 12 [json_name="flags"];
+  int32 PremiumType = 13 [json_name="premium_type"];
+  int32 PublicFlags = 14 [json_name="public_flags"];
+  int64 DMChannelID = 15 [json_name="dm_channel_id"];
+}
+
+// structs\webhook.go
+
 message Webhook {
-  int64 id = 1 [json_name="id"];
-  int64 type = 2 [json_name="type"];
-  int64 guildID = 3 [json_name="guild_id"];
-  int64 channelID = 4 [json_name="channel_id"];
-  User user = 5 [json_name="user"];
-  string name = 6 [json_name="name"];
-  string avatar = 7 [json_name="avatar"];
-  string token = 8 [json_name="token"];
-  int64 applicationID = 9 [json_name="application_id"];
+  int64 ID = 1 [json_name="id"];
+  int32 Type = 2 [json_name="type"];
+  int64 GuildID = 3 [json_name="guild_id"];
+  int64 ChannelID = 4 [json_name="channel_id"];
+  User User = 5 [json_name="user"];
+  string Name = 6 [json_name="name"];
+  string Avatar = 7 [json_name="avatar"];
+  string Token = 8 [json_name="token"];
+  int64 ApplicationID = 9 [json_name="application_id"];
 }
 
 message WebhookMessage {
-  string content = 1 [json_name="content"];
-  string username = 2 [json_name="username"];
-  string avatarURL = 3 [json_name="avatar_url"];
+  string Content = 1 [json_name="content"];
+  string Username = 2 [json_name="username"];
+  string AvatarURL = 3 [json_name="avatar_url"];
   bool TTS = 4 [json_name="tts"];
-  repeated Embed embeds = 5 [json_name="embeds"];
-  repeated MessageAllowedMentions allowedMentions = 6 [json_name="allowed_mentions"];
-  repeated InteractionComponent components = 7 [json_name="components"];
+  repeated Embed Embeds = 5 [json_name="embeds"];
+  repeated MessageAllowedMentions AllowedMentions = 6 [json_name="allowed_mentions"];
+  repeated InteractionComponent Components = 7 [json_name="components"];
+  bytes PayloadJSON = 8 [json_name="payload_json"];
 }

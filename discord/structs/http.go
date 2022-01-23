@@ -10,19 +10,19 @@ type Gateway struct {
 // GatewayBot represents a GET /gateway/bot response.
 type GatewayBot struct {
 	URL               string `json:"url"`
-	Shards            int    `json:"shards"`
+	Shards            int32  `json:"shards"`
 	SessionStartLimit struct {
-		Total          int `json:"total"`
-		Remaining      int `json:"remaining"`
-		ResetAfter     int `json:"reset_after"`
-		MaxConcurrency int `json:"max_concurrency"`
+		Total          int32 `json:"total"`
+		Remaining      int32 `json:"remaining"`
+		ResetAfter     int32 `json:"reset_after"`
+		MaxConcurrency int32 `json:"max_concurrency"`
 	} `json:"session_start_limit"`
 }
 
 // TooManyRequests represents the payload of a TooManyRequests response.
 type TooManyRequests struct {
 	Message    string `json:"message"`
-	RetryAfter int    `json:"retry_after"`
+	RetryAfter int32  `json:"retry_after"`
 	Global     bool   `json:"global"`
 }
 

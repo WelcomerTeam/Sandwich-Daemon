@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"sync"
+	"time"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
@@ -9,8 +12,6 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"sync"
-	"time"
 )
 
 // ShardGroup represents a group of shards.
@@ -27,13 +28,13 @@ type ShardGroup struct {
 	userMu sync.RWMutex  `json:"-"`
 	User   *discord.User `json:"user"`
 
-	ID int64 `json:"id"`
+	ID int32 `json:"id"`
 
-	ShardCount int   `json:"shard_count"`
-	ShardIDs   []int `json:"shard_ids"`
+	ShardCount int32   `json:"shard_count"`
+	ShardIDs   []int32 `json:"shard_ids"`
 
-	shardsMu sync.RWMutex   `json:"-"`
-	Shards   map[int]*Shard `json:"shards"`
+	shardsMu sync.RWMutex     `json:"-"`
+	Shards   map[int32]*Shard `json:"shards"`
 
 	guildsMu sync.RWMutex               `json:"-"`
 	Guilds   map[discord.Snowflake]bool `json:"guilds"`
@@ -64,7 +65,7 @@ type ShardGroup struct {
 }
 
 // NewShardGroup creates a new shardgroup.
-func (mg *Manager) NewShardGroup(shardGroupID int64, shardIDs []int, shardCount int) (sg *ShardGroup) {
+func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 	sg = &ShardGroup{
 		Error: &atomic.String{},
 
@@ -81,7 +82,7 @@ func (mg *Manager) NewShardGroup(shardGroupID int64, shardIDs []int, shardCount 
 		ShardIDs:   shardIDs,
 
 		shardsMu: sync.RWMutex{},
-		Shards:   make(map[int]*Shard),
+		Shards:   make(map[int32]*Shard),
 
 		guildsMu: sync.RWMutex{},
 		Guilds:   make(map[discord.Snowflake]bool),
@@ -124,7 +125,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	ready = make(chan bool, 1)
 
 	sg.Logger.Info().
-		Int("shardCount", sg.ShardCount).
+		Int32("shardCount", sg.ShardCount).
 		Int("shardIds", len(sg.ShardIDs)).
 		Msg("Starting shardgroup")
 
@@ -179,7 +180,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	for _, shardID := range sg.ShardIDs[1:] {
 		connectGroup.Add(1)
 
-		go func(shardID int) {
+		go func(shardID int32) {
 			sg.shardsMu.RLock()
 			shard := sg.Shards[shardID]
 			sg.shardsMu.RUnlock()
@@ -188,7 +189,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 				shardErr := shard.Connect()
 				if shardErr != nil && !xerrors.Is(shardErr, context.Canceled) {
 					sg.Logger.Warn().Err(shardErr).
-						Int("shardId", shardID).
+						Int32("shardId", shardID).
 						Msgf("Failed to connect shard. Retrying")
 				} else {
 					go shard.Open()
@@ -210,7 +211,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 		sg.shardsMu.RLock()
 		for _, shardID := range sg.ShardIDs {
 			shard := sg.Shards[shardID]
-			sg.WaitingFor.Store(int32(shardID))
+			sg.WaitingFor.Store(shardID)
 			shard.WaitForReady()
 		}
 		sg.shardsMu.RUnlock()
@@ -273,7 +274,7 @@ func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
 	payload, _ := jsoniter.Marshal(structs.ShardGroupStatusUpdate{
 		Manager:    sg.Manager.Identifier.Load(),
 		ShardGroup: sg.ID,
-		Status:     int(sg.Status),
+		Status:     sg.Status,
 	})
 
 	_ = sg.Manager.Sandwich.PublishGlobalEvent(structs.SandwichEventShardGroupStatusUpdate, jsoniter.RawMessage(payload))

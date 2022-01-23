@@ -32,14 +32,14 @@ const (
 )
 
 type ShardGroupStatusUpdate struct {
-	Manager    string `json:"manager"`
-	ShardGroup int64  `json:"shard_group"`
-	Status     int    `json:"status"`
+	Manager    string           `json:"manager"`
+	ShardGroup int32            `json:"shard_group"`
+	Status     ShardGroupStatus `json:"status"`
 }
 
 type ShardStatusUpdate struct {
-	Manager    string `json:"manager"`
-	ShardGroup int64  `json:"shard_group"`
-	Shard      int    `json:"shard_id"`
-	Status     int    `json:"status"`
+	Manager    string      `json:"manager"`
+	ShardGroup int32       `json:"shard_group"`
+	Shard      int32       `json:"shard_id"`
+	Status     ShardStatus `json:"status"`
 }

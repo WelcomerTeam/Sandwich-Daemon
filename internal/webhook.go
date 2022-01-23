@@ -3,12 +3,13 @@ package internal
 import (
 	"bytes"
 	"context"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
-	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 	"net/url"
 	"strings"
 	"time"
+
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 )
 
 // Embed colours for webhooks.
@@ -22,7 +23,7 @@ const (
 )
 
 // PublishSimpleWebhook is a helper function for creating quicker webhook messages.
-func (sg *Sandwich) PublishSimpleWebhook(title string, description string, footer string, colour int) {
+func (sg *Sandwich) PublishSimpleWebhook(title string, description string, footer string, colour int32) {
 	sg.PublishWebhook(discord.WebhookMessage{
 		Embeds: []*discord.Embed{
 			{

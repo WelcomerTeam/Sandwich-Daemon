@@ -12,14 +12,14 @@ type SandwichMetadata struct {
 	Application   string            `json:"a"`
 	ApplicationID discord.Snowflake `json:"id"`
 	// ShardGroup ID, Shard ID, Shard Count
-	Shard [3]int `json:"s"`
+	Shard [3]int32 `json:"s"`
 }
 
 // SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
 	Op       discord.GatewayOp   `json:"op"`
 	Data     jsoniter.RawMessage `json:"d"`
-	Sequence int                 `json:"s"`
+	Sequence int32               `json:"s"`
 	Type     string              `json:"t"`
 
 	Extra    map[string]jsoniter.RawMessage `json:"__extra"`

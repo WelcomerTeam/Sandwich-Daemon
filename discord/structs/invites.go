@@ -17,11 +17,11 @@ type Invite struct {
 	CreatedAt         string            `json:"created_at"`
 	GuildID           *Snowflake        `json:"guild_id,omitempty"`
 	Inviter           *User             `json:"inviter,omitempty"`
-	MaxAge            int               `json:"max_age"`
-	MaxUses           int               `json:"max_uses"`
+	MaxAge            int32             `json:"max_age"`
+	MaxUses           int32             `json:"max_uses"`
 	TargetType        *InviteTargetType `json:"target_type,omitempty"`
 	TargetUser        *User             `json:"target_user,omitempty"`
 	TargetApplication *Application      `json:"target_application"`
 	Temporary         bool              `json:"temporary"`
-	Uses              int               `json:"uses"`
+	Uses              int32             `json:"uses"`
 }

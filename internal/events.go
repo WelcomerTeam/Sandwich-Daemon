@@ -2,12 +2,13 @@ package internal
 
 import (
 	"context"
+	"sync"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 	"golang.org/x/xerrors"
-	"sync"
 )
 
 // List of handlers for gateway events.
@@ -148,7 +149,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 
 	// Directly copy op, sequence and type from original message.
 	packet.Op = msg.Op
-	packet.Sequence = int(msg.Sequence)
+	packet.Sequence = msg.Sequence
 	packet.Type = msg.Type
 
 	// Setting result.Data will override what is sent to consumers.

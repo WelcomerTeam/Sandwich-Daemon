@@ -5,18 +5,19 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/rs/zerolog"
-	"go.uber.org/atomic"
-	"golang.org/x/xerrors"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog"
+	"go.uber.org/atomic"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -50,7 +51,7 @@ type Manager struct {
 	Gateway   discord.GatewayBot `json:"gateway" yaml:"gateway"`
 
 	shardGroupsMu sync.RWMutex
-	ShardGroups   map[int64]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
+	ShardGroups   map[int32]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
 
 	ProducerClient MQClient `json:"-"`
 
@@ -61,7 +62,7 @@ type Manager struct {
 	userMu sync.RWMutex
 	User   discord.User `json:"user"`
 
-	shardGroupCounter *atomic.Int64
+	shardGroupCounter *atomic.Int32
 
 	eventBlacklistMu sync.RWMutex
 	eventBlacklist   []string
@@ -85,7 +86,7 @@ type ManagerConfiguration struct {
 	// Bot specific configuration
 	Bot struct {
 		DefaultPresence      discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
-		Intents              int64                `json:"intents" yaml:"intents"`
+		Intents              discord.Int64        `json:"intents" yaml:"intents"`
 		ChunkGuildsOnStartup bool                 `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
 		// TODO: Guild chunking
 	} `json:"bot" yaml:"bot"`
@@ -110,7 +111,7 @@ type ManagerConfiguration struct {
 
 	Sharding struct {
 		AutoSharded bool   `json:"auto_sharded" yaml:"auto_sharded"`
-		ShardCount  int    `json:"shard_count" yaml:"shard_count"`
+		ShardCount  int32  `json:"shard_count" yaml:"shard_count"`
 		ShardIDs    string `json:"shard_ids" yaml:"shard_ids"`
 	} `json:"sharding" yaml:"sharding"`
 }
@@ -135,7 +136,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		Gateway:   discord.GatewayBot{},
 
 		shardGroupsMu: sync.RWMutex{},
-		ShardGroups:   make(map[int64]*ShardGroup),
+		ShardGroups:   make(map[int32]*ShardGroup),
 
 		Client: NewClient(baseURL, configuration.Token),
 
@@ -144,7 +145,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		userMu: sync.RWMutex{},
 		User:   discord.User{},
 
-		shardGroupCounter: &atomic.Int64{},
+		shardGroupCounter: &atomic.Int32{},
 
 		eventBlacklistMu: sync.RWMutex{},
 		eventBlacklist:   configuration.Events.EventBlacklist,
@@ -228,16 +229,16 @@ func (mg *Manager) GetGateway() (resp discord.GatewayBot, err error) {
 	_, err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
 
 	mg.Logger.Info().
-		Int("maxConcurrency", resp.SessionStartLimit.MaxConcurrency).
-		Int("shards", resp.Shards).
-		Int("remaining", resp.SessionStartLimit.Remaining).
+		Int32("maxConcurrency", resp.SessionStartLimit.MaxConcurrency).
+		Int32("shards", resp.Shards).
+		Int32("remaining", resp.SessionStartLimit.Remaining).
 		Msg("Received gateway")
 
 	return
 }
 
 // Scale handles the creation of new ShardGroups with a specified shard count and IDs.
-func (mg *Manager) Scale(shardIDs []int, shardCount int) (sg *ShardGroup) {
+func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 	shardGroupID := mg.shardGroupCounter.Add(1)
 	sg = mg.NewShardGroup(shardGroupID, shardIDs, shardCount)
 
@@ -292,7 +293,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 }
 
 // WaitForIdentify blocks until a shard can identify.
-func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
+func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) (err error) {
 	mg.Sandwich.configurationMu.RLock()
 	identifyURL := mg.Sandwich.Configuration.Identify.URL
 	identifyHeaders := mg.Sandwich.Configuration.Identify.Headers
@@ -322,11 +323,11 @@ func (mg *Manager) WaitForIdentify(shardID int, shardCount int) (err error) {
 		_ = mg.Sandwich.IdentifyBuckets.WaitForBucket(identifyBucketName)
 	} else {
 		// Pass arguments to URL.
-		sendURL := strings.ReplaceAll(identifyURL, "{shard_id}", strconv.Itoa(shardID))
-		sendURL = strings.ReplaceAll(sendURL, "{shard_count}", strconv.Itoa(shardCount))
+		sendURL := strings.ReplaceAll(identifyURL, "{shard_id}", strconv.Itoa(int(shardID)))
+		sendURL = strings.ReplaceAll(sendURL, "{shard_count}", strconv.Itoa(int(shardCount)))
 		sendURL = strings.ReplaceAll(sendURL, "{token}", token)
 		sendURL = strings.ReplaceAll(sendURL, "{token_hash}", hash)
-		sendURL = strings.ReplaceAll(sendURL, "{max_concurrency}", strconv.Itoa(maxConcurrency))
+		sendURL = strings.ReplaceAll(sendURL, "{max_concurrency}", strconv.Itoa(int(maxConcurrency)))
 
 		_, sendURLErr := url.Parse(sendURL)
 		if sendURLErr != nil {
@@ -408,20 +409,20 @@ func (mg *Manager) Close() {
 }
 
 // getInitialShardCount returns the initial shard count and ids to use.
-func (mg *Manager) getInitialShardCount(customShardCount int, customShardIDs string, autoSharded bool) (shardIDs []int, shardCount int) {
+func (mg *Manager) getInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) (shardIDs []int32, shardCount int32) {
 	if autoSharded {
 		shardCount = mg.Gateway.Shards
 
 		if customShardIDs == "" {
-			for i := 0; i < shardCount; i++ {
+			for i := int32(0); i < shardCount; i++ {
 				shardIDs = append(shardIDs, i)
 			}
 		} else {
-			shardIDs = returnRange(customShardIDs, shardCount)
+			shardIDs = returnRangeInt32(customShardIDs, shardCount)
 		}
 	} else {
 		shardCount = customShardCount
-		shardIDs = returnRange(customShardIDs, shardCount)
+		shardIDs = returnRangeInt32(customShardIDs, shardCount)
 	}
 
 	return

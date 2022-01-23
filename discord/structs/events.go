@@ -7,12 +7,12 @@ type void struct{}
 
 // Hello represents a hello event when connecting.
 type Hello struct {
-	HeartbeatInterval int `json:"heartbeat_interval"`
+	HeartbeatInterval int32 `json:"heartbeat_interval"`
 }
 
 // Ready represents when the client has completed the initial handshake.
 type Ready struct {
-	Version     int                 `json:"v"`
+	Version     int32               `json:"v"`
 	User        User                `json:"user"`
 	Guilds      []*UnavailableGuild `json:"guilds"`
 	SessionID   string              `json:"session_id"`
@@ -80,7 +80,7 @@ type ThreadMemberUpdate *ThreadMember
 type ThreadMembersUpdate struct {
 	ID               Snowflake       `json:"id"`
 	GuildID          Snowflake       `json:"guild_id"`
-	MemberCount      int             `json:"member_count"`
+	MemberCount      int32           `json:"member_count"`
 	AddedMembers     []*ThreadMember `json:"added_members,omitempty"`
 	RemovedMemberIDs []Snowflake     `json:"removed_member_ids,omitempty"`
 }
@@ -141,8 +141,8 @@ type GuildMemberUpdate struct {
 type GuildMembersChunk struct {
 	GuildID    Snowflake        `json:"guild_id"`
 	Members    []*GuildMember   `json:"members"`
-	ChunkIndex int              `json:"chunk_index"`
-	ChunkCount int              `json:"chunk_count"`
+	ChunkIndex int32            `json:"chunk_index"`
+	ChunkCount int32            `json:"chunk_count"`
 	NotFound   []Snowflake      `json:"not_found,omitempty"`
 	Presences  []PresenceStatus `json:"presences,omitempty"`
 	Nonce      *string          `json:"nonce,omitempty"`
@@ -259,7 +259,7 @@ type TypingStart struct {
 	ChannelID Snowflake    `json:"channel_id"`
 	GuildID   *Snowflake   `json:"guild_id,omitempty"`
 	UserID    Snowflake    `json:"user_id"`
-	Timestamp int          `json:"timestamp"`
+	Timestamp int32        `json:"timestamp"`
 	Member    *GuildMember `json:"member,omitempty"`
 }
 

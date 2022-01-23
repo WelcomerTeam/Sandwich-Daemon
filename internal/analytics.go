@@ -118,10 +118,4 @@ var (
 			Help: "Sandwich GRPC Cache Misses",
 		},
 	)
-
-	// TODO: More analytics
-	// Time between from discord GW and Produced
-	// Guild Join / Leave
-	// Identifies + Resumes
-	// Guild Count.
 )

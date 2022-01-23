@@ -1056,9 +1056,9 @@ type SendWebsocketMessageRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	Manager       string `protobuf:"bytes,1,opt,name=manager,proto3" json:"manager,omitempty"`
-	ShardGroup    int64  `protobuf:"varint,2,opt,name=shardGroup,proto3" json:"shardGroup,omitempty"`
-	Shard         int64  `protobuf:"varint,3,opt,name=shard,proto3" json:"shard,omitempty"`
-	GatewayOPCode int64  `protobuf:"varint,4,opt,name=gatewayOPCode,proto3" json:"gatewayOPCode,omitempty"`
+	ShardGroup    int32  `protobuf:"varint,2,opt,name=shardGroup,proto3" json:"shardGroup,omitempty"`
+	Shard         int32  `protobuf:"varint,3,opt,name=shard,proto3" json:"shard,omitempty"`
+	GatewayOPCode int32  `protobuf:"varint,4,opt,name=gatewayOPCode,proto3" json:"gatewayOPCode,omitempty"`
 	Data          []byte `protobuf:"bytes,5,opt,name=data,proto3" json:"data,omitempty"`
 }
 
@@ -1101,21 +1101,21 @@ func (x *SendWebsocketMessageRequest) GetManager() string {
 	return ""
 }
 
-func (x *SendWebsocketMessageRequest) GetShardGroup() int64 {
+func (x *SendWebsocketMessageRequest) GetShardGroup() int32 {
 	if x != nil {
 		return x.ShardGroup
 	}
 	return 0
 }
 
-func (x *SendWebsocketMessageRequest) GetShard() int64 {
+func (x *SendWebsocketMessageRequest) GetShard() int32 {
 	if x != nil {
 		return x.Shard
 	}
 	return 0
 }
 
-func (x *SendWebsocketMessageRequest) GetGatewayOPCode() int64 {
+func (x *SendWebsocketMessageRequest) GetGatewayOPCode() int32 {
 	if x != nil {
 		return x.GatewayOPCode
 	}
@@ -1135,8 +1135,8 @@ type WhereIsGuildLocation struct {
 	unknownFields protoimpl.UnknownFields
 
 	Manager    string `protobuf:"bytes,1,opt,name=manager,proto3" json:"manager,omitempty"`
-	ShardGroup int64  `protobuf:"varint,2,opt,name=shardGroup,proto3" json:"shardGroup,omitempty"`
-	ShardId    int64  `protobuf:"varint,3,opt,name=shardId,proto3" json:"shardId,omitempty"`
+	ShardGroup int32  `protobuf:"varint,2,opt,name=shardGroup,proto3" json:"shardGroup,omitempty"`
+	ShardId    int32  `protobuf:"varint,3,opt,name=shardId,proto3" json:"shardId,omitempty"`
 }
 
 func (x *WhereIsGuildLocation) Reset() {
@@ -1178,14 +1178,14 @@ func (x *WhereIsGuildLocation) GetManager() string {
 	return ""
 }
 
-func (x *WhereIsGuildLocation) GetShardGroup() int64 {
+func (x *WhereIsGuildLocation) GetShardGroup() int32 {
 	if x != nil {
 		return x.ShardGroup
 	}
 	return 0
 }
 
-func (x *WhereIsGuildLocation) GetShardId() int64 {
+func (x *WhereIsGuildLocation) GetShardId() int32 {
 	if x != nil {
 		return x.ShardId
 	}
@@ -1619,19 +1619,19 @@ var file_events_proto_rawDesc = []byte{
 	0x67, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x61, 0x6e,
 	0x61, 0x67, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x61, 0x6e, 0x61,
 	0x67, 0x65, 0x72, 0x12, 0x1e, 0x0a, 0x0a, 0x73, 0x68, 0x61, 0x72, 0x64, 0x47, 0x72, 0x6f, 0x75,
-	0x70, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x73, 0x68, 0x61, 0x72, 0x64, 0x47, 0x72,
+	0x70, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0a, 0x73, 0x68, 0x61, 0x72, 0x64, 0x47, 0x72,
 	0x6f, 0x75, 0x70, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x68, 0x61, 0x72, 0x64, 0x18, 0x03, 0x20, 0x01,
-	0x28, 0x03, 0x52, 0x05, 0x73, 0x68, 0x61, 0x72, 0x64, 0x12, 0x24, 0x0a, 0x0d, 0x67, 0x61, 0x74,
-	0x65, 0x77, 0x61, 0x79, 0x4f, 0x50, 0x43, 0x6f, 0x64, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x03,
+	0x28, 0x05, 0x52, 0x05, 0x73, 0x68, 0x61, 0x72, 0x64, 0x12, 0x24, 0x0a, 0x0d, 0x67, 0x61, 0x74,
+	0x65, 0x77, 0x61, 0x79, 0x4f, 0x50, 0x43, 0x6f, 0x64, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x05,
 	0x52, 0x0d, 0x67, 0x61, 0x74, 0x65, 0x77, 0x61, 0x79, 0x4f, 0x50, 0x43, 0x6f, 0x64, 0x65, 0x12,
 	0x12, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x64,
 	0x61, 0x74, 0x61, 0x22, 0x6a, 0x0a, 0x14, 0x57, 0x68, 0x65, 0x72, 0x65, 0x49, 0x73, 0x47, 0x75,
 	0x69, 0x6c, 0x64, 0x4c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x6d,
 	0x61, 0x6e, 0x61, 0x67, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x61,
 	0x6e, 0x61, 0x67, 0x65, 0x72, 0x12, 0x1e, 0x0a, 0x0a, 0x73, 0x68, 0x61, 0x72, 0x64, 0x47, 0x72,
-	0x6f, 0x75, 0x70, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x73, 0x68, 0x61, 0x72, 0x64,
+	0x6f, 0x75, 0x70, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0a, 0x73, 0x68, 0x61, 0x72, 0x64,
 	0x47, 0x72, 0x6f, 0x75, 0x70, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x68, 0x61, 0x72, 0x64, 0x49, 0x64,
-	0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x73, 0x68, 0x61, 0x72, 0x64, 0x49, 0x64, 0x22,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x07, 0x73, 0x68, 0x61, 0x72, 0x64, 0x49, 0x64, 0x22,
 	0x2f, 0x0a, 0x13, 0x57, 0x68, 0x65, 0x72, 0x65, 0x49, 0x73, 0x47, 0x75, 0x69, 0x6c, 0x64, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x67, 0x75, 0x69, 0x6c, 0x64, 0x49,
 	0x44, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x67, 0x75, 0x69, 0x6c, 0x64, 0x49, 0x44,
@@ -1744,49 +1744,46 @@ func file_events_proto_rawDescGZIP() []byte {
 	return file_events_proto_rawDescData
 }
 
-var (
-	file_events_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
-	file_events_proto_goTypes  = []interface{}{
-		(*BaseResponse)(nil),                       // 0: sandwich.BaseResponse
-		(*ChannelsResponse)(nil),                   // 1: sandwich.ChannelsResponse
-		(*UsersResponse)(nil),                      // 2: sandwich.UsersResponse
-		(*EmojisResponse)(nil),                     // 3: sandwich.EmojisResponse
-		(*FetchConsumerConfigurationRequest)(nil),  // 4: sandwich.FetchConsumerConfigurationRequest
-		(*FetchConsumerConfigurationResponse)(nil), // 5: sandwich.FetchConsumerConfigurationResponse
-		(*FetchGuildChannelsRequest)(nil),          // 6: sandwich.FetchGuildChannelsRequest
-		(*FetchGuildEmojisRequest)(nil),            // 7: sandwich.FetchGuildEmojisRequest
-		(*FetchUsersRequest)(nil),                  // 8: sandwich.FetchUsersRequest
-		(*FetchGuildMembersRequest)(nil),           // 9: sandwich.FetchGuildMembersRequest
-		(*FetchGuildRequest)(nil),                  // 10: sandwich.FetchGuildRequest
-		(*FetchGuildRolesRequest)(nil),             // 11: sandwich.FetchGuildRolesRequest
-		(*FetchMutualGuildsRequest)(nil),           // 12: sandwich.FetchMutualGuildsRequest
-		(*GuildMembersResponse)(nil),               // 13: sandwich.GuildMembersResponse
-		(*GuildResponse)(nil),                      // 14: sandwich.GuildResponse
-		(*GuildRolesResponse)(nil),                 // 15: sandwich.GuildRolesResponse
-		(*GuildsResponse)(nil),                     // 16: sandwich.GuildsResponse
-		(*RequestGuildChunkRequest)(nil),           // 17: sandwich.RequestGuildChunkRequest
-		(*SendWebsocketMessageRequest)(nil),        // 18: sandwich.SendWebsocketMessageRequest
-		(*WhereIsGuildLocation)(nil),               // 19: sandwich.WhereIsGuildLocation
-		(*WhereIsGuildRequest)(nil),                // 20: sandwich.WhereIsGuildRequest
-		(*WhereIsGuildResponse)(nil),               // 21: sandwich.WhereIsGuildResponse
-		(*ListenRequest)(nil),                      // 22: sandwich.ListenRequest
-		(*ListenResponse)(nil),                     // 23: sandwich.ListenResponse
-		(*PostAnalyticsRequest)(nil),               // 24: sandwich.PostAnalyticsRequest
-		nil,                                        // 25: sandwich.ChannelsResponse.GuildChannelsEntry
-		nil,                                        // 26: sandwich.UsersResponse.UsersEntry
-		nil,                                        // 27: sandwich.EmojisResponse.GuildEmojisEntry
-		nil,                                        // 28: sandwich.GuildMembersResponse.GuildMembersEntry
-		nil,                                        // 29: sandwich.GuildRolesResponse.GuildRolesEntry
-		nil,                                        // 30: sandwich.GuildsResponse.GuildsEntry
-		(*Guild)(nil),                              // 31: sandwich.Guild
-		(*Channel)(nil),                            // 32: sandwich.Channel
-		(*User)(nil),                               // 33: sandwich.User
-		(*Emoji)(nil),                              // 34: sandwich.Emoji
-		(*GuildMember)(nil),                        // 35: sandwich.GuildMember
-		(*Role)(nil),                               // 36: sandwich.Role
-	}
-)
-
+var file_events_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_events_proto_goTypes = []interface{}{
+	(*BaseResponse)(nil),                       // 0: sandwich.BaseResponse
+	(*ChannelsResponse)(nil),                   // 1: sandwich.ChannelsResponse
+	(*UsersResponse)(nil),                      // 2: sandwich.UsersResponse
+	(*EmojisResponse)(nil),                     // 3: sandwich.EmojisResponse
+	(*FetchConsumerConfigurationRequest)(nil),  // 4: sandwich.FetchConsumerConfigurationRequest
+	(*FetchConsumerConfigurationResponse)(nil), // 5: sandwich.FetchConsumerConfigurationResponse
+	(*FetchGuildChannelsRequest)(nil),          // 6: sandwich.FetchGuildChannelsRequest
+	(*FetchGuildEmojisRequest)(nil),            // 7: sandwich.FetchGuildEmojisRequest
+	(*FetchUsersRequest)(nil),                  // 8: sandwich.FetchUsersRequest
+	(*FetchGuildMembersRequest)(nil),           // 9: sandwich.FetchGuildMembersRequest
+	(*FetchGuildRequest)(nil),                  // 10: sandwich.FetchGuildRequest
+	(*FetchGuildRolesRequest)(nil),             // 11: sandwich.FetchGuildRolesRequest
+	(*FetchMutualGuildsRequest)(nil),           // 12: sandwich.FetchMutualGuildsRequest
+	(*GuildMembersResponse)(nil),               // 13: sandwich.GuildMembersResponse
+	(*GuildResponse)(nil),                      // 14: sandwich.GuildResponse
+	(*GuildRolesResponse)(nil),                 // 15: sandwich.GuildRolesResponse
+	(*GuildsResponse)(nil),                     // 16: sandwich.GuildsResponse
+	(*RequestGuildChunkRequest)(nil),           // 17: sandwich.RequestGuildChunkRequest
+	(*SendWebsocketMessageRequest)(nil),        // 18: sandwich.SendWebsocketMessageRequest
+	(*WhereIsGuildLocation)(nil),               // 19: sandwich.WhereIsGuildLocation
+	(*WhereIsGuildRequest)(nil),                // 20: sandwich.WhereIsGuildRequest
+	(*WhereIsGuildResponse)(nil),               // 21: sandwich.WhereIsGuildResponse
+	(*ListenRequest)(nil),                      // 22: sandwich.ListenRequest
+	(*ListenResponse)(nil),                     // 23: sandwich.ListenResponse
+	(*PostAnalyticsRequest)(nil),               // 24: sandwich.PostAnalyticsRequest
+	nil,                                        // 25: sandwich.ChannelsResponse.GuildChannelsEntry
+	nil,                                        // 26: sandwich.UsersResponse.UsersEntry
+	nil,                                        // 27: sandwich.EmojisResponse.GuildEmojisEntry
+	nil,                                        // 28: sandwich.GuildMembersResponse.GuildMembersEntry
+	nil,                                        // 29: sandwich.GuildRolesResponse.GuildRolesEntry
+	nil,                                        // 30: sandwich.GuildsResponse.GuildsEntry
+	(*Guild)(nil),                              // 31: sandwich.Guild
+	(*Channel)(nil),                            // 32: sandwich.Channel
+	(*User)(nil),                               // 33: sandwich.User
+	(*Emoji)(nil),                              // 34: sandwich.Emoji
+	(*GuildMember)(nil),                        // 35: sandwich.GuildMember
+	(*Role)(nil),                               // 36: sandwich.Role
+}
 var file_events_proto_depIdxs = []int32{
 	0,  // 0: sandwich.ChannelsResponse.baseResponse:type_name -> sandwich.BaseResponse
 	25, // 1: sandwich.ChannelsResponse.guildChannels:type_name -> sandwich.ChannelsResponse.GuildChannelsEntry

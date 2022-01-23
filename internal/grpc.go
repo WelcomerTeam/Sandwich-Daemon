@@ -3,6 +3,10 @@ package internal
 import (
 	"bytes"
 	"context"
+	"io"
+	"strings"
+	"time"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
@@ -11,9 +15,6 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"io"
-	"strings"
-	"time"
 )
 
 var (
@@ -639,7 +640,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 	}
 
 	shardGroup.shardsMu.RLock()
-	shard, ok := shardGroup.Shards[int(request.Shard)]
+	shard, ok := shardGroup.Shards[request.Shard]
 	defer shardGroup.shardsMu.RUnlock()
 
 	if !ok {
@@ -684,8 +685,8 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 				if _, ok := shard.Guilds[discord.Snowflake(request.GuildID)]; ok {
 					response.Locations = append(response.Locations, &pb.WhereIsGuildLocation{
 						Manager:    manager.Identifier.Load(),
-						ShardGroup: int64(shardGroup.ID),
-						ShardId:    int64(shard.ShardGroup.ID),
+						ShardGroup: shardGroup.ID,
+						ShardId:    shard.ShardGroup.ID,
 					})
 				}
 				shard.guildsMu.RUnlock()

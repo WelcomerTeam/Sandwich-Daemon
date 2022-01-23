@@ -9,7 +9,7 @@ type Embed struct {
 	Description string          `json:"description,omitempty"`
 	URL         string          `json:"url,omitempty"`
 	Timestamp   string          `json:"timestamp,omitempty"`
-	Color       int             `json:"color,omitempty"`
+	Color       int32           `json:"color,omitempty"`
 	Footer      *EmbedFooter    `json:"footer,omitempty"`
 	Image       *EmbedImage     `json:"image,omitempty"`
 	Thumbnail   *EmbedThumbnail `json:"thumbnail,omitempty"`
@@ -30,23 +30,23 @@ type EmbedFooter struct {
 type EmbedImage struct {
 	URL      *string `json:"url,omitempty"`
 	ProxyURL *string `json:"proxy_url,omitempty"`
-	Height   int     `json:"height,omitempty"`
-	Width    int     `json:"width,omitempty"`
+	Height   int32   `json:"height,omitempty"`
+	Width    int32   `json:"width,omitempty"`
 }
 
 // EmbedThumbnail represents the thumbnail of an embed.
 type EmbedThumbnail struct {
 	URL      *string `json:"url,omitempty"`
 	ProxyURL *string `json:"proxy_url,omitempty"`
-	Height   int     `json:"height,omitempty"`
-	Width    int     `json:"width,omitempty"`
+	Height   int32   `json:"height,omitempty"`
+	Width    int32   `json:"width,omitempty"`
 }
 
 // EmbedVideo represents the video of an embed.
 type EmbedVideo struct {
 	URL    *string `json:"url,omitempty"`
-	Height int     `json:"height,omitempty"`
-	Width  int     `json:"width,omitempty"`
+	Height int32   `json:"height,omitempty"`
+	Width  int32   `json:"width,omitempty"`
 }
 
 // EmbedProvider represents the provider of an embed.

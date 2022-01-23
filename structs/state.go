@@ -1,9 +1,10 @@
 package structs
 
 import (
+	"sync"
+
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	jsoniter "github.com/json-iterator/go"
-	"sync"
 )
 
 // StateResult represents the data a state handler would return which would be converted to
@@ -18,7 +19,7 @@ type StateGuild struct {
 	Large         *bool `json:"large"`
 	Unavailable   *bool `json:"unavailable"`
 
-	AFKTimeout  int            `json:"afk_timeout"`
+	AFKTimeout  int32          `json:"afk_timeout"`
 	Permissions *discord.Int64 `json:"permissions,omitempty"`
 
 	NSFWLevel *discord.GuildNSFWLevelType `json:"nsfw_level"`
@@ -109,8 +110,8 @@ type StateRole struct {
 	Hoist       bool              `json:"hoist"`
 	Managed     bool              `json:"managed"`
 	Mentionable bool              `json:"mentionable"`
-	Color       int               `json:"color"`
-	Position    int               `json:"position"`
+	Color       int32             `json:"color"`
+	Position    int32             `json:"position"`
 	Permissions discord.Int64     `json:"permissions"`
 	ID          discord.Snowflake `json:"id"`
 	Tags        *discord.RoleTag  `json:"tags"`
@@ -168,7 +169,7 @@ type StateChannel struct {
 	// MemberCount                *int                    `json:"member_count"`
 	ThreadMetadata *discord.ThreadMetadata `json:"thread_metadata"`
 	// ThreadMember               *discord.ThreadMember   `json:"member"`
-	// DefaultAutoArchiveDuration int                     `json:"default_auto_archive_duration"`
+	// DefaultAutoArchiveDuration int32                     `json:"default_auto_archive_duration"`
 
 	// Slash Commands.
 	Permissions *discord.Int64 `json:"permissions"`

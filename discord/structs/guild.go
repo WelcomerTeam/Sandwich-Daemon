@@ -84,7 +84,7 @@ type Guild struct {
 	Region      string     `json:"region"`
 
 	AFKChannelID *Snowflake `json:"afk_channel_id,omitempty"`
-	AFKTimeout   int        `json:"afk_timeout"`
+	AFKTimeout   int32      `json:"afk_timeout"`
 
 	WidgetEnabled   *bool      `json:"widget_enabled,omitempty"`
 	WidgetChannelID *Snowflake `json:"widget_channel_id,omitempty"`
