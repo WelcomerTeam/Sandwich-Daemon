@@ -82,9 +82,9 @@ type Message struct {
 	MentionRoles    []*Snowflake             `json:"mention_roles"`
 	MentionChannels []*MessageChannelMention `json:"mention_channels,omitempty"`
 
-	Attachments       []*MessageAttachment    `json:"attachments"`
-	Embeds            []*Embed                `json:"embeds"`
-	Reactions         []*MessageReaction      `json:"reactions"`
+	Attachments []*MessageAttachment `json:"attachments"`
+	Embeds      []*Embed             `json:"embeds"`
+	Reactions   []*MessageReaction   `json:"reactions"`
 	// Nonce          string                  `json:"nonce,omitempty"`
 	Pinned            bool                    `json:"pinned"`
 	WebhookID         *Snowflake              `json:"webhook_id,omitempty"`

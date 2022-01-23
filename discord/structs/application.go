@@ -169,8 +169,8 @@ type ApplicationCommandOption struct {
 	Choices      []*ApplicationCommandOptionChoice `json:"choices,omitempty"`
 	Options      []*ApplicationCommandOption       `json:"options,omitempty"`
 	ChannelTypes []*ChannelType                    `json:"channel_types,omitempty"`
-	MinValue     int32                               `json:"min_value,omitempty"`
-	MaxValue     int32                               `json:"max_value,omitempty"`
+	MinValue     int32                             `json:"min_value,omitempty"`
+	MaxValue     int32                             `json:"max_value,omitempty"`
 	Autocomplete bool                              `json:"autocomplete"`
 }
 
@@ -275,7 +275,7 @@ type InteractionComponent struct {
 	URL         string                     `json:"url,omitempty"`
 	Options     []*ApplicationSelectOption `json:"options"`
 	Placeholder string                     `json:"placeholder,omitempty"`
-	MinValues   int32                        `json:"min_values,omitempty"`
-	MaxValues   int32                        `json:"max_values,omitempty"`
+	MinValues   int32                      `json:"min_values,omitempty"`
+	MaxValues   int32                      `json:"max_values,omitempty"`
 	Components  []*InteractionComponent    `json:"components,omitempty"`
 }

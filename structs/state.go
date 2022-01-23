@@ -1,10 +1,9 @@
 package structs
 
 import (
-	"sync"
-
 	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	jsoniter "github.com/json-iterator/go"
+	"sync"
 )
 
 // StateResult represents the data a state handler would return which would be converted to
@@ -49,7 +48,6 @@ type StateGuildChannels struct {
 
 	Channels map[discord.Snowflake]*StateChannel `json:"channels"`
 }
-
 
 type StateGuild struct {
 	ID              discord.Snowflake `json:"id"`
@@ -182,17 +180,17 @@ type StateChannel struct {
 
 type StateUser struct {
 	ID            discord.Snowflake        `json:"id"`
-	Username      string           `json:"username"`
-	Discriminator string           `json:"discriminator"`
-	Avatar        string           `json:"avatar"`
-	Bot           bool             `json:"bot"`
-	System        bool             `json:"system,omitempty"`
-	MFAEnabled    bool             `json:"mfa_enabled,omitempty"`
-	Banner        string           `json:"banner,omitempty"`
-	AccentColour  int32            `json:"accent_color"`
-	Locale        string           `json:"locale,omitempty"`
-	Verified      bool             `json:"verified,omitempty"`
-	Email         string           `json:"email,omitempty"`
+	Username      string                   `json:"username"`
+	Discriminator string                   `json:"discriminator"`
+	Avatar        string                   `json:"avatar"`
+	Bot           bool                     `json:"bot"`
+	System        bool                     `json:"system,omitempty"`
+	MFAEnabled    bool                     `json:"mfa_enabled,omitempty"`
+	Banner        string                   `json:"banner,omitempty"`
+	AccentColour  int32                    `json:"accent_color"`
+	Locale        string                   `json:"locale,omitempty"`
+	Verified      bool                     `json:"verified,omitempty"`
+	Email         string                   `json:"email,omitempty"`
 	Flags         *discord.UserFlags       `json:"flags,omitempty"`
 	PremiumType   *discord.UserPremiumType `json:"premium_type,omitempty"`
 	PublicFlags   *discord.UserFlags       `json:"public_flags,omitempty"`
