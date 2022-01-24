@@ -2,7 +2,8 @@ package internal
 
 import (
 	"context"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"

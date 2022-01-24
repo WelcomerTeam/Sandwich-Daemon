@@ -2,21 +2,23 @@ package internal
 
 import (
 	"context"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 // OnReady handles the READY event.
 // It will go and mark guilds as unavailable and go through
 // any GUILD_CREATE events for the next few seconds.
-func OnReady(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnReady(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var readyPayload discord.Ready
+	var readyPayload discord_structs.Ready
 
-	var guildCreatePayload discord.GuildCreate
+	var guildCreatePayload discord_structs.GuildCreate
 
 	err = ctx.decodeContent(msg, &readyPayload)
 	if err != nil {
@@ -62,7 +64,7 @@ ready:
 
 			break ready
 		case msg := <-ctx.MessageCh:
-			if msg.Type == structs.DiscordEventGuildCreate {
+			if msg.Type == discord.DiscordEventGuildCreate {
 				guildCreateEvents++
 
 				err = ctx.decodeContent(msg, &guildCreatePayload)
@@ -94,7 +96,7 @@ ready:
 	return result, false, nil
 }
 
-func OnResumed(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnResumed(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	select {
@@ -109,10 +111,10 @@ func OnResumed(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateR
 	}, true, nil
 }
 
-func OnApplicationCommandCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnApplicationCommandCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var applicationCommandCreatePayload discord.ApplicationCommandCreate
+	var applicationCommandCreatePayload discord_structs.ApplicationCommandCreate
 
 	err = ctx.decodeContent(msg, &applicationCommandCreatePayload)
 	if err != nil {
@@ -124,10 +126,10 @@ func OnApplicationCommandCreate(ctx *StateCtx, msg discord.GatewayPayload) (resu
 	}, true, nil
 }
 
-func OnApplicationCommandUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnApplicationCommandUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var applicationCommandUpdatePayload discord.ApplicationCommandUpdate
+	var applicationCommandUpdatePayload discord_structs.ApplicationCommandUpdate
 
 	err = ctx.decodeContent(msg, &applicationCommandUpdatePayload)
 	if err != nil {
@@ -139,10 +141,10 @@ func OnApplicationCommandUpdate(ctx *StateCtx, msg discord.GatewayPayload) (resu
 	}, true, nil
 }
 
-func OnApplicationCommandDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnApplicationCommandDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var applicationCommandDeletePayload discord.ApplicationCommandDelete
+	var applicationCommandDeletePayload discord_structs.ApplicationCommandDelete
 
 	err = ctx.decodeContent(msg, &applicationCommandDeletePayload)
 	if err != nil {
@@ -154,8 +156,8 @@ func OnApplicationCommandDelete(ctx *StateCtx, msg discord.GatewayPayload) (resu
 	}, true, nil
 }
 
-func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildCreatePayload discord.GuildCreate
+func OnGuildCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildCreatePayload discord_structs.GuildCreate
 
 	err = ctx.decodeContent(msg, &guildCreatePayload)
 	if err != nil {
@@ -190,10 +192,10 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	}, true, nil
 }
 
-func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnGuildMembersChunk(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var guildMembersChunkPayload discord.GuildMembersChunk
+	var guildMembersChunkPayload discord_structs.GuildMembersChunk
 
 	err = ctx.decodeContent(msg, &guildMembersChunkPayload)
 	if err != nil {
@@ -216,8 +218,8 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	return result, false, nil
 }
 
-func OnChannelCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var channelCreatePayload discord.ChannelCreate
+func OnChannelCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var channelCreatePayload discord_structs.ChannelCreate
 
 	err = ctx.decodeContent(msg, &channelCreatePayload)
 	if err != nil {
@@ -233,8 +235,8 @@ func OnChannelCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}, true, nil
 }
 
-func OnChannelUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var channelUpdatePayload discord.ChannelUpdate
+func OnChannelUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var channelUpdatePayload discord_structs.ChannelUpdate
 
 	err = ctx.decodeContent(msg, &channelUpdatePayload)
 	if err != nil {
@@ -259,8 +261,8 @@ func OnChannelUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}, true, nil
 }
 
-func OnChannelDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var channelDeletePayload discord.ChannelDelete
+func OnChannelDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var channelDeletePayload discord_structs.ChannelDelete
 
 	err = ctx.decodeContent(msg, &channelDeletePayload)
 	if err != nil {
@@ -285,8 +287,8 @@ func OnChannelDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}, true, nil
 }
 
-func OnChannelPinsUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var channelPinsUpdatePayload discord.ChannelPinsUpdate
+func OnChannelPinsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var channelPinsUpdatePayload discord_structs.ChannelPinsUpdate
 
 	err = ctx.decodeContent(msg, &channelPinsUpdatePayload)
 	if err != nil {
@@ -300,8 +302,8 @@ func OnChannelPinsUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnThreadCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var threadCreatePayload discord.ThreadCreate
+func OnThreadCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var threadCreatePayload discord_structs.ThreadCreate
 
 	err = ctx.decodeContent(msg, &threadCreatePayload)
 	if err != nil {
@@ -313,10 +315,10 @@ func OnThreadCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 	}, true, nil
 }
 
-func OnThreadUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnThreadUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var threadUpdatePayload discord.ThreadUpdate
+	var threadUpdatePayload discord_structs.ThreadUpdate
 
 	err = ctx.decodeContent(msg, &threadUpdatePayload)
 	if err != nil {
@@ -338,10 +340,10 @@ func OnThreadUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 	}, true, nil
 }
 
-func OnThreadDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnThreadDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var threadDeletePayload discord.ThreadDelete
+	var threadDeletePayload discord_structs.ThreadDelete
 
 	err = ctx.decodeContent(msg, &threadDeletePayload)
 	if err != nil {
@@ -353,10 +355,10 @@ func OnThreadDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 	}, true, nil
 }
 
-func OnThreadListSync(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnThreadListSync(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var threadListSyncPayload discord.ThreadListSync
+	var threadListSyncPayload discord_structs.ThreadListSync
 
 	err = ctx.decodeContent(msg, &threadListSyncPayload)
 	if err != nil {
@@ -368,10 +370,10 @@ func OnThreadListSync(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	}, true, nil
 }
 
-func OnThreadMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnThreadMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var threadMemberUpdatePayload discord.ThreadMemberUpdate
+	var threadMemberUpdatePayload discord_structs.ThreadMemberUpdate
 
 	err = ctx.decodeContent(msg, &threadMemberUpdatePayload)
 	if err != nil {
@@ -383,10 +385,10 @@ func OnThreadMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result str
 	}, true, nil
 }
 
-func OnThreadMembersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnThreadMembersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var threadMembersUpdatePayload discord.ThreadMembersUpdate
+	var threadMembersUpdatePayload discord_structs.ThreadMembersUpdate
 
 	err = ctx.decodeContent(msg, &threadMembersUpdatePayload)
 	if err != nil {
@@ -398,8 +400,8 @@ func OnThreadMembersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}, true, nil
 }
 
-func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildUpdatePayload discord.GuildUpdate
+func OnGuildUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildUpdatePayload discord_structs.GuildUpdate
 
 	err = ctx.decodeContent(msg, &guildUpdatePayload)
 	if err != nil {
@@ -449,8 +451,8 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	}, true, nil
 }
 
-func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildDeletePayload discord.GuildDelete
+func OnGuildDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildDeletePayload discord_structs.GuildDelete
 
 	err = ctx.decodeContent(msg, &guildDeletePayload)
 	if err != nil {
@@ -485,8 +487,8 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	}, true, nil
 }
 
-func OnGuildBanAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildBanAddPayload discord.GuildBanAdd
+func OnGuildBanAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildBanAddPayload discord_structs.GuildBanAdd
 
 	err = ctx.decodeContent(msg, &guildBanAddPayload)
 	if err != nil {
@@ -500,8 +502,8 @@ func OnGuildBanAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	}, true, nil
 }
 
-func OnGuildBanRemove(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildBanRemovePayload discord.GuildBanRemove
+func OnGuildBanRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildBanRemovePayload discord_structs.GuildBanRemove
 
 	err = ctx.decodeContent(msg, &guildBanRemovePayload)
 	if err != nil {
@@ -515,8 +517,8 @@ func OnGuildBanRemove(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	}, true, nil
 }
 
-func OnGuildEmojisUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildEmojisUpdatePayload discord.GuildEmojisUpdate
+func OnGuildEmojisUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildEmojisUpdatePayload discord_structs.GuildEmojisUpdate
 
 	err = ctx.decodeContent(msg, &guildEmojisUpdatePayload)
 	if err != nil {
@@ -546,8 +548,8 @@ func OnGuildEmojisUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildStickersUpdatePayload discord.GuildStickersUpdate
+func OnGuildStickersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildStickersUpdatePayload discord_structs.GuildStickersUpdate
 
 	err = ctx.decodeContent(msg, &guildStickersUpdatePayload)
 	if err != nil {
@@ -576,8 +578,8 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}, true, nil
 }
 
-func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildIntegrationsUpdatePayload discord.GuildIntegrationsUpdate
+func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildIntegrationsUpdatePayload discord_structs.GuildIntegrationsUpdate
 
 	err = ctx.decodeContent(msg, &guildIntegrationsUpdatePayload)
 	if err != nil {
@@ -591,8 +593,8 @@ func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord.GatewayPayload) (resul
 	}, true, nil
 }
 
-func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildMemberAddPayload discord.GuildMemberAdd
+func OnGuildMemberAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildMemberAddPayload discord_structs.GuildMemberAdd
 
 	err = ctx.decodeContent(msg, &guildMemberAddPayload)
 	if err != nil {
@@ -631,8 +633,8 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	}, true, nil
 }
 
-func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildMemberRemovePayload discord.GuildMemberRemove
+func OnGuildMemberRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildMemberRemovePayload discord_structs.GuildMemberRemove
 
 	err = ctx.decodeContent(msg, &guildMemberRemovePayload)
 	if err != nil {
@@ -675,8 +677,8 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildMemberUpdatePayload discord.GuildMemberUpdate
+func OnGuildMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildMemberUpdatePayload discord_structs.GuildMemberUpdate
 
 	err = ctx.decodeContent(msg, &guildMemberUpdatePayload)
 	if err != nil {
@@ -705,8 +707,8 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnGuildRoleCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildRoleCreatePayload discord.GuildRoleCreate
+func OnGuildRoleCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildRoleCreatePayload discord_structs.GuildRoleCreate
 
 	err = ctx.decodeContent(msg, &guildRoleCreatePayload)
 	if err != nil {
@@ -722,8 +724,8 @@ func OnGuildRoleCreate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 	}, true, nil
 }
 
-func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildRoleUpdatePayload discord.GuildRoleUpdate
+func OnGuildRoleUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildRoleUpdatePayload discord_structs.GuildRoleUpdate
 
 	err = ctx.decodeContent(msg, &guildRoleUpdatePayload)
 	if err != nil {
@@ -750,8 +752,8 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 	}, true, nil
 }
 
-func OnGuildRoleDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var guildRoleDeletePayload discord.GuildRoleDelete
+func OnGuildRoleDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var guildRoleDeletePayload discord_structs.GuildRoleDelete
 
 	err = ctx.decodeContent(msg, &guildRoleDeletePayload)
 	if err != nil {
@@ -767,10 +769,10 @@ func OnGuildRoleDelete(ctx *StateCtx, msg discord.GatewayPayload) (result struct
 	}, true, nil
 }
 
-func OnIntegrationCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnIntegrationCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var integrationCreatePayload discord.IntegrationCreate
+	var integrationCreatePayload discord_structs.IntegrationCreate
 
 	err = ctx.decodeContent(msg, &integrationCreatePayload)
 	if err != nil {
@@ -782,10 +784,10 @@ func OnIntegrationCreate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnIntegrationUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnIntegrationUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var integrationUpdatePayload discord.IntegrationUpdate
+	var integrationUpdatePayload discord_structs.IntegrationUpdate
 
 	err = ctx.decodeContent(msg, &integrationUpdatePayload)
 	if err != nil {
@@ -797,10 +799,10 @@ func OnIntegrationUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnIntegrationDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnIntegrationDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var integrationDeletePayload discord.IntegrationDelete
+	var integrationDeletePayload discord_structs.IntegrationDelete
 
 	err = ctx.decodeContent(msg, &integrationDeletePayload)
 	if err != nil {
@@ -812,10 +814,10 @@ func OnIntegrationDelete(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnInteractionCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnInteractionCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var interactionCreatePayload discord.InteractionCreate
+	var interactionCreatePayload discord_structs.InteractionCreate
 
 	err = ctx.decodeContent(msg, &interactionCreatePayload)
 	if err != nil {
@@ -827,8 +829,8 @@ func OnInteractionCreate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnInviteCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var inviteCreatePayload discord.InviteCreate
+func OnInviteCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var inviteCreatePayload discord_structs.InviteCreate
 
 	err = ctx.decodeContent(msg, &inviteCreatePayload)
 	if err != nil {
@@ -844,8 +846,8 @@ func OnInviteCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 	}, true, nil
 }
 
-func OnInviteDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var inviteDeletePayload discord.InviteDelete
+func OnInviteDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var inviteDeletePayload discord_structs.InviteDelete
 
 	err = ctx.decodeContent(msg, &inviteDeletePayload)
 	if err != nil {
@@ -861,8 +863,8 @@ func OnInviteDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.S
 	}, true, nil
 }
 
-func OnMessageCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageCreatePayload discord.MessageCreate
+func OnMessageCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageCreatePayload discord_structs.MessageCreate
 
 	err = ctx.decodeContent(msg, &messageCreatePayload)
 	if err != nil {
@@ -876,8 +878,8 @@ func OnMessageCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}, true, nil
 }
 
-func OnMessageUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageUpdatePayload discord.MessageUpdate
+func OnMessageUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageUpdatePayload discord_structs.MessageUpdate
 
 	err = ctx.decodeContent(msg, &messageUpdatePayload)
 	if err != nil {
@@ -891,8 +893,8 @@ func OnMessageUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}, true, nil
 }
 
-func OnMessageDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageDeletePayload discord.MessageDelete
+func OnMessageDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageDeletePayload discord_structs.MessageDelete
 
 	err = ctx.decodeContent(msg, &messageDeletePayload)
 	if err != nil {
@@ -906,8 +908,8 @@ func OnMessageDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}, true, nil
 }
 
-func OnMessageDeleteBulk(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageDeleteBulkPayload discord.MessageDeleteBulk
+func OnMessageDeleteBulk(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageDeleteBulkPayload discord_structs.MessageDeleteBulk
 
 	err = ctx.decodeContent(msg, &messageDeleteBulkPayload)
 	if err != nil {
@@ -921,8 +923,8 @@ func OnMessageDeleteBulk(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnMessageReactionAdd(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageReactionAddPayload discord.MessageReactionAdd
+func OnMessageReactionAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageReactionAddPayload discord_structs.MessageReactionAdd
 
 	err = ctx.decodeContent(msg, &messageReactionAddPayload)
 	if err != nil {
@@ -936,8 +938,8 @@ func OnMessageReactionAdd(ctx *StateCtx, msg discord.GatewayPayload) (result str
 	}, true, nil
 }
 
-func OnMessageReactionRemove(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageReactionRemovePayload discord.MessageReactionRemove
+func OnMessageReactionRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageReactionRemovePayload discord_structs.MessageReactionRemove
 
 	err = ctx.decodeContent(msg, &messageReactionRemovePayload)
 	if err != nil {
@@ -951,8 +953,8 @@ func OnMessageReactionRemove(ctx *StateCtx, msg discord.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageReactionRemoveAllPayload discord.MessageReactionRemoveAll
+func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageReactionRemoveAllPayload discord_structs.MessageReactionRemoveAll
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveAllPayload)
 	if err != nil {
@@ -966,8 +968,8 @@ func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord.GatewayPayload) (resu
 	}, true, nil
 }
 
-func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var messageReactionRemoveEmojiPayload discord.MessageReactionRemoveEmoji
+func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var messageReactionRemoveEmojiPayload discord_structs.MessageReactionRemoveEmoji
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveEmojiPayload)
 	if err != nil {
@@ -981,8 +983,8 @@ func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord.GatewayPayload) (re
 	}, true, nil
 }
 
-func OnPresenceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var presenceUpdatePayload discord.PresenceUpdate
+func OnPresenceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var presenceUpdatePayload discord_structs.PresenceUpdate
 
 	err = ctx.decodeContent(msg, &presenceUpdatePayload)
 	if err != nil {
@@ -996,10 +998,10 @@ func OnPresenceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs
 	}, true, nil
 }
 
-func OnStageInstanceCreate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnStageInstanceCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var stageInstanceCreatePayload discord.StageInstanceCreate
+	var stageInstanceCreatePayload discord_structs.StageInstanceCreate
 
 	err = ctx.decodeContent(msg, &stageInstanceCreatePayload)
 	if err != nil {
@@ -1011,10 +1013,10 @@ func OnStageInstanceCreate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}, true, nil
 }
 
-func OnStageInstanceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnStageInstanceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var stageInstanceUpdatePayload discord.StageInstanceUpdate
+	var stageInstanceUpdatePayload discord_structs.StageInstanceUpdate
 
 	err = ctx.decodeContent(msg, &stageInstanceUpdatePayload)
 	if err != nil {
@@ -1026,10 +1028,10 @@ func OnStageInstanceUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}, true, nil
 }
 
-func OnStageInstanceDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnStageInstanceDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var stageInstanceDeletePayload discord.StageInstanceDelete
+	var stageInstanceDeletePayload discord_structs.StageInstanceDelete
 
 	err = ctx.decodeContent(msg, &stageInstanceDeletePayload)
 	if err != nil {
@@ -1041,8 +1043,8 @@ func OnStageInstanceDelete(ctx *StateCtx, msg discord.GatewayPayload) (result st
 	}, true, nil
 }
 
-func OnTypingStart(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var typingStartPayload discord.TypingStart
+func OnTypingStart(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var typingStartPayload discord_structs.TypingStart
 
 	err = ctx.decodeContent(msg, &typingStartPayload)
 	if err != nil {
@@ -1056,10 +1058,10 @@ func OnTypingStart(ctx *StateCtx, msg discord.GatewayPayload) (result structs.St
 	}, true, nil
 }
 
-func OnUserUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnUserUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var userUpdatePayload discord.UserUpdate
+	var userUpdatePayload discord_structs.UserUpdate
 
 	err = ctx.decodeContent(msg, &userUpdatePayload)
 	if err != nil {
@@ -1081,8 +1083,8 @@ func OnUserUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.Sta
 	}, true, nil
 }
 
-func OnVoiceStateUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
-	var voiceStateUpdatePayload discord.VoiceStateUpdate
+func OnVoiceStateUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	var voiceStateUpdatePayload discord_structs.VoiceStateUpdate
 
 	err = ctx.decodeContent(msg, &voiceStateUpdatePayload)
 	if err != nil {
@@ -1098,10 +1100,10 @@ func OnVoiceStateUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result struc
 	}, true, nil
 }
 
-func OnVoiceServerUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnVoiceServerUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var voiceServerUpdatePayload discord.VoiceServerUpdate
+	var voiceServerUpdatePayload discord_structs.VoiceServerUpdate
 
 	err = ctx.decodeContent(msg, &voiceServerUpdatePayload)
 	if err != nil {
@@ -1113,10 +1115,10 @@ func OnVoiceServerUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result stru
 	}, true, nil
 }
 
-func OnWebhookUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnWebhookUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var webhookUpdatePayload discord.WebhookUpdate
+	var webhookUpdatePayload discord_structs.WebhookUpdate
 
 	err = ctx.decodeContent(msg, &webhookUpdatePayload)
 	if err != nil {
@@ -1128,10 +1130,10 @@ func OnWebhookUpdate(ctx *StateCtx, msg discord.GatewayPayload) (result structs.
 	}, true, nil
 }
 
-func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var guildJoinRequestDeletePayload discord.GuildJoinRequestDelete
+	var guildJoinRequestDeletePayload discord_structs.GuildJoinRequestDelete
 
 	err = ctx.decodeContent(msg, &guildJoinRequestDeletePayload)
 	if err != nil {
@@ -1144,60 +1146,60 @@ func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord.GatewayPayload) (result
 }
 
 func init() {
-	registerDispatch(structs.DiscordEventReady, OnReady)
-	registerDispatch(structs.DiscordEventResumed, OnResumed)
-	registerDispatch(structs.DiscordEventApplicationCommandCreate, OnApplicationCommandCreate)
-	registerDispatch(structs.DiscordEventApplicationCommandUpdate, OnApplicationCommandUpdate)
-	registerDispatch(structs.DiscordEventApplicationCommandDelete, OnApplicationCommandDelete)
-	registerDispatch(structs.DiscordEventGuildMembersChunk, OnGuildMembersChunk)
-	registerDispatch(structs.DiscordEventChannelCreate, OnChannelCreate)
-	registerDispatch(structs.DiscordEventChannelUpdate, OnChannelUpdate)
-	registerDispatch(structs.DiscordEventChannelDelete, OnChannelDelete)
-	registerDispatch(structs.DiscordEventChannelPinsUpdate, OnChannelPinsUpdate)
-	registerDispatch(structs.DiscordEventThreadCreate, OnThreadCreate)
-	registerDispatch(structs.DiscordEventThreadUpdate, OnThreadUpdate)
-	registerDispatch(structs.DiscordEventThreadDelete, OnThreadDelete)
-	registerDispatch(structs.DiscordEventThreadListSync, OnThreadListSync)
-	registerDispatch(structs.DiscordEventThreadMemberUpdate, OnThreadMemberUpdate)
-	registerDispatch(structs.DiscordEventThreadMembersUpdate, OnThreadMembersUpdate)
-	registerDispatch(structs.DiscordEventGuildCreate, OnGuildCreate)
-	registerDispatch(structs.DiscordEventGuildUpdate, OnGuildUpdate)
-	registerDispatch(structs.DiscordEventGuildDelete, OnGuildDelete)
-	registerDispatch(structs.DiscordEventGuildBanAdd, OnGuildBanAdd)
-	registerDispatch(structs.DiscordEventGuildBanRemove, OnGuildBanRemove)
-	registerDispatch(structs.DiscordEventGuildEmojisUpdate, OnGuildEmojisUpdate)
-	registerDispatch(structs.DiscordEventGuildStickersUpdate, OnGuildStickersUpdate)
-	registerDispatch(structs.DiscordEventGuildIntegrationsUpdate, OnGuildIntegrationsUpdate)
-	registerDispatch(structs.DiscordEventGuildMemberAdd, OnGuildMemberAdd)
-	registerDispatch(structs.DiscordEventGuildMemberRemove, OnGuildMemberRemove)
-	registerDispatch(structs.DiscordEventGuildMemberUpdate, OnGuildMemberUpdate)
-	registerDispatch(structs.DiscordEventGuildRoleCreate, OnGuildRoleCreate)
-	registerDispatch(structs.DiscordEventGuildRoleUpdate, OnGuildRoleUpdate)
-	registerDispatch(structs.DiscordEventGuildRoleDelete, OnGuildRoleDelete)
-	registerDispatch(structs.DiscordEventIntegrationCreate, OnIntegrationCreate)
-	registerDispatch(structs.DiscordEventIntegrationUpdate, OnIntegrationUpdate)
-	registerDispatch(structs.DiscordEventIntegrationDelete, OnIntegrationDelete)
-	registerDispatch(structs.DiscordEventInteractionCreate, OnInteractionCreate)
-	registerDispatch(structs.DiscordEventInviteCreate, OnInviteCreate)
-	registerDispatch(structs.DiscordEventInviteDelete, OnInviteDelete)
-	registerDispatch(structs.DiscordEventMessageCreate, OnMessageCreate)
-	registerDispatch(structs.DiscordEventMessageUpdate, OnMessageUpdate)
-	registerDispatch(structs.DiscordEventMessageDelete, OnMessageDelete)
-	registerDispatch(structs.DiscordEventMessageDeleteBulk, OnMessageDeleteBulk)
-	registerDispatch(structs.DiscordEventMessageReactionAdd, OnMessageReactionAdd)
-	registerDispatch(structs.DiscordEventMessageReactionRemove, OnMessageReactionRemove)
-	registerDispatch(structs.DiscordEventMessageReactionRemoveAll, OnMessageReactionRemoveAll)
-	registerDispatch(structs.DiscordEventMessageReactionRemoveEmoji, OnMessageReactionRemoveEmoji)
-	registerDispatch(structs.DiscordEventPresenceUpdate, OnPresenceUpdate)
-	registerDispatch(structs.DiscordEventStageInstanceCreate, OnStageInstanceCreate)
-	registerDispatch(structs.DiscordEventStageInstanceUpdate, OnStageInstanceUpdate)
-	registerDispatch(structs.DiscordEventStageInstanceDelete, OnStageInstanceDelete)
-	registerDispatch(structs.DiscordEventTypingStart, OnTypingStart)
-	registerDispatch(structs.DiscordEventUserUpdate, OnUserUpdate)
-	registerDispatch(structs.DiscordEventVoiceStateUpdate, OnVoiceStateUpdate)
-	registerDispatch(structs.DiscordEventVoiceServerUpdate, OnVoiceServerUpdate)
-	registerDispatch(structs.DiscordEventWebhookUpdate, OnWebhookUpdate)
+	registerDispatch(discord.DiscordEventReady, OnReady)
+	registerDispatch(discord.DiscordEventResumed, OnResumed)
+	registerDispatch(discord.DiscordEventApplicationCommandCreate, OnApplicationCommandCreate)
+	registerDispatch(discord.DiscordEventApplicationCommandUpdate, OnApplicationCommandUpdate)
+	registerDispatch(discord.DiscordEventApplicationCommandDelete, OnApplicationCommandDelete)
+	registerDispatch(discord.DiscordEventGuildMembersChunk, OnGuildMembersChunk)
+	registerDispatch(discord.DiscordEventChannelCreate, OnChannelCreate)
+	registerDispatch(discord.DiscordEventChannelUpdate, OnChannelUpdate)
+	registerDispatch(discord.DiscordEventChannelDelete, OnChannelDelete)
+	registerDispatch(discord.DiscordEventChannelPinsUpdate, OnChannelPinsUpdate)
+	registerDispatch(discord.DiscordEventThreadCreate, OnThreadCreate)
+	registerDispatch(discord.DiscordEventThreadUpdate, OnThreadUpdate)
+	registerDispatch(discord.DiscordEventThreadDelete, OnThreadDelete)
+	registerDispatch(discord.DiscordEventThreadListSync, OnThreadListSync)
+	registerDispatch(discord.DiscordEventThreadMemberUpdate, OnThreadMemberUpdate)
+	registerDispatch(discord.DiscordEventThreadMembersUpdate, OnThreadMembersUpdate)
+	registerDispatch(discord.DiscordEventGuildCreate, OnGuildCreate)
+	registerDispatch(discord.DiscordEventGuildUpdate, OnGuildUpdate)
+	registerDispatch(discord.DiscordEventGuildDelete, OnGuildDelete)
+	registerDispatch(discord.DiscordEventGuildBanAdd, OnGuildBanAdd)
+	registerDispatch(discord.DiscordEventGuildBanRemove, OnGuildBanRemove)
+	registerDispatch(discord.DiscordEventGuildEmojisUpdate, OnGuildEmojisUpdate)
+	registerDispatch(discord.DiscordEventGuildStickersUpdate, OnGuildStickersUpdate)
+	registerDispatch(discord.DiscordEventGuildIntegrationsUpdate, OnGuildIntegrationsUpdate)
+	registerDispatch(discord.DiscordEventGuildMemberAdd, OnGuildMemberAdd)
+	registerDispatch(discord.DiscordEventGuildMemberRemove, OnGuildMemberRemove)
+	registerDispatch(discord.DiscordEventGuildMemberUpdate, OnGuildMemberUpdate)
+	registerDispatch(discord.DiscordEventGuildRoleCreate, OnGuildRoleCreate)
+	registerDispatch(discord.DiscordEventGuildRoleUpdate, OnGuildRoleUpdate)
+	registerDispatch(discord.DiscordEventGuildRoleDelete, OnGuildRoleDelete)
+	registerDispatch(discord.DiscordEventIntegrationCreate, OnIntegrationCreate)
+	registerDispatch(discord.DiscordEventIntegrationUpdate, OnIntegrationUpdate)
+	registerDispatch(discord.DiscordEventIntegrationDelete, OnIntegrationDelete)
+	registerDispatch(discord.DiscordEventInteractionCreate, OnInteractionCreate)
+	registerDispatch(discord.DiscordEventInviteCreate, OnInviteCreate)
+	registerDispatch(discord.DiscordEventInviteDelete, OnInviteDelete)
+	registerDispatch(discord.DiscordEventMessageCreate, OnMessageCreate)
+	registerDispatch(discord.DiscordEventMessageUpdate, OnMessageUpdate)
+	registerDispatch(discord.DiscordEventMessageDelete, OnMessageDelete)
+	registerDispatch(discord.DiscordEventMessageDeleteBulk, OnMessageDeleteBulk)
+	registerDispatch(discord.DiscordEventMessageReactionAdd, OnMessageReactionAdd)
+	registerDispatch(discord.DiscordEventMessageReactionRemove, OnMessageReactionRemove)
+	registerDispatch(discord.DiscordEventMessageReactionRemoveAll, OnMessageReactionRemoveAll)
+	registerDispatch(discord.DiscordEventMessageReactionRemoveEmoji, OnMessageReactionRemoveEmoji)
+	registerDispatch(discord.DiscordEventPresenceUpdate, OnPresenceUpdate)
+	registerDispatch(discord.DiscordEventStageInstanceCreate, OnStageInstanceCreate)
+	registerDispatch(discord.DiscordEventStageInstanceUpdate, OnStageInstanceUpdate)
+	registerDispatch(discord.DiscordEventStageInstanceDelete, OnStageInstanceDelete)
+	registerDispatch(discord.DiscordEventTypingStart, OnTypingStart)
+	registerDispatch(discord.DiscordEventUserUpdate, OnUserUpdate)
+	registerDispatch(discord.DiscordEventVoiceStateUpdate, OnVoiceStateUpdate)
+	registerDispatch(discord.DiscordEventVoiceServerUpdate, OnVoiceServerUpdate)
+	registerDispatch(discord.DiscordEventWebhookUpdate, OnWebhookUpdate)
 
 	// Discord Undocumented
-	registerDispatch(structs.DiscordEventGuildJoinRequestDelete, OnGuildJoinRequestDelete)
+	registerDispatch(discord.DiscordEventGuildJoinRequestDelete, OnGuildJoinRequestDelete)
 }

@@ -4,9 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
 	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/czlib"
 	jsoniter "github.com/json-iterator/go"
@@ -15,10 +20,6 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (

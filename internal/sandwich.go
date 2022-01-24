@@ -2,10 +2,20 @@ package internal
 
 import (
 	"context"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"sync"
+	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/interfacecache"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
 	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/session/v2"
@@ -22,18 +32,9 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"sync"
-	"time"
 )
 
-// VERSION follows semantic versionining.
+// VERSION follows semantic versioning.
 const VERSION = "1.3"
 
 const (

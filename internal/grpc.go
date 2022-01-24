@@ -3,7 +3,11 @@ package internal
 import (
 	"bytes"
 	"context"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	"io"
+	"strings"
+	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
@@ -11,9 +15,6 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"io"
-	"strings"
-	"time"
 )
 
 var (

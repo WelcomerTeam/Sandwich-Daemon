@@ -1,7 +1,7 @@
 package structs
 
 import (
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	discord "github.com/WelcomerTeam/Discord/structs"
 	jsoniter "github.com/json-iterator/go"
 )
 

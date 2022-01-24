@@ -3,12 +3,13 @@ package internal
 import (
 	"context"
 	"fmt"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	"strconv"
+	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"strconv"
-	"time"
 )
 
 const MagicDecimalBase = 10

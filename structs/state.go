@@ -1,9 +1,10 @@
 package structs
 
 import (
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
-	jsoniter "github.com/json-iterator/go"
 	"sync"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // StateResult represents the data a state handler would return which would be converted to

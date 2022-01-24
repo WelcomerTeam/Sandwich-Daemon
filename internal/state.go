@@ -1,10 +1,11 @@
 package internal
 
 import (
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"sync"
 	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 )
 
 //

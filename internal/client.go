@@ -3,9 +3,6 @@ package internal
 import (
 	"context"
 	"fmt"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
-	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,6 +10,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
+	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 )
 
 // Client represents the REST client.

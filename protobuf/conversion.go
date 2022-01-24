@@ -1,7 +1,7 @@
 package sandwich
 
 import (
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	discord "github.com/WelcomerTeam/Discord/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/encoding/protojson"

@@ -2,7 +2,12 @@ package internal
 
 import (
 	"fmt"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
+	"net/http"
+	"sort"
+	"strconv"
+	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
 	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
@@ -11,10 +16,6 @@ import (
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
-	"net/http"
-	"sort"
-	"strconv"
-	"time"
 )
 
 var (

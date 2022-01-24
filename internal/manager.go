@@ -5,18 +5,19 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	discord "github.com/WelcomerTeam/Sandwich-Daemon/discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/rs/zerolog"
-	"go.uber.org/atomic"
-	"golang.org/x/xerrors"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	discord "github.com/WelcomerTeam/Discord/structs"
+	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog"
+	"go.uber.org/atomic"
+	"golang.org/x/xerrors"
 )
 
 const (
