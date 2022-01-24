@@ -39,6 +39,8 @@ github.com/DataDog/datadog-go v2.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/WelcomerTeam/Discord v0.0.0-20220124132014-932442dad882 h1:qIagO5UjBXnaxY5iT+dA9K5zc+speV+FG/AqHptmoI4=
 github.com/WelcomerTeam/Discord v0.0.0-20220124132014-932442dad882/go.mod h1:ahkQORE1d68toqmtxoAPgBu1sf3/zvz9dUQ+OPSbvTE=
+github.com/WelcomerTeam/Discord v0.0.0-20220124211741-8da91003bc47 h1:SJkdCSeqz9ipPaENnXjZ920X71+D5h85mTju7vs0KEU=
+github.com/WelcomerTeam/Discord v0.0.0-20220124211741-8da91003bc47/go.mod h1:ahkQORE1d68toqmtxoAPgBu1sf3/zvz9dUQ+OPSbvTE=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15 h1:i3H4TzA9QZVoguPhdc7QJCM+zW4CeZwKZMSw6GLQEHI=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15/go.mod h1:4oemQ7XEqKAc1DTtFpWugoE9K5RLjt7iH0emiFXnL/A=
 github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904 h1:WV4Ok6b0/kgczuLAgGTNtLVOB5JIqdfzJzgOpdlDM8Q=
