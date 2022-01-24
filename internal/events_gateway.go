@@ -3,33 +3,38 @@ package internal
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
+	discord "github.com/WelcomerTeam/Discord/discord"
 	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"strconv"
-	"time"
 )
 
 const MagicDecimalBase = 10
 
-func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) error {
+func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	sh.Sequence.Store(msg.Sequence)
 
-	go func(msg discord_structs.GatewayPayload) {
+	trace["dispatch"] = discord.Int64(time.Now().Unix())
+
+	go func(msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 		sh.Sandwich.EventsInflight.Inc()
 		defer sh.Sandwich.EventsInflight.Dec()
 
-		err := sh.OnDispatch(ctx, msg)
+		err := sh.OnDispatch(ctx, msg, trace)
 		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Msg("State dispatch failed")
 		}
-	}(msg)
+	}(msg, trace)
 
 	return nil
 }
 
-func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
+func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	err = sh.SendEvent(ctx, discord_structs.GatewayOpHeartbeat, sh.Sequence.Load())
 	if err != nil {
 		go sh.Sandwich.PublishSimpleWebhook(
@@ -54,7 +59,7 @@ func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord_structs.Gate
 	return
 }
 
-func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
+func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	sh.Logger.Info().Msg("Reconnecting in response to gateway")
 
 	err = sh.Reconnect(WebsocketReconnectCloseCode)
@@ -65,7 +70,7 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord_structs.Gate
 	return
 }
 
-func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
+func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	resumable := jsoniter.Get(msg.Data, "d").ToBool()
 	if !resumable {
 		sh.SessionID.Store("")
@@ -95,7 +100,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord_structs
 	return
 }
 
-func gatewayOpHello(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
+func gatewayOpHello(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	hello := discord_structs.Hello{}
 
 	err = sh.decodeContent(msg, &hello)
@@ -119,7 +124,7 @@ func gatewayOpHello(ctx context.Context, sh *Shard, msg discord_structs.GatewayP
 	return
 }
 
-func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
+func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	sh.LastHeartbeatAck.Store(time.Now().UTC())
 
 	heartbeatRTT := sh.LastHeartbeatAck.Load().Sub(sh.LastHeartbeatSent.Load()).Milliseconds()

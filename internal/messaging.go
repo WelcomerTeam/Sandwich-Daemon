@@ -7,6 +7,7 @@ import (
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 type MQClient interface {
@@ -53,6 +54,8 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 			sh.ShardGroup.ShardCount,
 		},
 	}
+
+	packet.Trace["publish"] = discord.Int64(time.Now().Unix())
 
 	payload, err := jsoniter.Marshal(packet)
 	if err != nil {

@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
+
 	discord "github.com/WelcomerTeam/Discord/discord"
 	discord_structs "github.com/WelcomerTeam/Discord/structs"
 	"github.com/WelcomerTeam/RealRock/deadlock"
@@ -16,10 +21,6 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
@@ -537,7 +538,11 @@ func (sh *Shard) Listen(ctx context.Context) (err error) {
 			sh.wsConnMu.RUnlock()
 		}
 
-		sh.OnEvent(ctx, msg)
+		trace := sandwich_structs.SandwichTrace{
+			"receive": discord.Int64(time.Now().Unix()),
+		}
+
+		sh.OnEvent(ctx, msg, trace)
 
 		sh.wsConnMu.RLock()
 		connNotEqual := wsConn != sh.wsConn

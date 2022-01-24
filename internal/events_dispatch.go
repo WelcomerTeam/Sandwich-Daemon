@@ -12,7 +12,7 @@ import (
 // OnReady handles the READY event.
 // It will go and mark guilds as unavailable and go through
 // any GUILD_CREATE events for the next few seconds.
-func OnReady(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnReady(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var readyPayload discord_structs.Ready
@@ -74,7 +74,7 @@ ready:
 				readyTimeout.Reset(ReadyTimeout)
 			}
 
-			err = ctx.OnDispatch(ctx.context, msg)
+			err = ctx.OnDispatch(ctx.context, msg, trace)
 			if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
 				ctx.Logger.Error().Err(err).Msg("Failed to dispatch event")
 			}
@@ -95,7 +95,7 @@ ready:
 	return result, false, nil
 }
 
-func OnResumed(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnResumed(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	select {
@@ -110,7 +110,7 @@ func OnResumed(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwi
 	}, true, nil
 }
 
-func OnApplicationCommandCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnApplicationCommandCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var applicationCommandCreatePayload discord_structs.ApplicationCommandCreate
@@ -125,7 +125,7 @@ func OnApplicationCommandCreate(ctx *StateCtx, msg discord_structs.GatewayPayloa
 	}, true, nil
 }
 
-func OnApplicationCommandUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnApplicationCommandUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var applicationCommandUpdatePayload discord_structs.ApplicationCommandUpdate
@@ -140,7 +140,7 @@ func OnApplicationCommandUpdate(ctx *StateCtx, msg discord_structs.GatewayPayloa
 	}, true, nil
 }
 
-func OnApplicationCommandDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnApplicationCommandDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var applicationCommandDeletePayload discord_structs.ApplicationCommandDelete
@@ -155,7 +155,7 @@ func OnApplicationCommandDelete(ctx *StateCtx, msg discord_structs.GatewayPayloa
 	}, true, nil
 }
 
-func OnGuildCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildCreatePayload discord_structs.GuildCreate
 
 	err = ctx.decodeContent(msg, &guildCreatePayload)
@@ -191,7 +191,7 @@ func OnGuildCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sa
 	}, true, nil
 }
 
-func OnGuildMembersChunk(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildMembersChunk(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var guildMembersChunkPayload discord_structs.GuildMembersChunk
@@ -217,7 +217,7 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	return result, false, nil
 }
 
-func OnChannelCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnChannelCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var channelCreatePayload discord_structs.ChannelCreate
 
 	err = ctx.decodeContent(msg, &channelCreatePayload)
@@ -234,7 +234,7 @@ func OnChannelCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnChannelUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnChannelUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var channelUpdatePayload discord_structs.ChannelUpdate
 
 	err = ctx.decodeContent(msg, &channelUpdatePayload)
@@ -260,7 +260,7 @@ func OnChannelUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnChannelDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnChannelDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var channelDeletePayload discord_structs.ChannelDelete
 
 	err = ctx.decodeContent(msg, &channelDeletePayload)
@@ -286,7 +286,7 @@ func OnChannelDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnChannelPinsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnChannelPinsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var channelPinsUpdatePayload discord_structs.ChannelPinsUpdate
 
 	err = ctx.decodeContent(msg, &channelPinsUpdatePayload)
@@ -301,7 +301,7 @@ func OnChannelPinsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnThreadCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnThreadCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var threadCreatePayload discord_structs.ThreadCreate
 
 	err = ctx.decodeContent(msg, &threadCreatePayload)
@@ -314,7 +314,7 @@ func OnThreadCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result s
 	}, true, nil
 }
 
-func OnThreadUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnThreadUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var threadUpdatePayload discord_structs.ThreadUpdate
@@ -339,7 +339,7 @@ func OnThreadUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result s
 	}, true, nil
 }
 
-func OnThreadDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnThreadDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var threadDeletePayload discord_structs.ThreadDelete
@@ -354,7 +354,7 @@ func OnThreadDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result s
 	}, true, nil
 }
 
-func OnThreadListSync(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnThreadListSync(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var threadListSyncPayload discord_structs.ThreadListSync
@@ -369,7 +369,7 @@ func OnThreadListSync(ctx *StateCtx, msg discord_structs.GatewayPayload) (result
 	}, true, nil
 }
 
-func OnThreadMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnThreadMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var threadMemberUpdatePayload discord_structs.ThreadMemberUpdate
@@ -384,7 +384,7 @@ func OnThreadMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (re
 	}, true, nil
 }
 
-func OnThreadMembersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnThreadMembersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var threadMembersUpdatePayload discord_structs.ThreadMembersUpdate
@@ -399,7 +399,7 @@ func OnThreadMembersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (r
 	}, true, nil
 }
 
-func OnGuildUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildUpdatePayload discord_structs.GuildUpdate
 
 	err = ctx.decodeContent(msg, &guildUpdatePayload)
@@ -450,7 +450,7 @@ func OnGuildUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sa
 	}, true, nil
 }
 
-func OnGuildDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildDeletePayload discord_structs.GuildDelete
 
 	err = ctx.decodeContent(msg, &guildDeletePayload)
@@ -486,7 +486,7 @@ func OnGuildDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sa
 	}, true, nil
 }
 
-func OnGuildBanAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildBanAdd(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildBanAddPayload discord_structs.GuildBanAdd
 
 	err = ctx.decodeContent(msg, &guildBanAddPayload)
@@ -501,7 +501,7 @@ func OnGuildBanAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sa
 	}, true, nil
 }
 
-func OnGuildBanRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildBanRemove(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildBanRemovePayload discord_structs.GuildBanRemove
 
 	err = ctx.decodeContent(msg, &guildBanRemovePayload)
@@ -516,7 +516,7 @@ func OnGuildBanRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (result
 	}, true, nil
 }
 
-func OnGuildEmojisUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildEmojisUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildEmojisUpdatePayload discord_structs.GuildEmojisUpdate
 
 	err = ctx.decodeContent(msg, &guildEmojisUpdatePayload)
@@ -547,7 +547,7 @@ func OnGuildEmojisUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnGuildStickersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildStickersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildStickersUpdatePayload discord_structs.GuildStickersUpdate
 
 	err = ctx.decodeContent(msg, &guildStickersUpdatePayload)
@@ -577,7 +577,7 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (r
 	}, true, nil
 }
 
-func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildIntegrationsUpdatePayload discord_structs.GuildIntegrationsUpdate
 
 	err = ctx.decodeContent(msg, &guildIntegrationsUpdatePayload)
@@ -592,7 +592,7 @@ func OnGuildIntegrationsUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload
 	}, true, nil
 }
 
-func OnGuildMemberAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildMemberAdd(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildMemberAddPayload discord_structs.GuildMemberAdd
 
 	err = ctx.decodeContent(msg, &guildMemberAddPayload)
@@ -632,7 +632,7 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result
 	}, true, nil
 }
 
-func OnGuildMemberRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildMemberRemove(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildMemberRemovePayload discord_structs.GuildMemberRemove
 
 	err = ctx.decodeContent(msg, &guildMemberRemovePayload)
@@ -676,7 +676,7 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnGuildMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildMemberUpdatePayload discord_structs.GuildMemberUpdate
 
 	err = ctx.decodeContent(msg, &guildMemberUpdatePayload)
@@ -706,7 +706,7 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnGuildRoleCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildRoleCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildRoleCreatePayload discord_structs.GuildRoleCreate
 
 	err = ctx.decodeContent(msg, &guildRoleCreatePayload)
@@ -723,7 +723,7 @@ func OnGuildRoleCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (resul
 	}, true, nil
 }
 
-func OnGuildRoleUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildRoleUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildRoleUpdatePayload discord_structs.GuildRoleUpdate
 
 	err = ctx.decodeContent(msg, &guildRoleUpdatePayload)
@@ -751,7 +751,7 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (resul
 	}, true, nil
 }
 
-func OnGuildRoleDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildRoleDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildRoleDeletePayload discord_structs.GuildRoleDelete
 
 	err = ctx.decodeContent(msg, &guildRoleDeletePayload)
@@ -768,7 +768,7 @@ func OnGuildRoleDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (resul
 	}, true, nil
 }
 
-func OnIntegrationCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnIntegrationCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var integrationCreatePayload discord_structs.IntegrationCreate
@@ -783,7 +783,7 @@ func OnIntegrationCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnIntegrationUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnIntegrationUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var integrationUpdatePayload discord_structs.IntegrationUpdate
@@ -798,7 +798,7 @@ func OnIntegrationUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnIntegrationDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnIntegrationDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var integrationDeletePayload discord_structs.IntegrationDelete
@@ -813,7 +813,7 @@ func OnIntegrationDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnInteractionCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnInteractionCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var interactionCreatePayload discord_structs.InteractionCreate
@@ -828,7 +828,7 @@ func OnInteractionCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnInviteCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnInviteCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var inviteCreatePayload discord_structs.InviteCreate
 
 	err = ctx.decodeContent(msg, &inviteCreatePayload)
@@ -845,7 +845,7 @@ func OnInviteCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result s
 	}, true, nil
 }
 
-func OnInviteDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnInviteDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var inviteDeletePayload discord_structs.InviteDelete
 
 	err = ctx.decodeContent(msg, &inviteDeletePayload)
@@ -862,7 +862,7 @@ func OnInviteDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result s
 	}, true, nil
 }
 
-func OnMessageCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageCreatePayload discord_structs.MessageCreate
 
 	err = ctx.decodeContent(msg, &messageCreatePayload)
@@ -877,7 +877,7 @@ func OnMessageCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnMessageUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageUpdatePayload discord_structs.MessageUpdate
 
 	err = ctx.decodeContent(msg, &messageUpdatePayload)
@@ -892,7 +892,7 @@ func OnMessageUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnMessageDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageDeletePayload discord_structs.MessageDelete
 
 	err = ctx.decodeContent(msg, &messageDeletePayload)
@@ -907,7 +907,7 @@ func OnMessageDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnMessageDeleteBulk(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageDeleteBulk(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageDeleteBulkPayload discord_structs.MessageDeleteBulk
 
 	err = ctx.decodeContent(msg, &messageDeleteBulkPayload)
@@ -922,7 +922,7 @@ func OnMessageDeleteBulk(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnMessageReactionAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageReactionAdd(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageReactionAddPayload discord_structs.MessageReactionAdd
 
 	err = ctx.decodeContent(msg, &messageReactionAddPayload)
@@ -937,7 +937,7 @@ func OnMessageReactionAdd(ctx *StateCtx, msg discord_structs.GatewayPayload) (re
 	}, true, nil
 }
 
-func OnMessageReactionRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageReactionRemove(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageReactionRemovePayload discord_structs.MessageReactionRemove
 
 	err = ctx.decodeContent(msg, &messageReactionRemovePayload)
@@ -952,7 +952,7 @@ func OnMessageReactionRemove(ctx *StateCtx, msg discord_structs.GatewayPayload) 
 	}, true, nil
 }
 
-func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageReactionRemoveAllPayload discord_structs.MessageReactionRemoveAll
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveAllPayload)
@@ -967,7 +967,7 @@ func OnMessageReactionRemoveAll(ctx *StateCtx, msg discord_structs.GatewayPayloa
 	}, true, nil
 }
 
-func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var messageReactionRemoveEmojiPayload discord_structs.MessageReactionRemoveEmoji
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveEmojiPayload)
@@ -982,7 +982,7 @@ func OnMessageReactionRemoveEmoji(ctx *StateCtx, msg discord_structs.GatewayPayl
 	}, true, nil
 }
 
-func OnPresenceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnPresenceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var presenceUpdatePayload discord_structs.PresenceUpdate
 
 	err = ctx.decodeContent(msg, &presenceUpdatePayload)
@@ -997,7 +997,7 @@ func OnPresenceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result
 	}, true, nil
 }
 
-func OnStageInstanceCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnStageInstanceCreate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var stageInstanceCreatePayload discord_structs.StageInstanceCreate
@@ -1012,7 +1012,7 @@ func OnStageInstanceCreate(ctx *StateCtx, msg discord_structs.GatewayPayload) (r
 	}, true, nil
 }
 
-func OnStageInstanceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnStageInstanceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var stageInstanceUpdatePayload discord_structs.StageInstanceUpdate
@@ -1027,7 +1027,7 @@ func OnStageInstanceUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (r
 	}, true, nil
 }
 
-func OnStageInstanceDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnStageInstanceDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var stageInstanceDeletePayload discord_structs.StageInstanceDelete
@@ -1042,7 +1042,7 @@ func OnStageInstanceDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (r
 	}, true, nil
 }
 
-func OnTypingStart(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnTypingStart(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var typingStartPayload discord_structs.TypingStart
 
 	err = ctx.decodeContent(msg, &typingStartPayload)
@@ -1057,7 +1057,7 @@ func OnTypingStart(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sa
 	}, true, nil
 }
 
-func OnUserUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnUserUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var userUpdatePayload discord_structs.UserUpdate
@@ -1082,7 +1082,7 @@ func OnUserUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result san
 	}, true, nil
 }
 
-func OnVoiceStateUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnVoiceStateUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var voiceStateUpdatePayload discord_structs.VoiceStateUpdate
 
 	err = ctx.decodeContent(msg, &voiceStateUpdatePayload)
@@ -1099,7 +1099,7 @@ func OnVoiceStateUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (resu
 	}, true, nil
 }
 
-func OnVoiceServerUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnVoiceServerUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var voiceServerUpdatePayload discord_structs.VoiceServerUpdate
@@ -1114,7 +1114,7 @@ func OnVoiceServerUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (res
 	}, true, nil
 }
 
-func OnWebhookUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnWebhookUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var webhookUpdatePayload discord_structs.WebhookUpdate
@@ -1129,7 +1129,7 @@ func OnWebhookUpdate(ctx *StateCtx, msg discord_structs.GatewayPayload) (result 
 	}, true, nil
 }
 
-func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var guildJoinRequestDeletePayload discord_structs.GuildJoinRequestDelete

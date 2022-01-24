@@ -16,6 +16,8 @@ type SandwichMetadata struct {
 	Shard [3]int32 `json:"s"`
 }
 
+type SandwichTrace map[string]discord.Int64
+
 // SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
 	Op       discord_structs.GatewayOp `json:"op"`
@@ -25,5 +27,5 @@ type SandwichPayload struct {
 
 	Extra    map[string]jsoniter.RawMessage `json:"__extra"`
 	Metadata SandwichMetadata               `json:"__sandwich"`
-	Trace    map[string]int                 `json:"__sandwich_trace"`
+	Trace    SandwichTrace                  `json:"__sandwich_trace"`
 }

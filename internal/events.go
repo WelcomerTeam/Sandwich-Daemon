@@ -9,13 +9,14 @@ import (
 	"github.com/savsgio/gotils/strings"
 	"golang.org/x/xerrors"
 	"sync"
+	"time"
 )
 
 // List of handlers for gateway events.
-var gatewayHandlers = make(map[discord_structs.GatewayOp]func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error))
+var gatewayHandlers = make(map[discord_structs.GatewayOp]func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error))
 
 // List of handlers for dispatch events.
-var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error))
+var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
 	CacheUsers   bool
@@ -85,8 +86,8 @@ func NewSandwichState() (st *SandwichState) {
 	return st
 }
 
-func (sh *Shard) OnEvent(ctx context.Context, msg discord_structs.GatewayPayload) {
-	err := GatewayDispatch(ctx, sh, msg)
+func (sh *Shard) OnEvent(ctx context.Context, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) {
+	err := GatewayDispatch(ctx, sh, msg, trace)
 	if err != nil {
 		if xerrors.Is(err, ErrNoGatewayHandler) {
 			sh.Logger.Warn().
@@ -98,7 +99,7 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord_structs.GatewayPayload
 }
 
 // OnDispatch handles routing of discord event.
-func (sh *Shard) OnDispatch(ctx context.Context, msg discord_structs.GatewayPayload) (err error) {
+func (sh *Shard) OnDispatch(ctx context.Context, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	if sh.Manager.ProducerClient == nil {
 		return ErrProducerMissing
 	}
@@ -117,13 +118,15 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord_structs.GatewayPayl
 	storeMutuals := sh.Manager.Configuration.Caching.StoreMutuals
 	sh.Manager.configurationMu.RUnlock()
 
+	trace["state"] = discord.Int64(time.Now().Unix())
+
 	result, continuable, err := StateDispatch(&StateCtx{
 		context:      ctx,
 		Shard:        sh,
 		CacheUsers:   cacheUsers,
 		CacheMembers: cacheMembers,
 		StoreMutuals: storeMutuals,
-	}, msg)
+	}, msg, trace)
 	if err != nil {
 		if !xerrors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Str("data", strconv.B2S(msg.Data)).Msg("Encountered error whilst handling " + msg.Type)
@@ -158,22 +161,24 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord_structs.GatewayPayl
 	// Extra contains any extra information such as before state and if it is a lazy guild.
 	packet.Extra = result.Extra
 
+	packet.Trace = trace
+
 	return sh.PublishEvent(ctx, packet)
 }
 
-func registerGatewayEvent(op discord_structs.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error)) {
+func registerGatewayEvent(op discord_structs.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error)) {
 	gatewayHandlers[op] = handler
 }
 
-func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error)) {
+func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error)) {
 	dispatchHandlers[eventType] = handler
 }
 
 // GatewayDispatch handles selecting the proper gateway handler and executing it.
 func GatewayDispatch(ctx context.Context, sh *Shard,
-	event discord_structs.GatewayPayload) (err error) {
+	event discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	if f, ok := gatewayHandlers[event.Op]; ok {
-		return f(ctx, sh, event)
+		return f(ctx, sh, event, trace)
 	}
 
 	sh.Logger.Warn().Int("op", int(event.Op)).Msg("No gateway handler found")
@@ -183,11 +188,11 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx *StateCtx,
-	event discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
+	event discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
 		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
 
-		return f(ctx, event)
+		return f(ctx, event, trace)
 	}
 
 	ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
