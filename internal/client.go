@@ -3,6 +3,9 @@ package internal
 import (
 	"context"
 	"fmt"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -10,10 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
-	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 )
 
 // Client represents the REST client.
@@ -115,7 +114,7 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 	}
 
 	if res.StatusCode == http.StatusTooManyRequests {
-		var resp discord.TooManyRequests
+		var resp discord_structs.TooManyRequests
 		err = jsoniter.NewDecoder(res.Body).Decode(&resp)
 
 		if err != nil {

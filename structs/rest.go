@@ -1,6 +1,9 @@
 package structs
 
-import discord "github.com/WelcomerTeam/Discord/structs"
+import (
+	discord "github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
+)
 
 type BaseRestResponse struct {
 	Ok    bool        `json:"ok"`
@@ -27,9 +30,9 @@ type StatusEndpointShardGroup struct {
 }
 
 type UserResponse struct {
-	User            discord.User `json:"user"`
-	IsLoggedIn      bool         `json:"logged_in"`
-	IsAuthenticated bool         `json:"authenticated"`
+	User            discord_structs.User `json:"user"`
+	IsLoggedIn      bool                 `json:"logged_in"`
+	IsAuthenticated bool                 `json:"authenticated"`
 }
 
 type DashboardGetResponse struct {
@@ -49,9 +52,9 @@ type SandwichConsumerConfiguration struct {
 }
 
 type ManagerConsumerConfiguration struct {
-	Token string            `json:"token"`
-	ID    discord.Snowflake `json:"id"`
-	User  discord.User      `json:"user"`
+	Token string               `json:"token"`
+	ID    discord.Snowflake    `json:"id"`
+	User  discord_structs.User `json:"user"`
 }
 
 type CreateManagerArguments struct {

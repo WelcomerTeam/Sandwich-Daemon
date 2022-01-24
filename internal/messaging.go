@@ -2,10 +2,9 @@ package internal
 
 import (
 	"context"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
+	discord "github.com/WelcomerTeam/Discord/discord"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 )
@@ -34,7 +33,7 @@ func NewMQClient(mqType string) (MQClient, error) {
 }
 
 // PublishEvent publishes a SandwichPayload.
-func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPayload) (err error) {
+func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.SandwichPayload) (err error) {
 	sh.Manager.configurationMu.RLock()
 	identifier := sh.Manager.Configuration.ProducerIdentifier
 	channelName := sh.Manager.Configuration.Messaging.ChannelName
@@ -43,7 +42,7 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *structs.SandwichPaylo
 
 	userID := sh.Manager.UserID.Load()
 
-	packet.Metadata = structs.SandwichMetadata{
+	packet.Metadata = sandwich_structs.SandwichMetadata{
 		Version:       VERSION,
 		Identifier:    identifier,
 		Application:   application,

@@ -2,13 +2,8 @@ package internal
 
 import (
 	"fmt"
-	"net/http"
-	"sort"
-	"strconv"
-	"time"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
 	jsoniter "github.com/json-iterator/go"
@@ -16,6 +11,10 @@ import (
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
+	"net/http"
+	"sort"
+	"strconv"
+	"time"
 )
 
 var (
@@ -89,7 +88,7 @@ func (sg *Sandwich) requireDiscordAuthentication(h fasthttp.RequestHandler) fast
 		}
 
 		if !isLoggedIn {
-			writeResponse(ctx, fasthttp.StatusUnauthorized, structs.BaseRestResponse{
+			writeResponse(ctx, fasthttp.StatusUnauthorized, sandwich_structs.BaseRestResponse{
 				Ok:    false,
 				Error: ErrUserNotLoggedIn.Error(),
 			})
@@ -102,7 +101,7 @@ func (sg *Sandwich) requireDiscordAuthentication(h fasthttp.RequestHandler) fast
 		sg.configurationMu.RUnlock()
 
 		if !isAuthenticated && httpAccessEnabled {
-			writeResponse(ctx, fasthttp.StatusForbidden, structs.BaseRestResponse{
+			writeResponse(ctx, fasthttp.StatusForbidden, sandwich_structs.BaseRestResponse{
 				Ok:    false,
 				Error: ErrUserMissingAccess.Error(),
 			})
@@ -132,7 +131,7 @@ func (sg *Sandwich) authenticateValue(ctx *fasthttp.RequestCtx) (store *session.
 
 	var isAuthenticated bool
 
-	var user discord.User
+	var user discord_structs.User
 
 	defer func() {
 		ctx.SetUserValue(loggedInAttrKey, isLoggedIn)
@@ -181,7 +180,7 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 
 	_, err := sg.authenticateValue(ctx)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -269,7 +268,7 @@ func (sg *Sandwich) CallbackEndpoint(ctx *fasthttp.RequestCtx) {
 
 	defer resp.Body.Close()
 
-	user := discord.User{}
+	user := discord_structs.User{}
 
 	err = jsoniter.NewDecoder(resp.Body).Decode(&user)
 	if err != nil {
@@ -334,8 +333,8 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RLock()
 	defer sg.managersMu.RUnlock()
 
-	managers := make([]*structs.StatusEndpointManager, 0, len(sg.Managers))
-	unsortedManagers := make(map[string]*structs.StatusEndpointManager)
+	managers := make([]*sandwich_structs.StatusEndpointManager, 0, len(sg.Managers))
+	unsortedManagers := make(map[string]*sandwich_structs.StatusEndpointManager)
 
 	manager := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
@@ -347,7 +346,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 				keyName := manager.Configuration.FriendlyName + ":" + manager.Configuration.Identifier
 				manager.configurationMu.RUnlock()
 
-				unsortedManagers[keyName] = &structs.StatusEndpointManager{
+				unsortedManagers[keyName] = &sandwich_structs.StatusEndpointManager{
 					DisplayName: friendlyName,
 					ShardGroups: getManagerShardGroupStatus(manager),
 				}
@@ -367,19 +366,19 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 				managers = append(managers, unsortedManagers[keyName])
 			}
 
-			return structs.StatusEndpointResponse{
+			return sandwich_structs.StatusEndpointResponse{
 				Managers: managers,
 			}
 		})
 
-		writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 			Ok:   true,
 			Data: statusData,
 		})
 	} else {
 		manager, ok := sg.Managers[manager]
 		if !ok {
-			writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 				Ok:    false,
 				Error: ErrNoManagerPresent.Error(),
 			})
@@ -391,9 +390,9 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 		friendlyName := manager.Configuration.FriendlyName
 		manager.configurationMu.RUnlock()
 
-		writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 			Ok: true,
-			Data: &structs.StatusEndpointManager{
+			Data: &sandwich_structs.StatusEndpointManager{
 				DisplayName: friendlyName,
 				ShardGroups: getManagerShardGroupStatus(manager),
 			},
@@ -401,7 +400,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func getManagerShardGroupStatus(manager *Manager) (shardGroups []*structs.StatusEndpointShardGroup) {
+func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_structs.StatusEndpointShardGroup) {
 	manager.shardGroupsMu.RLock()
 
 	sortedShardGroupIDs := make([]int, 0)
@@ -411,7 +410,7 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*structs.Status
 		shardGroupStatus := shardGroup.Status
 		shardGroup.statusMu.RUnlock()
 
-		if shardGroupStatus != structs.ShardGroupStatusClosed {
+		if shardGroupStatus != sandwich_structs.ShardGroupStatusClosed {
 			sortedShardGroupIDs = append(sortedShardGroupIDs, int(shardGroupID))
 		}
 	}
@@ -423,7 +422,7 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*structs.Status
 		shardGroup := manager.ShardGroups[shardGroupID]
 
 		shardGroup.shardsMu.RLock()
-		statusShardGroup := &structs.StatusEndpointShardGroup{
+		statusShardGroup := &sandwich_structs.StatusEndpointShardGroup{
 			ShardGroupID: shardGroup.ID,
 			Shards:       make([][5]int, 0, len(shardGroup.Shards)),
 			Status:       shardGroup.Status,
@@ -465,13 +464,13 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*structs.Status
 }
 
 func (sg *Sandwich) UserEndpoint(ctx *fasthttp.RequestCtx) {
-	user, _ := ctx.UserValue(userAttrKey).(discord.User)
+	user, _ := ctx.UserValue(userAttrKey).(discord_structs.User)
 	isLoggedIn, _ := ctx.UserValue(loggedInAttrKey).(bool)
 	isAuthenticated, _ := ctx.UserValue(authenticatedAttrKey).(bool)
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok: true,
-		Data: structs.UserResponse{
+		Data: sandwich_structs.UserResponse{
 			User:            user,
 			IsLoggedIn:      isLoggedIn,
 			IsAuthenticated: isAuthenticated,
@@ -484,9 +483,9 @@ func (sg *Sandwich) SandwichGetEndpoint(ctx *fasthttp.RequestCtx) {
 	configuration := sg.Configuration
 	sg.configurationMu.RUnlock()
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok: true,
-		Data: structs.DashboardGetResponse{
+		Data: sandwich_structs.DashboardGetResponse{
 			Configuration: configuration,
 		},
 	})
@@ -497,7 +496,7 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err := jsoniter.Unmarshal(ctx.PostBody(), &sandwichConfiguration)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -512,7 +511,7 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err = sg.SaveConfiguration(&sandwichConfiguration, sg.ConfigurationLocation)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -525,23 +524,23 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord.User).Username,
+			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
 		),
 		EmbedColourSandwich,
 	)
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: "Changes applied.",
 	})
 }
 
 func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
-	createManagerArguments := structs.CreateManagerArguments{}
+	createManagerArguments := sandwich_structs.CreateManagerArguments{}
 
 	err := jsoniter.Unmarshal(ctx.PostBody(), &createManagerArguments)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -554,7 +553,7 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RUnlock()
 
 	if ok {
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: ErrDuplicateManagerPresent.Error(),
 		})
@@ -593,7 +592,7 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err = sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -609,12 +608,12 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord.User).Username,
+			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
 		),
 		EmbedColourSandwich,
 	)
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: fmt.Sprintf("Manager '%s' created", createManagerArguments.Identifier),
 	})
@@ -628,7 +627,7 @@ func (sg *Sandwich) ManagerInitializeEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RUnlock()
 
 	if !ok {
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: ErrNoManagerPresent.Error(),
 		})
@@ -638,7 +637,7 @@ func (sg *Sandwich) ManagerInitializeEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err := manager.Initialize()
 	if err != nil {
-		writeResponse(ctx, http.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, http.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -646,7 +645,7 @@ func (sg *Sandwich) ManagerInitializeEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: "Manager initialized, you may start up shardgroups now",
 	})
@@ -657,7 +656,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err := jsoniter.Unmarshal(ctx.PostBody(), &managerConfiguration)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -670,7 +669,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RUnlock()
 
 	if !ok {
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: ErrNoManagerPresent.Error(),
 		})
@@ -688,7 +687,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err = manager.Initialize()
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -705,7 +704,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err = sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -721,12 +720,12 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord.User).Username,
+			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
 		),
 		EmbedColourSandwich,
 	)
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: "Changes applied. You may need to make a new shard group to apply changes",
 	})
@@ -740,7 +739,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RUnlock()
 
 	if !ok {
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: ErrNoManagerPresent.Error(),
 		})
@@ -769,7 +768,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 
 	err := sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -785,23 +784,23 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord.User).Username,
+			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
 		),
 		EmbedColourSandwich,
 	)
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: "Removed manager.",
 	})
 }
 
 func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
-	shardGroupArguments := structs.CreateManagerShardGroupArguments{}
+	shardGroupArguments := sandwich_structs.CreateManagerShardGroupArguments{}
 
 	err := jsoniter.Unmarshal(ctx.PostBody(), &shardGroupArguments)
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusInternalServerError, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -814,7 +813,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RUnlock()
 
 	if !ok {
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: ErrNoManagerPresent.Error(),
 		})
@@ -841,7 +840,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 		delete(manager.ShardGroups, shardGroup.ID)
 		manager.shardGroupsMu.Unlock()
 
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
@@ -862,12 +861,12 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 			"Manager: %s ShardGroup: %d User: %s",
 			manager.Identifier.Load(),
 			shardGroup.ID,
-			ctx.UserValue(userAttrKey).(discord.User).Username,
+			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
 		),
 		EmbedColourSandwich,
 	)
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: "ShardGroup successfully created",
 	})
@@ -881,7 +880,7 @@ func (sg *Sandwich) ShardGroupStopEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RUnlock()
 
 	if !ok {
-		writeResponse(ctx, fasthttp.StatusBadRequest, structs.BaseRestResponse{
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: ErrNoManagerPresent.Error(),
 		})
@@ -891,7 +890,7 @@ func (sg *Sandwich) ShardGroupStopEndpoint(ctx *fasthttp.RequestCtx) {
 
 	manager.Close()
 
-	writeResponse(ctx, fasthttp.StatusOK, structs.BaseRestResponse{
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: "Manager shardgroups closed",
 	})

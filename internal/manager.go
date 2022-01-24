@@ -5,19 +5,19 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	discord "github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog"
+	"go.uber.org/atomic"
+	"golang.org/x/xerrors"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/rs/zerolog"
-	"go.uber.org/atomic"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -48,7 +48,7 @@ type Manager struct {
 	Configuration   *ManagerConfiguration `json:"configuration" yaml:"configuration"`
 
 	gatewayMu sync.RWMutex
-	Gateway   discord.GatewayBot `json:"gateway" yaml:"gateway"`
+	Gateway   discord_structs.GatewayBot `json:"gateway" yaml:"gateway"`
 
 	shardGroupsMu sync.RWMutex
 	ShardGroups   map[int32]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
@@ -60,7 +60,7 @@ type Manager struct {
 	UserID *atomic.Int64 `json:"id"`
 
 	userMu sync.RWMutex
-	User   discord.User `json:"user"`
+	User   discord_structs.User `json:"user"`
 
 	shardGroupCounter *atomic.Int32
 
@@ -85,9 +85,9 @@ type ManagerConfiguration struct {
 
 	// Bot specific configuration
 	Bot struct {
-		DefaultPresence      discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
-		Intents              int32                `json:"intents" yaml:"intents"`
-		ChunkGuildsOnStartup bool                 `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
+		DefaultPresence      discord_structs.UpdateStatus `json:"default_presence" yaml:"default_presence"`
+		Intents              int32                        `json:"intents" yaml:"intents"`
+		ChunkGuildsOnStartup bool                         `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
 		// TODO: Guild chunking
 	} `json:"bot" yaml:"bot"`
 
@@ -133,7 +133,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		Identifier: atomic.NewString(configuration.Identifier),
 
 		gatewayMu: sync.RWMutex{},
-		Gateway:   discord.GatewayBot{},
+		Gateway:   discord_structs.GatewayBot{},
 
 		shardGroupsMu: sync.RWMutex{},
 		ShardGroups:   make(map[int32]*ShardGroup),
@@ -143,7 +143,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		UserID: &atomic.Int64{},
 
 		userMu: sync.RWMutex{},
-		User:   discord.User{},
+		User:   discord_structs.User{},
 
 		shardGroupCounter: &atomic.Int32{},
 
@@ -224,7 +224,7 @@ func (mg *Manager) Open() (err error) {
 }
 
 // GetGateway returns the response from /gateway/bot.
-func (mg *Manager) GetGateway() (resp discord.GatewayBot, err error) {
+func (mg *Manager) GetGateway() (resp discord_structs.GatewayBot, err error) {
 	mg.Sandwich.gatewayLimiter.Lock()
 	_, err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
 
@@ -251,7 +251,7 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 
 // PublishEvent sends an event to consumers.
 func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData jsoniter.RawMessage) (err error) {
-	packet, _ := mg.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
+	packet, _ := mg.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer mg.Sandwich.payloadPool.Put(packet)
 
 	mg.configurationMu.RLock()
@@ -260,10 +260,10 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	mg.configurationMu.RUnlock()
 
 	packet.Type = eventType
-	packet.Op = discord.GatewayOpDispatch
+	packet.Op = discord_structs.GatewayOpDispatch
 	packet.Data = eventData
 
-	packet.Metadata = structs.SandwichMetadata{
+	packet.Metadata = sandwich_structs.SandwichMetadata{
 		Version:       VERSION,
 		Identifier:    identifier,
 		ApplicationID: discord.Snowflake(mg.UserID.Load()),
@@ -336,9 +336,9 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) (err error) 
 
 		var body bytes.Buffer
 
-		var identifyResponse structs.IdentifyResponse
+		var identifyResponse sandwich_structs.IdentifyResponse
 
-		identifyPayload := structs.IdentifyPayload{
+		identifyPayload := sandwich_structs.IdentifyPayload{
 			ShardID:        shardID,
 			ShardCount:     shardCount,
 			Token:          token,

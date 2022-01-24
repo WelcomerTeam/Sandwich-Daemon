@@ -1,7 +1,8 @@
 package structs
 
 import (
-	discord "github.com/WelcomerTeam/Discord/structs"
+	"github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -17,10 +18,10 @@ type SandwichMetadata struct {
 
 // SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
-	Op       discord.GatewayOp   `json:"op"`
-	Data     jsoniter.RawMessage `json:"d"`
-	Sequence int32               `json:"s"`
-	Type     string              `json:"t"`
+	Op       discord_structs.GatewayOp `json:"op"`
+	Data     jsoniter.RawMessage       `json:"d"`
+	Sequence int32                     `json:"s"`
+	Type     string                    `json:"t"`
 
 	Extra    map[string]jsoniter.RawMessage `json:"__extra"`
 	Metadata SandwichMetadata               `json:"__sandwich"`

@@ -3,21 +3,20 @@ package internal
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"strconv"
+	"time"
 )
 
 const MagicDecimalBase = 10
 
-func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload) error {
+func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) error {
 	sh.Sequence.Store(msg.Sequence)
 
-	go func(msg discord.GatewayPayload) {
+	go func(msg discord_structs.GatewayPayload) {
 		sh.Sandwich.EventsInflight.Inc()
 		defer sh.Sandwich.EventsInflight.Dec()
 
@@ -30,8 +29,8 @@ func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayloa
 	return nil
 }
 
-func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
-	err = sh.SendEvent(ctx, discord.GatewayOpHeartbeat, sh.Sequence.Load())
+func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
+	err = sh.SendEvent(ctx, discord_structs.GatewayOpHeartbeat, sh.Sequence.Load())
 	if err != nil {
 		go sh.Sandwich.PublishSimpleWebhook(
 			"Failed to send heartbeat",
@@ -55,7 +54,7 @@ func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 	return
 }
 
-func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
+func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
 	sh.Logger.Info().Msg("Reconnecting in response to gateway")
 
 	err = sh.Reconnect(WebsocketReconnectCloseCode)
@@ -66,7 +65,7 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 	return
 }
 
-func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
+func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
 	resumable := jsoniter.Get(msg.Data, "d").ToBool()
 	if !resumable {
 		sh.SessionID.Store("")
@@ -96,8 +95,8 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 	return
 }
 
-func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
-	hello := discord.Hello{}
+func gatewayOpHello(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
+	hello := discord_structs.Hello{}
 
 	err = sh.decodeContent(msg, &hello)
 	if err != nil {
@@ -120,7 +119,7 @@ func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload) 
 	return
 }
 
-func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error) {
+func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error) {
 	sh.LastHeartbeatAck.Store(time.Now().UTC())
 
 	heartbeatRTT := sh.LastHeartbeatAck.Load().Sub(sh.LastHeartbeatSent.Load()).Milliseconds()
@@ -139,10 +138,10 @@ func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPa
 }
 
 func init() {
-	registerGatewayEvent(discord.GatewayOpDispatch, gatewayOpDispatch)
-	registerGatewayEvent(discord.GatewayOpHeartbeat, gatewayOpHeartbeat)
-	registerGatewayEvent(discord.GatewayOpReconnect, gatewayOpReconnect)
-	registerGatewayEvent(discord.GatewayOpInvalidSession, gatewayOpInvalidSession)
-	registerGatewayEvent(discord.GatewayOpHello, gatewayOpHello)
-	registerGatewayEvent(discord.GatewayOpHeartbeatACK, gatewayOpHeartbeatACK)
+	registerGatewayEvent(discord_structs.GatewayOpDispatch, gatewayOpDispatch)
+	registerGatewayEvent(discord_structs.GatewayOpHeartbeat, gatewayOpHeartbeat)
+	registerGatewayEvent(discord_structs.GatewayOpReconnect, gatewayOpReconnect)
+	registerGatewayEvent(discord_structs.GatewayOpInvalidSession, gatewayOpInvalidSession)
+	registerGatewayEvent(discord_structs.GatewayOpHello, gatewayOpHello)
+	registerGatewayEvent(discord_structs.GatewayOpHeartbeatACK, gatewayOpHeartbeatACK)
 }

@@ -2,20 +2,20 @@ package internal
 
 import (
 	"context"
-	"sync"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	discord "github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 	"golang.org/x/xerrors"
+	"sync"
 )
 
 // List of handlers for gateway events.
-var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error))
+var gatewayHandlers = make(map[discord_structs.GatewayOp]func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error))
 
 // List of handlers for dispatch events.
-var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error))
+var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
 	CacheUsers   bool
@@ -31,61 +31,61 @@ type StateCtx struct {
 // across all Managers.
 type SandwichState struct {
 	guildsMu sync.RWMutex
-	Guilds   map[discord.Snowflake]*structs.StateGuild
+	Guilds   map[discord.Snowflake]*sandwich_structs.StateGuild
 
 	guildMembersMu sync.RWMutex
-	GuildMembers   map[discord.Snowflake]*structs.StateGuildMembers
+	GuildMembers   map[discord.Snowflake]*sandwich_structs.StateGuildMembers
 
 	guildChannelsMu sync.RWMutex
-	GuildChannels   map[discord.Snowflake]*structs.StateGuildChannels
+	GuildChannels   map[discord.Snowflake]*sandwich_structs.StateGuildChannels
 
 	guildRolesMu sync.RWMutex
-	GuildRoles   map[discord.Snowflake]*structs.StateGuildRoles
+	GuildRoles   map[discord.Snowflake]*sandwich_structs.StateGuildRoles
 
 	guildEmojisMu sync.RWMutex
-	GuildEmojis   map[discord.Snowflake]*structs.StateGuildEmojis
+	GuildEmojis   map[discord.Snowflake]*sandwich_structs.StateGuildEmojis
 
 	usersMu sync.RWMutex
-	Users   map[discord.Snowflake]*structs.StateUser
+	Users   map[discord.Snowflake]*sandwich_structs.StateUser
 
 	dmChannelsMu sync.RWMutex
-	dmChannels   map[discord.Snowflake]*structs.StateDMChannel
+	dmChannels   map[discord.Snowflake]*sandwich_structs.StateDMChannel
 
 	mutualsMu sync.RWMutex
-	Mutuals   map[discord.Snowflake]*structs.StateMutualGuilds
+	Mutuals   map[discord.Snowflake]*sandwich_structs.StateMutualGuilds
 }
 
 func NewSandwichState() (st *SandwichState) {
 	st = &SandwichState{
 		guildsMu: sync.RWMutex{},
-		Guilds:   make(map[discord.Snowflake]*structs.StateGuild),
+		Guilds:   make(map[discord.Snowflake]*sandwich_structs.StateGuild),
 
 		guildMembersMu: sync.RWMutex{},
-		GuildMembers:   make(map[discord.Snowflake]*structs.StateGuildMembers),
+		GuildMembers:   make(map[discord.Snowflake]*sandwich_structs.StateGuildMembers),
 
 		guildChannelsMu: sync.RWMutex{},
-		GuildChannels:   make(map[discord.Snowflake]*structs.StateGuildChannels),
+		GuildChannels:   make(map[discord.Snowflake]*sandwich_structs.StateGuildChannels),
 
 		guildRolesMu: sync.RWMutex{},
-		GuildRoles:   make(map[discord.Snowflake]*structs.StateGuildRoles),
+		GuildRoles:   make(map[discord.Snowflake]*sandwich_structs.StateGuildRoles),
 
 		guildEmojisMu: sync.RWMutex{},
-		GuildEmojis:   make(map[discord.Snowflake]*structs.StateGuildEmojis),
+		GuildEmojis:   make(map[discord.Snowflake]*sandwich_structs.StateGuildEmojis),
 
 		usersMu: sync.RWMutex{},
-		Users:   make(map[discord.Snowflake]*structs.StateUser),
+		Users:   make(map[discord.Snowflake]*sandwich_structs.StateUser),
 
 		dmChannelsMu: sync.RWMutex{},
-		dmChannels:   make(map[discord.Snowflake]*structs.StateDMChannel),
+		dmChannels:   make(map[discord.Snowflake]*sandwich_structs.StateDMChannel),
 
 		mutualsMu: sync.RWMutex{},
-		Mutuals:   make(map[discord.Snowflake]*structs.StateMutualGuilds),
+		Mutuals:   make(map[discord.Snowflake]*sandwich_structs.StateMutualGuilds),
 	}
 
 	return st
 }
 
-func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload) {
+func (sh *Shard) OnEvent(ctx context.Context, msg discord_structs.GatewayPayload) {
 	err := GatewayDispatch(ctx, sh, msg)
 	if err != nil {
 		if xerrors.Is(err, ErrNoGatewayHandler) {
@@ -98,7 +98,7 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload) {
 }
 
 // OnDispatch handles routing of discord event.
-func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (err error) {
+func (sh *Shard) OnDispatch(ctx context.Context, msg discord_structs.GatewayPayload) (err error) {
 	if sh.Manager.ProducerClient == nil {
 		return ErrProducerMissing
 	}
@@ -144,7 +144,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 		return
 	}
 
-	packet, _ := sh.Sandwich.payloadPool.Get().(*structs.SandwichPayload)
+	packet, _ := sh.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer sh.Sandwich.payloadPool.Put(packet)
 
 	// Directly copy op, sequence and type from original message.
@@ -161,17 +161,17 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload) (er
 	return sh.PublishEvent(ctx, packet)
 }
 
-func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord.GatewayPayload) (err error)) {
+func registerGatewayEvent(op discord_structs.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload) (err error)) {
 	gatewayHandlers[op] = handler
 }
 
-func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload) (result structs.StateResult, ok bool, err error)) {
+func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error)) {
 	dispatchHandlers[eventType] = handler
 }
 
 // GatewayDispatch handles selecting the proper gateway handler and executing it.
 func GatewayDispatch(ctx context.Context, sh *Shard,
-	event discord.GatewayPayload) (err error) {
+	event discord_structs.GatewayPayload) (err error) {
 	if f, ok := gatewayHandlers[event.Op]; ok {
 		return f(ctx, sh, event)
 	}
@@ -183,7 +183,7 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx *StateCtx,
-	event discord.GatewayPayload) (result structs.StateResult, ok bool, err error) {
+	event discord_structs.GatewayPayload) (result sandwich_structs.StateResult, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
 		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
 

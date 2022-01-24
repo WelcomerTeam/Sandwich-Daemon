@@ -2,22 +2,13 @@ package internal
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"sync"
-	"time"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
+	discord "github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/interfacecache"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
 	jsoniter "github.com/json-iterator/go"
@@ -32,10 +23,19 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"sync"
+	"time"
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.3"
+const VERSION = "1.4"
 
 const (
 	PermissionsDefault = 0o744
@@ -205,15 +205,15 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 		statusCache:    interfacecache.NewInterfaceCache(),
 
 		payloadPool: sync.Pool{
-			New: func() interface{} { return new(structs.SandwichPayload) },
+			New: func() interface{} { return new(sandwich_structs.SandwichPayload) },
 		},
 
 		receivedPool: sync.Pool{
-			New: func() interface{} { return new(discord.GatewayPayload) },
+			New: func() interface{} { return new(discord_structs.GatewayPayload) },
 		},
 
 		sentPool: sync.Pool{
-			New: func() interface{} { return new(discord.SentPayload) },
+			New: func() interface{} { return new(discord_structs.SentPayload) },
 		},
 	}
 
@@ -345,7 +345,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return xerrors.Errorf("Failed to write configuration to file: %v", err)
 	}
 
-	_ = sg.PublishGlobalEvent(structs.SandwichEventConfigurationReload, nil)
+	_ = sg.PublishGlobalEvent(sandwich_structs.SandwichEventConfigurationReload, nil)
 
 	return nil
 }
@@ -394,15 +394,15 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 	sg.globalPoolMu.RLock()
 	defer sg.globalPoolMu.RUnlock()
 
-	packet, _ := sg.payloadPool.Get().(*structs.SandwichPayload)
+	packet, _ := sg.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer sg.payloadPool.Put(packet)
 
-	packet.Op = discord.GatewayOpDispatch
+	packet.Op = discord_structs.GatewayOpDispatch
 	packet.Type = eventType
 	packet.Data = data
 	packet.Extra = make(map[string]jsoniter.RawMessage)
 
-	packet.Metadata = structs.SandwichMetadata{
+	packet.Metadata = sandwich_structs.SandwichMetadata{
 		Version: VERSION,
 	}
 

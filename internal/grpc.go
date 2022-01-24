@@ -3,18 +3,18 @@ package internal
 import (
 	"bytes"
 	"context"
-	"io"
-	"strings"
-	"time"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
+	discord "github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"io"
+	"strings"
+	"time"
 )
 
 var (
@@ -122,7 +122,7 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 	// ConsumerConfiguration at the moment just contains the Version of the library
 	// along with a map of identifiers. The key is the application passed in metadata.
 
-	identifiers := make(map[string]structs.ManagerConsumerConfiguration)
+	identifiers := make(map[string]sandwich_structs.ManagerConsumerConfiguration)
 
 	grpc.sg.managersMu.RLock()
 	for _, manager := range grpc.sg.Managers {
@@ -132,7 +132,7 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 		user := manager.User
 		manager.userMu.RUnlock()
 
-		identifiers[manager.Identifier.Load()] = structs.ManagerConsumerConfiguration{
+		identifiers[manager.Identifier.Load()] = sandwich_structs.ManagerConsumerConfiguration{
 			Token: manager.Configuration.Token,
 			ID:    manager.User.ID,
 			User:  user,
@@ -141,7 +141,7 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 	}
 	grpc.sg.managersMu.RUnlock()
 
-	sandwichConsumerConfiguration := structs.SandwichConsumerConfiguration{
+	sandwichConsumerConfiguration := sandwich_structs.SandwichConsumerConfiguration{
 		Version:     VERSION,
 		Identifiers: identifiers,
 	}
@@ -197,11 +197,11 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 		user, ok := grpc.sg.State.GetUser(userID)
 		if ok {
 			if fetchDMChannels && user.DMChannelID == nil {
-				var resp discord.Channel
+				var resp discord_structs.Channel
 
 				var body io.ReadWriter
 
-				err = jsoniter.NewEncoder(body).Encode(discord.CreateDMChannel{
+				err = jsoniter.NewEncoder(body).Encode(discord_structs.CreateDMChannel{
 					RecipientID: user.ID,
 				})
 				if err != nil {
@@ -424,7 +424,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 	return response, nil
 }
 
-func guildMemberMatch(query string, guildMember *discord.GuildMember) (ok bool) {
+func guildMemberMatch(query string, guildMember *discord_structs.GuildMember) (ok bool) {
 	if guildMember.Nick != "" {
 		return requestMatch(query, guildMember.Nick, guildMember.User.Username,
 			guildMember.User.Username+"#"+guildMember.User.Discriminator, guildMember.User.ID.String())
@@ -650,7 +650,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 	}
 
 	for _, data := range request.Data {
-		err = shard.SendEvent(ctx, discord.GatewayOp(request.GatewayOPCode), data)
+		err = shard.SendEvent(ctx, discord_structs.GatewayOp(request.GatewayOPCode), data)
 		if err != nil {
 			response.Error = err.Error()
 

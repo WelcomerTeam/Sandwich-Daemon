@@ -37,8 +37,8 @@ github.com/BurntSushi/toml v0.4.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbi
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DataDog/datadog-go v2.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/WelcomerTeam/Discord v0.0.0-20220124122513-3dbcbfd0009f h1:XiP10EwFzr+G3UfyF4nGqn6jkylUUMO7pEW2TQT2c7k=
-github.com/WelcomerTeam/Discord v0.0.0-20220124122513-3dbcbfd0009f/go.mod h1:x+qtV2oblbaNlITc1/lxV7Tz9cYe8p6kOW3zhyyz8mw=
+github.com/WelcomerTeam/Discord v0.0.0-20220124132014-932442dad882 h1:qIagO5UjBXnaxY5iT+dA9K5zc+speV+FG/AqHptmoI4=
+github.com/WelcomerTeam/Discord v0.0.0-20220124132014-932442dad882/go.mod h1:ahkQORE1d68toqmtxoAPgBu1sf3/zvz9dUQ+OPSbvTE=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15 h1:i3H4TzA9QZVoguPhdc7QJCM+zW4CeZwKZMSw6GLQEHI=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15/go.mod h1:4oemQ7XEqKAc1DTtFpWugoE9K5RLjt7iH0emiFXnL/A=
 github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904 h1:WV4Ok6b0/kgczuLAgGTNtLVOB5JIqdfzJzgOpdlDM8Q=

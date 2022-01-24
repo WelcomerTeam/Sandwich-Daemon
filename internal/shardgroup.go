@@ -1,17 +1,17 @@
 package internal
 
 import (
-	"sync"
-	"time"
-
-	discord "github.com/WelcomerTeam/Discord/structs"
-	structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	discord "github.com/WelcomerTeam/Discord/discord"
+	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"sync"
+	"time"
 )
 
 // ShardGroup represents a group of shards.
@@ -25,8 +25,8 @@ type ShardGroup struct {
 
 	WaitingFor *atomic.Int32 `json:"-"`
 
-	userMu sync.RWMutex  `json:"-"`
-	User   *discord.User `json:"user"`
+	userMu sync.RWMutex          `json:"-"`
+	User   *discord_structs.User `json:"user"`
 
 	ID int32 `json:"id"`
 
@@ -42,7 +42,7 @@ type ShardGroup struct {
 	ReadyWait *sync.WaitGroup `json:"-"`
 
 	statusMu sync.RWMutex             `json:"-"`
-	Status   structs.ShardGroupStatus `json:"status"`
+	Status   sandwich_structs.ShardGroupStatus `json:"status"`
 
 	// MemberChunksCallback is used to signal when a guild is chunking.
 	memberChunksCallbackMu sync.RWMutex                          `json:"-"`
@@ -88,7 +88,7 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 		Guilds:   make(map[discord.Snowflake]bool),
 
 		statusMu: sync.RWMutex{},
-		Status:   structs.ShardGroupStatusIdle,
+		Status:   sandwich_structs.ShardGroupStatusIdle,
 
 		memberChunksCallbackMu: sync.RWMutex{},
 		MemberChunksCallback:   make(map[discord.Snowflake]*sync.WaitGroup),
@@ -116,8 +116,8 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 	sg.Manager.shardGroupsMu.RLock()
 	for _, shardGroup := range sg.Manager.ShardGroups {
-		if shardGroup.GetStatus() != structs.ShardGroupStatusErroring && shardGroup.ID != sg.ID {
-			shardGroup.SetStatus(structs.ShardGroupStatusMarkedForClosure)
+		if shardGroup.GetStatus() != sandwich_structs.ShardGroupStatusErroring && shardGroup.ID != sg.ID {
+			shardGroup.SetStatus(sandwich_structs.ShardGroupStatusMarkedForClosure)
 		}
 	}
 	sg.Manager.shardGroupsMu.RUnlock()
@@ -142,7 +142,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 	initialShard := sg.Shards[sg.ShardIDs[0]]
 
-	sg.SetStatus(structs.ShardGroupStatusConnecting)
+	sg.SetStatus(sandwich_structs.ShardGroupStatusConnecting)
 
 	for {
 		err = initialShard.Connect()
@@ -160,7 +160,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 				sg.Error.Store(err.Error())
 
-				sg.SetStatus(structs.ShardGroupStatusErroring)
+				sg.SetStatus(sandwich_structs.ShardGroupStatusErroring)
 
 				sg.Close()
 
@@ -205,7 +205,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	connectGroup.Wait()
 	sg.Logger.Info().Msg("All shards have connected")
 
-	sg.SetStatus(structs.ShardGroupStatusConnected)
+	sg.SetStatus(sandwich_structs.ShardGroupStatusConnected)
 
 	go func(sg *ShardGroup) {
 		sg.shardsMu.RLock()
@@ -238,7 +238,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 func (sg *ShardGroup) Close() {
 	sg.Logger.Info().Msgf("Closing shardgroup %d", sg.ID)
 
-	sg.SetStatus(structs.ShardGroupStatusClosing)
+	sg.SetStatus(sandwich_structs.ShardGroupStatusClosing)
 
 	closeWaiter := sync.WaitGroup{}
 
@@ -259,11 +259,11 @@ func (sg *ShardGroup) Close() {
 	sg.Guilds = make(map[discord.Snowflake]bool)
 	sg.guildsMu.Unlock()
 
-	sg.SetStatus(structs.ShardGroupStatusClosed)
+	sg.SetStatus(sandwich_structs.ShardGroupStatusClosed)
 }
 
 // SetStatus sets the status of the ShardGroup.
-func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
+func (sg *ShardGroup) SetStatus(status sandwich_structs.ShardGroupStatus) {
 	sg.statusMu.Lock()
 	defer sg.statusMu.Unlock()
 
@@ -271,17 +271,17 @@ func (sg *ShardGroup) SetStatus(status structs.ShardGroupStatus) {
 
 	sg.Status = status
 
-	payload, _ := jsoniter.Marshal(structs.ShardGroupStatusUpdate{
+	payload, _ := jsoniter.Marshal(sandwich_structs.ShardGroupStatusUpdate{
 		Manager:    sg.Manager.Identifier.Load(),
 		ShardGroup: sg.ID,
 		Status:     sg.Status,
 	})
 
-	_ = sg.Manager.Sandwich.PublishGlobalEvent(structs.SandwichEventShardGroupStatusUpdate, jsoniter.RawMessage(payload))
+	_ = sg.Manager.Sandwich.PublishGlobalEvent(sandwich_structs.SandwichEventShardGroupStatusUpdate, jsoniter.RawMessage(payload))
 }
 
 // GetStatus returns the status of a ShardGroup.
-func (sg *ShardGroup) GetStatus() (status structs.ShardGroupStatus) {
+func (sg *ShardGroup) GetStatus() (status sandwich_structs.ShardGroupStatus) {
 	sg.statusMu.RLock()
 	defer sg.statusMu.RUnlock()
 
