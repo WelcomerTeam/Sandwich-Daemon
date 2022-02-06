@@ -3,9 +3,6 @@ package internal
 import (
 	"bytes"
 	"context"
-	"strings"
-	"time"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
@@ -14,6 +11,8 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strings"
+	"time"
 )
 
 var (

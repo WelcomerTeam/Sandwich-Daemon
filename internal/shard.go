@@ -4,11 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
@@ -20,6 +15,10 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
 )
 
 const (

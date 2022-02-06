@@ -2,11 +2,10 @@ package internal
 
 import (
 	"context"
-	"time"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 // OnReady handles the READY event.

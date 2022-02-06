@@ -2,16 +2,6 @@ package internal
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/interfacecache"
@@ -32,6 +22,15 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"sync"
+	"time"
 )
 
 // VERSION follows semantic versioning.

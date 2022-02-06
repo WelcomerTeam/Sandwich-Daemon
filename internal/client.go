@@ -3,15 +3,14 @@ package internal
 import (
 	"context"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-
-	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 )
 
 // Client represents the REST client.

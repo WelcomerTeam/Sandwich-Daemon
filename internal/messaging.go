@@ -2,13 +2,12 @@ package internal
 
 import (
 	"context"
-	"time"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 type MQClient interface {

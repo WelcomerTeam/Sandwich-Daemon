@@ -2,14 +2,13 @@ package internal
 
 import (
 	"context"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 	"golang.org/x/xerrors"
+	"sync"
+	"time"
 )
 
 // List of handlers for gateway events.

@@ -5,19 +5,18 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 const (
