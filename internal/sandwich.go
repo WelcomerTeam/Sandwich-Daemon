@@ -2,8 +2,17 @@ package internal
 
 import (
 	"context"
-	discord "github.com/WelcomerTeam/Discord/discord"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"sync"
+	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/interfacecache"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
@@ -23,19 +32,10 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"sync"
-	"time"
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.5"
+const VERSION = "1.6"
 
 const (
 	PermissionsDefault = 0o744
@@ -209,11 +209,11 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 		},
 
 		receivedPool: sync.Pool{
-			New: func() interface{} { return new(discord_structs.GatewayPayload) },
+			New: func() interface{} { return new(discord.GatewayPayload) },
 		},
 
 		sentPool: sync.Pool{
-			New: func() interface{} { return new(discord_structs.SentPayload) },
+			New: func() interface{} { return new(discord.SentPayload) },
 		},
 	}
 
@@ -397,7 +397,7 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 	packet, _ := sg.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer sg.payloadPool.Put(packet)
 
-	packet.Op = discord_structs.GatewayOpDispatch
+	packet.Op = discord.GatewayOpDispatch
 	packet.Type = eventType
 	packet.Data = data
 	packet.Extra = make(map[string]jsoniter.RawMessage)

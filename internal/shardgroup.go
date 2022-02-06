@@ -1,8 +1,10 @@
 package internal
 
 import (
-	discord "github.com/WelcomerTeam/Discord/discord"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	"sync"
+	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
@@ -10,8 +12,6 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"sync"
-	"time"
 )
 
 // ShardGroup represents a group of shards.
@@ -25,8 +25,8 @@ type ShardGroup struct {
 
 	WaitingFor *atomic.Int32 `json:"-"`
 
-	userMu sync.RWMutex          `json:"-"`
-	User   *discord_structs.User `json:"user"`
+	userMu sync.RWMutex  `json:"-"`
+	User   *discord.User `json:"user"`
 
 	ID int32 `json:"id"`
 
@@ -41,7 +41,7 @@ type ShardGroup struct {
 
 	ReadyWait *sync.WaitGroup `json:"-"`
 
-	statusMu sync.RWMutex             `json:"-"`
+	statusMu sync.RWMutex                      `json:"-"`
 	Status   sandwich_structs.ShardGroupStatus `json:"status"`
 
 	// MemberChunksCallback is used to signal when a guild is chunking.

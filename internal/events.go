@@ -2,21 +2,21 @@ package internal
 
 import (
 	"context"
-	discord "github.com/WelcomerTeam/Discord/discord"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	"sync"
+	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 	"golang.org/x/xerrors"
-	"sync"
-	"time"
 )
 
 // List of handlers for gateway events.
-var gatewayHandlers = make(map[discord_structs.GatewayOp]func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error))
+var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error))
 
 // List of handlers for dispatch events.
-var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error))
+var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
 	CacheUsers   bool
@@ -86,7 +86,7 @@ func NewSandwichState() (st *SandwichState) {
 	return st
 }
 
-func (sh *Shard) OnEvent(ctx context.Context, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) {
+func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 	err := GatewayDispatch(ctx, sh, msg, trace)
 	if err != nil {
 		if xerrors.Is(err, ErrNoGatewayHandler) {
@@ -99,7 +99,7 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord_structs.GatewayPayload
 }
 
 // OnDispatch handles routing of discord event.
-func (sh *Shard) OnDispatch(ctx context.Context, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	if sh.Manager.ProducerClient == nil {
 		return ErrProducerMissing
 	}
@@ -166,17 +166,17 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord_structs.GatewayPayl
 	return sh.PublishEvent(ctx, packet)
 }
 
-func registerGatewayEvent(op discord_structs.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error)) {
+func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error)) {
 	gatewayHandlers[op] = handler
 }
 
-func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error)) {
+func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error)) {
 	dispatchHandlers[eventType] = handler
 }
 
 // GatewayDispatch handles selecting the proper gateway handler and executing it.
 func GatewayDispatch(ctx context.Context, sh *Shard,
-	event discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	if f, ok := gatewayHandlers[event.Op]; ok {
 		return f(ctx, sh, event, trace)
 	}
@@ -188,7 +188,7 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx *StateCtx,
-	event discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
+	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
 		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
 

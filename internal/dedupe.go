@@ -1,8 +1,9 @@
 package internal
 
 import (
-	discord "github.com/WelcomerTeam/Discord/discord"
 	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
 )
 
 func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {

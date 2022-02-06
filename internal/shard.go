@@ -9,8 +9,7 @@ import (
 	"sync"
 	"time"
 
-	discord "github.com/WelcomerTeam/Discord/discord"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
@@ -100,8 +99,8 @@ type Shard struct {
 	Status   sandwich_structs.ShardStatus `json:"status"`
 
 	channelMu sync.RWMutex
-	MessageCh chan discord_structs.GatewayPayload `json:"-"`
-	ErrorCh   chan error                          `json:"-"`
+	MessageCh chan discord.GatewayPayload `json:"-"`
+	ErrorCh   chan error                  `json:"-"`
 
 	Sequence  *atomic.Int32  `json:"-"`
 	SessionID *atomic.String `json:"-"`
@@ -277,7 +276,7 @@ readyConsumer:
 		return
 	}
 
-	var helloResponse discord_structs.Hello
+	var helloResponse discord.Hello
 
 	err = sh.decodeContent(msg, &helloResponse)
 	if err != nil {
@@ -345,7 +344,7 @@ readyConsumer:
 			return
 		}
 
-		// We can assume the bot is now connected to discord_structs.
+		// We can assume the bot is now connected to discord.
 	}
 
 	t := time.NewTicker(FirstEventTimeout)
@@ -395,7 +394,7 @@ readyConsumer:
 	return err
 }
 
-// Heartbeat maintains a heartbeat with discord_structs.
+// Heartbeat maintains a heartbeat with discord.
 func (sh *Shard) Heartbeat(ctx context.Context) {
 	sh.HeartbeatActive.Store(true)
 	sh.HeartbeatDeadSignal.Started()
@@ -414,7 +413,7 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 		case <-sh.Heartbeater.C:
 			seq := sh.Sequence.Load()
 
-			err := sh.SendEvent(ctx, discord_structs.GatewayOpHeartbeat, seq)
+			err := sh.SendEvent(ctx, discord.GatewayOpHeartbeat, seq)
 
 			now := time.Now().UTC()
 			sh.LastHeartbeatSent.Store(now)
@@ -488,12 +487,12 @@ func (sh *Shard) Listen(ctx context.Context) (err error) {
 			if errors.As(err, &closeError) {
 				// If possible, we will check the close error to determine if we can continue
 				switch closeError.Code {
-				case discord_structs.CloseNotAuthenticated, // Not authenticated
-					discord_structs.CloseInvalidShard,      // Invalid shard
-					discord_structs.CloseShardingRequired,  // Sharding required
-					discord_structs.CloseInvalidAPIVersion, // Invalid API version
-					discord_structs.CloseInvalidIntents,    // Invalid Intent(s)
-					discord_structs.CloseDisallowedIntents: // Disallowed intent(s)
+				case discord.CloseNotAuthenticated, // Not authenticated
+					discord.CloseInvalidShard,      // Invalid shard
+					discord.CloseShardingRequired,  // Sharding required
+					discord.CloseInvalidAPIVersion, // Invalid API version
+					discord.CloseInvalidIntents,    // Invalid Intent(s)
+					discord.CloseDisallowedIntents: // Disallowed intent(s)
 					sh.Logger.Error().Int("code", int(closeError.Code)).Msg("Shard received closure code")
 
 					go sh.Sandwich.PublishSimpleWebhook(
@@ -564,8 +563,8 @@ func (sh *Shard) Listen(ctx context.Context) (err error) {
 
 // FeedWebsocket reads websocket events and feeds them through a channel.
 func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
-	opts *websocket.DialOptions) (errorCh chan error, messageCh chan discord_structs.GatewayPayload, err error) {
-	messageCh = make(chan discord_structs.GatewayPayload, MessageChannelBuffer)
+	opts *websocket.DialOptions) (errorCh chan error, messageCh chan discord.GatewayPayload, err error) {
+	messageCh = make(chan discord.GatewayPayload, MessageChannelBuffer)
 	errorCh = make(chan error, 1)
 
 	conn, _, err := websocket.Dial(ctx, u, opts)
@@ -615,7 +614,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 				}
 			}
 
-			msg, _ := sh.Sandwich.receivedPool.Get().(*discord_structs.GatewayPayload)
+			msg, _ := sh.Sandwich.receivedPool.Get().(*discord.GatewayPayload)
 
 			connectionErr = jsoniter.Unmarshal(data, &msg)
 			if connectionErr != nil {
@@ -638,7 +637,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 	return errorCh, messageCh, nil
 }
 
-// Identify sends the identify packet to discord_structs.
+// Identify sends the identify packet to discord.
 func (sh *Shard) Identify(ctx context.Context) (err error) {
 	sh.Manager.gatewayMu.Lock()
 	sh.Manager.Gateway.SessionStartLimit.Remaining--
@@ -655,9 +654,9 @@ func (sh *Shard) Identify(ctx context.Context) (err error) {
 
 	sh.Logger.Debug().Msg("Sending identify")
 
-	err = sh.SendEvent(ctx, discord_structs.GatewayOpIdentify, discord_structs.Identify{
+	err = sh.SendEvent(ctx, discord.GatewayOpIdentify, discord.Identify{
 		Token: token,
-		Properties: &discord_structs.IdentifyProperties{
+		Properties: &discord.IdentifyProperties{
 			OS:      runtime.GOOS,
 			Browser: "Sandwich " + VERSION,
 			Device:  "Sandwich " + VERSION,
@@ -672,7 +671,7 @@ func (sh *Shard) Identify(ctx context.Context) (err error) {
 	return err
 }
 
-// Resume sends the resume packet to discord_structs.
+// Resume sends the resume packet to discord.
 func (sh *Shard) Resume(ctx context.Context) (err error) {
 	sh.Manager.configurationMu.RLock()
 	token := sh.Manager.Configuration.Token
@@ -680,7 +679,7 @@ func (sh *Shard) Resume(ctx context.Context) (err error) {
 
 	sh.Logger.Debug().Msg("Sending resume")
 
-	err = sh.SendEvent(ctx, discord_structs.GatewayOpResume, discord_structs.Resume{
+	err = sh.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
 		Token:     token,
 		SessionID: sh.SessionID.Load(),
 		Sequence:  sh.Sequence.Load(),
@@ -689,9 +688,9 @@ func (sh *Shard) Resume(ctx context.Context) (err error) {
 	return err
 }
 
-// SendEvent sends an event to discord_structs.
-func (sh *Shard) SendEvent(ctx context.Context, op discord_structs.GatewayOp, data interface{}) (err error) {
-	packet, _ := sh.Sandwich.sentPool.Get().(*discord_structs.SentPayload)
+// SendEvent sends an event to discord.
+func (sh *Shard) SendEvent(ctx context.Context, op discord.GatewayOp, data interface{}) (err error) {
+	packet, _ := sh.Sandwich.sentPool.Get().(*discord.SentPayload)
 	defer sh.Sandwich.sentPool.Put(packet)
 
 	packet.Op = op
@@ -706,7 +705,7 @@ func (sh *Shard) SendEvent(ctx context.Context, op discord_structs.GatewayOp, da
 }
 
 // WriteJSON writes json data to the websocket.
-func (sh *Shard) WriteJSON(ctx context.Context, op discord_structs.GatewayOp, i interface{}) (err error) {
+func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interface{}) (err error) {
 	// In very rare circumstances, we can be writing to the websocket whilst
 	// context is being remade. We will recover and dismiss any SIGSEGVs that
 	// are raised.
@@ -725,7 +724,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord_structs.GatewayOp, i 
 		return xerrors.Errorf("Failed to marshal payload: %v", err)
 	}
 
-	if op != discord_structs.GatewayOpHeartbeat {
+	if op != discord.GatewayOpHeartbeat {
 		sh.wsRatelimit.Lock()
 	}
 
@@ -744,7 +743,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord_structs.GatewayOp, i 
 }
 
 // decodeContent converts the stored msg into the passed interface.
-func (sh *Shard) decodeContent(msg discord_structs.GatewayPayload, out interface{}) (err error) {
+func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err error) {
 	err = jsoniter.Unmarshal(msg.Data, &out)
 	if err != nil {
 		sh.Logger.Error().Err(err).Str("type", msg.Type).Msg("Failed to decode event")
@@ -754,7 +753,7 @@ func (sh *Shard) decodeContent(msg discord_structs.GatewayPayload, out interface
 }
 
 // readMessage fills the shard msg buffer from a websocket message.
-func (sh *Shard) readMessage() (msg discord_structs.GatewayPayload, err error) {
+func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 	sh.channelMu.RLock()
 	errorCh := sh.ErrorCh
 	messageCh := sh.MessageCh

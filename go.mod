@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
-	github.com/WelcomerTeam/Discord v0.0.0-20220124211741-8da91003bc47
+	github.com/WelcomerTeam/Discord v0.0.0-20220206112053-c3a6a028fd37
 	github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/fasthttp/router v1.4.3
@@ -20,12 +20,11 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.31.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/rs/zerolog v1.25.0
+	github.com/rs/zerolog v1.26.1
 	github.com/savsgio/gotils v0.0.0-20211223103454-d0aaa54c5899
 	github.com/segmentio/kafka-go v0.4.20
 	github.com/valyala/fasthttp v1.32.0
 	go.uber.org/atomic v1.9.0
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef // indirect

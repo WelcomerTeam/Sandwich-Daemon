@@ -1,6 +1,6 @@
 package structs
 
-import discord_structs "github.com/WelcomerTeam/Discord/structs"
+import "github.com/WelcomerTeam/Discord/discord"
 
 // BaseResponse represents data included in all GRPC responses.
 type BaseResponse struct {
@@ -71,33 +71,33 @@ type RequestGuildChunkRequest struct {
 
 type GuildRolesResponse struct {
 	BaseResponse
-	GuildRoles map[int64]*discord_structs.Role
+	GuildRoles map[int64]*discord.Role
 }
 
 type ChannelsResponse struct {
 	BaseResponse
-	GuildChannels map[int64]*discord_structs.Channel
+	GuildChannels map[int64]*discord.Channel
 }
 
 type EmojisResponse struct {
 	BaseResponse
-	GuildEmojis map[int64]*discord_structs.Emoji
+	GuildEmojis map[int64]*discord.Emoji
 }
 
 type GuildMembersResponse struct {
 	BaseResponse
-	GuildMembers map[int64]*discord_structs.GuildMember
+	GuildMembers map[int64]*discord.GuildMember
 }
 
 type GuildsResponse struct {
 	BaseResponse
-	Guilds   map[int64]*discord_structs.Guild
+	Guilds   map[int64]*discord.Guild
 	GuildIDs []int64
 }
 
 type GuildResponse struct {
 	BaseResponse
-	Guild *discord_structs.Guild
+	Guild *discord.Guild
 }
 
 type WhereIsGuildResponse struct {

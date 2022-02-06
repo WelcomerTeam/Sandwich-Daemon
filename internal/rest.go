@@ -2,7 +2,12 @@ package internal
 
 import (
 	"fmt"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	"net/http"
+	"sort"
+	"strconv"
+	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
@@ -11,10 +16,6 @@ import (
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
-	"net/http"
-	"sort"
-	"strconv"
-	"time"
 )
 
 var (
@@ -131,7 +132,7 @@ func (sg *Sandwich) authenticateValue(ctx *fasthttp.RequestCtx) (store *session.
 
 	var isAuthenticated bool
 
-	var user discord_structs.User
+	var user discord.User
 
 	defer func() {
 		ctx.SetUserValue(loggedInAttrKey, isLoggedIn)
@@ -268,7 +269,7 @@ func (sg *Sandwich) CallbackEndpoint(ctx *fasthttp.RequestCtx) {
 
 	defer resp.Body.Close()
 
-	user := discord_structs.User{}
+	user := discord.User{}
 
 	err = jsoniter.NewDecoder(resp.Body).Decode(&user)
 	if err != nil {
@@ -464,7 +465,7 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 }
 
 func (sg *Sandwich) UserEndpoint(ctx *fasthttp.RequestCtx) {
-	user, _ := ctx.UserValue(userAttrKey).(discord_structs.User)
+	user, _ := ctx.UserValue(userAttrKey).(discord.User)
 	isLoggedIn, _ := ctx.UserValue(loggedInAttrKey).(bool)
 	isAuthenticated, _ := ctx.UserValue(authenticatedAttrKey).(bool)
 
@@ -524,7 +525,7 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
+			ctx.UserValue(userAttrKey).(discord.User).Username,
 		),
 		EmbedColourSandwich,
 	)
@@ -608,7 +609,7 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
+			ctx.UserValue(userAttrKey).(discord.User).Username,
 		),
 		EmbedColourSandwich,
 	)
@@ -720,7 +721,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
+			ctx.UserValue(userAttrKey).(discord.User).Username,
 		),
 		EmbedColourSandwich,
 	)
@@ -784,7 +785,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 		"",
 		fmt.Sprintf(
 			"User: %s",
-			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
+			ctx.UserValue(userAttrKey).(discord.User).Username,
 		),
 		EmbedColourSandwich,
 	)
@@ -861,7 +862,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 			"Manager: %s ShardGroup: %d User: %s",
 			manager.Identifier.Load(),
 			shardGroup.ID,
-			ctx.UserValue(userAttrKey).(discord_structs.User).Username,
+			ctx.UserValue(userAttrKey).(discord.User).Username,
 		),
 		EmbedColourSandwich,
 	)

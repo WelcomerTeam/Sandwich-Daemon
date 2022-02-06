@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	discord "github.com/WelcomerTeam/Discord/discord"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"
@@ -16,12 +15,12 @@ import (
 
 const MagicDecimalBase = 10
 
-func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
+func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	sh.Sequence.Store(msg.Sequence)
 
 	trace["dispatch"] = discord.Int64(time.Now().Unix())
 
-	go func(msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) {
+	go func(msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 		sh.Sandwich.EventsInflight.Inc()
 		defer sh.Sandwich.EventsInflight.Dec()
 
@@ -34,8 +33,8 @@ func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord_structs.Gatew
 	return nil
 }
 
-func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
-	err = sh.SendEvent(ctx, discord_structs.GatewayOpHeartbeat, sh.Sequence.Load())
+func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+	err = sh.SendEvent(ctx, discord.GatewayOpHeartbeat, sh.Sequence.Load())
 	if err != nil {
 		go sh.Sandwich.PublishSimpleWebhook(
 			"Failed to send heartbeat",
@@ -59,7 +58,7 @@ func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord_structs.Gate
 	return
 }
 
-func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	sh.Logger.Info().Msg("Reconnecting in response to gateway")
 
 	err = sh.Reconnect(WebsocketReconnectCloseCode)
@@ -70,7 +69,7 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord_structs.Gate
 	return
 }
 
-func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	resumable := jsoniter.Get(msg.Data, "d").ToBool()
 	if !resumable {
 		sh.SessionID.Store("")
@@ -100,8 +99,8 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord_structs
 	return
 }
 
-func gatewayOpHello(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
-	hello := discord_structs.Hello{}
+func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+	hello := discord.Hello{}
 
 	err = sh.decodeContent(msg, &hello)
 	if err != nil {
@@ -124,7 +123,7 @@ func gatewayOpHello(ctx context.Context, sh *Shard, msg discord_structs.GatewayP
 	return
 }
 
-func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord_structs.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	sh.LastHeartbeatAck.Store(time.Now().UTC())
 
 	heartbeatRTT := sh.LastHeartbeatAck.Load().Sub(sh.LastHeartbeatSent.Load()).Milliseconds()
@@ -143,10 +142,10 @@ func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord_structs.G
 }
 
 func init() {
-	registerGatewayEvent(discord_structs.GatewayOpDispatch, gatewayOpDispatch)
-	registerGatewayEvent(discord_structs.GatewayOpHeartbeat, gatewayOpHeartbeat)
-	registerGatewayEvent(discord_structs.GatewayOpReconnect, gatewayOpReconnect)
-	registerGatewayEvent(discord_structs.GatewayOpInvalidSession, gatewayOpInvalidSession)
-	registerGatewayEvent(discord_structs.GatewayOpHello, gatewayOpHello)
-	registerGatewayEvent(discord_structs.GatewayOpHeartbeatACK, gatewayOpHeartbeatACK)
+	registerGatewayEvent(discord.GatewayOpDispatch, gatewayOpDispatch)
+	registerGatewayEvent(discord.GatewayOpHeartbeat, gatewayOpHeartbeat)
+	registerGatewayEvent(discord.GatewayOpReconnect, gatewayOpReconnect)
+	registerGatewayEvent(discord.GatewayOpInvalidSession, gatewayOpInvalidSession)
+	registerGatewayEvent(discord.GatewayOpHello, gatewayOpHello)
+	registerGatewayEvent(discord.GatewayOpHeartbeatACK, gatewayOpHeartbeatACK)
 }

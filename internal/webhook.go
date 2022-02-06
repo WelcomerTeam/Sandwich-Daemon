@@ -3,12 +3,13 @@ package internal
 import (
 	"bytes"
 	"context"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
-	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
+	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 )
 
 // Embed colours for webhooks.
@@ -23,14 +24,16 @@ const (
 
 // PublishSimpleWebhook is a helper function for creating quicker webhook messages.
 func (sg *Sandwich) PublishSimpleWebhook(title string, description string, footer string, colour int32) {
-	sg.PublishWebhook(discord_structs.WebhookMessage{
-		Embeds: []*discord_structs.Embed{
+	now := time.Now().UTC()
+
+	sg.PublishWebhook(discord.WebhookMessageParams{
+		Embeds: []*discord.Embed{
 			{
 				Title:       title,
 				Description: description,
 				Color:       colour,
-				Timestamp:   webhookTime(time.Now().UTC()),
-				Footer: &discord_structs.EmbedFooter{
+				Timestamp:   &now,
+				Footer: &discord.EmbedFooter{
 					Text: footer,
 				},
 			},
@@ -39,7 +42,7 @@ func (sg *Sandwich) PublishSimpleWebhook(title string, description string, foote
 }
 
 // PublishWebhook sends a webhook message to all added webhooks in the configuration.
-func (sg *Sandwich) PublishWebhook(message discord_structs.WebhookMessage) {
+func (sg *Sandwich) PublishWebhook(message discord.WebhookMessageParams) {
 	for _, webhook := range sg.Configuration.Webhooks {
 		_, err := sg.SendWebhook(webhook, message)
 		if err != nil && !xerrors.Is(err, context.Canceled) {
@@ -48,7 +51,7 @@ func (sg *Sandwich) PublishWebhook(message discord_structs.WebhookMessage) {
 	}
 }
 
-func (sg *Sandwich) SendWebhook(webhookURL string, message discord_structs.WebhookMessage) (status int, err error) {
+func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessageParams) (status int, err error) {
 	webhookURL = strings.TrimSpace(webhookURL)
 
 	_, err = url.Parse(webhookURL)

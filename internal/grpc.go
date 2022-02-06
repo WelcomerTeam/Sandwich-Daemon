@@ -3,8 +3,10 @@ package internal
 import (
 	"bytes"
 	"context"
-	discord "github.com/WelcomerTeam/Discord/discord"
-	discord_structs "github.com/WelcomerTeam/Discord/structs"
+	"strings"
+	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
@@ -12,9 +14,6 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"io"
-	"strings"
-	"time"
 )
 
 var (
@@ -174,10 +173,10 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 	fetchDMChannels := request.CreateDMChannel && !hasQuery && request.Token != ""
 	userIDs := make([]discord.Snowflake, 0)
 
-	var client *Client
-	if fetchDMChannels {
-		client = NewClient(baseURL, request.Token)
-	}
+	// var client *Client
+	// if fetchDMChannels {
+	// 	client = NewClient(baseURL, request.Token)
+	// }
 
 	if hasQuery {
 		grpc.sg.State.usersMu.RLock()
@@ -197,27 +196,10 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 		user, ok := grpc.sg.State.GetUser(userID)
 		if ok {
 			if fetchDMChannels && user.DMChannelID == nil {
-				var resp discord_structs.Channel
-
-				var body io.ReadWriter
-
-				err = jsoniter.NewEncoder(body).Encode(discord_structs.CreateDMChannel{
-					RecipientID: user.ID,
-				})
-				if err != nil {
-					grpc.sg.Logger.Warn().Err(err).Int64("userID", int64(user.ID)).Msg("Failed to marshal create dm channel request")
-
-					continue
-				}
-
-				_, err = client.FetchJSON(ctx, "GET", "/users/@me/channels", body, nil, &resp)
-				if err != nil {
-					grpc.sg.Logger.Warn().Err(err).Int64("userID", int64(user.ID)).Msg("Failed to create DM channel for user")
-
-					continue
-				}
-
-				user.DMChannelID = &resp.ID
+				// var resp discord.Channel
+				// var body io.ReadWriter
+				// TODO: Refactor to use Discord session.
+				// user.DMChannelID = &resp.ID
 
 				grpc.sg.State.SetUser(&StateCtx{CacheUsers: true}, user)
 			}
@@ -424,7 +406,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 	return response, nil
 }
 
-func guildMemberMatch(query string, guildMember *discord_structs.GuildMember) (ok bool) {
+func guildMemberMatch(query string, guildMember *discord.GuildMember) (ok bool) {
 	if guildMember.Nick != "" {
 		return requestMatch(query, guildMember.Nick, guildMember.User.Username,
 			guildMember.User.Username+"#"+guildMember.User.Discriminator, guildMember.User.ID.String())
@@ -650,7 +632,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 	}
 
 	for _, data := range request.Data {
-		err = shard.SendEvent(ctx, discord_structs.GatewayOp(request.GatewayOPCode), data)
+		err = shard.SendEvent(ctx, discord.GatewayOp(request.GatewayOPCode), data)
 		if err != nil {
 			response.Error = err.Error()
 
