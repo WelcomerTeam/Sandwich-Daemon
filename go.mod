@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
-	github.com/WelcomerTeam/Discord v0.0.0-20220217232428-0c55b77c506a
+	github.com/WelcomerTeam/Discord v0.0.0-20220301110943-afefd6106040
 	github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/fasthttp/router v1.4.3
