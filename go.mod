@@ -23,11 +23,10 @@ require (
 	github.com/rs/zerolog v1.26.1
 	github.com/savsgio/gotils v0.0.0-20211223103454-d0aaa54c5899
 	github.com/segmentio/kafka-go v0.4.20
-	github.com/valyala/fasthttp v1.32.0
+	github.com/valyala/fasthttp v1.34.0
 	go.uber.org/atomic v1.9.0
-	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
-	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef // indirect
 	golang.org/x/text v0.3.7
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/genproto v0.0.0-20211001223012-bfb93cce50d9 // indirect
