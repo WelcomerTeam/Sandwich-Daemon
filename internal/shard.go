@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
@@ -15,10 +20,6 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
-	"runtime"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
@@ -562,7 +563,8 @@ func (sh *Shard) Listen(ctx context.Context) (err error) {
 
 // FeedWebsocket reads websocket events and feeds them through a channel.
 func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
-	opts *websocket.DialOptions) (errorCh chan error, messageCh chan discord.GatewayPayload, err error) {
+	opts *websocket.DialOptions,
+) (errorCh chan error, messageCh chan discord.GatewayPayload, err error) {
 	messageCh = make(chan discord.GatewayPayload, MessageChannelBuffer)
 	errorCh = make(chan error, 1)
 

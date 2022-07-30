@@ -3,14 +3,15 @@ package internal
 import (
 	"context"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+
+	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 )
 
 // Client represents the REST client.
@@ -46,7 +47,8 @@ func NewClient(baseURL url.URL, token string) *Client {
 // Fetch returns the response. Passing any headers will be sent to the request however
 // Authorization will be overwrote.
 func (c *Client) Fetch(ctx context.Context, method string, url string,
-	body io.Reader, headers map[string]string) (_body []byte, status int, err error) {
+	body io.Reader, headers map[string]string,
+) (_body []byte, status int, err error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return
@@ -74,7 +76,8 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 // FetchJSON attempts to convert the response into a JSON structure. Passing any headers
 // will be sent to the request however Authorization will be overwrote.
 func (c *Client) FetchJSON(ctx context.Context, method string, url string, body io.Reader,
-	headers map[string]string, structure interface{}) (status int, err error) {
+	headers map[string]string, structure interface{},
+) (status int, err error) {
 	responseBody, status, err := c.Fetch(ctx, method, url, body, headers)
 	if err != nil {
 		return

@@ -1,10 +1,11 @@
 package structs
 
 import (
-	"github.com/WelcomerTeam/Discord/discord"
-	jsoniter "github.com/json-iterator/go"
 	"sync"
 	"time"
+
+	"github.com/WelcomerTeam/Discord/discord"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // StateResult represents the data a state handler would return which would be converted to

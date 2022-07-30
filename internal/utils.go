@@ -2,13 +2,14 @@ package internal
 
 import (
 	"encoding/hex"
-	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 	"hash"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/xerrors"
 )
 
 type void struct{}
