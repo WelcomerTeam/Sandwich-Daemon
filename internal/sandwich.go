@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/interfacecache"
@@ -20,6 +21,8 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/reflection"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -144,8 +147,10 @@ type SandwichConfiguration struct {
 	} `json:"prometheus" yaml:"prometheus"`
 
 	GRPC struct {
-		Network string `json:"network" yaml:"network"`
-		Host    string `json:"host" yaml:"host"`
+		Network            string `json:"network" yaml:"network"`
+		Host               string `json:"host" yaml:"host"`
+		CertFile           string `json:"cert_file" yaml:"cert_file"`
+		ServerNameOverride string `json:"server_name_override" yaml:"server_name_override"`
 	} `json:"grpc" yaml:"grpc"`
 
 	HTTP struct {
@@ -482,7 +487,28 @@ func (sg *Sandwich) setupGRPC() (err error) {
 	sg.configurationMu.RLock()
 	network := sg.Configuration.GRPC.Network
 	host := sg.Configuration.GRPC.Host
+	certpath := sg.Configuration.GRPC.CertFile
+	servernameoverride := sg.Configuration.GRPC.ServerNameOverride
 	sg.configurationMu.RUnlock()
+
+	var grpcOptions []grpc.ServerOption
+
+	if certpath != "" {
+		var creds credentials.TransportCredentials
+
+		creds, err = credentials.NewClientTLSFromFile(certpath, servernameoverride)
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to create new client TLS from file for gRPC")
+
+			return
+		}
+
+		grpcOptions = append(grpcOptions, grpc.Creds(creds))
+	}
+
+	grpcListener := grpc.NewServer(grpcOptions...)
+	grpcServer.RegisterSandwichServer(grpcListener, sg.newSandwichServer())
+	reflection.Register(grpcListener)
 
 	listener, err := net.Listen(network, host)
 	if err != nil {
@@ -490,10 +516,6 @@ func (sg *Sandwich) setupGRPC() (err error) {
 
 		return
 	}
-
-	var grpcOptions []grpc.ServerOption
-	grpcListener := grpc.NewServer(grpcOptions...)
-	grpcServer.RegisterSandwichServer(grpcListener, sg.newSandwichServer())
 
 	sg.Logger.Info().Msgf("Serving gRPC at %s", host)
 
