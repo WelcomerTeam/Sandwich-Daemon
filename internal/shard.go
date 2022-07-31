@@ -131,6 +131,9 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		Manager:    sg.Manager,
 		ShardGroup: sg,
 
+		Start: &atomic.Time{},
+		Init:  atomic.NewTime(time.Now().UTC()),
+
 		HeartbeatActive:   atomic.NewBool(false),
 		LastHeartbeatAck:  &atomic.Time{},
 		LastHeartbeatSent: &atomic.Time{},
