@@ -368,6 +368,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 			}
 
 			return sandwich_structs.StatusEndpointResponse{
+				Uptime:   int(time.Since(sg.StartTime).Seconds()),
 				Managers: managers,
 			}
 		})
@@ -425,8 +426,9 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 		shardGroup.shardsMu.RLock()
 		statusShardGroup := &sandwich_structs.StatusEndpointShardGroup{
 			ShardGroupID: shardGroup.ID,
-			Shards:       make([][5]int, 0, len(shardGroup.Shards)),
+			Shards:       make([][6]int, 0, len(shardGroup.Shards)),
 			Status:       shardGroup.Status,
+			Uptime:       int(time.Since(shardGroup.Start.Load()).Seconds()),
 		}
 
 		sortedShardIDs := make([]int, 0, len(shardGroup.Shards))
@@ -446,12 +448,14 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 			shard.statusMu.RUnlock()
 
 			shard.guildsMu.RLock()
-			statusShardGroup.Shards = append(statusShardGroup.Shards, [5]int{
+
+			statusShardGroup.Shards = append(statusShardGroup.Shards, [6]int{
 				int(shard.ShardID),
 				int(shardStatus),
 				int(shard.LastHeartbeatAck.Load().Sub(shard.LastHeartbeatSent.Load()).Milliseconds()),
 				len(shard.Guilds),
-				int(time.Since(shard.Start).Seconds()),
+				int(time.Since(shard.Start.Load()).Seconds()),
+				int(time.Since(shard.Init.Load()).Seconds()),
 			})
 			shard.guildsMu.RUnlock()
 		}

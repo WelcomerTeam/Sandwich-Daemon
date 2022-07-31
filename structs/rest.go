@@ -11,6 +11,7 @@ type BaseRestResponse struct {
 }
 
 type StatusEndpointResponse struct {
+	Uptime   int                      `json:"uptime"`
 	Managers []*StatusEndpointManager `json:"managers"`
 }
 
@@ -22,10 +23,12 @@ type StatusEndpointManager struct {
 type StatusEndpointShardGroup struct {
 	ShardGroupID int32 `json:"id"`
 
-	// ShardID, Status, Latency (in milliseconds), Guilds, Uptime (in milliseconds)
-	Shards [][5]int `json:"shards"`
+	// ShardID, Status, Latency (in milliseconds), Guilds, Uptime (in seconds), Total Uptime (in seconds)
+	Shards [][6]int `json:"shards"`
 
 	Status ShardGroupStatus `json:"status"`
+
+	Uptime int `json:"uptime"`
 }
 
 type UserResponse struct {

@@ -21,7 +21,7 @@ type ShardGroup struct {
 	Manager *Manager       `json:"-"`
 	Logger  zerolog.Logger `json:"-"`
 
-	Start time.Time `json:"start"`
+	Start *atomic.Time `json:"start"`
 
 	WaitingFor *atomic.Int32 `json:"-"`
 
@@ -72,7 +72,7 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 		Manager: mg,
 		Logger:  mg.Logger,
 
-		Start: time.Now().UTC(),
+		Start: atomic.NewTime(time.Now().UTC()),
 
 		WaitingFor: &atomic.Int32{},
 
@@ -112,7 +112,7 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 // Once the shardgroup has fully finished connecting and are ready, then floodgate will be enabled allowing
 // their events to be handled.
 func (sg *ShardGroup) Open() (ready chan bool, err error) {
-	sg.Start = time.Now().UTC()
+	sg.Start.Store(time.Now().UTC())
 
 	sg.Manager.shardGroupsMu.RLock()
 	for _, shardGroup := range sg.Manager.ShardGroups {

@@ -62,7 +62,8 @@ type Shard struct {
 	RoutineDeadSignal   deadlock.DeadSignal `json:"-"`
 	HeartbeatDeadSignal deadlock.DeadSignal `json:"-"`
 
-	Start            time.Time     `json:"start"`
+	Start            *atomic.Time  `json:"start"`
+	Init             *atomic.Time  `json:"init"`
 	RetriesRemaining *atomic.Int32 `json:"-"`
 
 	Logger zerolog.Logger `json:"-"`
@@ -285,7 +286,7 @@ readyConsumer:
 
 	now := time.Now().UTC()
 
-	sh.Start = now
+	sh.Start.Store(now)
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
