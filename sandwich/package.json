@@ -10,7 +10,7 @@
     "@headlessui/vue": "^1.4.1",
     "@heroicons/vue": "^1.0.4",
     "@jamescoyle/vue-icon": "^0.1.2",
-    "@mdi/js": "^6.2.95",
+    "@mdi/js": "^6.9.96",
     "@tailwindcss/forms": "^0.3.4",
     "axios": "^0.22.0",
     "prismjs": "^1.25.0",
