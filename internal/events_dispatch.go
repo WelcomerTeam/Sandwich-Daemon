@@ -409,31 +409,37 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildUpdatePayload.ID)
 
-	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildUpdatePayload.ID)
+	beforeGuild, ok := ctx.Sandwich.State.GetGuild(guildUpdatePayload.ID)
 
-	// Preserve values only present in GUILD_CREATE events.
-	if guildUpdatePayload.StageInstances == nil {
-		guildUpdatePayload.StageInstances = beforeGuild.StageInstances
+	if ok {
+		// Preserve values only present in GUILD_CREATE events.
+		if guildUpdatePayload.StageInstances == nil {
+			guildUpdatePayload.StageInstances = beforeGuild.StageInstances
+		}
+
+		if guildUpdatePayload.Channels == nil {
+			guildUpdatePayload.Channels = beforeGuild.Channels
+		}
+
+		if guildUpdatePayload.Members == nil {
+			guildUpdatePayload.Members = beforeGuild.Members
+		}
+
+		if guildUpdatePayload.VoiceStates == nil {
+			guildUpdatePayload.VoiceStates = beforeGuild.VoiceStates
+		}
+
+		if guildUpdatePayload.MemberCount == 0 {
+			guildUpdatePayload.MemberCount = beforeGuild.MemberCount
+		}
+
+		guildUpdatePayload.Large = beforeGuild.Large
+		guildUpdatePayload.JoinedAt = beforeGuild.JoinedAt
+	} else {
+		ctx.Logger.Warn().
+			Int64("guild_id", int64(guildUpdatePayload.ID)).
+			Msg("Received " + discord.DiscordEventGuildUpdate + " event, but previous guild not present in state")
 	}
-
-	if guildUpdatePayload.Channels == nil {
-		guildUpdatePayload.Channels = beforeGuild.Channels
-	}
-
-	if guildUpdatePayload.Members == nil {
-		guildUpdatePayload.Members = beforeGuild.Members
-	}
-
-	if guildUpdatePayload.VoiceStates == nil {
-		guildUpdatePayload.VoiceStates = beforeGuild.VoiceStates
-	}
-
-	if guildUpdatePayload.MemberCount == 0 {
-		guildUpdatePayload.MemberCount = beforeGuild.MemberCount
-	}
-
-	guildUpdatePayload.Large = beforeGuild.Large
-	guildUpdatePayload.JoinedAt = beforeGuild.JoinedAt
 
 	ctx.Sandwich.State.SetGuild(ctx, guildUpdatePayload)
 
@@ -557,12 +563,18 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sand
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildStickersUpdatePayload.GuildID)
 
-	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildStickersUpdatePayload.GuildID)
+	beforeGuild, ok := ctx.Sandwich.State.GetGuild(guildStickersUpdatePayload.GuildID)
 	beforeStickers := beforeGuild.Stickers
 
-	beforeGuild.Stickers = guildStickersUpdatePayload.Stickers
+	if ok {
+		beforeGuild.Stickers = guildStickersUpdatePayload.Stickers
 
-	ctx.Sandwich.State.SetGuild(ctx, beforeGuild)
+		ctx.Sandwich.State.SetGuild(ctx, beforeGuild)
+	} else {
+		ctx.Logger.Warn().
+			Int64("guild_id", int64(guildStickersUpdatePayload.GuildID)).
+			Msg("Received " + discord.DiscordEventGuildStickersUpdate + ", however guild is not present in state")
+	}
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeStickers,
