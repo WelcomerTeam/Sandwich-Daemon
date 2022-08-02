@@ -100,6 +100,18 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace 
 
 // OnDispatch handles routing of discord event.
 func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			sh.Logger.Error().
+				Err(r.(error)).
+				Int("op", int(msg.Op)).
+				Str("type", msg.Type).
+				Int("seq", int(msg.Sequence)).
+				Bytes("data", msg.Data).
+				Msg("Recovered panic in OnDispatch")
+		}
+	}()
+
 	if sh.Manager.ProducerClient == nil {
 		return ErrProducerMissing
 	}
