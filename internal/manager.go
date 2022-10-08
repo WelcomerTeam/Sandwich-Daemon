@@ -55,7 +55,8 @@ type Manager struct {
 
 	ProducerClient MQClient `json:"-"`
 
-	Client *Client `json:"-"`
+	clientMu sync.Mutex
+	Client   *Client `json:"-"`
 
 	UserID *atomic.Int64 `json:"id"`
 
@@ -226,6 +227,10 @@ func (mg *Manager) Open() (err error) {
 // GetGateway returns the response from /gateway/bot.
 func (mg *Manager) GetGateway() (resp discord.GatewayBotResponse, err error) {
 	mg.Sandwich.gatewayLimiter.Lock()
+
+	mg.clientMu.Lock()
+	defer mg.clientMu.Unlock()
+
 	_, err = mg.Client.FetchJSON(mg.ctx, "GET", "/gateway/bot", nil, nil, &resp)
 
 	mg.Logger.Info().

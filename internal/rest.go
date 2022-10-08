@@ -686,9 +686,9 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	manager.Configuration = &managerConfiguration
 	manager.configurationMu.Unlock()
 
-	manager.Client.mu.Lock()
-	manager.Client.Token = managerConfiguration.Token
-	manager.Client.mu.Unlock()
+	manager.clientMu.Lock()
+	manager.Client = NewClient(baseURL, manager.Configuration.Token)
+	manager.clientMu.Unlock()
 
 	err = manager.Initialize()
 	if err != nil {
@@ -700,12 +700,20 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	manager.configurationMu.RLock()
-	manager.Client = NewClient(baseURL, manager.Configuration.Token)
-	manager.configurationMu.RUnlock()
+	sg.configurationMu.Lock()
+	defer sg.configurationMu.Unlock()
 
-	sg.configurationMu.RLock()
-	defer sg.configurationMu.RUnlock()
+	managers := make([]*ManagerConfiguration, 0)
+
+	for _, manager := range sg.Configuration.Managers {
+		if manager.Identifier != managerConfiguration.Identifier {
+			managers = append(managers, manager)
+		}
+	}
+
+	managers = append(managers, &managerConfiguration)
+
+	sg.Configuration.Managers = managers
 
 	err = sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
 	if err != nil {
