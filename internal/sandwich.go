@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -28,7 +29,6 @@ import (
 	"github.com/valyala/fasthttp"
 	"go.uber.org/atomic"
 	"golang.org/x/oauth2"
-	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -37,7 +37,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.7.3"
+const VERSION = "1.7.4"
 
 const (
 	PermissionsDefault = 0o744
@@ -341,12 +341,12 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 
 	data, err := yaml.Marshal(configuration)
 	if err != nil {
-		return xerrors.Errorf("Failed to marshal configuration: %v", err)
+		return fmt.Errorf("failed to marshal configuration: %w", err)
 	}
 
 	err = ioutil.WriteFile(path, data, PermissionWrite)
 	if err != nil {
-		return xerrors.Errorf("Failed to write configuration to file: %v", err)
+		return fmt.Errorf("failed to write configuration to file: %w", err)
 	}
 
 	_ = sg.PublishGlobalEvent(sandwich_structs.SandwichEventConfigurationReload, nil)
@@ -412,7 +412,7 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 
 	payload, err := jsoniter.Marshal(packet)
 	if err != nil {
-		return xerrors.Errorf("Failed to marshal packet: %w", err)
+		return fmt.Errorf("failed to marshal packet: %w", err)
 	}
 
 	for _, pool := range sg.globalPool {
@@ -523,7 +523,7 @@ func (sg *Sandwich) setupGRPC() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
 
-		return xerrors.Errorf("Failed to server grpc: %v", err)
+		return fmt.Errorf("failed to server grpc: %w", err)
 	}
 
 	return nil
@@ -565,7 +565,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve prometheus server")
 
-		return xerrors.Errorf("Failed to serve prometheus: %v", err)
+		return fmt.Errorf("failed to serve prometheus: %w", err)
 	}
 
 	return nil
@@ -585,7 +585,7 @@ func (sg *Sandwich) setupHTTP() (err error) {
 	if err = sg.SessionProvider.SetProvider(provider); err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to set session provider")
 
-		return xerrors.Errorf("Failed to set session provider: %v", err)
+		return fmt.Errorf("failed to set session provider: %w", err)
 	}
 
 	sg.RouterHandler, sg.DistHandler = sg.NewRestRouter()
@@ -594,7 +594,7 @@ func (sg *Sandwich) setupHTTP() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to server http server")
 
-		return xerrors.Errorf("Failed to serve webserver: %v", err)
+		return fmt.Errorf("failed to serve webserver: %w", err)
 	}
 
 	return nil

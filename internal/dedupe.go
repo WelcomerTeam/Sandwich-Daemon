@@ -6,11 +6,11 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 )
 
-func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
+func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) string {
 	return "MA:" + guildID.String() + ":" + memberID.String()
 }
 
-func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Snowflake) (key string) {
+func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Snowflake) string {
 	return "MR:" + guildID.String() + ":" + memberID.String()
 }
 
@@ -22,7 +22,7 @@ func (sg *Sandwich) AddDedupe(key string) {
 }
 
 // CheckMemberDedupe returns if a dedupe is set. If true, event should be ignored.
-func (sg *Sandwich) CheckDedupe(key string) (shouldDedupe bool) {
+func (sg *Sandwich) CheckDedupe(key string) bool {
 	sg.dedupeMu.RLock()
 	value := sg.Dedupe[key]
 	sg.dedupeMu.RUnlock()

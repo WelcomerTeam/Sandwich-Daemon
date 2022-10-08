@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
 
@@ -25,7 +25,7 @@ func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayloa
 		defer sh.Sandwich.EventsInflight.Dec()
 
 		err := sh.OnDispatch(ctx, msg, trace)
-		if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
+		if err != nil && !errors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Msg("State dispatch failed")
 		}
 	}(msg, trace)

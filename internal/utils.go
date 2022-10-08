@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/hex"
+	"fmt"
 	"hash"
 	"math/rand"
 	"strconv"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 )
 
 type void struct{}
@@ -27,7 +27,7 @@ func quickHash(hashMethod hash.Hash, text string) (result string, err error) {
 	hashMethod.Reset()
 
 	if _, err := hashMethod.Write([]byte(text)); err != nil {
-		return "", xerrors.Errorf("Failed to hash text: %v", err)
+		return "", fmt.Errorf("failed to hash text: %w", err)
 	}
 
 	return hex.EncodeToString(hashMethod.Sum(nil)), nil
@@ -70,7 +70,7 @@ func makeExtra(extra map[string]interface{}) (out map[string]jsoniter.RawMessage
 	for k, v := range extra {
 		p, err := jsoniter.Marshal(v)
 		if err != nil {
-			return out, xerrors.Errorf("Failed to marshal extra: %v", err)
+			return out, fmt.Errorf("failed to marshal extra: %w", err)
 		}
 
 		out[k] = p

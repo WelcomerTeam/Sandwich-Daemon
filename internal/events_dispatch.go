@@ -2,11 +2,12 @@ package internal
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	"golang.org/x/xerrors"
 )
 
 // OnReady handles the READY event.
@@ -57,7 +58,7 @@ ready:
 	for {
 		select {
 		case <-ctx.ErrorCh:
-			if !xerrors.Is(err, context.Canceled) {
+			if !errors.Is(err, context.Canceled) {
 				ctx.Logger.Error().Err(err).Msg("Encountered error during READY")
 			}
 
@@ -75,7 +76,7 @@ ready:
 			}
 
 			err = ctx.OnDispatch(ctx.context, msg, trace)
-			if err != nil && !xerrors.Is(err, ErrNoDispatchHandler) {
+			if err != nil && !errors.Is(err, ErrNoDispatchHandler) {
 				ctx.Logger.Error().Err(err).Msg("Failed to dispatch event")
 			}
 		case <-readyTimeout.C:
@@ -182,7 +183,7 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 		"unavailable": unavailable,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -251,7 +252,7 @@ func OnChannelUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_s
 		"before": beforeChannel,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -277,7 +278,7 @@ func OnChannelDelete(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_s
 		"before": beforeChannel,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -330,7 +331,7 @@ func OnThreadUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_st
 		"before": beforeChannel,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -447,7 +448,7 @@ func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 		"before": beforeGuild,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -483,7 +484,7 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 		"before": beforeGuild,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -544,7 +545,7 @@ func OnGuildEmojisUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		"before": beforeEmojis,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -580,7 +581,7 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sand
 		"before": beforeStickers,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -679,7 +680,7 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		"before": guildMember,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -709,7 +710,7 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		"before": beforeGuildMember,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -754,7 +755,7 @@ func OnGuildRoleUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich
 		"before": beforeRole,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{
@@ -1085,7 +1086,7 @@ func OnUserUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 		"before": beforeUser,
 	})
 	if err != nil {
-		return result, ok, xerrors.Errorf("Failed to marshal extras: %v", err)
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
 	return sandwich_structs.StateResult{

@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 )
 
 // Client represents the REST client.
@@ -48,10 +47,10 @@ func NewClient(baseURL url.URL, token string) *Client {
 // Authorization will be overwrote.
 func (c *Client) Fetch(ctx context.Context, method string, url string,
 	body io.Reader, headers map[string]string,
-) (_body []byte, status int, err error) {
+) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return
+		return nil, 0, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	for k, v := range headers {
@@ -60,27 +59,27 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 
 	res, err := c.HandleRequest(req, false)
 	if err != nil {
-		return
+		return nil, 0, err
 	}
 
 	defer res.Body.Close()
 
-	_body, err = ioutil.ReadAll(res.Body)
+	resultBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, res.StatusCode, xerrors.Errorf("failed to read request body: %w", err)
+		return nil, res.StatusCode, fmt.Errorf("failed to read request body: %w", err)
 	}
 
-	return _body, res.StatusCode, nil
+	return resultBody, res.StatusCode, nil
 }
 
 // FetchJSON attempts to convert the response into a JSON structure. Passing any headers
 // will be sent to the request however Authorization will be overwrote.
 func (c *Client) FetchJSON(ctx context.Context, method string, url string, body io.Reader,
 	headers map[string]string, structure interface{},
-) (status int, err error) {
+) (int, error) {
 	responseBody, status, err := c.Fetch(ctx, method, url, body, headers)
 	if err != nil {
-		return
+		return status, err
 	}
 
 	err = jsoniter.Unmarshal(responseBody, &structure)
@@ -88,11 +87,11 @@ func (c *Client) FetchJSON(ctx context.Context, method string, url string, body 
 		return -1, fmt.Errorf("failed to unmarshal body: %w", err)
 	}
 
-	return
+	return status, nil
 }
 
 // HandleRequest makes a request to the Discord API.
-func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Response, err error) {
+func (c *Client) HandleRequest(req *http.Request, retry bool) (*http.Response, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -110,14 +109,13 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (res *http.Respons
 		req.Header.Set("Authorization", replaceIfEmpty(req.Header.Get("Authorization"), "Bot "+c.Token))
 	}
 
-	if res, err = c.HTTP.Do(req); err != nil {
+	res, err := c.HTTP.Do(req)
+	if err != nil {
 		return res, fmt.Errorf("failed to do HTTP request: %w", err)
 	}
 
 	if res.StatusCode == http.StatusTooManyRequests {
-		// TODO: Handle
-
-		return res, err
+		return res, fmt.Errorf("failed to do HTTP request: %w", err)
 	}
 
 	if res.StatusCode == http.StatusUnauthorized {

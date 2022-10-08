@@ -18,7 +18,6 @@ import (
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"go.uber.org/atomic"
-	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
 
@@ -178,7 +177,7 @@ func (sh *Shard) Open() {
 
 	for {
 		err := sh.Listen(sh.ctx)
-		if xerrors.Is(err, context.Canceled) {
+		if errors.Is(err, context.Canceled) {
 			sh.Logger.Debug().Msg("Shard context canceled")
 
 			return
@@ -480,7 +479,7 @@ func (sh *Shard) Listen(ctx context.Context) (err error) {
 
 		msg, err := sh.readMessage()
 		if err != nil {
-			if xerrors.Is(err, context.Canceled) || xerrors.Is(err, context.DeadlineExceeded) {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				break
 			}
 
@@ -576,7 +575,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to dial websocket")
 
-		return errorCh, messageCh, xerrors.Errorf("failed to connect to websocket: %w", err)
+		return errorCh, messageCh, fmt.Errorf("failed to connect to websocket: %w", err)
 	}
 
 	conn.SetReadLimit(WebsocketReadLimit)
@@ -703,7 +702,7 @@ func (sh *Shard) SendEvent(ctx context.Context, op discord.GatewayOp, data inter
 
 	err = sh.WriteJSON(ctx, op, packet)
 	if err != nil {
-		return xerrors.Errorf("sendEvent writeJson: %w", err)
+		return fmt.Errorf("sendEvent writeJson: %w", err)
 	}
 
 	return
@@ -722,7 +721,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 
 	res, err := jsoniter.Marshal(i)
 	if err != nil {
-		return xerrors.Errorf("Failed to marshal payload: %v", err)
+		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
 	if op != discord.GatewayOpHeartbeat {
@@ -737,7 +736,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 
 	err = wsConn.Write(ctx, websocket.MessageText, res)
 	if err != nil {
-		return xerrors.Errorf("Failed to write message: %v", err)
+		return fmt.Errorf("failed to write message: %w", err)
 	}
 
 	return nil
@@ -800,7 +799,7 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 
 		if wsConn != nil {
 			err = wsConn.Close(statusCode, "")
-			if err != nil && !xerrors.Is(err, context.Canceled) {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
 			}
 		}

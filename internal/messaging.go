@@ -2,13 +2,13 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 )
 
 type MQClient interface {
@@ -30,7 +30,7 @@ func NewMQClient(mqType string) (MQClient, error) {
 	case "redis":
 		return &messaging.RedisMQClient{}, nil
 	default:
-		return nil, xerrors.New("No MQ client named " + mqType)
+		return nil, fmt.Errorf("%s is not a valid MQClient", mqType)
 	}
 }
 
@@ -60,7 +60,7 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 
 	payload, err := jsoniter.Marshal(packet)
 	if err != nil {
-		return xerrors.Errorf("failed to marshal payload: %w", err)
+		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
 	err = sh.Manager.ProducerClient.Publish(
@@ -70,7 +70,7 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 	)
 
 	if err != nil {
-		return xerrors.Errorf("publishEvent publish: %w", err)
+		return fmt.Errorf("publishEvent publish: %w", err)
 	}
 
 	return nil

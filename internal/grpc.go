@@ -3,6 +3,8 @@ package internal
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,22 +13,21 @@ import (
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/text/unicode/norm"
-	"golang.org/x/xerrors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
-	ErrNoGuildIDPresent = xerrors.New("Missing guild ID")
-	ErrNoUserIDPresent  = xerrors.New("Missing user ID")
-	ErrNoQueryPresent   = xerrors.New("Missing query")
+	ErrNoGuildIDPresent = errors.New("missing guild ID")
+	ErrNoUserIDPresent  = errors.New("missing user ID")
+	ErrNoQueryPresent   = errors.New("missing query")
 
-	ErrDuplicateManagerPresent = xerrors.New("Duplicate manager identifier passed")
-	ErrNoManagerPresent        = xerrors.New("Invalid manager identifier passed")
-	ErrNoShardGroupPresent     = xerrors.New("Invalid shard group identifier passed")
-	ErrNoShardPresent          = xerrors.New("Invalid shard ID passed")
+	ErrDuplicateManagerPresent = errors.New("duplicate manager identifier passed")
+	ErrNoManagerPresent        = errors.New("invalid manager identifier passed")
+	ErrNoShardGroupPresent     = errors.New("invalid shard group identifier passed")
+	ErrNoShardPresent          = errors.New("invalid shard ID passed")
 
-	ErrCacheMiss = xerrors.New("Could not find state for this guild ID")
+	ErrCacheMiss = errors.New("item not present in cache")
 )
 
 func (sg *Sandwich) newSandwichServer() *routeSandwichServer {
@@ -45,8 +46,8 @@ func onGRPCRequest() {
 	grpcCacheRequests.Inc()
 }
 
-func onGRPCHit(ok bool) {
-	if ok {
+func onGRPCHit(cacheHit bool) {
+	if cacheHit {
 		grpcCacheHits.Inc()
 	} else {
 		grpcCacheMisses.Inc()
@@ -97,7 +98,7 @@ func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.S
 					Str("identifier", request.Identifier).
 					Msg("Encountered error on GRPC Listen")
 
-				return xerrors.Errorf("Failed to send to listener: %v", err)
+				return fmt.Errorf("failed to send to listener: %w", err)
 			}
 		case <-ctx.Done():
 			return
@@ -145,15 +146,15 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 		Identifiers: identifiers,
 	}
 
-	var b bytes.Buffer
+	var buf bytes.Buffer
 
-	err = jsoniter.NewEncoder(&b).Encode(sandwichConsumerConfiguration)
+	err = jsoniter.NewEncoder(&buf).Encode(sandwichConsumerConfiguration)
 	if err != nil {
 		grpc.sg.Logger.Warn().Err(err).Msg("Failed to marshal consumer configuration")
 	}
 
 	return &pb.FetchConsumerConfigurationResponse{
-		File: b.Bytes(),
+		File: buf.Bytes(),
 	}, nil
 }
 
@@ -193,8 +194,8 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 	}
 
 	for _, userID := range userIDs {
-		user, ok := grpc.sg.State.GetUser(userID)
-		if ok {
+		user, cacheHit := grpc.sg.State.GetUser(userID)
+		if cacheHit {
 			if fetchDMChannels && user.DMChannelID == nil {
 				// var resp discord.Channel
 				// var body io.ReadWriter
@@ -212,7 +213,7 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 			}
 		}
 
-		onGRPCHit(ok)
+		onGRPCHit(cacheHit)
 	}
 
 	response.BaseResponse.Ok = true
@@ -243,8 +244,8 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 
 	if hasChannelIds {
 		for _, channelID := range request.ChannelIDs {
-			guildChannel, ok := grpc.sg.State.GetGuildChannel((*discord.Snowflake)(&request.GuildID), discord.Snowflake(channelID))
-			if ok {
+			guildChannel, cacheHit := grpc.sg.State.GetGuildChannel((*discord.Snowflake)(&request.GuildID), discord.Snowflake(channelID))
+			if cacheHit {
 				grpcChannel, err := pb.ChannelToGRPC(guildChannel)
 				if err == nil {
 					response.GuildChannels[int64(guildChannel.ID)] = grpcChannel
@@ -253,11 +254,11 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 				}
 			}
 
-			onGRPCHit(ok)
+			onGRPCHit(cacheHit)
 		}
 	} else {
-		guildChannels, ok := grpc.sg.State.GetAllGuildChannels(discord.Snowflake(request.GuildID))
-		if !ok {
+		guildChannels, cacheHit := grpc.sg.State.GetAllGuildChannels(discord.Snowflake(request.GuildID))
+		if !cacheHit {
 			response.BaseResponse.Error = ErrCacheMiss.Error()
 
 			return response, ErrCacheMiss
@@ -305,8 +306,8 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 
 	if hasEmojiIds {
 		for _, emojiID := range request.EmojiIDs {
-			guildEmoji, ok := grpc.sg.State.GetGuildEmoji(discord.Snowflake(request.GuildID), discord.Snowflake(emojiID))
-			if ok {
+			guildEmoji, cacheHit := grpc.sg.State.GetGuildEmoji(discord.Snowflake(request.GuildID), discord.Snowflake(emojiID))
+			if cacheHit {
 				grpcEmoji, err := pb.EmojiToGRPC(guildEmoji)
 				if err == nil {
 					response.GuildEmojis[int64(guildEmoji.ID)] = grpcEmoji
@@ -315,11 +316,11 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 				}
 			}
 
-			onGRPCHit(ok)
+			onGRPCHit(cacheHit)
 		}
 	} else {
-		guildEmojis, ok := grpc.sg.State.GetAllGuildEmojis(discord.Snowflake(request.GuildID))
-		if !ok {
+		guildEmojis, cacheHit := grpc.sg.State.GetAllGuildEmojis(discord.Snowflake(request.GuildID))
+		if !cacheHit {
 			response.BaseResponse.Error = ErrCacheMiss.Error()
 
 			return response, ErrCacheMiss
@@ -367,8 +368,8 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 
 	if hasGuildMemberIds {
 		for _, GuildMemberID := range request.UserIDs {
-			guildMember, ok := grpc.sg.State.GetGuildMember(discord.Snowflake(request.GuildID), discord.Snowflake(GuildMemberID))
-			if ok {
+			guildMember, cacheHit := grpc.sg.State.GetGuildMember(discord.Snowflake(request.GuildID), discord.Snowflake(GuildMemberID))
+			if cacheHit {
 				grpcGuildMember, err := pb.GuildMemberToGRPC(guildMember)
 				if err == nil {
 					response.GuildMembers[int64(guildMember.User.ID)] = grpcGuildMember
@@ -377,11 +378,11 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 				}
 			}
 
-			onGRPCHit(ok)
+			onGRPCHit(cacheHit)
 		}
 	} else {
-		guildGuildMembers, ok := grpc.sg.State.GetAllGuildMembers(discord.Snowflake(request.GuildID))
-		if !ok {
+		guildGuildMembers, cacheHit := grpc.sg.State.GetAllGuildMembers(discord.Snowflake(request.GuildID))
+		if !cacheHit {
 			response.BaseResponse.Error = ErrCacheMiss.Error()
 
 			return response, ErrCacheMiss
@@ -432,8 +433,8 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 
 	if hasGuildIds {
 		for _, guildID := range request.GuildIDs {
-			guild, ok := grpc.sg.State.GetGuild(discord.Snowflake(guildID))
-			if ok {
+			guild, cacheHit := grpc.sg.State.GetGuild(discord.Snowflake(guildID))
+			if cacheHit {
 				grpcGuild, err := pb.GuildToGRPC(guild)
 				if err == nil {
 					response.Guilds[int64(guild.ID)] = grpcGuild
@@ -442,7 +443,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 				}
 			}
 
-			onGRPCHit(ok)
+			onGRPCHit(cacheHit)
 		}
 	} else {
 		if !hasQuery {
@@ -496,8 +497,8 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 
 	if hasRoleIds {
 		for _, roleID := range request.RoleIDs {
-			guildRole, ok := grpc.sg.State.GetGuildRole(discord.Snowflake(request.GuildID), discord.Snowflake(roleID))
-			if ok {
+			guildRole, cacheHit := grpc.sg.State.GetGuildRole(discord.Snowflake(request.GuildID), discord.Snowflake(roleID))
+			if cacheHit {
 				grpcRole, err := pb.RoleToGRPC(guildRole)
 				if err == nil {
 					response.GuildRoles[int64(guildRole.ID)] = grpcRole
@@ -506,11 +507,11 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 				}
 			}
 
-			onGRPCHit(ok)
+			onGRPCHit(cacheHit)
 		}
 	} else {
-		guildRoles, ok := grpc.sg.State.GetAllGuildRoles(discord.Snowflake(request.GuildID))
-		if !ok {
+		guildRoles, cacheHit := grpc.sg.State.GetAllGuildRoles(discord.Snowflake(request.GuildID))
+		if !cacheHit {
 			response.BaseResponse.Error = ErrCacheMiss.Error()
 
 			return response, ErrCacheMiss
@@ -559,8 +560,8 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 
 	for _, guildID := range guildIDs {
 		if request.Expand {
-			guild, ok := grpc.sg.State.GetGuild(guildID)
-			if ok {
+			guild, cacheHit := grpc.sg.State.GetGuild(guildID)
+			if cacheHit {
 				grpcGuild, err := pb.GuildToGRPC(guild)
 				if err == nil {
 					response.Guilds[int64(guildID)] = grpcGuild
@@ -602,10 +603,10 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 	}
 
 	grpc.sg.managersMu.RLock()
-	manager, ok := grpc.sg.Managers[request.Manager]
+	manager, cacheHit := grpc.sg.Managers[request.Manager]
 	grpc.sg.managersMu.RUnlock()
 
-	if !ok {
+	if !cacheHit {
 		response.Error = ErrNoManagerPresent.Error()
 
 		return response, ErrNoManagerPresent

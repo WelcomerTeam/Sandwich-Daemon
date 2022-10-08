@@ -2,10 +2,10 @@ package mqclients
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/segmentio/kafka-go"
-	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -54,7 +54,7 @@ func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, clientName string, ar
 	var address string
 
 	if address, ok = GetEntry(args, "Address").(string); !ok {
-		return xerrors.New("kafkaMQ connect: string type assertion failed for Address")
+		return errors.New("kafkaMQ connect: string type assertion failed for Address")
 	}
 
 	var balancer kafka.Balancer
@@ -62,7 +62,7 @@ func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, clientName string, ar
 	if balancerStr, ok := GetEntry(args, "Balancer").(string); ok {
 		balancer = parseKafkaBalancer(balancerStr)
 	} else {
-		return xerrors.New("kafkaMQ connect: string type assertion failed for Balancer")
+		return errors.New("kafkaMQ connect: string type assertion failed for Balancer")
 	}
 
 	var async bool

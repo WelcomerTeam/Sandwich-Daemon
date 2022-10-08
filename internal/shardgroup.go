@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/net/context"
-	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
 
@@ -147,7 +147,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	for {
 		err = initialShard.Connect()
 
-		if err != nil && !xerrors.Is(err, context.Canceled) {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			retriesRemaining := initialShard.RetriesRemaining.Load()
 
 			if retriesRemaining > 0 {
@@ -187,7 +187,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 			for {
 				shardErr := shard.Connect()
-				if shardErr != nil && !xerrors.Is(shardErr, context.Canceled) {
+				if shardErr != nil && !errors.Is(shardErr, context.Canceled) {
 					sg.Logger.Warn().Err(shardErr).
 						Int32("shardId", shardID).
 						Msgf("Failed to connect shard. Retrying")

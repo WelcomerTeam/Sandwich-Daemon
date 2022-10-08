@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -15,12 +16,11 @@ import (
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
-	"golang.org/x/xerrors"
 )
 
 var (
-	ErrUserMissingAccess = xerrors.New("You are missing access")
-	ErrUserNotLoggedIn   = xerrors.New("You are not logged in")
+	ErrUserMissingAccess = errors.New("you are missing access")
+	ErrUserNotLoggedIn   = errors.New("you are not logged in")
 
 	discordUserMeEndpoint = "https://discord.com/api/users/@me"
 

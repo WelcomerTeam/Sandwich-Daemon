@@ -17,7 +17,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -185,7 +184,7 @@ func (mg *Manager) Initialize() (err error) {
 	if err != nil {
 		mg.Logger.Error().Err(err).Msg("Failed to connect producer client")
 
-		return xerrors.Errorf("Failed to connect to producer: %v", err)
+		return fmt.Errorf("failed to connect to producer: %w", err)
 	}
 
 	mg.gatewayMu.Lock()
@@ -281,7 +280,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 
 	payload, err := jsoniter.Marshal(packet)
 	if err != nil {
-		return xerrors.Errorf("failed to marshal payload: %w", err)
+		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
 	err = mg.ProducerClient.Publish(
@@ -291,7 +290,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	)
 
 	if err != nil {
-		return xerrors.Errorf("publishEvent publish: %w", err)
+		return fmt.Errorf("publishEvent publish: %w", err)
 	}
 
 	return nil
@@ -336,7 +335,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) (err error) 
 
 		_, sendURLErr := url.Parse(sendURL)
 		if sendURLErr != nil {
-			return xerrors.Errorf("Failed to create valid identify URL: %v", err)
+			return fmt.Errorf("failed to create valid identify URL: %w", err)
 		}
 
 		var body bytes.Buffer
@@ -353,7 +352,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) (err error) 
 
 		err = jsoniter.NewEncoder(&body).Encode(identifyPayload)
 		if err != nil {
-			return xerrors.Errorf("Failed to encode identify payload: %v", err)
+			return fmt.Errorf("failed to encode identify payload: %w", err)
 		}
 
 		client := http.DefaultClient
@@ -361,7 +360,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) (err error) 
 		for {
 			req, err := http.NewRequestWithContext(mg.ctx, "POST", sendURL, bytes.NewBuffer(body.Bytes()))
 			if err != nil {
-				return xerrors.Errorf("Failed to create request: %v", err)
+				return fmt.Errorf("failed to create request: %w", err)
 			}
 
 			for k, v := range identifyHeaders {

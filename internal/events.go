@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
-	"golang.org/x/xerrors"
 )
 
 // List of handlers for gateway events.
@@ -56,8 +56,8 @@ type SandwichState struct {
 	Mutuals   map[discord.Snowflake]*sandwich_structs.StateMutualGuilds
 }
 
-func NewSandwichState() (st *SandwichState) {
-	st = &SandwichState{
+func NewSandwichState() *SandwichState {
+	state := &SandwichState{
 		guildsMu: sync.RWMutex{},
 		Guilds:   make(map[discord.Snowflake]*sandwich_structs.StateGuild),
 
@@ -83,13 +83,13 @@ func NewSandwichState() (st *SandwichState) {
 		Mutuals:   make(map[discord.Snowflake]*sandwich_structs.StateMutualGuilds),
 	}
 
-	return st
+	return state
 }
 
 func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 	err := GatewayDispatch(ctx, sh, msg, trace)
 	if err != nil {
-		if xerrors.Is(err, ErrNoGatewayHandler) {
+		if errors.Is(err, ErrNoGatewayHandler) {
 			sh.Logger.Warn().
 				Int("op", int(msg.Op)).
 				Str("type", msg.Type).
@@ -102,13 +102,25 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace 
 func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			sh.Logger.Error().
-				Err(r.(error)).
-				Int("op", int(msg.Op)).
-				Str("type", msg.Type).
-				Int("seq", int(msg.Sequence)).
-				Bytes("data", msg.Data).
-				Msg("Recovered panic in OnDispatch")
+			errorMessage, ok := r.(error)
+
+			if ok {
+				sh.Logger.Error().
+					Err(errorMessage).
+					Int("op", int(msg.Op)).
+					Str("type", msg.Type).
+					Int("seq", int(msg.Sequence)).
+					Bytes("data", msg.Data).
+					Msg("Recovered panic in OnDispatch")
+			} else {
+				sh.Logger.Error().
+					Str("err", "[unknown]").
+					Int("op", int(msg.Op)).
+					Str("type", msg.Type).
+					Int("seq", int(msg.Sequence)).
+					Bytes("data", msg.Data).
+					Msg("Recovered panic in OnDispatch")
+			}
 		}
 	}()
 
@@ -140,7 +152,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 		StoreMutuals: storeMutuals,
 	}, msg, trace)
 	if err != nil {
-		if !xerrors.Is(err, ErrNoDispatchHandler) {
+		if !errors.Is(err, ErrNoDispatchHandler) {
 			sh.Logger.Error().Err(err).Str("data", strconv.B2S(msg.Data)).Msg("Encountered error whilst handling " + msg.Type)
 		}
 
