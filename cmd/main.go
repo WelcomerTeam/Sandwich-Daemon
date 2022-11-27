@@ -130,10 +130,7 @@ func main() {
 		logger.Panic().Err(err).Msg("Cannot create sandwich")
 	}
 
-	err = sandwich.Open()
-	if err != nil {
-		logger.Panic().Err(err).Msg("Cannot open sandwich")
-	}
+	sandwich.Open()
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

@@ -194,13 +194,15 @@ func (sh *Shard) Open() {
 }
 
 // Connect connects to the gateway and handles identifying.
-func (sh *Shard) Connect() (err error) {
+func (sh *Shard) Connect() error {
 	sh.Logger.Debug().Msg("Connecting shard")
 
 	// Do not override status if it is currently Reconnecting.
 	if sh.GetStatus() != sandwich_structs.ShardStatusReconnecting {
 		sh.SetStatus(sandwich_structs.ShardStatusConnecting)
 	}
+
+	var err error
 
 	defer func() {
 		if err != nil {
@@ -276,14 +278,14 @@ readyConsumer:
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to read message")
 
-		return
+		return err
 	}
 
 	var helloResponse discord.Hello
 
 	err = sh.decodeContent(msg, &helloResponse)
 	if err != nil {
-		return
+		return err
 	}
 
 	now := time.Now().UTC()
@@ -324,7 +326,7 @@ readyConsumer:
 				EmbedColourDanger,
 			)
 
-			return
+			return err
 		}
 	} else {
 		err = sh.Resume(sh.ctx)
@@ -344,7 +346,7 @@ readyConsumer:
 				EmbedColourDanger,
 			)
 
-			return
+			return err
 		}
 
 		// We can assume the bot is now connected to discord.
@@ -463,7 +465,7 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 }
 
 // Listen to gateway and process accordingly.
-func (sh *Shard) Listen(ctx context.Context) (err error) {
+func (sh *Shard) Listen(ctx context.Context) error {
 	sh.wsConnMu.RLock()
 	wsConn := sh.wsConn
 	sh.wsConnMu.RUnlock()
@@ -471,9 +473,9 @@ func (sh *Shard) Listen(ctx context.Context) (err error) {
 	for {
 		select {
 		case <-sh.RoutineDeadSignal.Dead():
-			return
+			return nil
 		case <-ctx.Done():
-			return
+			return nil
 		default:
 		}
 
@@ -561,7 +563,7 @@ func (sh *Shard) Listen(ctx context.Context) (err error) {
 		}
 	}
 
-	return err
+	return nil
 }
 
 // FeedWebsocket reads websocket events and feeds them through a channel.
@@ -642,7 +644,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 }
 
 // Identify sends the identify packet to discord.
-func (sh *Shard) Identify(ctx context.Context) (err error) {
+func (sh *Shard) Identify(ctx context.Context) error {
 	sh.Manager.gatewayMu.Lock()
 	sh.Manager.Gateway.SessionStartLimit.Remaining--
 	sh.Manager.gatewayMu.Unlock()
@@ -658,7 +660,7 @@ func (sh *Shard) Identify(ctx context.Context) (err error) {
 
 	sh.Logger.Debug().Msg("Sending identify")
 
-	err = sh.SendEvent(ctx, discord.GatewayOpIdentify, discord.Identify{
+	return sh.SendEvent(ctx, discord.GatewayOpIdentify, discord.Identify{
 		Token: token,
 		Properties: &discord.IdentifyProperties{
 			OS:      runtime.GOOS,
@@ -671,45 +673,41 @@ func (sh *Shard) Identify(ctx context.Context) (err error) {
 		Presence:       &presence,
 		Intents:        intents,
 	})
-
-	return err
 }
 
 // Resume sends the resume packet to discord.
-func (sh *Shard) Resume(ctx context.Context) (err error) {
+func (sh *Shard) Resume(ctx context.Context) error {
 	sh.Manager.configurationMu.RLock()
 	token := sh.Manager.Configuration.Token
 	sh.Manager.configurationMu.RUnlock()
 
 	sh.Logger.Debug().Msg("Sending resume")
 
-	err = sh.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
+	return sh.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
 		Token:     token,
 		SessionID: sh.SessionID.Load(),
 		Sequence:  sh.Sequence.Load(),
 	})
-
-	return err
 }
 
 // SendEvent sends an event to discord.
-func (sh *Shard) SendEvent(ctx context.Context, op discord.GatewayOp, data interface{}) (err error) {
+func (sh *Shard) SendEvent(ctx context.Context, op discord.GatewayOp, data interface{}) error {
 	packet, _ := sh.Sandwich.sentPool.Get().(*discord.SentPayload)
 	defer sh.Sandwich.sentPool.Put(packet)
 
 	packet.Op = op
 	packet.Data = data
 
-	err = sh.WriteJSON(ctx, op, packet)
+	err := sh.WriteJSON(ctx, op, packet)
 	if err != nil {
 		return fmt.Errorf("sendEvent writeJson: %w", err)
 	}
 
-	return
+	return nil
 }
 
 // WriteJSON writes json data to the websocket.
-func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interface{}) (err error) {
+func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interface{}) error {
 	// In very rare circumstances, we can be writing to the websocket whilst
 	// context is being remade. We will recover and dismiss any SIGSEGVs that
 	// are raised.
@@ -743,13 +741,13 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 }
 
 // decodeContent converts the stored msg into the passed interface.
-func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) (err error) {
-	err = jsoniter.Unmarshal(msg.Data, &out)
+func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) error {
+	err := jsoniter.Unmarshal(msg.Data, &out)
 	if err != nil {
 		sh.Logger.Error().Err(err).Str("type", msg.Type).Msg("Failed to decode event")
 	}
 
-	return
+	return nil
 }
 
 // readMessage fills the shard msg buffer from a websocket message.
@@ -790,7 +788,7 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 }
 
 // CloseWS closes the websocket. This will always return 0 as the error is suppressed.
-func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
+func (sh *Shard) CloseWS(statusCode websocket.StatusCode) error {
 	if sh.hasWsConn() {
 		sh.Logger.Debug().Int("code", int(statusCode)).Msg("Closing websocket connection")
 
@@ -798,7 +796,7 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) (err error) {
 		wsConn := sh.wsConn
 
 		if wsConn != nil {
-			err = wsConn.Close(statusCode, "")
+			err := wsConn.Close(statusCode, "")
 			if err != nil && !errors.Is(err, context.Canceled) {
 				sh.Logger.Warn().Err(err).Msg("Failed to close websocket connection")
 			}

@@ -251,14 +251,8 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 }
 
 // SaveConfiguration handles saving the configuration file.
-func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path string) (err error) {
+func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path string) error {
 	sg.Logger.Debug().Msg("Saving configuration")
-
-	defer func() {
-		if err == nil {
-			sg.Logger.Info().Msg("Flushed configuration to disk")
-		}
-	}()
 
 	data, err := yaml.Marshal(configuration)
 	if err != nil {
@@ -276,7 +270,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 }
 
 // Open starts up any listeners, configures services and starts up managers.
-func (sg *Sandwich) Open() (err error) {
+func (sg *Sandwich) Open() {
 	sg.StartTime = time.Now().UTC()
 	sg.Logger.Info().Msgf("Starting sandwich. Version %s", VERSION)
 
@@ -298,7 +292,7 @@ func (sg *Sandwich) Open() (err error) {
 }
 
 // PublishGlobalEvent publishes an event to all Consumers.
-func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessage) (err error) {
+func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessage) error {
 	sg.globalPoolMu.RLock()
 	defer sg.globalPoolMu.RUnlock()
 
@@ -323,11 +317,11 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 		pool <- payload
 	}
 
-	return
+	return nil
 }
 
 // Close closes all managers gracefully.
-func (sg *Sandwich) Close() (err error) {
+func (sg *Sandwich) Close() error {
 	sg.Logger.Info().Msg("Closing sandwich")
 
 	go sg.PublishSimpleWebhook("Sandwich closing", "", "", EmbedColourSandwich)
@@ -387,7 +381,7 @@ func (sg *Sandwich) startManagers() {
 	sg.managersMu.Unlock()
 }
 
-func (sg *Sandwich) setupGRPC() (err error) {
+func (sg *Sandwich) setupGRPC() error {
 	network := sg.Options.GRPCNetwork
 	host := sg.Options.GRPCHost
 	certpath := sg.Options.GRPCCertFile
@@ -398,11 +392,11 @@ func (sg *Sandwich) setupGRPC() (err error) {
 	if certpath != "" {
 		var creds credentials.TransportCredentials
 
-		creds, err = credentials.NewClientTLSFromFile(certpath, servernameoverride)
+		creds, err := credentials.NewClientTLSFromFile(certpath, servernameoverride)
 		if err != nil {
 			sg.Logger.Error().Err(err).Msg("Failed to create new client TLS from file for gRPC")
 
-			return
+			return err
 		}
 
 		grpcOptions = append(grpcOptions, grpc.Creds(creds))
@@ -416,7 +410,7 @@ func (sg *Sandwich) setupGRPC() (err error) {
 	if err != nil {
 		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to bind to host")
 
-		return
+		return err
 	}
 
 	sg.Logger.Info().Msgf("Serving gRPC at %s", host)
@@ -431,7 +425,7 @@ func (sg *Sandwich) setupGRPC() (err error) {
 	return nil
 }
 
-func (sg *Sandwich) setupPrometheus() (err error) {
+func (sg *Sandwich) setupPrometheus() error {
 	prometheus.MustRegister(sandwichEventCount)
 	prometheus.MustRegister(sandwichEventInflightCount)
 	prometheus.MustRegister(sandwichEventBufferCount)
@@ -459,7 +453,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 
 	sg.Logger.Info().Msgf("Serving prometheus at %s", sg.Options.PrometheusAddress)
 
-	err = http.ListenAndServe(sg.Options.PrometheusAddress, nil)
+	err := http.ListenAndServe(sg.Options.PrometheusAddress, nil)
 	if err != nil {
 		sg.Logger.Error().Str("host", sg.Options.PrometheusAddress).Err(err).Msg("Failed to serve prometheus server")
 
@@ -469,7 +463,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	return nil
 }
 
-func (sg *Sandwich) setupHTTP() (err error) {
+func (sg *Sandwich) setupHTTP() error {
 	sg.Logger.Info().Msgf("Serving http at %s", sg.Options.HTTPHost)
 
 	cfg := session.NewDefaultConfig()

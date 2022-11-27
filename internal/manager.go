@@ -160,7 +160,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 }
 
 // Initialize handles the start up process including connecting the message queue client.
-func (mg *Manager) Initialize() (err error) {
+func (mg *Manager) Initialize() error {
 	gateway, err := mg.GetGateway()
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (mg *Manager) Initialize() (err error) {
 }
 
 // Open handles retrieving shard counts and scaling.
-func (mg *Manager) Open() (err error) {
+func (mg *Manager) Open() error {
 	shardIDs, shardCount := mg.getInitialShardCount(
 		mg.Configuration.Sharding.ShardCount,
 		mg.Configuration.Sharding.ShardIDs,
@@ -254,7 +254,7 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 }
 
 // PublishEvent sends an event to consumers.
-func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData jsoniter.RawMessage) (err error) {
+func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData jsoniter.RawMessage) error {
 	packet, _ := mg.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer mg.Sandwich.payloadPool.Put(packet)
 
@@ -297,7 +297,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 }
 
 // WaitForIdentify blocks until a shard can identify.
-func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) (err error) {
+func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 	mg.Sandwich.configurationMu.RLock()
 	identifyURL := mg.Sandwich.Configuration.Identify.URL
 	identifyHeaders := mg.Sandwich.Configuration.Identify.Headers

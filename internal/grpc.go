@@ -66,7 +66,7 @@ func requestMatch(query string, matches ...string) bool {
 }
 
 // Listen delivers information to consumers.
-func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.Sandwich_ListenServer) (err error) {
+func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.Sandwich_ListenServer) error {
 	onGRPCRequest()
 
 	globalPoolID := grpc.sg.globalPoolAccumulator.Add(1)
@@ -89,7 +89,7 @@ func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.S
 	for {
 		select {
 		case msg := <-channel:
-			err = listener.Send(&pb.ListenResponse{
+			err := listener.Send(&pb.ListenResponse{
 				Timestamp: time.Now().Unix(),
 				Data:      msg,
 			})
@@ -101,7 +101,7 @@ func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.S
 				return fmt.Errorf("failed to send to listener: %w", err)
 			}
 		case <-ctx.Done():
-			return
+			return nil
 		}
 	}
 }

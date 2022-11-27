@@ -61,7 +61,8 @@ type ShardGroup struct {
 
 	// Used to override when events can be processed.
 	// Used to orchestrate scaling of shardgroups.
-	floodgate *atomic.Bool
+	floodgateMu sync.RWMutex
+	floodgate   bool
 }
 
 // NewShardGroup creates a new shardgroup.
@@ -99,7 +100,8 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 		memberChunkCallbacksMu: sync.RWMutex{},
 		MemberChunkCallbacks:   make(map[discord.Snowflake]chan bool),
 
-		floodgate: &atomic.Bool{},
+		floodgate:   false,
+		floodgateMu: sync.RWMutex{},
 	}
 
 	return sg
@@ -221,13 +223,19 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 		sg.Manager.shardGroupsMu.RLock()
 		for sgID, _sg := range sg.Manager.ShardGroups {
 			if sgID != sg.ID {
-				_sg.floodgate.Store(false)
+				sg.floodgateMu.Lock()
+				sg.floodgate = false
+				sg.floodgateMu.Unlock()
+
 				_sg.Close()
 			}
 		}
 		sg.Manager.shardGroupsMu.RUnlock()
 
-		sg.floodgate.Store(true)
+		sg.floodgateMu.Lock()
+		sg.floodgate = true
+		sg.floodgateMu.Unlock()
+
 		close(ready)
 	}(sg)
 

@@ -33,8 +33,8 @@ func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayloa
 	return nil
 }
 
-func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
-	err = sh.SendEvent(ctx, discord.GatewayOpHeartbeat, sh.Sequence.Load())
+func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
+	err := sh.SendEvent(ctx, discord.GatewayOpHeartbeat, sh.Sequence.Load())
 	if err != nil {
 		go sh.Sandwich.PublishSimpleWebhook(
 			"Failed to send heartbeat",
@@ -52,24 +52,28 @@ func gatewayOpHeartbeat(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 		err = sh.Reconnect(websocket.StatusNormalClosure)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+
+			return err
 		}
 	}
 
-	return
+	return nil
 }
 
-func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	sh.Logger.Info().Msg("Reconnecting in response to gateway")
 
-	err = sh.Reconnect(WebsocketReconnectCloseCode)
+	err := sh.Reconnect(WebsocketReconnectCloseCode)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+
+		return err
 	}
 
-	return
+	return nil
 }
 
-func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	resumable := jsoniter.Get(msg.Data, "d").ToBool()
 	if !resumable {
 		sh.SessionID.Store("")
@@ -91,18 +95,20 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 		EmbedColourSandwich,
 	)
 
-	err = sh.Reconnect(WebsocketReconnectCloseCode)
+	err := sh.Reconnect(WebsocketReconnectCloseCode)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to reconnect")
+
+		return err
 	}
 
-	return
+	return nil
 }
 
-func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	hello := discord.Hello{}
 
-	err = sh.decodeContent(msg, &hello)
+	err := sh.decodeContent(msg, &hello)
 	if err != nil {
 		return err
 	}
@@ -120,10 +126,10 @@ func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload, 
 		Dur("interval", sh.HeartbeatInterval).
 		Msg("Received HELLO event from discord")
 
-	return
+	return nil
 }
 
-func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	sh.LastHeartbeatAck.Store(time.Now().UTC())
 
 	heartbeatRTT := sh.LastHeartbeatAck.Load().Sub(sh.LastHeartbeatSent.Load()).Milliseconds()
@@ -138,7 +144,7 @@ func gatewayOpHeartbeatACK(ctx context.Context, sh *Shard, msg discord.GatewayPa
 		strconv.Itoa(int(sh.ShardID)),
 	).Set(float64(heartbeatRTT))
 
-	return
+	return nil
 }
 
 func init() {

@@ -32,7 +32,7 @@ func (redisMQ *RedisMQClient) Cluster() string {
 	return redisMQ.cluster
 }
 
-func (redisMQ *RedisMQClient) Connect(ctx context.Context, clientName string, args map[string]interface{}) (err error) {
+func (redisMQ *RedisMQClient) Connect(ctx context.Context, clientName string, args map[string]interface{}) error {
 	var ok bool
 
 	var address string
@@ -48,6 +48,7 @@ func (redisMQ *RedisMQClient) Connect(ctx context.Context, clientName string, ar
 	}
 
 	var db int
+	var err error
 
 	if dbStr, ok := GetEntry(args, "DB").(string); !ok {
 		db, err = strconv.Atoi(dbStr)
@@ -70,7 +71,7 @@ func (redisMQ *RedisMQClient) Connect(ctx context.Context, clientName string, ar
 	return nil
 }
 
-func (redisMQ *RedisMQClient) Publish(ctx context.Context, channelName string, data []byte) (err error) {
+func (redisMQ *RedisMQClient) Publish(ctx context.Context, channelName string, data []byte) error {
 	return redisMQ.redisClient.Publish(
 		ctx,
 		channelName,

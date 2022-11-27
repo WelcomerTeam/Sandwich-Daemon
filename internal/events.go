@@ -13,7 +13,7 @@ import (
 )
 
 // List of handlers for gateway events.
-var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error))
+var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error)
 
 // List of handlers for dispatch events.
 var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error))
@@ -99,7 +99,7 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace 
 }
 
 // OnDispatch handles routing of discord event.
-func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
+func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	defer func() {
 		if r := recover(); r != nil {
 			errorMessage, ok := r.(error)
@@ -133,7 +133,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	sh.Manager.eventBlacklistMu.RUnlock()
 
 	if contains {
-		return
+		return nil
 	}
 
 	sh.Manager.configurationMu.RLock()
@@ -159,8 +159,12 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 		return err
 	}
 
-	if !continuable {
-		return
+	sh.ShardGroup.floodgateMu.RLock()
+	floodgate := sh.ShardGroup.floodgate
+	sh.ShardGroup.floodgateMu.RUnlock()
+
+	if !floodgate || !continuable {
+		return nil
 	}
 
 	sh.Manager.produceBlacklistMu.RLock()
@@ -168,7 +172,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	sh.Manager.produceBlacklistMu.RUnlock()
 
 	if contains {
-		return
+		return nil
 	}
 
 	packet, _ := sh.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
@@ -190,7 +194,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	return sh.PublishEvent(ctx, packet)
 }
 
-func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error)) {
+func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error) {
 	gatewayHandlers[op] = handler
 }
 
@@ -201,7 +205,7 @@ func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.
 // GatewayDispatch handles selecting the proper gateway handler and executing it.
 func GatewayDispatch(ctx context.Context, sh *Shard,
 	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace,
-) (err error) {
+) error {
 	if f, ok := gatewayHandlers[event.Op]; ok {
 		return f(ctx, sh, event, trace)
 	}

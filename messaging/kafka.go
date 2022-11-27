@@ -48,7 +48,7 @@ func (kafkaMQ *KafkaMQClient) Cluster() string {
 	return kafkaMQ.cluster
 }
 
-func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, clientName string, args map[string]interface{}) (err error) {
+func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, clientName string, args map[string]interface{}) error {
 	var ok bool
 
 	var address string
@@ -82,7 +82,7 @@ func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, clientName string, ar
 	return nil
 }
 
-func (kafkaMQ *KafkaMQClient) Publish(ctx context.Context, channelName string, data []byte) (err error) {
+func (kafkaMQ *KafkaMQClient) Publish(ctx context.Context, channelName string, data []byte) error {
 	return kafkaMQ.KafkaClient.WriteMessages(
 		ctx,
 		kafka.Message{

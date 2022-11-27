@@ -36,7 +36,7 @@ func (stanMQ *StanMQClient) Cluster() string {
 	return stanMQ.cluster
 }
 
-func (stanMQ *StanMQClient) Connect(ctx context.Context, clientName string, args map[string]interface{}) (err error) {
+func (stanMQ *StanMQClient) Connect(ctx context.Context, clientName string, args map[string]interface{}) error {
 	var ok bool
 
 	var address string
@@ -61,6 +61,7 @@ func (stanMQ *StanMQClient) Connect(ctx context.Context, clientName string, args
 	stanMQ.channel = channel
 
 	var useNatsConnection bool
+	var err error
 
 	if useNatsConnectionStr, ok := GetEntry(args, "UseNATSConnection").(string); ok {
 		if useNatsConnection, err = strconv.ParseBool(useNatsConnectionStr); err != nil {
@@ -101,15 +102,15 @@ func (stanMQ *StanMQClient) Connect(ctx context.Context, clientName string, args
 	return nil
 }
 
-func (stanMQ *StanMQClient) Publish(ctx context.Context, channelName string, data []byte) (err error) {
+func (stanMQ *StanMQClient) Publish(ctx context.Context, channelName string, data []byte) error {
 	if stanMQ.async {
-		_, err = stanMQ.StanClient.PublishAsync(
+		_, err := stanMQ.StanClient.PublishAsync(
 			channelName,
 			data,
 			nil,
 		)
 
-		return
+		return err
 	}
 
 	return stanMQ.StanClient.Publish(

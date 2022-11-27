@@ -16,8 +16,8 @@ type MQClient interface {
 	Channel() string
 	Cluster() string
 
-	Connect(ctx context.Context, clientName string, args map[string]interface{}) (err error)
-	Publish(ctx context.Context, channel string, data []byte) (err error)
+	Connect(ctx context.Context, clientName string, args map[string]interface{}) error
+	Publish(ctx context.Context, channel string, data []byte) error
 	// Function to clean close
 }
 
@@ -35,7 +35,7 @@ func NewMQClient(mqType string) (MQClient, error) {
 }
 
 // PublishEvent publishes a SandwichPayload.
-func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.SandwichPayload) (err error) {
+func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.SandwichPayload) error {
 	sh.Manager.configurationMu.RLock()
 	identifier := sh.Manager.Configuration.ProducerIdentifier
 	channelName := sh.Manager.Configuration.Messaging.ChannelName
