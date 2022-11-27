@@ -13,11 +13,10 @@ import (
 	"time"
 
 	internal "github.com/WelcomerTeam/Sandwich-Daemon/internal"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
 const (
