@@ -3,12 +3,13 @@ module github.com/WelcomerTeam/Sandwich-Daemon
 go 1.18
 
 require (
-	github.com/WelcomerTeam/Discord v0.0.0-20221122122107-9d66b7f4f67d
+	github.com/WelcomerTeam/Discord v0.0.0-20221125141653-240921554909
 	github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
-	github.com/fasthttp/router v1.4.13
-	github.com/fasthttp/session/v2 v2.4.14
+	github.com/fasthttp/router v1.4.14
+	github.com/fasthttp/session/v2 v2.4.15
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/joho/godotenv v1.4.0
 	github.com/json-iterator/go v1.1.12
 	github.com/nats-io/nats.go v1.20.0
 	github.com/nats-io/stan.go v0.10.3
@@ -16,7 +17,7 @@ require (
 	github.com/rs/zerolog v1.28.0
 	github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d
 	github.com/segmentio/kafka-go v0.4.38
-	github.com/valyala/fasthttp v1.41.0
+	github.com/valyala/fasthttp v1.42.0
 	go.uber.org/atomic v1.10.0
 	golang.org/x/net v0.2.0
 	golang.org/x/oauth2 v0.2.0

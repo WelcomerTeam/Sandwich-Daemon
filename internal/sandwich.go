@@ -8,8 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"path"
 	"sync"
 	"time"
 
@@ -25,19 +23,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/atomic"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.7.4"
+const VERSION = "1.8"
 
 const (
 	PermissionsDefault = 0o744
@@ -75,6 +71,8 @@ type Sandwich struct {
 
 	configurationMu sync.RWMutex
 	Configuration   *SandwichConfiguration `json:"configuration" yaml:"configuration"`
+
+	Options SandwichOptions `json:"options" yaml:"options"`
 
 	gatewayLimiter limiter.DurationLimiter
 
@@ -115,20 +113,6 @@ type Sandwich struct {
 
 // SandwichConfiguration represents the configuration file.
 type SandwichConfiguration struct {
-	Logging struct {
-		Level              string `json:"level" yaml:"level"`
-		FileLoggingEnabled bool   `json:"file_logging_enabled" yaml:"file_logging_enabled"`
-
-		EncodeAsJSON bool `json:"encode_as_json" yaml:"encode_as_json"`
-
-		Directory  string `json:"directory" yaml:"directory"`
-		Filename   string `json:"filename" yaml:"filename"`
-		MaxSize    int    `json:"max_size" yaml:"max_size"`
-		MaxBackups int    `json:"max_backups" yaml:"max_backups"`
-		MaxAge     int    `json:"max_age" yaml:"max_age"`
-		Compress   bool   `json:"compress" yaml:"compress"`
-	} `json:"logging" yaml:"logging"`
-
 	Identify struct {
 		// URL allows for variables:
 		// {shard_id}, {shard_count}, {token} {token_hash}, {max_concurrency}
@@ -142,24 +126,7 @@ type SandwichConfiguration struct {
 		Configuration map[string]interface{} `json:"configuration" yaml:"configuration"`
 	} `json:"producer" yaml:"producer"`
 
-	Prometheus struct {
-		Host string `json:"host" yaml:"host"`
-	} `json:"prometheus" yaml:"prometheus"`
-
-	GRPC struct {
-		Network            string `json:"network" yaml:"network"`
-		Host               string `json:"host" yaml:"host"`
-		CertFile           string `json:"cert_file" yaml:"cert_file"`
-		ServerNameOverride string `json:"server_name_override" yaml:"server_name_override"`
-	} `json:"grpc" yaml:"grpc"`
-
 	HTTP struct {
-		Host string `json:"host" yaml:"host"`
-
-		// If enabled, allows access to dashboard else will only show
-		// index page.
-		Enabled bool `json:"enabled" yaml:"enabled"`
-
 		// OAuth config used to identification.
 		OAuth *oauth2.Config `json:"oauth" yaml:"oauth"`
 
@@ -167,25 +134,40 @@ type SandwichConfiguration struct {
 		UserAccess []string `json:"user_access" yaml:"user_access"`
 	} `json:"http" yaml:"http"`
 
-	// BaseURL to send HTTP requests to. If empty, will use https://discord.com
-	BaseURL string `json:"base" yaml:"base"`
-
-	GatewayURL string `json:"gateway" yaml:"gateway"`
-
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
 }
 
+// SandwichOptions represents any options passable when creating
+// the sandwich service
+type SandwichOptions struct {
+	ConfigurationLocation string  `json:"configuration_location" yaml:"configuration_location"`
+	PrometheusAddress     string  `json:"prometheus_address" yaml:"prometheus_address"`
+	GatewayURL            url.URL `json:"gateway_url" yaml:"gateway_url"`
+	// BaseURL to send HTTP requests to. If empty, will use https://discord.com
+	BaseURL url.URL `json:"base_url" yaml:"base_url"`
+
+	GRPCNetwork            string `json:"grpc_network" yaml:"grpc_network"`
+	GRPCHost               string `json:"grpc_host" yaml:"grpc_host"`
+	GRPCCertFile           string `json:"grpc_cert_file" yaml:"grpc_cert_file"`
+	GRPCServerNameOverride string `json:"grpc_server_name_override" yaml:"grpc_server_name_override"`
+
+	HTTPHost    string `json:"http_host" yaml:"http_host"`
+	HTTPEnabled bool   `json:"http_enabled" yaml:"http_enabled"`
+}
+
 // NewSandwich creates the application state and initializes it.
-func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, err error) {
+func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err error) {
 	sg = &Sandwich{
 		Logger: zerolog.New(logger).With().Timestamp().Logger(),
 
-		ConfigurationLocation: configurationLocation,
+		ConfigurationLocation: options.ConfigurationLocation,
 
 		configurationMu: sync.RWMutex{},
 		Configuration:   &SandwichConfiguration{},
+
+		Options: options,
 
 		gatewayLimiter: *limiter.NewDurationLimiter(1, time.Second),
 
@@ -236,63 +218,7 @@ func NewSandwich(logger io.Writer, configurationLocation string) (sg *Sandwich, 
 
 	sg.Configuration = configuration
 
-	if configuration.GatewayURL != "" {
-		if confGatewayURL, err := url.Parse(configuration.GatewayURL); err == nil {
-			gatewayURL = *confGatewayURL
-			sg.Logger.Info().Str("url", confGatewayURL.String()).Msg("Gateway URL changed")
-		}
-	}
-
-	if configuration.BaseURL != "" {
-		if confBaseURL, err := url.Parse(configuration.BaseURL); err == nil {
-			baseURL = *confBaseURL
-			sg.Logger.Info().Str("url", baseURL.String()).Msg("Base URL changed")
-		}
-	}
-
 	sg.Client = NewClient(baseURL, "")
-
-	zlLevel, err := zerolog.ParseLevel(sg.Configuration.Logging.Level)
-	if err != nil {
-		sg.Logger.Warn().Str("level", sg.Configuration.Logging.Level).Msg("Logging level providied is not valid")
-	} else {
-		sg.Logger.Info().Str("level", sg.Configuration.Logging.Level).Msg("Changed logging level")
-		zerolog.SetGlobalLevel(zlLevel)
-	}
-
-	// Create file and console logging
-
-	var writers []io.Writer
-
-	writers = append(writers, logger)
-
-	if sg.Configuration.Logging.FileLoggingEnabled {
-		if err := os.MkdirAll(sg.Configuration.Logging.Directory, PermissionsDefault); err != nil {
-			log.Error().Err(err).Str("path", sg.Configuration.Logging.Directory).Msg("Unable to create log directory")
-		} else {
-			lumber := &lumberjack.Logger{
-				Filename:   path.Join(sg.Configuration.Logging.Directory, sg.Configuration.Logging.Filename),
-				MaxBackups: sg.Configuration.Logging.MaxBackups,
-				MaxSize:    sg.Configuration.Logging.MaxSize,
-				MaxAge:     sg.Configuration.Logging.MaxAge,
-				Compress:   sg.Configuration.Logging.Compress,
-			}
-
-			if sg.Configuration.Logging.EncodeAsJSON {
-				writers = append(writers, lumber)
-			} else {
-				writers = append(writers, zerolog.ConsoleWriter{
-					Out:        lumber,
-					TimeFormat: time.Stamp,
-					NoColor:    true,
-				})
-			}
-		}
-	}
-
-	mw := io.MultiWriter(writers...)
-	sg.Logger = zerolog.New(mw).With().Timestamp().Logger()
-	sg.Logger.Info().Msg("Logging configured")
 
 	return sg, nil
 }
@@ -321,11 +247,6 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 		return configuration, ErrLoadConfigurationFailure
 	}
 
-	err = sg.ValidateConfiguration(configuration)
-	if err != nil {
-		return configuration, err
-	}
-
 	return configuration, nil
 }
 
@@ -350,23 +271,6 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 	}
 
 	_ = sg.PublishGlobalEvent(sandwich_structs.SandwichEventConfigurationReload, nil)
-
-	return nil
-}
-
-// ValidateConfiguration ensures certain values in the configuration are passed.
-func (sg *Sandwich) ValidateConfiguration(configuration *SandwichConfiguration) (err error) {
-	if configuration.Prometheus.Host == "" {
-		return ErrConfigurationValidatePrometheus
-	}
-
-	if configuration.GRPC.Host == "" {
-		return ErrConfigurationValidateGRPC
-	}
-
-	if configuration.HTTP.Host == "" {
-		return ErrConfigurationValidateHTTP
-	}
 
 	return nil
 }
@@ -484,12 +388,10 @@ func (sg *Sandwich) startManagers() {
 }
 
 func (sg *Sandwich) setupGRPC() (err error) {
-	sg.configurationMu.RLock()
-	network := sg.Configuration.GRPC.Network
-	host := sg.Configuration.GRPC.Host
-	certpath := sg.Configuration.GRPC.CertFile
-	servernameoverride := sg.Configuration.GRPC.ServerNameOverride
-	sg.configurationMu.RUnlock()
+	network := sg.Options.GRPCNetwork
+	host := sg.Options.GRPCHost
+	certpath := sg.Options.GRPCCertFile
+	servernameoverride := sg.Options.GRPCServerNameOverride
 
 	var grpcOptions []grpc.ServerOption
 
@@ -530,10 +432,6 @@ func (sg *Sandwich) setupGRPC() (err error) {
 }
 
 func (sg *Sandwich) setupPrometheus() (err error) {
-	sg.configurationMu.RLock()
-	host := sg.Configuration.Prometheus.Host
-	sg.configurationMu.RUnlock()
-
 	prometheus.MustRegister(sandwichEventCount)
 	prometheus.MustRegister(sandwichEventInflightCount)
 	prometheus.MustRegister(sandwichEventBufferCount)
@@ -559,11 +457,11 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 	go sg.prometheusGatherer()
 	go sg.cacheEjector()
 
-	sg.Logger.Info().Msgf("Serving prometheus at %s", host)
+	sg.Logger.Info().Msgf("Serving prometheus at %s", sg.Options.PrometheusAddress)
 
-	err = http.ListenAndServe(host, nil)
+	err = http.ListenAndServe(sg.Options.PrometheusAddress, nil)
 	if err != nil {
-		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve prometheus server")
+		sg.Logger.Error().Str("host", sg.Options.PrometheusAddress).Err(err).Msg("Failed to serve prometheus server")
 
 		return fmt.Errorf("failed to serve prometheus: %w", err)
 	}
@@ -572,11 +470,7 @@ func (sg *Sandwich) setupPrometheus() (err error) {
 }
 
 func (sg *Sandwich) setupHTTP() (err error) {
-	sg.configurationMu.RLock()
-	host := sg.Configuration.HTTP.Host
-	sg.configurationMu.RUnlock()
-
-	sg.Logger.Info().Msgf("Serving http at %s", host)
+	sg.Logger.Info().Msgf("Serving http at %s", sg.Options.HTTPHost)
 
 	cfg := session.NewDefaultConfig()
 	provider, err := memory.New(memory.Config{})
@@ -590,9 +484,9 @@ func (sg *Sandwich) setupHTTP() (err error) {
 
 	sg.RouterHandler, sg.DistHandler = sg.NewRestRouter()
 
-	err = fasthttp.ListenAndServe(host, sg.HandleRequest)
+	err = fasthttp.ListenAndServe(sg.Options.HTTPHost, sg.HandleRequest)
 	if err != nil {
-		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to server http server")
+		sg.Logger.Error().Str("host", sg.Options.HTTPHost).Err(err).Msg("Failed to server http server")
 
 		return fmt.Errorf("failed to serve webserver: %w", err)
 	}

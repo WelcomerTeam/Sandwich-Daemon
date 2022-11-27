@@ -2,60 +2,6 @@
   <div>
     <div v-if="settings">
       <form>
-        <field-set class="mb-4 space-y-4" name="Logging">
-          <text-input
-            type="text"
-            v-model="settings.logging.level"
-            name="logging_level"
-            label="Logging Level"
-            description="Logging level to use (trace/debug/info/warn/error)"
-          />
-          <text-input
-            type="checkbox"
-            v-model="settings.logging.file_logging_enabled"
-            name="file_logging_enabled"
-            label="File Logging Enabled"
-          />
-          <text-input
-            type="checkbox"
-            v-model="settings.logging.encode_as_json"
-            name="encode_as_json"
-            label="Encode as JSON"
-          />
-          <text-input
-            type="text"
-            v-model="settings.logging.directory"
-            name="logging_directory"
-            label="Directory"
-          />
-          <text-input
-            type="number"
-            v-model="settings.logging.max_size"
-            name="logging_max_size"
-            label="Max Size"
-            description="Maximum size (in bytes) per log file"
-          />
-          <text-input
-            type="number"
-            v-model="settings.logging.max_backups"
-            name="logging_max_backups"
-            label="Max Backups"
-            description="Maximum files to keep saved before removed"
-          />
-          <text-input
-            type="number"
-            v-model="settings.logging.max_age"
-            label="Max Age"
-            description="Maximum age (in days) that a log file persists for"
-          />
-          <text-input
-            type="checkbox"
-            v-model="settings.logging.compress"
-            name="logging_compress"
-            label="Compress"
-            description="Choose if non active log files should be compressed"
-          />
-        </field-set>
         <field-set class="mb-4" name="Identity">
           <text-input
             type="text"
@@ -89,37 +35,8 @@
             description="Producer configuration."
           />
         </field-set>
-        <field-set class="mb-4 space-y-4" name="Prometheus">
-          <text-input
-            type="text"
-            v-model="settings.prometheus.host"
-            name="prometheus_host"
-            label="Host"
-          />
-        </field-set>
-        <field-set class="mb-4 space-y-4" name="GRPC">
-          <text-input
-            type="text"
-            v-model="settings.grpc.network"
-            name="grpc_network"
-            label="Network type"
-            description="The network must be tcp, tcp4, tcp6, unix or unixpacket"
-          />
-        </field-set>
+
         <field-set class="mb-4 space-y-4" name="HTTP">
-          <text-input
-            type="text"
-            v-model="settings.http.host"
-            name="http_host"
-            label="Host"
-          />
-          <text-input
-            type="checkbox"
-            v-model="settings.http.enabled"
-            name="http_enabled"
-            label="Enabled"
-            :disabled="true"
-          />
           <text-input
             type="text"
             v-model="http_oauth"

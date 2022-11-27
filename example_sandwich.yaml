@@ -1,15 +1,3 @@
-logging:
-  level: debug
-  file_logging_enabled: true
-  encode_as_json: false
-  directory: logs
-  filename: sandwich
-  max_size: 10000000
-  max_backups: 7
-  max_age: 7
-  compress: true
-base: "https://discord.com"
-gateway: "wss://gateway.discord.gg/?v=9&encoding=json"
 identify:
   url: "http://127.0.0.1:5000/identify"
   headers:
@@ -20,14 +8,7 @@ producer:
     address: 127.0.0.1:4222
     channel: sandwich
     cluster: cluster
-prometheus:
-  host: 127.0.0.1:15001
-grpc:
-  network: tcp4
-  host: 127.0.0.1:15000
 http:
-  host: 127.0.0.1:14999
-  enabled: true
   oauth:
     clientid: ""
     clientsecret: ""

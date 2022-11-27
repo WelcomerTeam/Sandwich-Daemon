@@ -97,11 +97,7 @@ func (sg *Sandwich) requireDiscordAuthentication(h fasthttp.RequestHandler) fast
 			return
 		}
 
-		sg.configurationMu.RLock()
-		httpAccessEnabled := sg.Configuration.HTTP.Enabled
-		sg.configurationMu.RUnlock()
-
-		if !isAuthenticated && httpAccessEnabled {
+		if !isAuthenticated && sg.Options.HTTPEnabled {
 			writeResponse(ctx, fasthttp.StatusForbidden, sandwich_structs.BaseRestResponse{
 				Ok:    false,
 				Error: ErrUserMissingAccess.Error(),
