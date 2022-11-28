@@ -60,6 +60,9 @@ type SandwichClient interface {
 	// WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
 	// WhereIsGuildLocations contains the manager, shardGroup and shardId.
 	WhereIsGuild(ctx context.Context, in *WhereIsGuildRequest, opts ...grpc.CallOption) (*WhereIsGuildResponse, error)
+	// RelayMessage creates a new event and sends it immediately back to consumers.
+	// All relayed messages will have the dispatch opcode and the sequence of -1.
+	RelayMessage(ctx context.Context, in *RelayMessageRequest, opts ...grpc.CallOption) (*BaseResponse, error)
 }
 
 type sandwichClient struct {
@@ -210,6 +213,15 @@ func (c *sandwichClient) WhereIsGuild(ctx context.Context, in *WhereIsGuildReque
 	return out, nil
 }
 
+func (c *sandwichClient) RelayMessage(ctx context.Context, in *RelayMessageRequest, opts ...grpc.CallOption) (*BaseResponse, error) {
+	out := new(BaseResponse)
+	err := c.cc.Invoke(ctx, "/sandwich.Sandwich/RelayMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SandwichServer is the server API for Sandwich service.
 // All implementations must embed UnimplementedSandwichServer
 // for forward compatibility
@@ -251,6 +263,9 @@ type SandwichServer interface {
 	// WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
 	// WhereIsGuildLocations contains the manager, shardGroup and shardId.
 	WhereIsGuild(context.Context, *WhereIsGuildRequest) (*WhereIsGuildResponse, error)
+	// RelayMessage creates a new event and sends it immediately back to consumers.
+	// All relayed messages will have the dispatch opcode and the sequence of -1.
+	RelayMessage(context.Context, *RelayMessageRequest) (*BaseResponse, error)
 	mustEmbedUnimplementedSandwichServer()
 }
 
@@ -296,6 +311,9 @@ func (UnimplementedSandwichServer) SendWebsocketMessage(context.Context, *SendWe
 }
 func (UnimplementedSandwichServer) WhereIsGuild(context.Context, *WhereIsGuildRequest) (*WhereIsGuildResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WhereIsGuild not implemented")
+}
+func (UnimplementedSandwichServer) RelayMessage(context.Context, *RelayMessageRequest) (*BaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RelayMessage not implemented")
 }
 func (UnimplementedSandwichServer) mustEmbedUnimplementedSandwichServer() {}
 
@@ -547,6 +565,24 @@ func _Sandwich_WhereIsGuild_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Sandwich_RelayMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RelayMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SandwichServer).RelayMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/sandwich.Sandwich/RelayMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SandwichServer).RelayMessage(ctx, req.(*RelayMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Sandwich_ServiceDesc is the grpc.ServiceDesc for Sandwich service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -601,6 +637,10 @@ var Sandwich_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "WhereIsGuild",
 			Handler:    _Sandwich_WhereIsGuild_Handler,
+		},
+		{
+			MethodName: "RelayMessage",
+			Handler:    _Sandwich_RelayMessage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

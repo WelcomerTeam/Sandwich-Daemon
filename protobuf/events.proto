@@ -55,6 +55,10 @@ service Sandwich {
   // WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
   // WhereIsGuildLocations contains the manager, shardGroup and shardId.
   rpc WhereIsGuild(WhereIsGuildRequest) returns (WhereIsGuildResponse) {}
+
+  // RelayMessage creates a new event and sends it immediately back to consumers.
+  // All relayed messages will have the dispatch opcode and the sequence of 0.
+  rpc RelayMessage(RelayMessageRequest) returns (BaseResponse) {}
 }
 
 message BaseResponse {
@@ -188,4 +192,10 @@ message PostAnalyticsRequest {
   string identifier = 1;
   // GRPC does not determine the structure of the data provided.
   bytes data = 2;
+}
+
+message RelayMessageRequest {
+  string manager = 1;
+  string type = 2;
+  bytes data = 3;
 }

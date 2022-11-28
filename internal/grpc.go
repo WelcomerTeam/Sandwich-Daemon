@@ -684,3 +684,34 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 
 	return response, nil
 }
+
+// RelayMessage creates a new event and sends it immediately back to consumers.
+// All relayed messages will have the dispatch opcode and the sequence of 0.
+func (grpc *routeSandwichServer) RelayMessage(ctx context.Context, request *pb.RelayMessageRequest) (response *pb.BaseResponse, err error) {
+	onGRPCRequest()
+
+	response = &pb.BaseResponse{
+		Ok: false,
+	}
+
+	grpc.sg.managersMu.RLock()
+	manager, cacheHit := grpc.sg.Managers[request.Manager]
+	grpc.sg.managersMu.RUnlock()
+
+	if !cacheHit {
+		response.Error = ErrNoManagerPresent.Error()
+
+		return response, ErrNoManagerPresent
+	}
+
+	err = manager.PublishEvent(ctx, request.Type, request.Data)
+	if err != nil {
+		response.Error = err.Error()
+
+		return response, err
+	}
+
+	response.Ok = true
+
+	return response, nil
+}

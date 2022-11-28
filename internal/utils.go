@@ -23,7 +23,7 @@ func replaceIfEmpty(v string, s string) string {
 }
 
 // quickHash returns hash from method and input.
-func quickHash(hashMethod hash.Hash, text string) (result string, err error) {
+func quickHash(hashMethod hash.Hash, text string) (string, error) {
 	hashMethod.Reset()
 
 	if _, err := hashMethod.Write([]byte(text)); err != nil {
