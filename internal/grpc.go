@@ -666,10 +666,18 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 			for _, shard := range shardGroup.Shards {
 				shard.guildsMu.RLock()
 				if _, ok := shard.Guilds[discord.Snowflake(request.GuildID)]; ok {
+					var guildMember *pb.GuildMember
+
+					guildMember_sandwich, ok := shard.Sandwich.State.GetGuildMember(discord.Snowflake(request.GuildID), shard.Manager.User.ID)
+					if ok {
+						guildMember, _ = pb.GuildMemberToGRPC(guildMember_sandwich)
+					}
+
 					response.Locations = append(response.Locations, &pb.WhereIsGuildLocation{
-						Manager:    manager.Identifier.Load(),
-						ShardGroup: shardGroup.ID,
-						ShardId:    shard.ShardGroup.ID,
+						Manager:     manager.Identifier.Load(),
+						ShardGroup:  shardGroup.ID,
+						ShardId:     shard.ShardGroup.ID,
+						GuildMember: guildMember,
 					})
 				}
 				shard.guildsMu.RUnlock()

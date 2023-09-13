@@ -8,7 +8,6 @@ package sandwich
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -61,7 +60,7 @@ type SandwichClient interface {
 	// WhereIsGuildLocations contains the manager, shardGroup and shardId.
 	WhereIsGuild(ctx context.Context, in *WhereIsGuildRequest, opts ...grpc.CallOption) (*WhereIsGuildResponse, error)
 	// RelayMessage creates a new event and sends it immediately back to consumers.
-	// All relayed messages will have the dispatch opcode and the sequence of -1.
+	// All relayed messages will have the dispatch opcode and the sequence of 0.
 	RelayMessage(ctx context.Context, in *RelayMessageRequest, opts ...grpc.CallOption) (*BaseResponse, error)
 }
 
@@ -264,7 +263,7 @@ type SandwichServer interface {
 	// WhereIsGuildLocations contains the manager, shardGroup and shardId.
 	WhereIsGuild(context.Context, *WhereIsGuildRequest) (*WhereIsGuildResponse, error)
 	// RelayMessage creates a new event and sends it immediately back to consumers.
-	// All relayed messages will have the dispatch opcode and the sequence of -1.
+	// All relayed messages will have the dispatch opcode and the sequence of 0.
 	RelayMessage(context.Context, *RelayMessageRequest) (*BaseResponse, error)
 	mustEmbedUnimplementedSandwichServer()
 }

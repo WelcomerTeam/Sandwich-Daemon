@@ -109,6 +109,7 @@ type WhereIsGuildLocation struct {
 	Manager    string
 	ShardGroup int
 	ShardID    int
+	GuildMember *discord.GuildMember
 }
 
 type FetchConsumerConfigurationResponse struct {

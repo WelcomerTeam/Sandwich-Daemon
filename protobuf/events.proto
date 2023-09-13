@@ -168,6 +168,7 @@ message WhereIsGuildLocation {
   string manager = 1;
   int32 shardGroup = 2;
   int32 shardId = 3;
+  GuildMember guildMember = 4;
 }
 
 message WhereIsGuildRequest {
