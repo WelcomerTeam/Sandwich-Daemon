@@ -106,9 +106,9 @@ type WhereIsGuildResponse struct {
 }
 
 type WhereIsGuildLocation struct {
-	Manager    string
-	ShardGroup int
-	ShardID    int
+	Manager     string
+	ShardGroup  int
+	ShardID     int
 	GuildMember *discord.GuildMember
 }
 
