@@ -670,19 +670,20 @@ message User {
   int64 ID = 1 [json_name="id"];
   string Username = 2 [json_name="username"];
   string Discriminator = 3 [json_name="discriminator"];
-  string Avatar = 4 [json_name="avatar"];
-  bool Bot = 5 [json_name="bot"];
-  bool System = 6 [json_name="system"];
-  bool MFAEnabled = 7 [json_name="mfa_enabled"];
-  string Banner = 8 [json_name="banner"];
-  int32 AccentColour = 9 [json_name="accent_color"];
-  string Locale = 10 [json_name="locale"];
-  bool Verified = 11 [json_name="verified"];
-  string Email = 12 [json_name="email"];
-  int32 Flags = 13 [json_name="flags"];
-  int32 PremiumType = 14 [json_name="premium_type"];
-  int32 PublicFlags = 15 [json_name="public_flags"];
-  int64 DMChannelID = 16 [json_name="dm_channel_id"];
+	string GlobalName = 4 [json_name="global_name"];
+  string Avatar = 5 [json_name="avatar"];
+  bool Bot = 6 [json_name="bot"];
+  bool System = 7 [json_name="system"];
+  bool MFAEnabled = 8 [json_name="mfa_enabled"];
+  string Banner = 9 [json_name="banner"];
+  int32 AccentColour = 10 [json_name="accent_color"];
+  string Locale = 11 [json_name="locale"];
+  bool Verified = 12 [json_name="verified"];
+  string Email = 13 [json_name="email"];
+  int32 Flags = 14 [json_name="flags"];
+  int32 PremiumType = 15 [json_name="premium_type"];
+  int32 PublicFlags = 16 [json_name="public_flags"];
+  int64 DMChannelID = 17 [json_name="dm_channel_id"];
 }
 
 // webhook.go
