@@ -194,10 +194,8 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 		ss.SetGuildEmoji(ctx, guild.ID, emoji)
 	}
 
-	if ctx.CacheMembers {
-		for _, member := range guild.Members {
-			ss.SetGuildMember(ctx, guild.ID, member)
-		}
+	for _, member := range guild.Members {
+		ss.SetGuildMember(ctx, guild.ID, member)
 	}
 
 	ss.Guilds[guild.ID] = ss.GuildToState(guild)
@@ -294,7 +292,8 @@ func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID
 
 // SetGuildMember creates or updates a guildMember entry in the cache. Adds user in guildMember object to cache.
 func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake, guildMember *discord.GuildMember) {
-	if !ctx.CacheMembers {
+	// We will always cache the guild member of the bot that receives this event.
+	if !ctx.CacheMembers && guildMember.User.ID != ctx.Manager.User.ID {
 		return
 	}
 
@@ -316,9 +315,7 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 
 	guildMembers.Members[guildMember.User.ID] = ss.GuildMemberToState(guildMember)
 
-	if ctx.CacheUsers {
-		ss.SetUser(ctx, guildMember.User)
-	}
+	ss.SetUser(ctx, guildMember.User)
 }
 
 // RemoveGuildMember removes a guildMember from the cache.
@@ -582,7 +579,7 @@ func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake,
 
 	guildEmojis.Emojis[emoji.ID] = ss.EmojiToState(emoji)
 
-	if emoji.User != nil && ctx.CacheUsers {
+	if emoji.User != nil {
 		ss.SetUser(ctx, emoji.User)
 	}
 }
@@ -697,7 +694,8 @@ func (ss *SandwichState) GetUser(userID discord.Snowflake) (user *discord.User, 
 
 // SetUser creates or updates a user entry in the cache.
 func (ss *SandwichState) SetUser(ctx *StateCtx, user *discord.User) {
-	if !ctx.CacheUsers {
+	// We will always cache the user of the bot that receives this event.
+	if !ctx.CacheUsers && user.ID != ctx.Manager.User.ID {
 		return
 	}
 
@@ -885,11 +883,9 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 
 	guildChannels.Channels[channel.ID] = ss.ChannelToState(channel)
 
-	if ctx.CacheUsers {
-		for _, recipient := range channel.Recipients {
-			recipient := recipient
-			ss.SetUser(ctx, recipient)
-		}
+	for _, recipient := range channel.Recipients {
+		recipient := recipient
+		ss.SetUser(ctx, recipient)
 	}
 }
 

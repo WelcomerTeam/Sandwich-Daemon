@@ -202,10 +202,8 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		return
 	}
 
-	if ctx.CacheMembers {
-		for _, member := range guildMembersChunkPayload.Members {
-			ctx.Sandwich.State.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
-		}
+	for _, member := range guildMembersChunkPayload.Members {
+		ctx.Sandwich.State.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
 	}
 
 	ctx.Logger.Debug().
@@ -632,9 +630,7 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, *guildMemberAddPayload.GuildID)
 
-	if ctx.CacheMembers {
-		ctx.Sandwich.State.SetGuildMember(ctx, *guildMemberAddPayload.GuildID, guildMemberAddPayload)
-	}
+	ctx.Sandwich.State.SetGuildMember(ctx, *guildMemberAddPayload.GuildID, guildMemberAddPayload)
 
 	if ctx.StoreMutuals {
 		ctx.Sandwich.State.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, *guildMemberAddPayload.GuildID)
@@ -702,9 +698,7 @@ func OnGuildMemberUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 	beforeGuildMember, _ := ctx.Sandwich.State.GetGuildMember(
 		*guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID)
 
-	if ctx.CacheMembers {
-		ctx.Sandwich.State.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
-	}
+	ctx.Sandwich.State.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.GuildMember)
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeGuildMember,

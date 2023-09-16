@@ -670,7 +670,12 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 
 					guildMember_sandwich, ok := shard.Sandwich.State.GetGuildMember(discord.Snowflake(request.GuildID), shard.Manager.User.ID)
 					if ok {
-						guildMember, _ = pb.GuildMemberToGRPC(guildMember_sandwich)
+						guildMember, err = pb.GuildMemberToGRPC(guildMember_sandwich)
+						if err != nil {
+							grpc.sg.Logger.Error().Err(err).Int("guild_id", int(request.GuildID)).Int64("user_id", int64(shard.Manager.User.ID)).Msg("Failed to convert guild member to GRPC")
+						}
+					} else {
+						grpc.sg.Logger.Warn().Int("guild_id", int(request.GuildID)).Int64("user_id", int64(shard.Manager.User.ID)).Msg("Failed to find own guild member")
 					}
 
 					response.Locations = append(response.Locations, &pb.WhereIsGuildLocation{
