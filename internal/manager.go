@@ -270,6 +270,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	packet.Metadata = sandwich_structs.SandwichMetadata{
 		Version:       VERSION,
 		Identifier:    identifier,
+		Application:   mg.Identifier.Load(),
 		ApplicationID: discord.Snowflake(mg.UserID.Load()),
 	}
 
