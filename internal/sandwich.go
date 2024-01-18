@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.8.1"
+const VERSION = "1.9"
 
 const (
 	PermissionsDefault = 0o744
@@ -139,12 +139,12 @@ type SandwichConfiguration struct {
 	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
 }
 
-// SandwichOptions represents any options passable when creating
-// the sandwich service
+// SandwichOptions represents any options passable when creating the sandwich service.
 type SandwichOptions struct {
 	ConfigurationLocation string  `json:"configuration_location" yaml:"configuration_location"`
 	PrometheusAddress     string  `json:"prometheus_address" yaml:"prometheus_address"`
 	GatewayURL            url.URL `json:"gateway_url" yaml:"gateway_url"`
+
 	// BaseURL to send HTTP requests to. If empty, will use https://discord.com
 	BaseURL url.URL `json:"base_url" yaml:"base_url"`
 
@@ -235,7 +235,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 		}
 	}()
 
-	file, err := ioutil.ReadFile(path)
+	file, err := os.ReadFile(path)
 	if err != nil {
 		return configuration, ErrReadConfigurationFailure
 	}
@@ -259,7 +259,7 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return fmt.Errorf("failed to marshal configuration: %w", err)
 	}
 
-	err = ioutil.WriteFile(path, data, PermissionWrite)
+	err = os.WriteFile(path, data, PermissionWrite)
 	if err != nil {
 		return fmt.Errorf("failed to write configuration to file: %w", err)
 	}
@@ -287,8 +287,6 @@ func (sg *Sandwich) Open() {
 
 	sg.Logger.Info().Msg("Creating managers")
 	sg.startManagers()
-
-	return
 }
 
 // PublishGlobalEvent publishes an event to all Consumers.
@@ -467,7 +465,11 @@ func (sg *Sandwich) setupHTTP() error {
 	sg.Logger.Info().Msgf("Serving http at %s", sg.Options.HTTPHost)
 
 	cfg := session.NewDefaultConfig()
+
 	provider, err := memory.New(memory.Config{})
+	if err != nil {
+		return fmt.Errorf("failed to create memory provider: %w", err)
+	}
 
 	sg.SessionProvider = session.New(cfg)
 	if err = sg.SessionProvider.SetProvider(provider); err != nil {
@@ -491,169 +493,163 @@ func (sg *Sandwich) setupHTTP() error {
 func (sg *Sandwich) cacheEjector() {
 	t := time.NewTicker(cacheEjectorInterval)
 
-	for {
-		select {
-		case <-t.C:
-			now := time.Now().Unix()
+	for range t.C {
+		now := time.Now().Unix()
 
-			// Guild Ejector
-			allGuildIDs := make(map[discord.Snowflake]bool)
+		// Guild Ejector
+		allGuildIDs := make(map[discord.Snowflake]bool)
 
-			sg.managersMu.RLock()
-			for _, mg := range sg.Managers {
-				mg.shardGroupsMu.RLock()
-				for _, sg := range mg.ShardGroups {
-					sg.guildsMu.RLock()
-					for guildID, ok := range sg.Guilds {
-						if ok {
-							allGuildIDs[guildID] = true
-						}
+		sg.managersMu.RLock()
+		for _, mg := range sg.Managers {
+			mg.shardGroupsMu.RLock()
+			for _, sg := range mg.ShardGroups {
+				sg.guildsMu.RLock()
+				for guildID, ok := range sg.Guilds {
+					if ok {
+						allGuildIDs[guildID] = true
 					}
-					sg.guildsMu.RUnlock()
 				}
-				mg.shardGroupsMu.RUnlock()
+				sg.guildsMu.RUnlock()
 			}
-			sg.managersMu.RUnlock()
-
-			ejectedGuilds := make([]discord.Snowflake, 0)
-
-			sg.State.guildsMu.RLock()
-			for guildID := range sg.State.Guilds {
-				if val, ok := allGuildIDs[guildID]; !val || !ok {
-					ejectedGuilds = append(ejectedGuilds, guildID)
-				}
-			}
-			sg.State.guildsMu.RUnlock()
-
-			ctx := &StateCtx{
-				Stateless: true,
-			}
-
-			for _, guildID := range ejectedGuilds {
-				sg.State.RemoveGuild(ctx, guildID)
-			}
-
-			ejectedDedupes := make([]string, 0)
-
-			// MemberDedup Ejector
-			sg.dedupeMu.RLock()
-			for i, t := range sg.Dedupe {
-				if now > t {
-					ejectedDedupes = append(ejectedDedupes, i)
-				}
-			}
-			sg.dedupeMu.RUnlock()
-
-			if len(ejectedDedupes) > 0 {
-				sg.dedupeMu.Lock()
-				for _, i := range ejectedDedupes {
-					delete(sg.Dedupe, i)
-				}
-				sg.dedupeMu.Unlock()
-			}
-
-			sg.Logger.Debug().
-				Int("guildsEjected", len(ejectedGuilds)).
-				Int("guildsTotal", len(allGuildIDs)).
-				Int("ejectedDedupes", len(ejectedDedupes)).
-				Msg("Ejected cache")
+			mg.shardGroupsMu.RUnlock()
 		}
+		sg.managersMu.RUnlock()
+
+		ejectedGuilds := make([]discord.Snowflake, 0)
+
+		sg.State.guildsMu.RLock()
+		for guildID := range sg.State.Guilds {
+			if val, ok := allGuildIDs[guildID]; !val || !ok {
+				ejectedGuilds = append(ejectedGuilds, guildID)
+			}
+		}
+		sg.State.guildsMu.RUnlock()
+
+		ctx := &StateCtx{
+			Stateless: true,
+		}
+
+		for _, guildID := range ejectedGuilds {
+			sg.State.RemoveGuild(ctx, guildID)
+		}
+
+		ejectedDedupes := make([]string, 0)
+
+		// MemberDedup Ejector
+		sg.dedupeMu.RLock()
+		for i, t := range sg.Dedupe {
+			if now > t {
+				ejectedDedupes = append(ejectedDedupes, i)
+			}
+		}
+		sg.dedupeMu.RUnlock()
+
+		if len(ejectedDedupes) > 0 {
+			sg.dedupeMu.Lock()
+			for _, i := range ejectedDedupes {
+				delete(sg.Dedupe, i)
+			}
+			sg.dedupeMu.Unlock()
+		}
+
+		sg.Logger.Debug().
+			Int("guildsEjected", len(ejectedGuilds)).
+			Int("guildsTotal", len(allGuildIDs)).
+			Int("ejectedDedupes", len(ejectedDedupes)).
+			Msg("Ejected cache")
 	}
 }
 
 func (sg *Sandwich) prometheusGatherer() {
 	t := time.NewTicker(prometheusGatherInterval)
 
-	for {
-		select {
-		case <-t.C:
-			sg.State.guildsMu.RLock()
-			stateGuilds := len(sg.State.Guilds)
-			sg.State.guildsMu.RUnlock()
+	for range t.C {
+		sg.State.guildsMu.RLock()
+		stateGuilds := len(sg.State.Guilds)
+		sg.State.guildsMu.RUnlock()
 
-			stateMembers := 0
-			stateRoles := 0
-			stateEmojis := 0
-			stateChannels := 0
+		stateMembers := 0
+		stateRoles := 0
+		stateEmojis := 0
+		stateChannels := 0
 
-			sg.State.guildMembersMu.RLock()
-			for _, guildMembers := range sg.State.GuildMembers {
-				guildMembers.MembersMu.RLock()
-				stateMembers += len(guildMembers.Members)
-				guildMembers.MembersMu.RUnlock()
-			}
-			sg.State.guildMembersMu.RUnlock()
-
-			sg.State.guildRolesMu.RLock()
-			for _, guildRoles := range sg.State.GuildRoles {
-				guildRoles.RolesMu.RLock()
-				stateRoles += len(guildRoles.Roles)
-				guildRoles.RolesMu.RUnlock()
-			}
-			sg.State.guildRolesMu.RUnlock()
-
-			sg.State.guildEmojisMu.RLock()
-			for _, guildEmojis := range sg.State.GuildEmojis {
-				guildEmojis.EmojisMu.RLock()
-				stateEmojis += len(guildEmojis.Emojis)
-				guildEmojis.EmojisMu.RUnlock()
-			}
-			sg.State.guildEmojisMu.RUnlock()
-
-			sg.State.guildChannelsMu.RLock()
-			for _, guildChannels := range sg.State.GuildChannels {
-				guildChannels.ChannelsMu.RLock()
-				stateChannels += len(guildChannels.Channels)
-				guildChannels.ChannelsMu.RUnlock()
-			}
-			sg.State.guildChannelsMu.RUnlock()
-
-			sg.State.usersMu.RLock()
-			stateUsers := len(sg.State.Users)
-			sg.State.usersMu.RUnlock()
-
-			sandwichStateTotalCount.Set(float64(
-				stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
-			))
-
-			eventsInflight := sg.EventsInflight.Load()
-
-			eventsBuffer := 0
-
-			sg.managersMu.RLock()
-			for _, manager := range sg.Managers {
-				manager.shardGroupsMu.RLock()
-				for _, shardgroup := range manager.ShardGroups {
-					shardgroup.shardsMu.RLock()
-					for _, shard := range shardgroup.Shards {
-						eventsBuffer += len(shard.MessageCh)
-					}
-					shardgroup.shardsMu.RUnlock()
-				}
-				manager.shardGroupsMu.RUnlock()
-			}
-			sg.managersMu.RUnlock()
-
-			sandwichStateGuildCount.Set(float64(stateGuilds))
-			sandwichStateGuildMembersCount.Set(float64(stateMembers))
-			sandwichStateRoleCount.Set(float64(stateRoles))
-			sandwichStateEmojiCount.Set(float64(stateEmojis))
-			sandwichStateUserCount.Set(float64(stateUsers))
-			sandwichStateChannelCount.Set(float64(stateChannels))
-
-			sandwichEventInflightCount.Set(float64(eventsInflight))
-			sandwichEventBufferCount.Set(float64(eventsBuffer))
-
-			sg.Logger.Debug().
-				Int("guilds", stateGuilds).
-				Int("members", stateMembers).
-				Int("roles", stateRoles).
-				Int("emojis", stateEmojis).
-				Int("users", stateUsers).
-				Int("channels", stateChannels).
-				Int32("eventsInflight", eventsInflight).
-				Int("eventsBuffer", eventsBuffer).
-				Msg("Updated prometheus guages")
+		sg.State.guildMembersMu.RLock()
+		for _, guildMembers := range sg.State.GuildMembers {
+			guildMembers.MembersMu.RLock()
+			stateMembers += len(guildMembers.Members)
+			guildMembers.MembersMu.RUnlock()
 		}
+		sg.State.guildMembersMu.RUnlock()
+
+		sg.State.guildRolesMu.RLock()
+		for _, guildRoles := range sg.State.GuildRoles {
+			guildRoles.RolesMu.RLock()
+			stateRoles += len(guildRoles.Roles)
+			guildRoles.RolesMu.RUnlock()
+		}
+		sg.State.guildRolesMu.RUnlock()
+
+		sg.State.guildEmojisMu.RLock()
+		for _, guildEmojis := range sg.State.GuildEmojis {
+			guildEmojis.EmojisMu.RLock()
+			stateEmojis += len(guildEmojis.Emojis)
+			guildEmojis.EmojisMu.RUnlock()
+		}
+		sg.State.guildEmojisMu.RUnlock()
+
+		sg.State.guildChannelsMu.RLock()
+		for _, guildChannels := range sg.State.GuildChannels {
+			guildChannels.ChannelsMu.RLock()
+			stateChannels += len(guildChannels.Channels)
+			guildChannels.ChannelsMu.RUnlock()
+		}
+		sg.State.guildChannelsMu.RUnlock()
+
+		sg.State.usersMu.RLock()
+		stateUsers := len(sg.State.Users)
+		sg.State.usersMu.RUnlock()
+
+		sandwichStateTotalCount.Set(float64(
+			stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
+		))
+
+		eventsInflight := sg.EventsInflight.Load()
+
+		eventsBuffer := 0
+
+		sg.managersMu.RLock()
+		for _, manager := range sg.Managers {
+			manager.shardGroupsMu.RLock()
+			for _, shardgroup := range manager.ShardGroups {
+				shardgroup.shardsMu.RLock()
+				for _, shard := range shardgroup.Shards {
+					eventsBuffer += len(shard.MessageCh)
+				}
+				shardgroup.shardsMu.RUnlock()
+			}
+			manager.shardGroupsMu.RUnlock()
+		}
+		sg.managersMu.RUnlock()
+
+		sandwichStateGuildCount.Set(float64(stateGuilds))
+		sandwichStateGuildMembersCount.Set(float64(stateMembers))
+		sandwichStateRoleCount.Set(float64(stateRoles))
+		sandwichStateEmojiCount.Set(float64(stateEmojis))
+		sandwichStateUserCount.Set(float64(stateUsers))
+		sandwichStateChannelCount.Set(float64(stateChannels))
+
+		sandwichEventInflightCount.Set(float64(eventsInflight))
+		sandwichEventBufferCount.Set(float64(eventsBuffer))
+
+		sg.Logger.Debug().
+			Int("guilds", stateGuilds).
+			Int("members", stateMembers).
+			Int("roles", stateRoles).
+			Int("emojis", stateEmojis).
+			Int("users", stateUsers).
+			Int("channels", stateChannels).
+			Int32("eventsInflight", eventsInflight).
+			Int("eventsBuffer", eventsBuffer).
+			Msg("Updated prometheus gauges")
 	}
 }

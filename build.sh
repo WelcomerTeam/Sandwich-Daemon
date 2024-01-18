@@ -4,7 +4,7 @@ yarn build
 cd ..
 
 echo "Simplify"
-gofmt -l -s -w . && gofumpt -l -w . && gci -w . && goimports -l -w .
+gofmt -l -s -w . && gofumpt -l -w . && gci --write . && goimports -local -w .
 
 echo "Docker build and push"
 docker build --tag 1345/sandwich-daemon:latest .

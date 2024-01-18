@@ -359,7 +359,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 		client := http.DefaultClient
 
 		for {
-			req, err := http.NewRequestWithContext(mg.ctx, "POST", sendURL, bytes.NewBuffer(body.Bytes()))
+			req, err := http.NewRequestWithContext(mg.ctx, http.MethodPost, sendURL, bytes.NewBuffer(body.Bytes()))
 			if err != nil {
 				return fmt.Errorf("failed to create request: %w", err)
 			}

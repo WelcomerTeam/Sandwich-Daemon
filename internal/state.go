@@ -100,6 +100,7 @@ func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwic
 		Splash:          guild.Splash,
 		DiscoverySplash: guild.DiscoverySplash,
 
+		Owner:       guild.Owner,
 		OwnerID:     guild.OwnerID,
 		Permissions: guild.Permissions,
 		Region:      guild.Region,
@@ -113,8 +114,6 @@ func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwic
 		VerificationLevel:           guild.VerificationLevel,
 		DefaultMessageNotifications: guild.DefaultMessageNotifications,
 		ExplicitContentFilter:       guild.ExplicitContentFilter,
-
-		Features: guild.Features,
 
 		MFALevel:           guild.MFALevel,
 		ApplicationID:      guild.ApplicationID,
@@ -132,16 +131,17 @@ func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwic
 		VanityURLCode: guild.VanityURLCode,
 		Description:   guild.Description,
 		Banner:        guild.Banner,
-		PremiumTier:   guild.PremiumTier,
 
-		PremiumSubscriptionCount: guild.PremiumSubscriptionCount,
-		PreferredLocale:          guild.PreferredLocale,
-		PublicUpdatesChannelID:   guild.PublicUpdatesChannelID,
-		MaxVideoChannelUsers:     guild.MaxVideoChannelUsers,
-		ApproximateMemberCount:   guild.ApproximateMemberCount,
-		ApproximatePresenceCount: guild.ApproximatePresenceCount,
+		PremiumTier:               guild.PremiumTier,
+		PremiumSubscriptionCount:  guild.PremiumSubscriptionCount,
+		PreferredLocale:           guild.PreferredLocale,
+		PublicUpdatesChannelID:    guild.PublicUpdatesChannelID,
+		MaxVideoChannelUsers:      guild.MaxVideoChannelUsers,
+		ApproximateMemberCount:    guild.ApproximateMemberCount,
+		ApproximatePresenceCount:  guild.ApproximatePresenceCount,
+		NSFWLevel:                 guild.NSFWLevel,
+		PremiumProgressBarEnabled: guild.PremiumProgressBarEnabled,
 
-		NSFWLevel:      guild.NSFWLevel,
 		StageInstances: make([]discord.StageInstance, 0),
 		Stickers:       make([]discord.Sticker, 0),
 	}
@@ -232,15 +232,16 @@ func (ss *SandwichState) GuildMemberFromState(guildState *sandwich_structs.State
 		User: &discord.User{
 			ID: guildState.UserID,
 		},
-		Nick: guildState.Nick,
-
-		Roles:        guildState.Roles,
-		JoinedAt:     guildState.JoinedAt,
-		PremiumSince: guildState.PremiumSince,
-		Deaf:         guildState.Deaf,
-		Mute:         guildState.Mute,
-		Pending:      guildState.Pending,
-		Permissions:  guildState.Permissions,
+		Nick:                       guildState.Nick,
+		Avatar:                     guildState.Avatar,
+		Roles:                      guildState.Roles,
+		JoinedAt:                   guildState.JoinedAt,
+		PremiumSince:               guildState.PremiumSince,
+		Deaf:                       guildState.Deaf,
+		Mute:                       guildState.Mute,
+		Pending:                    guildState.Pending,
+		Permissions:                guildState.Permissions,
+		CommunicationDisabledUntil: guildState.CommunicationDisabledUntil,
 	}
 }
 
@@ -638,6 +639,7 @@ func (ss *SandwichState) UserFromState(userState *sandwich_structs.StateUser) (u
 		ID:            userState.ID,
 		Username:      userState.Username,
 		Discriminator: userState.Discriminator,
+		GlobalName:    userState.GlobalName,
 		Avatar:        userState.Avatar,
 		Bot:           userState.Bot,
 		System:        userState.System,
@@ -660,6 +662,7 @@ func (ss *SandwichState) UserToState(user *discord.User) (userState *sandwich_st
 		ID:            user.ID,
 		Username:      user.Username,
 		Discriminator: user.Discriminator,
+		GlobalName:    user.GlobalName,
 		Avatar:        user.Avatar,
 		Bot:           user.Bot,
 		System:        user.System,
@@ -754,9 +757,9 @@ func (ss *SandwichState) ChannelFromState(guildState *sandwich_structs.StateChan
 		guild.PermissionOverwrites = append(guild.PermissionOverwrites, &permissionOverride)
 	}
 
-	for _, recepientID := range guildState.Recipients {
+	for _, recipientID := range guildState.Recipients {
 		guild.Recipients = append(guild.Recipients, &discord.User{
-			ID: recepientID,
+			ID: recipientID,
 		})
 	}
 
@@ -826,7 +829,7 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 
 	stateChannels, ok := ss.GuildChannels[guildID]
 	if !ok {
-		return
+		return guildChannel, false
 	}
 
 	stateChannels.ChannelsMu.RLock()
@@ -834,12 +837,12 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 
 	stateGuildChannel, ok := stateChannels.Channels[channelID]
 	if !ok {
-		return
+		return guildChannel, false
 	}
 
 	guildChannel = ss.ChannelFromState(stateGuildChannel)
 
-	newRecepients := make([]*discord.User, 0)
+	newRecipients := make([]*discord.User, 0, len(guildChannel.Recipients))
 
 	for _, recipient := range guildChannel.Recipients {
 		recipientUser, ok := ss.GetUser(recipient.ID)
@@ -847,10 +850,10 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 			recipient = recipientUser
 		}
 
-		newRecepients = append(newRecepients, recipient)
+		newRecipients = append(newRecipients, recipient)
 	}
 
-	guildChannel.Recipients = newRecepients
+	guildChannel.Recipients = newRecipients
 
 	return guildChannel, ok
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -64,7 +63,7 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 
 	defer res.Body.Close()
 
-	resultBody, err := ioutil.ReadAll(res.Body)
+	resultBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, res.StatusCode, fmt.Errorf("failed to read request body: %w", err)
 	}

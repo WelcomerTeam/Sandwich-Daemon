@@ -858,9 +858,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	}
 
 	go sg.PublishSimpleWebhook(
-		fmt.Sprintf(
-			"Launched new shardgroup",
-		),
+		"Launched new shardgroup",
 		fmt.Sprintf(
 			"Shard count: `%d` - Shards: `%s`",
 			shardGroupArguments.ShardCount,

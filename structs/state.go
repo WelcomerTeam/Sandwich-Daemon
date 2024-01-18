@@ -80,10 +80,10 @@ type StateGuild struct {
 	SystemChannelFlags *discord.SystemChannelFlags `json:"system_channel_flags,omitempty"`
 	RulesChannelID     *discord.Snowflake          `json:"rules_channel_id,omitempty"`
 
-	JoinedAt    string `json:"joined_at"`
-	Large       bool   `json:"large"`
-	Unavailable bool   `json:"unavailable"`
-	MemberCount int32  `json:"member_count"`
+	JoinedAt    time.Time `json:"joined_at"`
+	Large       bool      `json:"large"`
+	Unavailable bool      `json:"unavailable"`
+	MemberCount int32     `json:"member_count"`
 
 	MaxPresences  int32  `json:"max_presences"`
 	MaxMembers    int32  `json:"max_members"`
@@ -116,7 +116,7 @@ type StateGuildMember struct {
 	Nick                       string              `json:"nick"`
 	Avatar                     string              `json:"avatar,omitempty"`
 	Roles                      []discord.Snowflake `json:"roles"`
-	JoinedAt                   string              `json:"joined_at"`
+	JoinedAt                   time.Time           `json:"joined_at"`
 	PremiumSince               string              `json:"premium_since"`
 	Deaf                       bool                `json:"deaf"`
 	Mute                       bool                `json:"mute"`
@@ -181,20 +181,21 @@ type StateChannel struct {
 }
 
 type StateUser struct {
-	ID            discord.Snowflake        `json:"id"`
-	Username      string                   `json:"username"`
-	Discriminator string                   `json:"discriminator"`
-	Avatar        string                   `json:"avatar"`
-	Bot           bool                     `json:"bot"`
-	System        bool                     `json:"system,omitempty"`
-	MFAEnabled    bool                     `json:"mfa_enabled,omitempty"`
-	Banner        string                   `json:"banner,omitempty"`
-	AccentColour  int32                    `json:"accent_color"`
-	Locale        string                   `json:"locale,omitempty"`
-	Verified      bool                     `json:"verified,omitempty"`
-	Email         string                   `json:"email,omitempty"`
-	Flags         *discord.UserFlags       `json:"flags,omitempty"`
-	PremiumType   *discord.UserPremiumType `json:"premium_type,omitempty"`
-	PublicFlags   *discord.UserFlags       `json:"public_flags,omitempty"`
-	DMChannelID   *discord.Snowflake       `json:"dm_channel_id,omitempty"`
+	ID            discord.Snowflake       `json:"id"`
+	Username      string                  `json:"username"`
+	Discriminator string                  `json:"discriminator"`
+	GlobalName    string                  `json:"global_name"`
+	Avatar        string                  `json:"avatar"`
+	Bot           bool                    `json:"bot"`
+	System        bool                    `json:"system,omitempty"`
+	MFAEnabled    bool                    `json:"mfa_enabled,omitempty"`
+	Banner        string                  `json:"banner,omitempty"`
+	AccentColour  int32                   `json:"accent_color"`
+	Locale        string                  `json:"locale,omitempty"`
+	Verified      bool                    `json:"verified,omitempty"`
+	Email         string                  `json:"email,omitempty"`
+	Flags         discord.UserFlags       `json:"flags,omitempty"`
+	PremiumType   discord.UserPremiumType `json:"premium_type,omitempty"`
+	PublicFlags   discord.UserFlags       `json:"public_flags,omitempty"`
+	DMChannelID   *discord.Snowflake      `json:"dm_channel_id,omitempty"`
 }

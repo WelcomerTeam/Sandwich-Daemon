@@ -221,13 +221,13 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 		sg.Logger.Info().Msg("All shards are now ready")
 
 		sg.Manager.shardGroupsMu.RLock()
-		for sgID, _sg := range sg.Manager.ShardGroups {
-			if sgID != sg.ID {
+		for shardGroupID, shardGroup := range sg.Manager.ShardGroups {
+			if shardGroupID != sg.ID {
 				sg.floodgateMu.Lock()
 				sg.floodgate = false
 				sg.floodgateMu.Unlock()
 
-				_sg.Close()
+				shardGroup.Close()
 			}
 		}
 		sg.Manager.shardGroupsMu.RUnlock()

@@ -649,7 +649,11 @@ func (sh *Shard) Identify(ctx context.Context) error {
 	sh.Manager.Gateway.SessionStartLimit.Remaining--
 	sh.Manager.gatewayMu.Unlock()
 
-	sh.Manager.WaitForIdentify(sh.ShardID, sh.ShardGroup.ShardCount)
+	err := sh.Manager.WaitForIdentify(sh.ShardID, sh.ShardGroup.ShardCount)
+	if err != nil {
+		return fmt.Errorf("failed to wait for identify: %w", err)
+	}
+
 	sh.Logger.Debug().Msg("Wait for identify completed")
 
 	sh.Manager.configurationMu.RLock()
