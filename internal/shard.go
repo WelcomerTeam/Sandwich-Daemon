@@ -749,6 +749,8 @@ func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) erro
 	err := jsoniter.Unmarshal(msg.Data, &out)
 	if err != nil {
 		sh.Logger.Error().Err(err).Str("type", msg.Type).Msg("Failed to decode event")
+
+		return err
 	}
 
 	return nil

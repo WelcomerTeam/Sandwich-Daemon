@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.9"
+const VERSION = "1.9.1"
 
 const (
 	PermissionsDefault = 0o744
