@@ -584,6 +584,10 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request *pb.RequestGuildChunkRequest) (response *pb.BaseResponse, err error) {
 	onGRPCRequest()
 
+	response = &pb.BaseResponse{
+		Ok: false,
+	}
+
 	grpc.sg.managersMu.RLock()
 	for _, manager := range grpc.sg.Managers {
 		manager.shardGroupsMu.RLock()
