@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.9.1"
+const VERSION = "1.10"
 
 const (
 	PermissionsDefault = 0o744
@@ -109,6 +109,9 @@ type Sandwich struct {
 	receivedPool sync.Pool
 	// SentPayload pool
 	sentPool sync.Pool
+
+	guildChunksMu sync.RWMutex
+	guildChunks   map[discord.Snowflake]*GuildChunks
 }
 
 // SandwichConfiguration represents the configuration file.
@@ -157,6 +160,23 @@ type SandwichOptions struct {
 	HTTPEnabled bool   `json:"http_enabled" yaml:"http_enabled"`
 }
 
+type GuildChunks struct {
+	// Indicates if all chunks have been received.
+	Complete atomic.Bool
+
+	// Channel for receiving when chunks have been received.
+	ChunkingChannel chan GuildChunkPartial
+
+	StartedAt   atomic.Time
+	CompletedAt atomic.Time
+}
+
+type GuildChunkPartial struct {
+	ChunkIndex int32
+	ChunkCount int32
+	Nonce      string
+}
+
 // NewSandwich creates the application state and initializes it.
 func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err error) {
 	sg = &Sandwich{
@@ -201,6 +221,9 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		sentPool: sync.Pool{
 			New: func() interface{} { return new(discord.SentPayload) },
 		},
+
+		guildChunksMu: sync.RWMutex{},
+		guildChunks:   make(map[discord.Snowflake]*GuildChunks),
 	}
 
 	sg.ctx, sg.cancel = context.WithCancel(context.Background())

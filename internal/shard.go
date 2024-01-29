@@ -30,12 +30,8 @@ const (
 
 	MessageChannelBuffer = 64
 
-	// Time necessary to abort chunking when no events have been received yet in this time frame.
-	InitialMemberChunkTimeout = 10 * time.Second
 	// Time necessary to mark chunking as completed when no more events are received in this time frame.
 	MemberChunkTimeout = 1 * time.Second
-	// Time between chunks no longer marked as chunked anymore.
-	ChunkStatePersistTimeout = 10 * time.Second
 
 	// Number of retries attempted before considering a shard not working.
 	ShardConnectRetries = 3
@@ -80,7 +76,7 @@ type Shard struct {
 	Heartbeater       *time.Ticker  `json:"-"`
 	HeartbeatInterval time.Duration `json:"-"`
 
-	// Duration since last heartbeat Ack beforereconnecting.
+	// Duration since last heartbeat Ack before reconnecting.
 	HeartbeatFailureInterval time.Duration `json:"-"`
 
 	// Map of guilds that are currently unavailable.
@@ -91,7 +87,7 @@ type Shard struct {
 	lazyMu sync.RWMutex
 	Lazy   map[discord.Snowflake]bool `json:"lazy"`
 
-	// Stores a local list of all guilds in the shard.d
+	// Stores a local list of all guilds in the shard.
 	guildsMu sync.RWMutex
 	Guilds   map[discord.Snowflake]bool `json:"guilds"`
 
@@ -890,6 +886,114 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 			wait = MaxReconnectWait
 		}
 	}
+}
+
+func (sh *Shard) ChunkAllGuilds() {
+	sh.guildsMu.RLock()
+
+	guilds := make([]discord.Snowflake, len(sh.Guilds))
+	i := 0
+
+	for guildID := range sh.Guilds {
+		guilds[i] = guildID
+		i++
+	}
+
+	sh.guildsMu.RUnlock()
+
+	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Started chunking all guilds")
+
+	for _, guildID := range guilds {
+		sh.ChunkGuild(guildID)
+	}
+
+	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Finished chunking all guilds")
+}
+
+// ChunkGuilds chunks guilds to discord. It will wait for the operation to complete, or timeout.
+func (sh *Shard) ChunkGuild(guildID discord.Snowflake) error {
+	sh.Sandwich.guildChunksMu.RLock()
+	guildChunk, ok := sh.Sandwich.guildChunks[guildID]
+	sh.Sandwich.guildChunksMu.RUnlock()
+
+	if !ok {
+		guildChunk = &GuildChunks{
+			Complete:        *atomic.NewBool(false),
+			ChunkingChannel: make(chan GuildChunkPartial),
+			StartedAt:       *atomic.NewTime(time.Time{}),
+			CompletedAt:     *atomic.NewTime(time.Time{}),
+		}
+
+		sh.Sandwich.guildChunksMu.Lock()
+		sh.Sandwich.guildChunks[guildID] = guildChunk
+		sh.Sandwich.guildChunksMu.Unlock()
+	}
+
+	guildChunk.Complete.Store(false)
+	guildChunk.StartedAt.Store(time.Now())
+
+	nonce := randomHex(16)
+
+	err := sh.SendEvent(sh.ctx, discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
+		GuildID: guildID,
+		Nonce:   nonce,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send request guild members event: %w", err)
+	}
+
+	chunksReceived := int32(0)
+	totalChunks := int32(0)
+
+	timeout := time.NewTimer(MemberChunkTimeout)
+
+guildChunkLoop:
+	for {
+		select {
+		case guildChunkPartial := <-guildChunk.ChunkingChannel:
+			if guildChunkPartial.Nonce != nonce {
+				continue
+			}
+
+			chunksReceived++
+			totalChunks = guildChunkPartial.ChunkCount
+
+			// When receiving a chunk, reset the timeout.
+			timeout.Reset(MemberChunkTimeout)
+
+			sh.Logger.Debug().
+				Int64("guild_id", int64(guildID)).
+				Int32("chunk_index", guildChunkPartial.ChunkIndex).
+				Int32("chunk_count", guildChunkPartial.ChunkCount).
+				Msg("Received guild member chunk")
+
+			if chunksReceived >= totalChunks {
+				sh.Logger.Debug().
+					Int64("guild_id", int64(guildID)).
+					Int32("total_chunks", totalChunks).
+					Msg("Received all guild member chunks")
+
+				break guildChunkLoop
+			}
+		case <-timeout.C:
+			// We have timed out. We will mark the chunking as complete.
+
+			sh.Logger.Warn().
+				Int64("guild_id", int64(guildID)).
+				Int32("chunks_received", chunksReceived).
+				Int32("total_chunks", totalChunks).
+				Msg("Timed out receiving guild member chunks")
+
+			break guildChunkLoop
+		}
+	}
+
+	timeout.Stop()
+
+	guildChunk.Complete.Store(true)
+	guildChunk.CompletedAt.Store(time.Now())
+
+	return nil
 }
 
 // OnDispatchEvent is called during the dispatch event to call analytics.

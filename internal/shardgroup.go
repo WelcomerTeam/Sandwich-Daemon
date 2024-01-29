@@ -44,21 +44,6 @@ type ShardGroup struct {
 	statusMu sync.RWMutex                      `json:"-"`
 	Status   sandwich_structs.ShardGroupStatus `json:"status"`
 
-	// MemberChunksCallback is used to signal when a guild is chunking.
-	memberChunksCallbackMu sync.RWMutex                          `json:"-"`
-	MemberChunksCallback   map[discord.Snowflake]*sync.WaitGroup `json:"-"`
-
-	// MemberChunksComplete is used to signal if a guild has recently
-	// been chunked. It is up to the guild task to remove this bool
-	// a few seconds after finishing chunking.
-	memberChunksCompleteMu sync.RWMutex                       `json:"-"`
-	MemberChunksComplete   map[discord.Snowflake]*atomic.Bool `json:"-"`
-
-	// MemberChunkCallbacks is used to signal when any MEMBER_CHUNK
-	// events are received for the specific guild.
-	memberChunkCallbacksMu sync.RWMutex                    `json:"-"`
-	MemberChunkCallbacks   map[discord.Snowflake]chan bool `json:"-"`
-
 	// Used to override when events can be processed.
 	// Used to orchestrate scaling of shardgroups.
 	floodgateMu sync.RWMutex
@@ -90,15 +75,6 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 
 		statusMu: sync.RWMutex{},
 		Status:   sandwich_structs.ShardGroupStatusIdle,
-
-		memberChunksCallbackMu: sync.RWMutex{},
-		MemberChunksCallback:   make(map[discord.Snowflake]*sync.WaitGroup),
-
-		memberChunksCompleteMu: sync.RWMutex{},
-		MemberChunksComplete:   make(map[discord.Snowflake]*atomic.Bool),
-
-		memberChunkCallbacksMu: sync.RWMutex{},
-		MemberChunkCallbacks:   make(map[discord.Snowflake]chan bool),
 
 		floodgate:   false,
 		floodgateMu: sync.RWMutex{},

@@ -88,7 +88,6 @@ type ManagerConfiguration struct {
 		DefaultPresence      discord.UpdateStatus `json:"default_presence" yaml:"default_presence"`
 		Intents              int32                `json:"intents" yaml:"intents"`
 		ChunkGuildsOnStartup bool                 `json:"chunk_guilds_on_startup" yaml:"chunk_guilds_on_startup"`
-		// TODO: Guild chunking
 	} `json:"bot" yaml:"bot"`
 
 	Caching struct {

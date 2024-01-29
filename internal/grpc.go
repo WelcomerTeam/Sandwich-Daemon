@@ -584,14 +584,30 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request *pb.RequestGuildChunkRequest) (response *pb.BaseResponse, err error) {
 	onGRPCRequest()
 
-	response = &pb.BaseResponse{
-		Ok:    false,
-		Error: "Not implemented",
+	grpc.sg.managersMu.RLock()
+	for _, manager := range grpc.sg.Managers {
+		manager.shardGroupsMu.RLock()
+		for _, shardGroup := range manager.ShardGroups {
+			shardGroup.shardsMu.RLock()
+			for _, shard := range shardGroup.Shards {
+				shard.guildsMu.RLock()
+				if _, ok := shard.Guilds[discord.Snowflake(request.GuildId)]; ok {
+					err = shard.ChunkGuild(discord.Snowflake(request.GuildId))
+					if err != nil {
+						response.Error = err.Error()
+					}
+				}
+				shard.guildsMu.RUnlock()
+			}
+			shardGroup.shardsMu.RUnlock()
+		}
+		manager.shardGroupsMu.RUnlock()
 	}
+	grpc.sg.managersMu.RUnlock()
 
-	// TODO
+	response.Ok = true
 
-	return response, status.Errorf(codes.Unimplemented, "method RequestGuildChunk not implemented")
+	return response, err
 }
 
 // SendWebsocketMessage manually sends a websocket message.

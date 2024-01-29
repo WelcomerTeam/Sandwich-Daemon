@@ -18,8 +18,6 @@ func OnReady(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.S
 
 	var readyPayload discord.Ready
 
-	var guildCreatePayload discord.GuildCreate
-
 	err = ctx.decodeContent(msg, &readyPayload)
 	if err != nil {
 		return result, false, err
@@ -67,11 +65,6 @@ ready:
 			if msg.Type == discord.DiscordEventGuildCreate {
 				guildCreateEvents++
 
-				err = ctx.decodeContent(msg, &guildCreatePayload)
-				if err != nil {
-					ctx.Logger.Error().Err(err).Str("type", msg.Type).Msg("Failed to decode event")
-				}
-
 				readyTimeout.Reset(ReadyTimeout)
 			}
 
@@ -92,6 +85,14 @@ ready:
 	}
 
 	ctx.SetStatus(sandwich_structs.ShardStatusReady)
+
+	ctx.Manager.configurationMu.RLock()
+	chunkGuildOnStartup := ctx.Manager.Configuration.Bot.ChunkGuildsOnStartup
+	ctx.Manager.configurationMu.RUnlock()
+
+	if chunkGuildOnStartup {
+		ctx.Shard.ChunkAllGuilds()
+	}
 
 	return result, false, nil
 }
@@ -202,6 +203,10 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		return result, false, err
 	}
 
+	// Force caching of users and members.
+	ctx.CacheUsers = true
+	ctx.CacheMembers = true
+
 	for _, member := range guildMembersChunkPayload.Members {
 		ctx.Sandwich.State.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
 	}
@@ -212,6 +217,33 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		Int32("chunkCount", guildMembersChunkPayload.ChunkCount).
 		Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
 		Msg("Chunked guild members")
+
+	ctx.Sandwich.guildChunksMu.RLock()
+	guildChunk, ok := ctx.Sandwich.guildChunks[guildMembersChunkPayload.GuildID]
+	ctx.Sandwich.guildChunksMu.RUnlock()
+
+	if !ok {
+		ctx.Logger.Warn().
+			Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
+			Msg("Received guild member chunk, but there is no record in the GuildChunks map")
+
+		return result, false, nil
+	}
+
+	if guildChunk.Complete.Load() {
+		ctx.Logger.Warn().
+			Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
+			Msg("GuildChunks entry is marked as complete, but we received a guild member chunk")
+	}
+
+	select {
+	case guildChunk.ChunkingChannel <- GuildChunkPartial{
+		ChunkIndex: guildMembersChunkPayload.ChunkIndex,
+		ChunkCount: guildMembersChunkPayload.ChunkCount,
+		Nonce:      guildMembersChunkPayload.Nonce,
+	}:
+	default:
+	}
 
 	return result, false, nil
 }

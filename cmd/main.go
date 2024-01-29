@@ -47,7 +47,7 @@ func main() {
 	loggingCompress := flag.Bool("compress", MustParseBool(os.Getenv("LOGGING_COMPRESS")), "If true, will compress log files once reached max size")
 	loggingDirectory := flag.String("directory", os.Getenv("LOGGING_DIRECTORY"), "Directory to store logs in")
 	loggingFilename := flag.String("filename", os.Getenv("LOGGING_FILENAME"), "Filename to store logs as")
-	loggingMaxSize := flag.Int("maxSize", MustParseInt(os.Getenv("LOGGING_MAX_SIZE")), "Maximum size for log files before being split into seperate files")
+	loggingMaxSize := flag.Int("maxSize", MustParseInt(os.Getenv("LOGGING_MAX_SIZE")), "Maximum size for log files before being split into separate files")
 	loggingMaxBackups := flag.Int("maxBackups", MustParseInt(os.Getenv("LOGGING_MAX_BACKUPS")), "Maximum number of log files before being deleted")
 	loggingMaxAge := flag.Int("maxAge", MustParseInt(os.Getenv("LOGGING_MAX_AGE")), "Maximum age in days for a log file")
 
