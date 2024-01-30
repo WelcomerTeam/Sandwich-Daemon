@@ -599,6 +599,8 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 					err = shard.ChunkGuild(discord.Snowflake(request.GuildId))
 					if err != nil {
 						response.Error = err.Error()
+					} else {
+						response.Ok = true
 					}
 				}
 				shard.guildsMu.RUnlock()
@@ -608,8 +610,6 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 		manager.shardGroupsMu.RUnlock()
 	}
 	grpc.sg.managersMu.RUnlock()
-
-	response.Ok = true
 
 	return response, err
 }

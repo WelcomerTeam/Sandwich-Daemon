@@ -227,38 +227,39 @@ func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
 // GuildMemberFromState converts the structs.StateGuildMembers into a discord.GuildMember,
 // for use within the application.
 // This will not populate the user object from cache, it will be an empty object with only an ID.
-func (ss *SandwichState) GuildMemberFromState(guildState *sandwich_structs.StateGuildMember) (guild *discord.GuildMember) {
+func (ss *SandwichState) GuildMemberFromState(guildMemberState *sandwich_structs.StateGuildMember) (guild *discord.GuildMember) {
 	return &discord.GuildMember{
 		User: &discord.User{
-			ID: guildState.UserID,
+			ID: guildMemberState.UserID,
 		},
-		Nick:                       guildState.Nick,
-		Avatar:                     guildState.Avatar,
-		Roles:                      guildState.Roles,
-		JoinedAt:                   guildState.JoinedAt,
-		PremiumSince:               guildState.PremiumSince,
-		Deaf:                       guildState.Deaf,
-		Mute:                       guildState.Mute,
-		Pending:                    guildState.Pending,
-		Permissions:                guildState.Permissions,
-		CommunicationDisabledUntil: guildState.CommunicationDisabledUntil,
+		Nick:                       guildMemberState.Nick,
+		Avatar:                     guildMemberState.Avatar,
+		Roles:                      guildMemberState.Roles,
+		JoinedAt:                   guildMemberState.JoinedAt,
+		PremiumSince:               guildMemberState.PremiumSince,
+		Deaf:                       guildMemberState.Deaf,
+		Mute:                       guildMemberState.Mute,
+		Pending:                    guildMemberState.Pending,
+		Permissions:                guildMemberState.Permissions,
+		CommunicationDisabledUntil: guildMemberState.CommunicationDisabledUntil,
 	}
 }
 
 // GuildMemberFromState converts from discord.GuildMember to structs.StateGuildMembers, for storing in cache.
 // This does not add the user to the cache.
-func (ss *SandwichState) GuildMemberToState(guild *discord.GuildMember) (guildState *sandwich_structs.StateGuildMember) {
+func (ss *SandwichState) GuildMemberToState(guildMember *discord.GuildMember) (guildState *sandwich_structs.StateGuildMember) {
 	return &sandwich_structs.StateGuildMember{
-		UserID: guild.User.ID,
-		Nick:   guild.Nick,
-
-		Roles:        guild.Roles,
-		JoinedAt:     guild.JoinedAt,
-		PremiumSince: guild.PremiumSince,
-		Deaf:         guild.Deaf,
-		Mute:         guild.Mute,
-		Pending:      guild.Pending,
-		Permissions:  guild.Permissions,
+		UserID:                     guildMember.User.ID,
+		Nick:                       guildMember.Nick,
+		Avatar:                     guildMember.Avatar,
+		Roles:                      guildMember.Roles,
+		JoinedAt:                   guildMember.JoinedAt,
+		PremiumSince:               guildMember.PremiumSince,
+		Deaf:                       guildMember.Deaf,
+		Mute:                       guildMember.Mute,
+		Pending:                    guildMember.Pending,
+		Permissions:                guildMember.Permissions,
+		CommunicationDisabledUntil: guildMember.CommunicationDisabledUntil,
 	}
 }
 
