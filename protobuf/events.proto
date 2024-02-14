@@ -113,6 +113,8 @@ message FetchGuildMembersRequest {
   int64 guildID = 1;
   repeated int64 userIDs = 2;
   string query = 3;
+  bool chunkGuild = 4;
+  bool alwaysChunk = 5;
 }
 
 message FetchGuildRequest {
@@ -154,6 +156,7 @@ message GuildsResponse {
 
 message RequestGuildChunkRequest {
   int64 guildId = 1;
+  bool alwaysChunk = 2;
 }
 
 message SendWebsocketMessageRequest {

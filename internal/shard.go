@@ -904,14 +904,14 @@ func (sh *Shard) ChunkAllGuilds() {
 	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Started chunking all guilds")
 
 	for _, guildID := range guilds {
-		sh.ChunkGuild(guildID)
+		sh.ChunkGuild(guildID, false)
 	}
 
 	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Finished chunking all guilds")
 }
 
 // ChunkGuilds chunks guilds to discord. It will wait for the operation to complete, or timeout.
-func (sh *Shard) ChunkGuild(guildID discord.Snowflake) error {
+func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	sh.Sandwich.guildChunksMu.RLock()
 	guildChunk, ok := sh.Sandwich.guildChunks[guildID]
 	sh.Sandwich.guildChunksMu.RUnlock()
@@ -932,63 +932,77 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake) error {
 	guildChunk.Complete.Store(false)
 	guildChunk.StartedAt.Store(time.Now())
 
-	nonce := randomHex(16)
+	sh.Sandwich.State.guildMembersMu.RLock()
+	sh.Sandwich.State.GuildMembers[guildID].MembersMu.RLock()
+	memberCount := len(sh.Sandwich.State.GuildMembers[guildID].Members)
+	sh.Sandwich.State.GuildMembers[guildID].MembersMu.RUnlock()
+	sh.Sandwich.State.guildMembersMu.RUnlock()
 
-	err := sh.SendEvent(sh.ctx, discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
-		GuildID: guildID,
-		Nonce:   nonce,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send request guild members event: %w", err)
-	}
+	sh.Sandwich.State.guildsMu.RLock()
+	guild := sh.Sandwich.State.Guilds[guildID]
+	sh.Sandwich.State.guildsMu.RUnlock()
 
-	chunksReceived := int32(0)
-	totalChunks := int32(0)
+	needsChunking := guild.MemberCount > int32(memberCount)
 
-	timeout := time.NewTimer(MemberChunkTimeout)
+	if needsChunking || alwaysChunk {
+		nonce := randomHex(16)
 
-guildChunkLoop:
-	for {
-		select {
-		case guildChunkPartial := <-guildChunk.ChunkingChannel:
-			if guildChunkPartial.Nonce != nonce {
-				continue
-			}
+		err := sh.SendEvent(sh.ctx, discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
+			GuildID: guildID,
+			Nonce:   nonce,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to send request guild members event: %w", err)
+		}
 
-			chunksReceived++
-			totalChunks = guildChunkPartial.ChunkCount
+		chunksReceived := int32(0)
+		totalChunks := int32(0)
 
-			// When receiving a chunk, reset the timeout.
-			timeout.Reset(MemberChunkTimeout)
+		timeout := time.NewTimer(MemberChunkTimeout)
 
-			sh.Logger.Debug().
-				Int64("guild_id", int64(guildID)).
-				Int32("chunk_index", guildChunkPartial.ChunkIndex).
-				Int32("chunk_count", guildChunkPartial.ChunkCount).
-				Msg("Received guild member chunk")
+	guildChunkLoop:
+		for {
+			select {
+			case guildChunkPartial := <-guildChunk.ChunkingChannel:
+				if guildChunkPartial.Nonce != nonce {
+					continue
+				}
 
-			if chunksReceived >= totalChunks {
+				chunksReceived++
+				totalChunks = guildChunkPartial.ChunkCount
+
+				// When receiving a chunk, reset the timeout.
+				timeout.Reset(MemberChunkTimeout)
+
 				sh.Logger.Debug().
 					Int64("guild_id", int64(guildID)).
+					Int32("chunk_index", guildChunkPartial.ChunkIndex).
+					Int32("chunk_count", guildChunkPartial.ChunkCount).
+					Msg("Received guild member chunk")
+
+				if chunksReceived >= totalChunks {
+					sh.Logger.Debug().
+						Int64("guild_id", int64(guildID)).
+						Int32("total_chunks", totalChunks).
+						Msg("Received all guild member chunks")
+
+					break guildChunkLoop
+				}
+			case <-timeout.C:
+				// We have timed out. We will mark the chunking as complete.
+
+				sh.Logger.Warn().
+					Int64("guild_id", int64(guildID)).
+					Int32("chunks_received", chunksReceived).
 					Int32("total_chunks", totalChunks).
-					Msg("Received all guild member chunks")
+					Msg("Timed out receiving guild member chunks")
 
 				break guildChunkLoop
 			}
-		case <-timeout.C:
-			// We have timed out. We will mark the chunking as complete.
-
-			sh.Logger.Warn().
-				Int64("guild_id", int64(guildID)).
-				Int32("chunks_received", chunksReceived).
-				Int32("total_chunks", totalChunks).
-				Msg("Timed out receiving guild member chunks")
-
-			break guildChunkLoop
 		}
-	}
 
-	timeout.Stop()
+		timeout.Stop()
+	}
 
 	guildChunk.Complete.Store(true)
 	guildChunk.CompletedAt.Store(time.Now())

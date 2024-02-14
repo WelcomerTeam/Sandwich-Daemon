@@ -366,6 +366,18 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 		return response, ErrNoGuildIDPresent
 	}
 
+	// Chunk the guild if requested.
+	if request.ChunkGuild {
+		ok, err := grpc.chunkGuild(discord.Snowflake(request.GuildID), request.AlwaysChunk)
+
+		response.BaseResponse.Ok = ok
+		response.BaseResponse.Error = err.Error()
+
+		if !ok || err != nil {
+			return response, err
+		}
+	}
+
 	if hasGuildMemberIds {
 		for _, GuildMemberID := range request.UserIDs {
 			guildMember, cacheHit := grpc.sg.State.GetGuildMember(discord.Snowflake(request.GuildID), discord.Snowflake(GuildMemberID))
@@ -588,6 +600,15 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 		Ok: false,
 	}
 
+	ok, err := grpc.chunkGuild(discord.Snowflake(request.GuildId), request.AlwaysChunk)
+
+	response.Ok = ok
+	response.Error = err.Error()
+
+	return response, err
+}
+
+func (grpc *routeSandwichServer) chunkGuild(guildID discord.Snowflake, alwaysChunk bool) (ok bool, err error) {
 	grpc.sg.managersMu.RLock()
 	for _, manager := range grpc.sg.Managers {
 		manager.shardGroupsMu.RLock()
@@ -595,12 +616,12 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 			shardGroup.shardsMu.RLock()
 			for _, shard := range shardGroup.Shards {
 				shard.guildsMu.RLock()
-				if _, ok := shard.Guilds[discord.Snowflake(request.GuildId)]; ok {
-					err = shard.ChunkGuild(discord.Snowflake(request.GuildId))
+				if _, ok := shard.Guilds[guildID]; ok {
+					err = shard.ChunkGuild(guildID, alwaysChunk)
 					if err != nil {
-						response.Error = err.Error()
+						return true, err
 					} else {
-						response.Ok = true
+						return true, nil
 					}
 				}
 				shard.guildsMu.RUnlock()
@@ -611,7 +632,7 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 	}
 	grpc.sg.managersMu.RUnlock()
 
-	return response, err
+	return false, nil
 }
 
 // SendWebsocketMessage manually sends a websocket message.
