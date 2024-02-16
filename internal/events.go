@@ -84,6 +84,9 @@ func NewSandwichState() *SandwichState {
 
 		mutualsMu: sync.RWMutex{},
 		Mutuals:   make(map[discord.Snowflake]*sandwich_structs.StateMutualGuilds),
+
+		guildVoiceStatesMu: sync.RWMutex{},
+		GuildVoiceStates:   make(map[discord.Snowflake]*sandwich_structs.StateGuildVoiceStates),
 	}
 
 	return state
