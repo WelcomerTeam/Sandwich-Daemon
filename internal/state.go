@@ -200,6 +200,7 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 	}
 
 	for _, voiceState := range guild.VoiceStates {
+		voiceState.GuildID = &guild.ID
 		ss.UpdateVoiceState(ctx, *voiceState)
 	}
 }
@@ -720,95 +721,95 @@ func (ss *SandwichState) RemoveUser(userID discord.Snowflake) {
 
 // ChannelFromState converts the structs.StateChannel into a discord.Channel, for use within the application.
 // This will not populate the recipient user object from cache.
-func (ss *SandwichState) ChannelFromState(guildState *sandwich_structs.StateChannel) (guild *discord.Channel) {
-	guild = &discord.Channel{
-		ID:                         guildState.ID,
-		Type:                       guildState.Type,
-		GuildID:                    guildState.GuildID,
-		Position:                   guildState.Position,
-		PermissionOverwrites:       make([]*discord.ChannelOverwrite, 0, len(guildState.PermissionOverwrites)),
-		Name:                       guildState.Name,
-		Topic:                      guildState.Topic,
-		NSFW:                       guildState.NSFW,
-		LastMessageID:              guildState.LastMessageID,
-		Bitrate:                    guildState.Bitrate,
-		UserLimit:                  guildState.UserLimit,
-		RateLimitPerUser:           guildState.RateLimitPerUser,
-		Recipients:                 make([]*discord.User, 0, len(guildState.Recipients)),
-		Icon:                       guildState.Icon,
-		OwnerID:                    guildState.OwnerID,
-		ApplicationID:              guildState.ApplicationID,
-		ParentID:                   guildState.ParentID,
-		LastPinTimestamp:           guildState.LastPinTimestamp,
-		RTCRegion:                  guildState.RTCRegion,
-		VideoQualityMode:           guildState.VideoQualityMode,
-		MessageCount:               guildState.MessageCount,
-		MemberCount:                guildState.MemberCount,
-		ThreadMetadata:             guildState.ThreadMetadata,
-		ThreadMember:               guildState.ThreadMember,
-		DefaultAutoArchiveDuration: guildState.DefaultAutoArchiveDuration,
-		Permissions:                guildState.Permissions,
+func (ss *SandwichState) ChannelFromState(guildChannelState *sandwich_structs.StateChannel) (guildChannel *discord.Channel) {
+	guildChannel = &discord.Channel{
+		ID:                         guildChannelState.ID,
+		Type:                       guildChannelState.Type,
+		GuildID:                    guildChannelState.GuildID,
+		Position:                   guildChannelState.Position,
+		PermissionOverwrites:       make([]*discord.ChannelOverwrite, 0, len(guildChannelState.PermissionOverwrites)),
+		Name:                       guildChannelState.Name,
+		Topic:                      guildChannelState.Topic,
+		NSFW:                       guildChannelState.NSFW,
+		LastMessageID:              guildChannelState.LastMessageID,
+		Bitrate:                    guildChannelState.Bitrate,
+		UserLimit:                  guildChannelState.UserLimit,
+		RateLimitPerUser:           guildChannelState.RateLimitPerUser,
+		Recipients:                 make([]*discord.User, 0, len(guildChannelState.Recipients)),
+		Icon:                       guildChannelState.Icon,
+		OwnerID:                    guildChannelState.OwnerID,
+		ApplicationID:              guildChannelState.ApplicationID,
+		ParentID:                   guildChannelState.ParentID,
+		LastPinTimestamp:           guildChannelState.LastPinTimestamp,
+		RTCRegion:                  guildChannelState.RTCRegion,
+		VideoQualityMode:           guildChannelState.VideoQualityMode,
+		MessageCount:               guildChannelState.MessageCount,
+		MemberCount:                guildChannelState.MemberCount,
+		ThreadMetadata:             guildChannelState.ThreadMetadata,
+		ThreadMember:               guildChannelState.ThreadMember,
+		DefaultAutoArchiveDuration: guildChannelState.DefaultAutoArchiveDuration,
+		Permissions:                guildChannelState.Permissions,
 	}
 
-	for _, permissionOverride := range guildState.PermissionOverwrites {
+	for _, permissionOverride := range guildChannelState.PermissionOverwrites {
 		permissionOverride := permissionOverride
-		guild.PermissionOverwrites = append(guild.PermissionOverwrites, &permissionOverride)
+		guildChannel.PermissionOverwrites = append(guildChannel.PermissionOverwrites, &permissionOverride)
 	}
 
-	for _, recipientID := range guildState.Recipients {
-		guild.Recipients = append(guild.Recipients, &discord.User{
+	for _, recipientID := range guildChannelState.Recipients {
+		guildChannel.Recipients = append(guildChannel.Recipients, &discord.User{
 			ID: recipientID,
 		})
 	}
 
-	return guild
+	return guildChannel
 }
 
 // ChannelFromState converts from discord.Channel to structs.StateChannel, for storing in cache.
 // This does not add the recipients to the cache.
-func (ss *SandwichState) ChannelToState(guild *discord.Channel) (guildState *sandwich_structs.StateChannel) {
-	guildState = &sandwich_structs.StateChannel{
-		ID:                   guild.ID,
-		Type:                 guild.Type,
-		GuildID:              guild.GuildID,
-		Position:             guild.Position,
+func (ss *SandwichState) ChannelToState(guildChannel *discord.Channel) (guildChannelState *sandwich_structs.StateChannel) {
+	guildChannelState = &sandwich_structs.StateChannel{
+		ID:                   guildChannel.ID,
+		Type:                 guildChannel.Type,
+		GuildID:              guildChannel.GuildID,
+		Position:             guildChannel.Position,
 		PermissionOverwrites: make([]discord.ChannelOverwrite, 0),
-		Name:                 guild.Name,
-		Topic:                guild.Topic,
-		NSFW:                 guild.NSFW,
-		// LastMessageID:        guild.LastMessageID,
-		Bitrate:          guild.Bitrate,
-		UserLimit:        guild.UserLimit,
-		RateLimitPerUser: guild.RateLimitPerUser,
-		// RecipientIDs:         make([]*discord.Snowflake, 0),
-		Icon:    guild.Icon,
-		OwnerID: guild.OwnerID,
-		// ApplicationID:        guild.ApplicationID,
-		ParentID: guild.ParentID,
-		// LastPinTimestamp:     guild.LastPinTimestamp,
+		Name:                 guildChannel.Name,
+		Topic:                guildChannel.Topic,
+		NSFW:                 guildChannel.NSFW,
+		LastMessageID:        guildChannel.LastMessageID,
+		Bitrate:              guildChannel.Bitrate,
+		UserLimit:            guildChannel.UserLimit,
+		RateLimitPerUser:     guildChannel.RateLimitPerUser,
+		Recipients:           make([]discord.Snowflake, 0, len(guildChannel.Recipients)),
+		Icon:                 guildChannel.Icon,
+		OwnerID:              guildChannel.OwnerID,
+		ApplicationID:        guildChannel.ApplicationID,
+		ParentID:             guildChannel.ParentID,
+		LastPinTimestamp:     guildChannel.LastPinTimestamp,
 
-		// RTCRegion: guild.RTCRegion,
-		// VideoQualityMode: guild.VideoQualityMode,
+		RTCRegion:        guildChannel.RTCRegion,
+		VideoQualityMode: guildChannel.VideoQualityMode,
 
-		// MessageCount:               guild.MessageCount,
-		// MemberCount:                guild.MemberCount,
-		ThreadMetadata: guild.ThreadMetadata,
-		// ThreadMember:               guild.ThreadMember,
-		// DefaultAutoArchiveDuration: guild.DefaultAutoArchiveDuration,
+		MessageCount:               guildChannel.MessageCount,
+		MemberCount:                guildChannel.MemberCount,
+		ThreadMetadata:             guildChannel.ThreadMetadata,
+		ThreadMember:               guildChannel.ThreadMember,
+		DefaultAutoArchiveDuration: guildChannel.DefaultAutoArchiveDuration,
 
-		Permissions: guild.Permissions,
+		Permissions: guildChannel.Permissions,
 	}
 
-	for _, permissionOverride := range guild.PermissionOverwrites {
+	for _, permissionOverride := range guildChannel.PermissionOverwrites {
 		permissionOverride := permissionOverride
-		guildState.PermissionOverwrites = append(guildState.PermissionOverwrites, *permissionOverride)
+		guildChannelState.PermissionOverwrites = append(guildChannelState.PermissionOverwrites, *permissionOverride)
 	}
 
-	// for _, recipient := range guild.Recipients {
-	// 	guildState.RecipientIDs = append(guildState.RecipientIDs, &recipient.ID)
-	// }
+	for _, recipient := range guildChannel.Recipients {
+		guildChannelState.Recipients = append(guildChannelState.Recipients, recipient.ID)
+	}
 
-	return guildState
+	return guildChannelState
 }
 
 // GetGuildChannel returns the channel with the same ID from the cache.
@@ -1138,19 +1139,44 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 
 	// Update channel counts
 
-	if beforeVoiceState.ChannelID == 0 && voiceState.ChannelID != 0 {
+	if beforeVoiceState == nil || beforeVoiceState.ChannelID != voiceState.ChannelID {
+		if beforeVoiceState != nil {
+			voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, beforeVoiceState.ChannelID)
+			if ok {
+				voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, beforeVoiceState.ChannelID)
+
+				ctx.Sandwich.State.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
+			}
+		}
+
 		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, voiceState.ChannelID)
 		if ok {
-			voiceChannel.MemberCount++
-
-			ctx.Sandwich.State.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
-		}
-	} else if beforeVoiceState.ChannelID != 0 && voiceState.ChannelID == 0 {
-		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, beforeVoiceState.ChannelID)
-		if ok {
-			voiceChannel.MemberCount--
+			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, beforeVoiceState.ChannelID)
 
 			ctx.Sandwich.State.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
 		}
 	}
+}
+
+func (ss *SandwichState) CountMembersForVoiceChannel(guildID discord.Snowflake, channelID discord.Snowflake) int32 {
+	ss.guildVoiceStatesMu.RLock()
+	guildVoiceStates, ok := ss.GuildVoiceStates[guildID]
+	ss.guildVoiceStatesMu.RUnlock()
+
+	if !ok {
+		return 0
+	}
+
+	guildVoiceStates.VoiceStatesMu.RLock()
+	defer guildVoiceStates.VoiceStatesMu.RUnlock()
+
+	var count int32
+
+	for _, voiceState := range guildVoiceStates.VoiceStates {
+		if voiceState.ChannelID == channelID {
+			count++
+		}
+	}
+
+	return count
 }
