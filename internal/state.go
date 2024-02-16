@@ -1141,17 +1141,17 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 
 	if beforeVoiceState == nil || beforeVoiceState.ChannelID != voiceState.ChannelID {
 		if beforeVoiceState != nil {
-			voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, beforeVoiceState.ChannelID)
+			voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
 			if ok {
-				voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, beforeVoiceState.ChannelID)
+				voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*beforeVoiceState.GuildID, voiceChannel.ID)
 
-				ctx.Sandwich.State.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
+				ctx.Sandwich.State.SetGuildChannel(ctx, beforeVoiceState.GuildID, voiceChannel)
 			}
 		}
 
 		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, voiceState.ChannelID)
 		if ok {
-			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, beforeVoiceState.ChannelID)
+			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, voiceChannel.ID)
 
 			ctx.Sandwich.State.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
 		}
