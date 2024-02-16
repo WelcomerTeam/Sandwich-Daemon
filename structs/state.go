@@ -51,6 +51,12 @@ type StateGuildChannels struct {
 	Channels map[discord.Snowflake]*StateChannel `json:"channels"`
 }
 
+type StateGuildVoiceStates struct {
+	VoiceStatesMu sync.RWMutex `json:"-"`
+
+	VoiceStates map[discord.Snowflake]*StateVoiceState `json:"voice_states"`
+}
+
 type StateGuild struct {
 	ID              discord.Snowflake `json:"id"`
 	Name            string            `json:"name"`
@@ -198,4 +204,17 @@ type StateUser struct {
 	PremiumType   discord.UserPremiumType `json:"premium_type,omitempty"`
 	PublicFlags   discord.UserFlags       `json:"public_flags,omitempty"`
 	DMChannelID   *discord.Snowflake      `json:"dm_channel_id,omitempty"`
+}
+
+type StateVoiceState struct {
+	ChannelID               discord.Snowflake `json:"channel_id"`
+	SessionID               string            `json:"session_id"`
+	Deaf                    bool              `json:"deaf"`
+	Mute                    bool              `json:"mute"`
+	SelfDeaf                bool              `json:"self_deaf"`
+	SelfMute                bool              `json:"self_mute"`
+	SelfStream              bool              `json:"self_stream"`
+	SelfVideo               bool              `json:"self_video"`
+	Suppress                bool              `json:"suppress"`
+	RequestToSpeakTimestamp time.Time         `json:"request_to_speak_timestamp"`
 }

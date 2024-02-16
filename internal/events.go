@@ -54,6 +54,9 @@ type SandwichState struct {
 
 	mutualsMu sync.RWMutex
 	Mutuals   map[discord.Snowflake]*sandwich_structs.StateMutualGuilds
+
+	guildVoiceStatesMu sync.RWMutex
+	GuildVoiceStates   map[discord.Snowflake]*sandwich_structs.StateGuildVoiceStates
 }
 
 func NewSandwichState() *SandwichState {

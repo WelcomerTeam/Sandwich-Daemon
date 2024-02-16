@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.11"
+const VERSION = "1.12"
 
 const (
 	PermissionsDefault = 0o744
@@ -595,6 +595,7 @@ func (sg *Sandwich) prometheusGatherer() {
 		stateRoles := 0
 		stateEmojis := 0
 		stateChannels := 0
+		stateVoiceStates := 0
 
 		sg.State.guildMembersMu.RLock()
 		for _, guildMembers := range sg.State.GuildMembers {
@@ -632,8 +633,16 @@ func (sg *Sandwich) prometheusGatherer() {
 		stateUsers := len(sg.State.Users)
 		sg.State.usersMu.RUnlock()
 
+		sg.State.guildVoiceStatesMu.RLock()
+		for _, voiceStates := range sg.State.GuildVoiceStates {
+			voiceStates.VoiceStatesMu.RLock()
+			stateVoiceStates += len(voiceStates.VoiceStates)
+			voiceStates.VoiceStatesMu.RUnlock()
+		}
+		sg.State.guildVoiceStatesMu.RUnlock()
+
 		sandwichStateTotalCount.Set(float64(
-			stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels,
+			stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels + stateVoiceStates,
 		))
 
 		eventsInflight := sg.EventsInflight.Load()
@@ -660,6 +669,7 @@ func (sg *Sandwich) prometheusGatherer() {
 		sandwichStateEmojiCount.Set(float64(stateEmojis))
 		sandwichStateUserCount.Set(float64(stateUsers))
 		sandwichStateChannelCount.Set(float64(stateChannels))
+		sandwichStateVoiceStatesCount.Set(float64(stateVoiceStates))
 
 		sandwichEventInflightCount.Set(float64(eventsInflight))
 		sandwichEventBufferCount.Set(float64(eventsBuffer))
@@ -671,6 +681,7 @@ func (sg *Sandwich) prometheusGatherer() {
 			Int("emojis", stateEmojis).
 			Int("users", stateUsers).
 			Int("channels", stateChannels).
+			Int("voiceStates", stateVoiceStates).
 			Int32("eventsInflight", eventsInflight).
 			Int("eventsBuffer", eventsBuffer).
 			Msg("Updated prometheus gauges")

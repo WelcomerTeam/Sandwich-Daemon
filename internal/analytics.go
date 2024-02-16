@@ -98,6 +98,13 @@ var (
 		},
 	)
 
+	sandwichStateVoiceStatesCount = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "sandwich_state_voice_states_count",
+			Help: "Sandwich State Voice States Count",
+		},
+	)
+
 	grpcCacheRequests = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "sandwich_grpc_requests_total",

@@ -1133,8 +1133,20 @@ func OnVoiceStateUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwic
 		defer ctx.OnGuildDispatchEvent(msg.Type, *voiceStateUpdatePayload.GuildID)
 	}
 
+	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(*voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID)
+
+	ctx.Sandwich.State.UpdateVoiceState(ctx, *voiceStateUpdatePayload)
+
+	extra, err := makeExtra(map[string]interface{}{
+		"before": beforeVoiceState,
+	})
+	if err != nil {
+		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
+	}
+
 	return sandwich_structs.StateResult{
-		Data: msg.Data,
+		Data:  msg.Data,
+		Extra: extra,
 	}, true, nil
 }
 
