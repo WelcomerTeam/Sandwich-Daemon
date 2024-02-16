@@ -202,7 +202,6 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 	for _, voiceState := range guild.VoiceStates {
 		ss.UpdateVoiceState(ctx, *voiceState)
 	}
-
 }
 
 // RemoveGuild removes a guild from the cache.
@@ -221,7 +220,6 @@ func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
 	ss.RemoveAllGuildChannels(guildID)
 	ss.RemoveAllGuildEmojis(guildID)
 	ss.RemoveAllGuildMembers(guildID)
-
 }
 
 //
@@ -707,7 +705,6 @@ func (ss *SandwichState) SetUser(ctx *StateCtx, user *discord.User) {
 	ss.usersMu.Lock()
 	ss.Users[user.ID] = ss.UserToState(user)
 	ss.usersMu.Unlock()
-
 }
 
 // RemoveUser removes a user from the cache.
@@ -897,7 +894,6 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 
 // RemoveGuildChannel removes a channel from the cache.
 func (ss *SandwichState) RemoveGuildChannel(guildIDPtr *discord.Snowflake, channelID discord.Snowflake) {
-
 	var guildID discord.Snowflake
 
 	if guildIDPtr != nil {

@@ -460,6 +460,7 @@ func (sg *Sandwich) setupPrometheus() error {
 	prometheus.MustRegister(sandwichStateEmojiCount)
 	prometheus.MustRegister(sandwichStateUserCount)
 	prometheus.MustRegister(sandwichStateChannelCount)
+	prometheus.MustRegister(sandwichStateVoiceStatesCount)
 	prometheus.MustRegister(grpcCacheRequests)
 	prometheus.MustRegister(grpcCacheHits)
 	prometheus.MustRegister(grpcCacheMisses)
