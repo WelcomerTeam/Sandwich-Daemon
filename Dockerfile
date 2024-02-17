@@ -1,4 +1,4 @@
-FROM golang:1.20 AS build_base
+FROM golang:1.22 AS build_base
 
 # WORKDIR /go/brotli-cgo
 

@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"errors"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -127,6 +128,8 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 					Bytes("data", msg.Data).
 					Msg("Recovered panic in OnDispatch")
 			}
+
+			println(string(debug.Stack()))
 		}
 	}()
 
