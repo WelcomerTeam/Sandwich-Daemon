@@ -369,12 +369,16 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 	// Chunk the guild if requested.
 	if request.ChunkGuild {
 		ok, err := grpc.chunkGuild(discord.Snowflake(request.GuildID), request.AlwaysChunk)
+		if err != nil {
+			response.BaseResponse.Error = err.Error()
+
+			return response, err
+		}
 
 		response.BaseResponse.Ok = ok
-		response.BaseResponse.Error = err.Error()
 
-		if !ok || err != nil {
-			return response, err
+		if !ok {
+			return response, nil
 		}
 	}
 
