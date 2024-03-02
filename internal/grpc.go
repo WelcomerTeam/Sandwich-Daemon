@@ -607,7 +607,10 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 	ok, err := grpc.chunkGuild(discord.Snowflake(request.GuildId), request.AlwaysChunk)
 
 	response.Ok = ok
-	response.Error = err.Error()
+
+	if err != nil {
+		response.Error = err.Error()
+	}
 
 	return response, err
 }
