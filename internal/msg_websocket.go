@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -47,10 +46,6 @@ type chatServer struct {
 	// Defaults to one publish every 100ms with a burst of 8.
 	publishLimiter *rate.Limiter
 
-	// logf controls where logs are sent.
-	// Defaults to log.Printf.
-	logf func(f string, v ...interface{})
-
 	// serveMux routes the various endpoints to the appropriate handler.
 	serveMux http.ServeMux
 
@@ -62,7 +57,6 @@ type chatServer struct {
 func newChatServer() *chatServer {
 	cs := &chatServer{
 		subscriberMessageBuffer: 10000,
-		logf:                    log.Printf,
 		subscribers:             make(map[*subscriber]struct{}),
 		publishLimiter:          rate.NewLimiter(rate.Every(time.Millisecond*100), 1000),
 	}
@@ -99,7 +93,6 @@ func (cs *chatServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		cs.logf("%v", err)
 		return
 	}
 }
