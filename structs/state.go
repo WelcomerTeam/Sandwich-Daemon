@@ -221,5 +221,5 @@ type StateVoiceState struct {
 	SelfStream              bool              `json:"self_stream"`
 	SelfVideo               bool              `json:"self_video"`
 	Suppress                bool              `json:"suppress"`
-	RequestToSpeakTimestamp time.Time         `json:"request_to_speak_timestamp"`
+	RequestToSpeakTimestamp *time.Time        `json:"request_to_speak_timestamp,omitempty"`
 }
