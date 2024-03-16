@@ -185,7 +185,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
 
-	c.Write(ctx, websocket.MessageText, []byte(`{"op":10,"d":{"heartbeat_interval":45}}`))
+	c.Write(ctx, websocket.MessageText, []byte(`{"op":10,"d":{"heartbeat_interval":45000}}`))
 
 	// Given a guild ID, return its shard ID
 	getShardIDFromGuildID := func(guildID string, shardCount int) (uint64, error) {
@@ -226,7 +226,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		}
 
 		dispatchInitial := func() error {
-			guilds := make([]*structs.StateGuild, len(cs.manager.Sandwich.State.Guilds))
+			guilds := make([]*structs.StateGuild, 0, len(cs.manager.Sandwich.State.Guilds))
 
 			// First send READY event with our initial state
 			readyPayload := map[string]any{
@@ -278,10 +278,10 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 				"op": discord.GatewayOpDispatch,
 				"d":  readyPayload,
 				"t":  "READY",
-				"s":  shard.Sequence.Inc(),
+				"s":  shard.Sequence.Load(),
 			}
 
-			cs.manager.Sandwich.Logger.Info().Msgf("Dispatching ready: %s", fp)
+			cs.manager.Sandwich.Logger.Info().Msgf("Dispatching ready to shard %d", s.shard[0])
 
 			fpBytes, err := jsoniter.Marshal(fp)
 			if err != nil {
@@ -292,11 +292,24 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 			for _, guild := range guilds {
 				// Send initial guild_create's
+				if len(guild.Roles) == 0 {
+					// Lock RolesMu
+					cs.manager.Sandwich.State.guildRolesMu.RLock()
+					roles := cs.manager.Sandwich.State.GuildRoles[guild.ID]
+					cs.manager.Sandwich.State.guildRolesMu.RUnlock()
+
+					guild.Roles = make([]*structs.StateRole, 0, len(roles.Roles))
+					for id, role := range roles.Roles {
+						role.ID = discord.Snowflake(id)
+						guild.Roles = append(guild.Roles, role)
+					}
+				}
+
 				fp := map[string]any{
 					"op": discord.GatewayOpDispatch,
 					"d":  guild,
 					"t":  "GUILD_CREATE",
-					"s":  shard.Sequence.Inc(),
+					"s":  shard.Sequence.Load(),
 				}
 
 				fpBytes, err := jsoniter.Marshal(fp)
@@ -306,6 +319,8 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 				}
 
 				c.Write(ctx, websocket.MessageText, fpBytes)
+
+				shard.Sequence.Inc()
 			}
 
 			return nil

@@ -69,6 +69,8 @@ func (ss *SandwichState) GuildFromState(guildState *sandwich_structs.StateGuild)
 		StageInstances:       make([]*discord.StageInstance, 0, len(guildState.StageInstances)),
 		Stickers:             make([]*discord.Sticker, 0, len(guildState.Stickers)),
 		GuildScheduledEvents: make([]*discord.ScheduledEvent, 0, len(guildState.GuildScheduledEvents)),
+		Emojis:               make([]*discord.Emoji, 0, len(guildState.Emojis)),
+		Channels:             guildState.Channels,
 	}
 
 	for _, stageInstance := range guildState.StageInstances {
@@ -86,11 +88,17 @@ func (ss *SandwichState) GuildFromState(guildState *sandwich_structs.StateGuild)
 		guild.GuildScheduledEvents = append(guild.GuildScheduledEvents, &scheduledEvent)
 	}
 
+	for _, emoji := range guildState.Emojis {
+		emoji := emoji
+		guild.Emojis = append(guild.Emojis, emoji)
+	}
+
 	return guild
 }
 
 // GuildFromState converts from discord.Guild to structs.StateGuild, for storing in cache.
-// Does not add Channels, Roles, Members and Emojis to state.
+//
+// Does not add Roles to the cache.
 func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwich_structs.StateGuild) {
 	guildState = &sandwich_structs.StateGuild{
 		ID:              guild.ID,
@@ -142,8 +150,14 @@ func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwic
 		NSFWLevel:                 guild.NSFWLevel,
 		PremiumProgressBarEnabled: guild.PremiumProgressBarEnabled,
 
-		StageInstances: make([]discord.StageInstance, 0),
-		Stickers:       make([]discord.Sticker, 0),
+		Emojis: guild.Emojis,
+
+		StageInstances:       make([]discord.StageInstance, 0, len(guild.StageInstances)),
+		Stickers:             make([]discord.Sticker, 0, len(guild.Stickers)),
+		GuildScheduledEvents: make([]discord.ScheduledEvent, 0, len(guild.GuildScheduledEvents)),
+		VoiceStates:          guild.VoiceStates,
+		Members:              make(sandwich_structs.GuildMemberList, 0, len(guild.Members)),
+		Channels:             guild.Channels,
 	}
 
 	for _, stageInstance := range guild.StageInstances {
@@ -152,6 +166,14 @@ func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwic
 
 	for _, sticker := range guild.Stickers {
 		guildState.Stickers = append(guildState.Stickers, *sticker)
+	}
+
+	for _, scheduledEvent := range guild.GuildScheduledEvents {
+		guildState.GuildScheduledEvents = append(guildState.GuildScheduledEvents, *scheduledEvent)
+	}
+
+	for _, mem := range guild.Members {
+		guildState.Members = append(guildState.Members, mem)
 	}
 
 	return guildState
@@ -646,7 +668,7 @@ func (ss *SandwichState) UserFromState(userState *sandwich_structs.StateUser) (u
 		System:        userState.System,
 		MFAEnabled:    userState.MFAEnabled,
 		Banner:        userState.Banner,
-		AccentColour:  userState.AccentColour,
+		AccentColor:   userState.AccentColour,
 		Locale:        userState.Locale,
 		Verified:      userState.Verified,
 		Email:         userState.Email,
@@ -669,7 +691,7 @@ func (ss *SandwichState) UserToState(user *discord.User) (userState *sandwich_st
 		System:        user.System,
 		MFAEnabled:    user.MFAEnabled,
 		Banner:        user.Banner,
-		AccentColour:  user.AccentColour,
+		AccentColour:  user.AccentColor,
 		Locale:        user.Locale,
 		Verified:      user.Verified,
 		Email:         user.Email,

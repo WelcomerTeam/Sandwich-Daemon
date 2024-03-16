@@ -62,3 +62,5 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240213162025-012b6fc9bca9 // indirect
 )
+
+replace github.com/WelcomerTeam/Discord => ./discord 
