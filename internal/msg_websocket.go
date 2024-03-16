@@ -61,7 +61,7 @@ type chatServer struct {
 // newChatServer constructs a chatServer with the defaults.
 func newChatServer() *chatServer {
 	cs := &chatServer{
-		subscriberMessageBuffer: 16,
+		subscriberMessageBuffer: 10000,
 		logf:                    log.Printf,
 		subscribers:             make(map[*subscriber]struct{}),
 		publishLimiter:          rate.NewLimiter(rate.Every(time.Millisecond*100), 1000),
@@ -185,19 +185,11 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
 
-	var writeMut sync.Mutex
-
-	write := func(ctx context.Context, typ websocket.MessageType, msg []byte) error {
-		writeMut.Lock()
-		defer writeMut.Unlock()
-
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-
-		return c.Write(ctx, typ, msg)
+	write := func(msg []byte) {
+		s.msgs <- msg
 	}
 
-	write(ctx, websocket.MessageText, []byte(`{"op":10,"d":{"heartbeat_interval":45000}}`))
+	write([]byte(`{"op":10,"d":{"heartbeat_interval":45000}}`))
 
 	// Given a guild ID, return its shard ID
 	getShardIDFromGuildID := func(guildID string, shardCount int) (uint64, error) {
@@ -233,7 +225,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		// Call this function to close the connection and return
 		invalidSession := func(reason string) {
 			cs.manager.Sandwich.Logger.Error().Msgf("Invalid session: %s", reason)
-			write(ctx, websocket.MessageText, []byte(`{"op":9,"d":false}`))
+			write([]byte(`{"op":9,"d":false}`))
 			c.Close(websocket.StatusCode(4000), "Invalid Session")
 		}
 
@@ -300,7 +292,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 				return err
 			}
 
-			write(ctx, websocket.MessageText, fpBytes)
+			write(fpBytes)
 
 			for _, guild := range guilds {
 				if guild.AFKChannelID == nil {
@@ -334,7 +326,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 					continue
 				}
 
-				write(ctx, websocket.MessageText, fpBytes)
+				write(fpBytes)
 
 				shard.Sequence.Inc()
 			}
@@ -419,12 +411,12 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 				if packet.Op == discord.GatewayOpHeartbeat {
 					if !s.identified {
-						write(ctx, websocket.MessageText, []byte(`{"op":11}`))
+						write([]byte(`{"op":11}`))
 						continue
 					}
 
 					// cs.manager.Sandwich.Logger.Debug().Msgf("Shard heartbeat recieved for shard %d", s.shard[0])
-					write(ctx, websocket.MessageText, []byte(fmt.Sprintf(`{"op":11,"s":%d}`, shard.Sequence.Load())))
+					write([]byte(fmt.Sprintf(`{"op":11,"s":%d}`, shard.Sequence.Load())))
 				}
 			}
 		}
@@ -433,7 +425,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	for {
 		select {
 		case msg := <-s.msgs:
-			err := write(ctx, websocket.MessageText, msg)
+			err := c.Write(ctx, websocket.MessageText, msg)
 			if err != nil {
 				return err
 			}
