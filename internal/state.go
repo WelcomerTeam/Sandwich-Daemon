@@ -71,6 +71,7 @@ func (ss *SandwichState) GuildFromState(guildState *sandwich_structs.StateGuild)
 		GuildScheduledEvents: make([]*discord.ScheduledEvent, 0, len(guildState.GuildScheduledEvents)),
 		Emojis:               make([]*discord.Emoji, 0, len(guildState.Emojis)),
 		Channels:             guildState.Channels,
+		Threads:              guildState.Threads,
 	}
 
 	for _, stageInstance := range guildState.StageInstances {
@@ -158,6 +159,7 @@ func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwic
 		VoiceStates:          guild.VoiceStates,
 		Members:              make(sandwich_structs.GuildMemberList, 0, len(guild.Members)),
 		Channels:             guild.Channels,
+		Threads:              guild.Threads,
 	}
 
 	for _, stageInstance := range guild.StageInstances {

@@ -116,3 +116,15 @@ func (c ChannelList) MarshalJSON() ([]byte, error) {
 	// Just marshal normally
 	return jsoniter.Marshal([]*discord.Channel(c))
 }
+
+type NullMap bool
+
+func (n NullMap) MarshalJSON() ([]byte, error) {
+	return []byte("{}"), nil
+}
+
+type NullSeq bool
+
+func (n NullSeq) MarshalJSON() ([]byte, error) {
+	return []byte("[]"), nil
+}

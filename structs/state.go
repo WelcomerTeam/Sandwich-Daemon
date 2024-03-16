@@ -118,6 +118,8 @@ type StateGuild struct {
 	GuildScheduledEvents ScheduledEventList `json:"guild_scheduled_events"`
 	VoiceStates          VoiceStateList     `json:"voice_states"`
 	Channels             ChannelList        `json:"channels"`
+	Threads              ChannelList        `json:"threads"`
+	Presences            NullSeq            `json:"presences"` // not supported
 }
 
 type StateGuildMember struct {
