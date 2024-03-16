@@ -1198,8 +1198,6 @@ func OnGuildJoinRequestDelete(ctx *StateCtx, msg discord.GatewayPayload, trace s
 func OnUnknownEvent(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	ctx.Logger.Warn().Str("event", msg.Type).Msg("Dispatching unknown event")
-
 	return sandwich_structs.StateResult{
 		Data: msg.Data,
 	}, true, nil
