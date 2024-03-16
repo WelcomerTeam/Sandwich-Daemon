@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -16,19 +15,21 @@ type MQClient interface {
 	Channel() string
 	Cluster() string
 
-	Connect(ctx context.Context, clientName string, args map[string]interface{}) error
-	Publish(ctx context.Context, channel string, data []byte) error
+	Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error
+	Publish(ctx context.Context, packet *sandwich_structs.SandwichPayload, channel string, data []byte) error
 	// Function to clean close
 }
 
 func NewMQClient(mqType string) (MQClient, error) {
 	switch mqType {
 	case "stan":
-		return &messaging.StanMQClient{}, nil
+		return &StanMQClient{}, nil
 	case "kafka":
-		return &messaging.KafkaMQClient{}, nil
+		return &KafkaMQClient{}, nil
 	case "redis":
-		return &messaging.RedisMQClient{}, nil
+		return &RedisMQClient{}, nil
+	case "websocket":
+		return &WebsocketClient{}, nil
 	default:
 		return nil, fmt.Errorf("%s is not a valid MQClient", mqType)
 	}
@@ -65,10 +66,10 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 
 	err = sh.Manager.ProducerClient.Publish(
 		ctx,
+		packet,
 		channelName,
 		payload,
 	)
-
 	if err != nil {
 		return fmt.Errorf("publishEvent publish: %w", err)
 	}

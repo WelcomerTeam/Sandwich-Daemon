@@ -525,7 +525,6 @@ func (sh *Shard) Listen(ctx context.Context) error {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection. Reconnecting")
 				err = sh.Reconnect(websocket.StatusNormalClosure)
-
 				if err != nil {
 					return err
 				}

@@ -2,6 +2,12 @@
 
 <img src="https://raw.githubusercontent.com/WelcomerTeam/Sandwich-Daemon/master/assets/icon.svg" width="500"/>
 
+## Install Notes
+
+- `gci` => ``go install github.com/daixiang0/gci@latest``
+- `gofumpt` => ``go install mvdan.cc/gofumpt@latest``
+- `goimports` => ``go install golang.org/x/tools/cmd/goimports@latest``
+
 Sandwich Daemon is a utility that handles gateway connections, state and event processing. It handles the events from discord, handles filtering out events you do not want, stores users, members, guilds etc. in its internal store then sends the resulting data into a message queue for further handling from consumers.
 
 Easily create new managers, scale up utilising rolling restarts on already running bots with shardgroups and configure and manage everything with a dashboard.

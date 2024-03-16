@@ -234,7 +234,7 @@ func StateDispatch(ctx *StateCtx,
 		return f(ctx, event, trace)
 	}
 
-	ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
+	ctx.Logger.Warn().Str("type", event.Type).Msg("Dispatching unknown event")
 
-	return result, false, ErrNoDispatchHandler
+	return dispatchHandlers["UNKNOWN"](ctx, event, trace)
 }

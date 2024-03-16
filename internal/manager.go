@@ -177,6 +177,7 @@ func (mg *Manager) Initialize() error {
 
 	err = producerClient.Connect(
 		mg.ctx,
+		mg,
 		clientName,
 		mg.Sandwich.Configuration.Producer.Configuration,
 	)
@@ -285,10 +286,10 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 
 	err = mg.ProducerClient.Publish(
 		ctx,
+		packet,
 		channelName,
 		payload,
 	)
-
 	if err != nil {
 		return fmt.Errorf("publishEvent publish: %w", err)
 	}

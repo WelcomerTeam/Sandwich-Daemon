@@ -126,7 +126,7 @@ func main() {
 	// Sandwich initialization
 	sandwich, err := internal.NewSandwich(writer, options)
 	if err != nil {
-		logger.Panic().Err(err).Msg("Cannot create sandwich")
+		panic(err)
 	}
 
 	sandwich.Open()
