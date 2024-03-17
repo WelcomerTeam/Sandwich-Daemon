@@ -92,3 +92,16 @@ func (kafkaMQ *KafkaMQClient) Publish(ctx context.Context, packet *structs.Sandw
 		},
 	)
 }
+
+func (kafkaMQ *KafkaMQClient) IsClosed() bool {
+	return kafkaMQ.KafkaClient == nil
+}
+
+func (kafkaMQ *KafkaMQClient) CloseShard(shardID int32) {
+	// No-op for kafka
+}
+
+func (kafkaMQ *KafkaMQClient) Close() {
+	kafkaMQ.KafkaClient.Close()
+	kafkaMQ.KafkaClient = nil
+}

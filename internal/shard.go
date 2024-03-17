@@ -107,6 +107,8 @@ type Shard struct {
 	wsRatelimit *limiter.DurationLimiter
 
 	ready chan void
+
+	IsReady bool
 }
 
 // NewShard creates a new shard object.
@@ -770,6 +772,8 @@ func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 func (sh *Shard) Close(code websocket.StatusCode) {
 	sh.Logger.Info().Int("code", int(code)).Msg("Closing shard")
 
+	sh.IsReady = false
+
 	sh.SetStatus(sandwich_structs.ShardStatusClosing)
 
 	sh.RoutineDeadSignal.Close("CLOSE")
@@ -783,6 +787,12 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 		if err := sh.CloseWS(code); err != nil {
 			sh.Logger.Debug().Err(err).Msg("Encountered error closing websocket")
 		}
+	}
+
+	// Try killing the producer's shard as well
+	pc := sh.Manager.ProducerClient
+	if pc != nil {
+		pc.CloseShard(sh.ShardID)
 	}
 
 	sh.SetStatus(sandwich_structs.ShardStatusClosed)
@@ -812,6 +822,11 @@ func (sh *Shard) CloseWS(statusCode websocket.StatusCode) error {
 
 // WaitForReady blocks until the shard is ready.
 func (sh *Shard) WaitForReady() {
+	// We are already ready
+	if sh.IsReady {
+		return
+	}
+
 	since := time.Now().UTC()
 	t := time.NewTicker(WaitForReadyTimeout)
 
@@ -823,7 +838,9 @@ func (sh *Shard) WaitForReady() {
 	for {
 		select {
 		case <-sh.ready:
-			return
+			if sh.IsReady {
+				return
+			}
 		case <-sh.RoutineDeadSignal.Dead():
 			return
 		case <-t.C:

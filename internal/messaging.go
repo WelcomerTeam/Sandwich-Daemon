@@ -17,7 +17,15 @@ type MQClient interface {
 
 	Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error
 	Publish(ctx context.Context, packet *sandwich_structs.SandwichPayload, channel string, data []byte) error
-	// Function to clean close
+
+	// IsClosed returns true if the connection is closed.
+	IsClosed() bool
+
+	// Close all connections for a specific shard, only supported by websocket producer
+	CloseShard(shardID int32)
+
+	// Close the connection
+	Close()
 }
 
 func NewMQClient(mqType string) (MQClient, error) {

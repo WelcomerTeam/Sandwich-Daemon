@@ -636,7 +636,9 @@ func (sg *Sandwich) ManagerInitializeEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	err := manager.Initialize()
+	forceRestartProducers := gotils_strconv.B2S(ctx.QueryArgs().Peek("forceRestartProducers")) == "true"
+
+	err := manager.Initialize(forceRestartProducers)
 	if err != nil {
 		writeResponse(ctx, http.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -686,7 +688,9 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	manager.Client = NewClient(baseURL, manager.Configuration.Token)
 	manager.clientMu.Unlock()
 
-	err = manager.Initialize()
+	forceRestartProducers := gotils_strconv.B2S(ctx.QueryArgs().Peek("forceRestartProducers")) == "true"
+
+	err = manager.Initialize(forceRestartProducers)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,

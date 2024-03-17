@@ -74,7 +74,6 @@ ready:
 			}
 		case <-readyTimeout.C:
 			ctx.Logger.Info().Int("guilds", guildCreateEvents).Msg("Finished lazy loading guilds")
-
 			break ready
 		}
 	}
@@ -83,6 +82,8 @@ ready:
 	case ctx.ready <- void{}:
 	default:
 	}
+
+	ctx.Shard.IsReady = true
 
 	ctx.SetStatus(sandwich_structs.ShardStatusReady)
 
@@ -104,6 +105,8 @@ func OnResumed(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs
 	case ctx.ready <- void{}:
 	default:
 	}
+
+	ctx.Shard.IsReady = true
 
 	ctx.SetStatus(sandwich_structs.ShardStatusReady)
 

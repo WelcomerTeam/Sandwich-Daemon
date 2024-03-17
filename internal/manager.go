@@ -159,15 +159,21 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 }
 
 // Initialize handles the start up process including connecting the message queue client.
-func (mg *Manager) Initialize() error {
+func (mg *Manager) Initialize(forceRestartProducers bool) error {
 	gateway, err := mg.GetGateway()
 	if err != nil {
 		return err
 	}
 
-	producerClient, err := NewMQClient(mg.Sandwich.Configuration.Producer.Type)
-	if err != nil {
-		return err
+	var producerRestart bool
+	if forceRestartProducers {
+		producerRestart = true
+	} else {
+		if mg.ProducerClient == nil {
+			producerRestart = true
+		} else if mg.ProducerClient.IsClosed() {
+			producerRestart = true
+		}
 	}
 
 	clientName := mg.Configuration.Messaging.ClientName
@@ -175,23 +181,35 @@ func (mg *Manager) Initialize() error {
 		clientName = clientName + "-" + randomHex(6)
 	}
 
-	err = producerClient.Connect(
-		mg.ctx,
-		mg,
-		clientName,
-		mg.Sandwich.Configuration.Producer.Configuration,
-	)
-	if err != nil {
-		mg.Logger.Error().Err(err).Msg("Failed to connect producer client")
+	if producerRestart {
+		if mg.ProducerClient != nil {
+			// Close
+			mg.ProducerClient.Close()
+		}
 
-		return fmt.Errorf("failed to connect to producer: %w", err)
+		producerClient, err := NewMQClient(mg.Sandwich.Configuration.Producer.Type)
+		if err != nil {
+			return err
+		}
+
+		err = producerClient.Connect(
+			mg.ctx,
+			mg,
+			clientName,
+			mg.Sandwich.Configuration.Producer.Configuration,
+		)
+		if err != nil {
+			mg.Logger.Error().Err(err).Msg("Failed to connect producer client")
+
+			return fmt.Errorf("failed to connect to producer: %w", err)
+		}
+
+		mg.ProducerClient = producerClient
 	}
 
 	mg.gatewayMu.Lock()
 	mg.Gateway = gateway
 	mg.gatewayMu.Unlock()
-
-	mg.ProducerClient = producerClient
 
 	return nil
 }

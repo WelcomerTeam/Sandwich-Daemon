@@ -387,7 +387,7 @@ func (sg *Sandwich) startManagers() {
 
 		sg.Managers[managerConfiguration.Identifier] = manager
 
-		err := manager.Initialize()
+		err := manager.Initialize(false)
 		if err != nil {
 			manager.Error.Store(err.Error())
 

@@ -119,3 +119,18 @@ func (stanMQ *StanMQClient) Publish(ctx context.Context, packet *structs.Sandwic
 		data,
 	)
 }
+
+func (stanMQ *StanMQClient) IsClosed() bool {
+	return stanMQ.StanClient == nil
+}
+
+func (stanMQ *StanMQClient) CloseShard(shardID int32) {
+	// No-op
+}
+
+func (stanMQ *StanMQClient) Close() {
+	stanMQ.StanClient.Close()
+	stanMQ.NatsClient.Close()
+	stanMQ.StanClient = nil
+	stanMQ.NatsClient = nil
+}

@@ -10,17 +10,26 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/time/rate"
+	"go.uber.org/atomic"
 	"nhooyr.io/websocket"
 )
 
 func init() {
 	MQClients = append(MQClients, "websocket")
+}
+
+// Given a guild ID, return its shard ID
+func getShardIDFromGuildID(guildID string, shardCount int) (uint64, error) {
+	gidNum, err := strconv.ParseInt(guildID, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(gidNum>>22) % uint64(shardCount), nil
 }
 
 // chatServer enables broadcasting to a set of subscribers.
@@ -41,24 +50,18 @@ type chatServer struct {
 	// Defaults to 16.
 	subscriberMessageBuffer int
 
-	// publishLimiter controls the rate limit applied to the publish endpoint.
-	//
-	// Defaults to one publish every 100ms with a burst of 8.
-	publishLimiter *rate.Limiter
-
 	// serveMux routes the various endpoints to the appropriate handler.
 	serveMux http.ServeMux
 
-	subscribersMu sync.Mutex
-	subscribers   map[*subscriber]struct{}
+	subscribersMu sync.RWMutex
+	subscribers   map[[2]int32][]*subscriber
 }
 
 // newChatServer constructs a chatServer with the defaults.
 func newChatServer() *chatServer {
 	cs := &chatServer{
-		subscriberMessageBuffer: 10000,
-		subscribers:             make(map[*subscriber]struct{}),
-		publishLimiter:          rate.NewLimiter(rate.Every(time.Millisecond*100), 1000),
+		subscriberMessageBuffer: 100000, // Make it large enough for handling resumes
+		subscribers:             make(map[[2]int32][]*subscriber),
 	}
 	cs.serveMux.HandleFunc("/", cs.subscribeHandler)
 	cs.serveMux.HandleFunc("/publish", cs.publishHandler)
@@ -70,11 +73,162 @@ func newChatServer() *chatServer {
 // Messages are sent on the msgs channel and if the client
 // cannot keep up with the messages, closeSlow is called.
 type subscriber struct {
+	c          *websocket.Conn
+	cancelFunc context.CancelFunc
 	sessionId  string
 	shard      [2]int32
-	identified bool
+	up         bool
+	resumed    bool
+	seq        atomic.Int64
 	msgs       chan []byte
-	closeSlow  func()
+}
+
+func (s *subscriber) write(p []byte) {
+	s.msgs <- p
+}
+
+// invalidSession closes the connection with the given reason.
+func (cs *chatServer) invalidSession(s *subscriber, reason string, resumable bool) {
+	cs.manager.Sandwich.Logger.Error().Msgf("Invalid session: %s, is resumable: %v", reason, resumable)
+
+	if resumable {
+		s.write([]byte(`{"op":9,"d":true}`))
+		s.c.Close(websocket.StatusCode(4000), "Invalid Session")
+	} else {
+		s.write([]byte(`{"op":9,"d":false}`))
+		s.c.Close(websocket.StatusCode(4000), "Invalid Session")
+	}
+}
+
+func (cs *chatServer) getShard(shard [2]int32) *Shard {
+	cs.manager.shardGroupsMu.RLock()
+	defer cs.manager.shardGroupsMu.RUnlock()
+
+	for _, sg := range cs.manager.ShardGroups {
+		sg.shardsMu.RLock()
+		for _, sh := range sg.Shards {
+			if sh.ShardID == shard[0] {
+				return sh
+			}
+		}
+		sg.shardsMu.RUnlock()
+	}
+
+	return nil
+}
+
+func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error {
+	shard := cs.getShard(s.shard)
+	guilds := make([]*structs.StateGuild, 0, len(cs.manager.Sandwich.State.Guilds))
+
+	// First send READY event with our initial state
+	readyPayload := map[string]any{
+		"v":          10,
+		"user":       cs.manager.User,
+		"session_id": shard.SessionID,
+		"shard":      []int32{s.shard[0], s.shard[1]},
+		"application": map[string]any{
+			"id":    cs.manager.User.ID,
+			"flags": int32(cs.manager.User.Flags),
+		},
+		"resume_gateway_url": cs.address,
+		"guilds": func() []*discord.UnavailableGuild {
+			v := []*discord.UnavailableGuild{}
+			cs.manager.Sandwich.State.guildsMu.RLock()
+			defer cs.manager.Sandwich.State.guildsMu.RUnlock()
+
+			shard.WaitForReady()
+
+			for _, guild := range cs.manager.Sandwich.State.Guilds {
+				shardInt, err := getShardIDFromGuildID(guild.ID.String(), int(s.shard[1]))
+				if err != nil {
+					cs.manager.Sandwich.State.guildsMu.RUnlock()
+					cs.invalidSession(s, "[Sandwich] Failed to get shard ID from guild ID: "+err.Error(), true)
+					s.cancelFunc()
+					return v
+				}
+
+				if int32(shardInt) != s.shard[0] {
+					continue
+				}
+
+				guilds = append(guilds, guild)
+				v = append(v, &discord.UnavailableGuild{
+					ID:          guild.ID,
+					Unavailable: true,
+				})
+			}
+
+			return v
+		}(),
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	fp := map[string]any{
+		"op": discord.GatewayOpDispatch,
+		"d":  readyPayload,
+		"t":  "READY",
+		"s":  s.seq.Load(),
+	}
+
+	cs.manager.Sandwich.Logger.Info().Msgf("Dispatching ready to shard %d", s.shard[0])
+
+	fpBytes, err := jsoniter.Marshal(fp)
+	if err != nil {
+		return err
+	}
+
+	s.write(fpBytes)
+
+	for _, guild := range guilds {
+		if guild.AFKChannelID == nil {
+			guild.AFKChannelID = &guild.ID
+		}
+
+		// Send initial guild_create's
+		if len(guild.Roles) == 0 {
+			// Lock RolesMu
+			cs.manager.Sandwich.State.guildRolesMu.RLock()
+			roles := cs.manager.Sandwich.State.GuildRoles[guild.ID]
+			cs.manager.Sandwich.State.guildRolesMu.RUnlock()
+
+			guild.Roles = make([]*structs.StateRole, 0, len(roles.Roles))
+			for id, role := range roles.Roles {
+				role.ID = discord.Snowflake(id)
+				guild.Roles = append(guild.Roles, role)
+			}
+		}
+
+		fp := map[string]any{
+			"op": discord.GatewayOpDispatch,
+			"d":  guild,
+			"t":  "GUILD_CREATE",
+			"s":  s.seq.Load(),
+		}
+
+		fpBytes, err := jsoniter.Marshal(fp)
+		if err != nil {
+			cs.manager.Sandwich.Logger.Error().Msgf("Failed to marshal guild create: %s [shard %d]", err.Error(), s.shard[0])
+			continue
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		s.write(fpBytes)
+
+		s.seq.Inc()
+	}
+
+	return nil
 }
 
 func (cs *chatServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -139,194 +293,153 @@ func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
 // It uses CloseRead to keep reading from the connection to process control
 // messages and cancel the context if the connection drops.
 func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	var mu sync.Mutex
 	var c *websocket.Conn
-	var closed bool
 	s := &subscriber{
 		msgs: make(chan []byte, cs.subscriberMessageBuffer),
-		closeSlow: func() {
-			mu.Lock()
-			defer mu.Unlock()
-			closed = true
-			if c != nil {
-				c.Close(websocket.StatusPolicyViolation, "connection too slow to keep up with messages")
-			}
-		},
 	}
-	cs.addSubscriber(s)
-	defer cs.deleteSubscriber(s)
 
-	c2, err := websocket.Accept(w, r, nil)
+	var err error
+	c, err = websocket.Accept(w, r, nil)
 	if err != nil {
 		return err
 	}
 
+	s.c = c
+
 	if cs.manager.Sandwich == nil {
-		c2.Close(websocket.StatusInternalError, "sandwich is nil")
+		c.Close(websocket.StatusInternalError, "sandwich is nil")
 		return errors.New("sandwich is nil")
 	}
 
-	mu.Lock()
-	if closed {
-		mu.Unlock()
-		return net.ErrClosed
-	}
-	c = c2
-	mu.Unlock()
-	defer c.CloseNow()
+	// Before adding the subscriber for external access, send the initial hello payload and wait for identify
+	// If the client does not identify within 5 seconds, close the connection
+	c.Write(ctx, websocket.MessageText, []byte(`{"op":10,"d":{"heartbeat_interval":45000}}`))
 
-	ctx, cancelFunc := context.WithCancel(ctx)
-	defer cancelFunc()
-
-	write := func(msg []byte) {
-		s.msgs <- msg
-	}
-
-	write([]byte(`{"op":10,"d":{"heartbeat_interval":45000}}`))
-
-	// Given a guild ID, return its shard ID
-	getShardIDFromGuildID := func(guildID string, shardCount int) (uint64, error) {
-		gidNum, err := strconv.ParseInt(guildID, 10, 64)
+	// Keep reading messages till we reach an identify
+	for {
+		typ, ior, err := c.Read(ctx)
 		if err != nil {
-			return 0, err
+			c.Close(websocket.StatusCode(4000), `[Sandwich] Unable to decode payload`)
+			return err
 		}
 
-		return uint64(gidNum>>22) % uint64(shardCount), nil
-	}
-
-	// Publish calls shard.OnDispatch
-	getShard := func() *Shard {
-		cs.manager.shardGroupsMu.RLock()
-		defer cs.manager.shardGroupsMu.RUnlock()
-
-		for _, sg := range cs.manager.ShardGroups {
-			sg.shardsMu.RLock()
-			for _, sh := range sg.Shards {
-				if sh.ShardID == s.shard[0] {
-					return sh
-				}
-			}
-			sg.shardsMu.RUnlock()
-		}
-
-		return nil
-	}
-
-	var shard *Shard
-
-	go func() {
-		// Call this function to close the connection and return
-		invalidSession := func(reason string) {
-			cs.manager.Sandwich.Logger.Error().Msgf("Invalid session: %s", reason)
-			write([]byte(`{"op":9,"d":false}`))
-			c.Close(websocket.StatusCode(4000), "Invalid Session")
-		}
-
-		dispatchInitial := func() error {
-			guilds := make([]*structs.StateGuild, 0, len(cs.manager.Sandwich.State.Guilds))
-
-			// First send READY event with our initial state
-			readyPayload := map[string]any{
-				"v":          10,
-				"user":       cs.manager.User,
-				"session_id": shard.SessionID,
-				"shard":      []int32{s.shard[0], s.shard[1]},
-				"application": map[string]any{
-					"id":    cs.manager.User.ID,
-					"flags": int32(cs.manager.User.Flags),
-				},
-				"resume_gateway_url": cs.address,
-				"guilds": func() []*discord.UnavailableGuild {
-					v := []*discord.UnavailableGuild{}
-					cs.manager.Sandwich.State.guildsMu.RLock()
-					defer cs.manager.Sandwich.State.guildsMu.RUnlock()
-
-					if len(cs.manager.Sandwich.State.Guilds) == 0 {
-						invalidSession("no guilds available")
-						cancelFunc()
-						return v
-					}
-
-					for _, guild := range cs.manager.Sandwich.State.Guilds {
-						shardInt, err := getShardIDFromGuildID(guild.ID.String(), int(s.shard[1]))
-						if err != nil {
-							cs.manager.Sandwich.State.guildsMu.RUnlock()
-							invalidSession("failed to get shard ID from guild ID: " + err.Error())
-							cancelFunc()
-							return v
-						}
-
-						if int32(shardInt) != s.shard[0] {
-							continue
-						}
-
-						guilds = append(guilds, guild)
-						v = append(v, &discord.UnavailableGuild{
-							ID:          guild.ID,
-							Unavailable: true,
-						})
-					}
-
-					return v
-				}(),
+		switch typ {
+		case websocket.MessageText:
+			var packet struct {
+				Data jsoniter.RawMessage `json:"d"`
+				Op   discord.GatewayOp   `json:"op"`
 			}
 
-			fp := map[string]any{
-				"op": discord.GatewayOpDispatch,
-				"d":  readyPayload,
-				"t":  "READY",
-				"s":  shard.Sequence.Load(),
-			}
-
-			cs.manager.Sandwich.Logger.Info().Msgf("Dispatching ready to shard %d", s.shard[0])
-
-			fpBytes, err := jsoniter.Marshal(fp)
+			err := jsoniter.Unmarshal(ior, &packet)
 			if err != nil {
+				c.Close(websocket.StatusCode(4000), `[Sandwich] Unable to decode payload`)
 				return err
 			}
 
-			write(fpBytes)
-
-			for _, guild := range guilds {
-				if guild.AFKChannelID == nil {
-					guild.AFKChannelID = &guild.ID
+			// Read an identify packet
+			//
+			// Note that resume is not supported at this time
+			if packet.Op == discord.GatewayOpIdentify {
+				var identify struct {
+					Token string   `json:"token"`
+					Shard [2]int32 `json:"shard"`
 				}
 
-				// Send initial guild_create's
-				if len(guild.Roles) == 0 {
-					// Lock RolesMu
-					cs.manager.Sandwich.State.guildRolesMu.RLock()
-					roles := cs.manager.Sandwich.State.GuildRoles[guild.ID]
-					cs.manager.Sandwich.State.guildRolesMu.RUnlock()
-
-					guild.Roles = make([]*structs.StateRole, 0, len(roles.Roles))
-					for id, role := range roles.Roles {
-						role.ID = discord.Snowflake(id)
-						guild.Roles = append(guild.Roles, role)
-					}
-				}
-
-				fp := map[string]any{
-					"op": discord.GatewayOpDispatch,
-					"d":  guild,
-					"t":  "GUILD_CREATE",
-					"s":  shard.Sequence.Load(),
-				}
-
-				fpBytes, err := jsoniter.Marshal(fp)
+				err = jsoniter.Unmarshal(packet.Data, &identify)
 				if err != nil {
-					cs.manager.Sandwich.Logger.Error().Msgf("Failed to marshal guild create: %s [shard %d]", err.Error(), s.shard[0])
-					continue
+					c.Close(websocket.StatusCode(4000), `[Sandwich] Unable to decode payload (identify)`)
+					return err
 				}
 
-				write(fpBytes)
+				identify.Token = strings.Replace(identify.Token, "Bot ", "", 1)
 
-				shard.Sequence.Inc()
+				if identify.Token == cs.expectedToken {
+					s.sessionId = randomHex(12)
+					s.shard = identify.Shard
+					s.up = true
+
+					cs.manager.Sandwich.Logger.Info().Msgf("Shard %d is now connected with created session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
+				} else {
+					c.Close(websocket.StatusCode(4000), `[Sandwich] Invalid token`)
+					return errors.New("invalid token")
+				}
+			} else if packet.Op == discord.GatewayOpResume {
+				var resume struct {
+					Token     string `json:"token"`
+					SessionID string `json:"session_id"`
+					Seq       int64  `json:"seq"`
+				}
+
+				err = jsoniter.Unmarshal(packet.Data, &resume)
+
+				if err != nil {
+					c.Close(websocket.StatusCode(4000), `[Sandwich] Unable to decode payload (resume)`)
+					return err
+				}
+
+				resume.Token = strings.Replace(resume.Token, "Bot ", "", 1)
+
+				if resume.Token == cs.expectedToken {
+					// Find session with same session id
+					cs.subscribersMu.RLock()
+					for _, shardSubs := range cs.subscribers {
+						for _, oldSess := range shardSubs {
+							if s.sessionId == resume.SessionID {
+								s.msgs = oldSess.msgs
+								s.shard = oldSess.shard
+								s.resumed = true
+								s.up = true
+
+								s.seq.Store(resume.Seq)
+								break
+							}
+						}
+
+						if s.up {
+							break
+						}
+					}
+
+					if !s.up {
+						c.Close(websocket.StatusCode(4000), `[Sandwich] Invalid session id`)
+						return errors.New("invalid session id")
+					}
+
+					cs.manager.Sandwich.Logger.Info().Msgf("Shard %d is now connected with resumed session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
+				} else {
+					c.Close(websocket.StatusCode(4000), `[Sandwich] Invalid token`)
+					return errors.New("invalid token")
+				}
+			} else if packet.Op == discord.GatewayOpHeartbeat {
+				s.write([]byte(`{"op":11}`))
 			}
-
-			return nil
 		}
 
+		if s.up {
+			break
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+	}
+
+	cs.addSubscriber(s, s.shard)
+	defer cs.deleteSubscriber(s)
+
+	ctx, cancelFunc := context.WithCancel(ctx)
+	s.cancelFunc = cancelFunc
+	defer s.cancelFunc()
+
+	defer c.Close(websocket.StatusCode(4000), `{"op":9,"d":true}`)
+
+	if !s.resumed {
+		go cs.dispatchInitial(ctx, s)
+	}
+
+	go func() {
 		for {
 			typ, ior, err := c.Read(ctx)
 			if err != nil {
@@ -346,70 +459,14 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 				err := jsoniter.Unmarshal(ior, &packet)
 				if err != nil {
-					invalidSession("failed to unmarshal packet: " + err.Error())
-					cancelFunc()
+					cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
+					s.cancelFunc()
 					return
 				}
 
-				if !s.identified {
-					// Read an identify packet
-					//
-					// Note that resume is not supported at this time
-					if packet.Op == discord.GatewayOpIdentify {
-						bytes, err := jsoniter.Marshal(packet.Data)
-						if err != nil {
-							invalidSession("failed to marshal packet data: " + err.Error())
-							cancelFunc()
-							return
-						}
-
-						var identify struct {
-							Token string   `json:"token"`
-							Shard [2]int32 `json:"shard"`
-						}
-
-						err = jsoniter.Unmarshal(bytes, &identify)
-						if err != nil {
-							invalidSession("failed to unmarshal identify: " + err.Error())
-							cancelFunc()
-							return
-						}
-
-						identify.Token = strings.Replace(identify.Token, "Bot ", "", 1)
-
-						if identify.Token == cs.expectedToken {
-							s.identified = true
-							s.sessionId = randomHex(12)
-							s.shard = identify.Shard
-
-							shard = getShard()
-							cs.manager.Sandwich.Logger.Info().Msgf("Shard %d is now connected with shard session id %s [%s]", s.shard[0], shard.SessionID, fmt.Sprint(s.shard))
-
-							go func() {
-								err := dispatchInitial()
-								if err != nil {
-									invalidSession("failed to dispatch initial: " + err.Error())
-									cancelFunc()
-									return
-								}
-							}()
-							continue
-						}
-
-						invalidSession("invalid token, got " + identify.Token)
-						cancelFunc()
-						return
-					}
-				}
-
 				if packet.Op == discord.GatewayOpHeartbeat {
-					if !s.identified {
-						write([]byte(`{"op":11}`))
-						continue
-					}
-
 					// cs.manager.Sandwich.Logger.Debug().Msgf("Shard heartbeat recieved for shard %d", s.shard[0])
-					write([]byte(fmt.Sprintf(`{"op":11,"s":%d}`, shard.Sequence.Load())))
+					s.write([]byte(fmt.Sprintf(`{"op":11,"s":%d}`, s.seq.Load())))
 				}
 			}
 		}
@@ -432,35 +489,50 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 // It never blocks and so messages to slow subscribers
 // are dropped.
 func (cs *chatServer) publish(shard [2]int32, msg []byte) {
-	cs.subscribersMu.Lock()
-	defer cs.subscribersMu.Unlock()
+	cs.subscribersMu.RLock()
+	defer cs.subscribersMu.RUnlock()
 
-	cs.publishLimiter.Wait(context.Background())
+	shardSubs, ok := cs.subscribers[shard]
 
-	for s := range cs.subscribers {
-		if !s.identified || s.shard != shard {
+	if !ok {
+		return
+	}
+
+	for _, s := range shardSubs {
+		if !s.up {
 			continue
 		}
 
-		select {
-		case s.msgs <- msg:
-		default:
-			go s.closeSlow()
-		}
+		s.msgs <- msg
 	}
 }
 
 // addSubscriber registers a subscriber.
-func (cs *chatServer) addSubscriber(s *subscriber) {
+func (cs *chatServer) addSubscriber(s *subscriber, shard [2]int32) {
 	cs.subscribersMu.Lock()
-	cs.subscribers[s] = struct{}{}
+
+	if subs, ok := cs.subscribers[shard]; ok {
+		cs.subscribers[shard] = append(subs, s)
+	} else {
+		cs.subscribers[shard] = []*subscriber{s}
+	}
+
 	cs.subscribersMu.Unlock()
 }
 
 // deleteSubscriber deletes the given subscriber.
 func (cs *chatServer) deleteSubscriber(s *subscriber) {
 	cs.subscribersMu.Lock()
-	delete(cs.subscribers, s)
+
+	if sub, ok := cs.subscribers[s.shard]; ok {
+		for i, is := range sub {
+			if is.sessionId == s.sessionId {
+				cs.subscribers[s.shard] = append(sub[:i], sub[i+1:]...)
+				break
+			}
+		}
+	}
+
 	cs.subscribersMu.Unlock()
 }
 
@@ -503,11 +575,7 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	mq.cs.expectedToken = expectedToken
 	mq.cs.manager = manager
 	mq.cs.address = address
-	s := &http.Server{
-		Handler:      mq.cs,
-		ReadTimeout:  time.Second * 10,
-		WriteTimeout: time.Second * 10,
-	}
+	s := &http.Server{Handler: mq.cs}
 
 	go func() {
 		s.Serve(l)
@@ -523,4 +591,40 @@ func (mq *WebsocketClient) Publish(ctx context.Context, packet *structs.Sandwich
 	)
 
 	return nil
+}
+
+func (mq *WebsocketClient) IsClosed() bool {
+	return mq.cs == nil
+}
+
+func (mq *WebsocketClient) CloseShard(shardID int32) {
+	// Send RESUME for single shard
+	for _, shardSubs := range mq.cs.subscribers {
+		for _, s := range shardSubs {
+			if s.shard[0] == shardID {
+				s.write([]byte(`{"op":9,"d":true}`))
+				s.c.Close(websocket.StatusCode(4000), "Socket closed")
+
+				s.cancelFunc()
+
+				mq.cs.deleteSubscriber(s)
+			}
+		}
+	}
+}
+
+func (mq *WebsocketClient) Close() {
+	// Send RESUME to all shards
+	for _, shardSubs := range mq.cs.subscribers {
+		for _, s := range shardSubs {
+			s.write([]byte(`{"op":9,"d":true}`))
+			s.c.Close(websocket.StatusCode(4000), "Socket closed")
+
+			s.cancelFunc()
+
+			mq.cs.deleteSubscriber(s)
+		}
+	}
+
+	mq.cs = nil
 }

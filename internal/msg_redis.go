@@ -79,3 +79,16 @@ func (redisMQ *RedisMQClient) Publish(ctx context.Context, packet *structs.Sandw
 		data,
 	).Err()
 }
+
+func (redisMQ *RedisMQClient) IsClosed() bool {
+	return redisMQ.redisClient == nil
+}
+
+func (redisMQ *RedisMQClient) CloseShard(shardID int32) {
+	// No-op
+}
+
+func (redisMQ *RedisMQClient) Close() {
+	redisMQ.redisClient.Close()
+	redisMQ.redisClient = nil
+}
