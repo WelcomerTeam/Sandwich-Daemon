@@ -99,7 +99,6 @@ func (s *BroadcastServer[T]) serve() {
 					case <-s.context.Done():
 						return
 					}
-
 				}
 			}
 		}

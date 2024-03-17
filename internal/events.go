@@ -234,5 +234,5 @@ func StateDispatch(ctx *StateCtx,
 		return f(ctx, event, trace)
 	}
 
-	return dispatchHandlers["UNKNOWN"](ctx, event, trace)
+	return WildcardEvent(ctx, event, trace)
 }

@@ -121,6 +121,8 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 	shard := cs.getShard(s.shard)
 	guilds := make([]*structs.StateGuild, 0, len(cs.manager.Sandwich.State.Guilds))
 
+	shard.WaitForReady()
+
 	// First send READY event with our initial state
 	readyPayload := map[string]any{
 		"v":          10,
@@ -136,8 +138,6 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			v := []*discord.UnavailableGuild{}
 			cs.manager.Sandwich.State.guildsMu.RLock()
 			defer cs.manager.Sandwich.State.guildsMu.RUnlock()
-
-			shard.WaitForReady()
 
 			for _, guild := range cs.manager.Sandwich.State.Guilds {
 				shardInt, err := getShardIDFromGuildID(guild.ID.String(), int(s.shard[1]))
@@ -371,7 +371,6 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 				}
 
 				err = jsoniter.Unmarshal(packet.Data, &resume)
-
 				if err != nil {
 					c.Close(websocket.StatusCode(4000), `[Sandwich] Unable to decode payload (resume)`)
 					return err

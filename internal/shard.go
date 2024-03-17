@@ -213,6 +213,7 @@ readyConsumer:
 	for {
 		select {
 		case <-sh.ready:
+			sh.IsReady = true
 		default:
 			break readyConsumer
 		}
@@ -836,11 +837,12 @@ func (sh *Shard) WaitForReady() {
 	defer sh.RoutineDeadSignal.Done()
 
 	for {
+		if sh.IsReady {
+			return
+		}
+
 		select {
 		case <-sh.ready:
-			if sh.IsReady {
-				return
-			}
 		case <-sh.RoutineDeadSignal.Dead():
 			return
 		case <-t.C:
