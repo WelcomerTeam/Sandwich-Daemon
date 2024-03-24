@@ -59,11 +59,9 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r.DELETE("/api/manager/shardgroup", sg.requireDiscordAuthentication(sg.ShardGroupStopEndpoint))
 
 	fs := fasthttp.FS{
-		IndexNames:     []string{"index.html"},
-		Root:           DistPath,
-		Compress:       true,
-		CompressBrotli: true,
-		CacheDuration:  time.Hour,
+		IndexNames:    []string{"index.html"},
+		Root:          DistPath,
+		CacheDuration: time.Hour,
 		PathNotFound: func(ctx *fasthttp.RequestCtx) {
 			ctx.Response.Reset()
 			ctx.SendFile(DistPath + "/index.html")
@@ -212,18 +210,12 @@ func (sg *Sandwich) HandleRequest(ctx *fasthttp.RequestCtx) {
 		ctx.Response.Header.Set("X-Elapsed", strconv.FormatInt(processingMS, MagicDecimalBase))
 	}()
 
-	fasthttp.CompressHandlerBrotliLevel(
-		func(ctx *fasthttp.RequestCtx) {
-			sg.RouterHandler(ctx)
+	sg.RouterHandler(ctx)
 
-			if ctx.Response.StatusCode() == fasthttp.StatusNotFound {
-				ctx.Response.Reset()
-				sg.DistHandler(ctx)
-			}
-		},
-		fasthttp.CompressBrotliDefaultCompression,
-		fasthttp.CompressDefaultCompression,
-	)(ctx)
+	if ctx.Response.StatusCode() == fasthttp.StatusNotFound {
+		ctx.Response.Reset()
+		sg.DistHandler(ctx)
+	}
 }
 
 // /login: Handles logging in a user.
