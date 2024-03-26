@@ -10,15 +10,7 @@ export default defineConfig({
         target: "http://127.0.0.1:14999",
         changeOrigin: true,
       },
-      "/login": {
-        target: "http://127.0.0.1:14999",
-        changeOrigin: true,
-      },
-      "/logout": {
-        target: "http://127.0.0.1:14999",
-        changeOrigin: true,
-      },
-      "/callback": {
+      "/(login|logout|callback)": {
         target: "http://127.0.0.1:14999",
         changeOrigin: true,
       },
