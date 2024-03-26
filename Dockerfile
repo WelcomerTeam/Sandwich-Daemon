@@ -1,15 +1,7 @@
 FROM golang:1.22 AS build_base
 
-# WORKDIR /go/brotli-cgo
-
 RUN apt update -y \
     && apt install -y git build-essential cmake zlib1g-dev
-
-# RUN cd /usr/local \
-#     && git clone https://github.com/google/brotli \
-#     && cd brotli && mkdir out && cd out && ../configure-cmake \
-#     && make \
-#     && make install
 
 WORKDIR /tmp/sandwich-daemon
 
@@ -31,6 +23,8 @@ RUN apk add ca-certificates libc6-compat
 COPY --from=build_base /usr/local/lib /usr/local/lib
 
 COPY --from=build_base /tmp/sandwich-daemon/out/sandwich /app/sandwich
-COPY --from=build_base /tmp/sandwich-daemon/sandwich/dist /sandwich/dist
+COPY --from=build_base /tmp/sandwich-daemon/web/dist /web/dist
 
 CMD ["/app/sandwich"]
+
+LABEL org.opencontainers.image.source https://github.com/WelcomerTeam/Sandwich-Daemon

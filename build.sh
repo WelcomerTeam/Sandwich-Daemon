@@ -1,11 +1,12 @@
 echo "Build Web Distributable"
-cd sandwich
-yarn build
+
+cd web
+npm run build
 cd ..
 
 echo "Simplify"
-gofmt -l -s -w . && gofumpt -l -w . && gci --write . && goimports -local -w .
+gofmt -l -s -w .
 
 echo "Docker build and push"
-docker build --tag 1345/sandwich-daemon:latest .
-docker push 1345/sandwich-daemon:latest
+docker build --tag sandwich-daemon:latest .
+docker push ghcr.io/welcomerteam/sandwich-daemon:latest
