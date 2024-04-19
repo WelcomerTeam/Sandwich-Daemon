@@ -19,7 +19,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/valyala/fasthttp v1.52.0
 	go.uber.org/atomic v1.11.0
-	golang.org/x/net v0.22.0
+	golang.org/x/net v0.23.0
 	golang.org/x/oauth2 v0.18.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.62.1
