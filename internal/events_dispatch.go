@@ -186,11 +186,11 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 	ctx.Sandwich.guildChunksMu.RUnlock()
 
 	if !ok {
-		ctx.Logger.Warn().
+		ctx.Logger.Debug().
 			Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
 			Msg("Received guild member chunk, but there is no record in the GuildChunks map")
 
-		return result, false, nil
+		return result, true, nil
 	}
 
 	if guildChunk.Complete.Load() {
@@ -208,7 +208,7 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 	default:
 	}
 
-	return result, false, nil
+	return result, true, nil
 }
 
 func OnChannelCreate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {

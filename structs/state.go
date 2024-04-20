@@ -2,7 +2,6 @@ package structs
 
 import (
 	"sync"
-	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	jsoniter "github.com/json-iterator/go"
@@ -88,10 +87,10 @@ type StateGuild struct {
 	SystemChannelFlags *discord.SystemChannelFlags `json:"system_channel_flags,omitempty"`
 	RulesChannelID     *discord.Snowflake          `json:"rules_channel_id,omitempty"`
 
-	JoinedAt    time.Time `json:"joined_at"`
-	Large       bool      `json:"large"`
-	Unavailable bool      `json:"unavailable"`
-	MemberCount int32     `json:"member_count"`
+	JoinedAt    discord.Timestamp `json:"joined_at"`
+	Large       bool              `json:"large"`
+	Unavailable bool              `json:"unavailable"`
+	MemberCount int32             `json:"member_count"`
 
 	MaxPresences  int32  `json:"max_presences"`
 	MaxMembers    int32  `json:"max_members"`
@@ -127,12 +126,12 @@ type StateGuildMember struct {
 	Nick                       string            `json:"nick"`
 	Avatar                     string            `json:"avatar,omitempty"`
 	Roles                      SnowflakeList     `json:"roles"`
-	JoinedAt                   time.Time         `json:"joined_at"`
+	JoinedAt                   discord.Timestamp `json:"joined_at"`
 	PremiumSince               string            `json:"premium_since"`
 	Deaf                       bool              `json:"deaf"`
 	Mute                       bool              `json:"mute"`
 	Pending                    bool              `json:"pending"`
-	Permissions                *discord.Int64    `json:"permissions"`
+	Permissions                discord.Int64     `json:"permissions"`
 	CommunicationDisabledUntil string            `json:"communication_disabled_until,omitempty"`
 }
 
@@ -180,7 +179,7 @@ type StateChannel struct {
 	OwnerID                    *discord.Snowflake         `json:"owner_id,omitempty"`
 	ApplicationID              *discord.Snowflake         `json:"application_id,omitempty"`
 	ParentID                   *discord.Snowflake         `json:"parent_id,omitempty"`
-	LastPinTimestamp           *time.Time                 `json:"last_pin_timestamp,omitempty"`
+	LastPinTimestamp           *discord.Timestamp         `json:"last_pin_timestamp,omitempty"`
 	RTCRegion                  string                     `json:"rtc_region,omitempty"`
 	VideoQualityMode           *discord.VideoQualityMode  `json:"video_quality_mode,omitempty"`
 	MessageCount               int32                      `json:"message_count,omitempty"`
@@ -212,14 +211,14 @@ type StateUser struct {
 }
 
 type StateVoiceState struct {
-	ChannelID               discord.Snowflake `json:"channel_id"`
-	SessionID               string            `json:"session_id"`
-	Deaf                    bool              `json:"deaf"`
-	Mute                    bool              `json:"mute"`
-	SelfDeaf                bool              `json:"self_deaf"`
-	SelfMute                bool              `json:"self_mute"`
-	SelfStream              bool              `json:"self_stream"`
-	SelfVideo               bool              `json:"self_video"`
-	Suppress                bool              `json:"suppress"`
-	RequestToSpeakTimestamp *time.Time        `json:"request_to_speak_timestamp,omitempty"`
+	ChannelID               discord.Snowflake  `json:"channel_id"`
+	SessionID               string             `json:"session_id"`
+	Deaf                    bool               `json:"deaf"`
+	Mute                    bool               `json:"mute"`
+	SelfDeaf                bool               `json:"self_deaf"`
+	SelfMute                bool               `json:"self_mute"`
+	SelfStream              bool               `json:"self_stream"`
+	SelfVideo               bool               `json:"self_video"`
+	Suppress                bool               `json:"suppress"`
+	RequestToSpeakTimestamp *discord.Timestamp `json:"request_to_speak_timestamp,omitempty"`
 }

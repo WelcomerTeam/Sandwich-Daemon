@@ -69,6 +69,8 @@ type Manager struct {
 
 	produceBlacklistMu sync.RWMutex
 	produceBlacklist   []string
+
+	noShards int32
 }
 
 // ManagerConfiguration represents the configuration for the manager.
@@ -447,6 +449,8 @@ func (mg *Manager) getInitialShardCount(customShardCount int32, customShardIDs s
 		shardCount = customShardCount
 		shardIDs = returnRangeInt32(customShardIDs, shardCount)
 	}
+
+	mg.noShards = shardCount
 
 	return
 }

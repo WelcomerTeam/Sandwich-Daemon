@@ -118,6 +118,8 @@ func (cs *chatServer) getShard(shard [2]int32) *Shard {
 }
 
 func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error {
+	cs.manager.Sandwich.Logger.Info().Msgf("Shard %d (now dispatching events)", s.shard[0])
+
 	shard := cs.getShard(s.shard)
 	guilds := make([]*structs.StateGuild, 0, len(cs.manager.Sandwich.State.Guilds))
 
@@ -133,7 +135,13 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			"id":    cs.manager.User.ID,
 			"flags": int32(cs.manager.User.Flags),
 		},
-		"resume_gateway_url": cs.address,
+		"resume_gateway_url": func() string {
+			if !strings.HasPrefix(cs.address, "ws") {
+				return "ws://" + cs.address
+			} else {
+				return cs.address
+			}
+		}(),
 		"guilds": func() []*discord.UnavailableGuild {
 			v := []*discord.UnavailableGuild{}
 			cs.manager.Sandwich.State.guildsMu.RLock()
@@ -142,7 +150,6 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			for _, guild := range cs.manager.Sandwich.State.Guilds {
 				shardInt, err := getShardIDFromGuildID(guild.ID.String(), int(s.shard[1]))
 				if err != nil {
-					cs.manager.Sandwich.State.guildsMu.RUnlock()
 					cs.invalidSession(s, "[Sandwich] Failed to get shard ID from guild ID: "+err.Error(), true)
 					s.cancelFunc()
 					return v
@@ -355,10 +362,17 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 				if identify.Token == cs.expectedToken {
 					s.sessionId = randomHex(12)
+
+					// dpy workaround
+					if identify.Shard[1] == 0 {
+						identify.Shard[1] = cs.manager.noShards
+					}
+
 					s.shard = identify.Shard
 					s.up = true
 
 					cs.manager.Sandwich.Logger.Info().Msgf("Shard %d is now connected with created session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
+					break
 				} else {
 					c.Close(websocket.StatusCode(4000), `[Sandwich] Invalid token`)
 					return errors.New("invalid token")
@@ -405,6 +419,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 					}
 
 					cs.manager.Sandwich.Logger.Info().Msgf("Shard %d is now connected with resumed session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
+					break
 				} else {
 					c.Close(websocket.StatusCode(4000), `[Sandwich] Invalid token`)
 					return errors.New("invalid token")
@@ -436,6 +451,9 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	if !s.resumed {
 		go cs.dispatchInitial(ctx, s)
+	} else {
+		// Send a RESUMED event
+		s.write([]byte(`{"op":0,"d":{},"t":"RESUMED","s":` + strconv.FormatInt(s.seq.Load(), 10) + `}`))
 	}
 
 	go func() {
@@ -466,6 +484,38 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 				if packet.Op == discord.GatewayOpHeartbeat {
 					// cs.manager.Sandwich.Logger.Debug().Msgf("Shard heartbeat recieved for shard %d", s.shard[0])
 					s.write([]byte(fmt.Sprintf(`{"op":11,"s":%d}`, s.seq.Load())))
+				} else {
+					// Send to discord directly
+					cs.manager.Sandwich.Logger.Debug().Msgf("Shard %d received packet: %s", s.shard[0], string(ior))
+
+					cs.manager.shardGroupsMu.RLock()
+
+					cs.manager.Sandwich.Logger.Debug().Msgf("Finding shard")
+
+					for _, sg := range cs.manager.ShardGroups {
+						sg.shardsMu.RLock()
+						for _, sh := range sg.Shards {
+							cs.manager.Sandwich.Logger.Debug().Msgf("Shard ID %d", sh.ShardID)
+							if sh.ShardID == s.shard[0] {
+								cs.manager.Sandwich.Logger.Debug().Msgf("Found shard %d, dispatching event", sh.ShardID)
+
+								sh.wsConnMu.RLock()
+								wsConn := sh.wsConn
+								sh.wsConnMu.RUnlock()
+
+								err = wsConn.Write(ctx, websocket.MessageText, ior)
+								if err != nil {
+									cs.manager.Sandwich.Logger.Error().Msgf("Failed to write to shard %d: %s", sh.ShardID, err.Error())
+								} else {
+									cs.manager.Sandwich.Logger.Debug().Msgf("Sent packet to shard %d", sh.ShardID)
+								}
+								break
+							}
+						}
+						sg.shardsMu.RUnlock()
+					}
+
+					cs.manager.shardGroupsMu.RUnlock()
 				}
 			}
 		}
