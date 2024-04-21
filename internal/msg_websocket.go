@@ -566,7 +566,9 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [rawBytes]: %s", err.Error())
-				continue
+				s.c.Close(websocket.StatusInternalError, "Failed to write message [rawBytes]")
+				s.cancelFunc()
+				return
 			}
 		}
 
@@ -589,7 +591,9 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [serialized]: %s", err.Error())
-				continue
+				s.c.Close(websocket.StatusInternalError, "Failed to write message [serialized]")
+				s.cancelFunc()
+				return
 			}
 		}
 
