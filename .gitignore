@@ -28,3 +28,6 @@ dist
 dist-ssr
 *.local
 out
+
+.venv
+*.py
