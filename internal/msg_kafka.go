@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -83,7 +84,13 @@ func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, manager *Manager, cli
 	return nil
 }
 
-func (kafkaMQ *KafkaMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string, data []byte) error {
+func (kafkaMQ *KafkaMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string) error {
+	data, err := jsoniter.Marshal(packet)
+
+	if err != nil {
+		return err
+	}
+
 	return kafkaMQ.KafkaClient.WriteMessages(
 		ctx,
 		kafka.Message{

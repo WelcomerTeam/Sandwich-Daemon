@@ -10,6 +10,7 @@ import discord.gateway
 import discord.http
 import yarl
 import logging
+import asyncio
 
 
 def patch_with_gateway(env_gateway):
@@ -57,6 +58,7 @@ client = bot(command_prefix="!", intents=discord.Intents.all())
 @client.event
 async def on_ready():
     print(f"We have logged in as {client.user}")
+    await asyncio.sleep(2)
     for g in client.guilds:
         print(f"Connected to {g.name}")
         await g.chunk()

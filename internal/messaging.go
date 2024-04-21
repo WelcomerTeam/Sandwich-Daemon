@@ -7,7 +7,6 @@ import (
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 )
 
 type MQClient interface {
@@ -16,7 +15,7 @@ type MQClient interface {
 	Cluster() string
 
 	Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error
-	Publish(ctx context.Context, packet *sandwich_structs.SandwichPayload, channel string, data []byte) error
+	Publish(ctx context.Context, packet *sandwich_structs.SandwichPayload, channel string) error
 
 	// IsClosed returns true if the connection is closed.
 	IsClosed() bool
@@ -67,16 +66,10 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 
 	packet.Trace["publish"] = discord.Int64(time.Now().Unix())
 
-	payload, err := jsoniter.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("failed to marshal payload: %w", err)
-	}
-
-	err = sh.Manager.ProducerClient.Publish(
+	err := sh.Manager.ProducerClient.Publish(
 		ctx,
 		packet,
 		channelName,
-		payload,
 	)
 	if err != nil {
 		return fmt.Errorf("publishEvent publish: %w", err)

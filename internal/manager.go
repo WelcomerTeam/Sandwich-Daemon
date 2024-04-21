@@ -299,17 +299,12 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	packet.Extra = nil
 	packet.Trace = nil
 
-	payload, err := jsoniter.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("failed to marshal payload: %w", err)
-	}
-
-	err = mg.ProducerClient.Publish(
+	err := mg.ProducerClient.Publish(
 		ctx,
 		packet,
 		channelName,
-		payload,
 	)
+
 	if err != nil {
 		return fmt.Errorf("publishEvent publish: %w", err)
 	}

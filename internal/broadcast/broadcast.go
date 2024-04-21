@@ -49,10 +49,10 @@ func (s *BroadcastServer[T]) CancelSubscription(channel <-chan T) {
 	s.removeListener <- channel
 }
 
-func NewBroadcastServer[T any]() BroadcastServer[T] {
+func NewBroadcastServer[T any](buf int) BroadcastServer[T] {
 	ctx, cancel := context.WithCancel(context.Background())
 	service := BroadcastServer[T]{
-		Source:         make(chan T),
+		Source:         make(chan T, buf),
 		context:        ctx,
 		cancel:         cancel,
 		listeners:      make([]chan T, 0),

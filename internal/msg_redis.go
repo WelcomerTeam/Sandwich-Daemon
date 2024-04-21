@@ -8,6 +8,7 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/go-redis/redis/v8"
+	jsoniter "github.com/json-iterator/go"
 )
 
 func init() {
@@ -72,7 +73,13 @@ func (redisMQ *RedisMQClient) Connect(ctx context.Context, manager *Manager, cli
 	return nil
 }
 
-func (redisMQ *RedisMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string, data []byte) error {
+func (redisMQ *RedisMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string) error {
+	data, err := jsoniter.Marshal(packet)
+
+	if err != nil {
+		return err
+	}
+
 	return redisMQ.redisClient.Publish(
 		ctx,
 		channelName,

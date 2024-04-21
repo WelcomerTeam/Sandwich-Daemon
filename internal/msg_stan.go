@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 )
@@ -103,7 +104,13 @@ func (stanMQ *StanMQClient) Connect(ctx context.Context, manager *Manager, clien
 	return nil
 }
 
-func (stanMQ *StanMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string, data []byte) error {
+func (stanMQ *StanMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string) error {
+	data, err := jsoniter.Marshal(packet)
+
+	if err != nil {
+		return err
+	}
+
 	if stanMQ.async {
 		_, err := stanMQ.StanClient.PublishAsync(
 			channelName,
