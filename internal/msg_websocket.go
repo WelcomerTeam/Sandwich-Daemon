@@ -234,10 +234,6 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			}
 		}
 
-		for _, ch := range guild.Channels {
-			ch.GuildID = &guild.ID
-		}
-
 		serializedGuild, err := jsoniter.Marshal(guild)
 
 		if err != nil {
@@ -333,7 +329,8 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 	})
 
 	// Keep reading messages till we reach an identify
-	for msg := range s.reader.Subscribe() {
+	subChan := s.reader.Subscribe()
+	for msg := range subChan {
 		if msg.message == nil {
 			continue
 		}
@@ -453,6 +450,8 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 				return
 			}
 
+			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d received packet: %v", s.shard[0], payload)
+
 			if payload.Op == discord.GatewayOpHeartbeat {
 				s.writer.Broadcast(&message{
 					rawBytes: []byte(`{"op":11}`),
@@ -497,13 +496,18 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 
 // handleReadMessages handles messages from reader
 func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
+	cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d is now handling read messages", s.shard[0])
 	for msg := range s.reader.Subscribe() {
-		if msg.message == nil {
+		if !s.up {
 			continue
 		}
 
 		// Send to discord directly
-		cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d received packet: %v", s.shard[0], msg)
+		cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v", s.shard[0], msg)
+
+		if msg.message == nil {
+			continue
+		}
 
 		cs.manager.shardGroupsMu.RLock()
 
@@ -631,10 +635,12 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	defer c.Close(websocket.StatusCode(4000), `{"op":9,"d":true}`)
 
 	// Start the reader+writer bit
+	go cs.handleReadMessages(newCtx, s)
+	time.Sleep(50 * time.Millisecond)
 	go cs.writeMessages(newCtx, s)
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	go cs.readMessages(newCtx, s)
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now launched (reader+writer UP) with %d writers and %d readers", s.shard[0], s.writer.ListenersCount(), s.reader.ListenersCount())
 
@@ -648,8 +654,6 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	cs.addSubscriber(s, s.shard)
 	defer cs.deleteSubscriber(s)
-
-	go cs.handleReadMessages(newCtx, s)
 
 	if oldSess != nil {
 		for msg := range oldSess.reader.Subscribe() {

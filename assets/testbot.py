@@ -51,7 +51,7 @@ def patch_with_gateway(env_gateway):
     discord.gateway.ReconnectWebSocket.__init__ = ProductionReconnectWebSocket.__init__
     return ProductionBot
 
-bot = patch_with_gateway("ws://localhost:3220")
+bot = patch_with_gateway("ws://localhost:3600")
 
 client = bot(command_prefix="!", intents=discord.Intents.all())
 
@@ -67,4 +67,4 @@ async def on_ready():
 async def ping(ctx):
     await ctx.send(f"Pong! {ctx.bot.latency}")
 
-client.run(os.environ.get("DISCORD_BOT_TOKEN"), log_level=logging.DEBUG)
+client.run(os.environ.get("DISCORD_BOT_TOKEN"), log_level=logging.INFO)

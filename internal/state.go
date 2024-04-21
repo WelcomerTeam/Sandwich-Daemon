@@ -536,6 +536,9 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 		guildID = discord.Snowflake(0)
 	}
 
+	// Ensure channel has guild id set
+	channel.GuildID = &guildID
+
 	ss.guildChannelsMu.RLock()
 	guildChannels, ok := ss.GuildChannels[guildID]
 	ss.guildChannelsMu.RUnlock()
