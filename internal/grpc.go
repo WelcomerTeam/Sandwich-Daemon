@@ -475,7 +475,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 
 		for _, guild := range grpc.sg.State.Guilds {
 			if requestMatch(request.Query, guild.Name, guild.ID.String()) {
-				grpcGuild, err := pb.GuildToGRPC(grpc.sg.State.GuildFromState(guild))
+				grpcGuild, err := pb.GuildToGRPC(guild)
 				if err == nil {
 					response.Guilds[int64(guild.ID)] = grpcGuild
 				} else {

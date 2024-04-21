@@ -488,7 +488,7 @@ func OnGuildStickersUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sand
 	beforeStickers := beforeGuild.Stickers
 
 	if ok {
-		beforeGuild.Stickers = guildStickersUpdatePayload.Stickers
+		beforeGuild.Stickers = discord.StickerList(guildStickersUpdatePayload.Stickers)
 
 		ctx.Sandwich.State.SetGuild(ctx, beforeGuild)
 	} else {

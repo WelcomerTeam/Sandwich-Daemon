@@ -138,7 +138,7 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
 	shard := cs.getShard(s.shard)
-	guilds := make([]*structs.StateGuild, 0, len(cs.manager.Sandwich.State.Guilds))
+	guilds := make([]*discord.Guild, 0, len(cs.manager.Sandwich.State.Guilds))
 
 	if shard != nil {
 		shard.WaitForReady()
@@ -227,11 +227,15 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			roles := cs.manager.Sandwich.State.GuildRoles[guild.ID]
 			cs.manager.Sandwich.State.guildRolesMu.RUnlock()
 
-			guild.Roles = make([]*structs.StateRole, 0, len(roles.Roles))
+			guild.Roles = make([]*discord.Role, 0, len(roles.Roles))
 			for id, role := range roles.Roles {
 				role.ID = discord.Snowflake(id)
 				guild.Roles = append(guild.Roles, role)
 			}
+		}
+
+		for _, ch := range guild.Channels {
+			ch.GuildID = &guild.ID
 		}
 
 		serializedGuild, err := jsoniter.Marshal(guild)

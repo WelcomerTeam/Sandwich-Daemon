@@ -33,7 +33,7 @@ type StateCtx struct {
 // across all Managers.
 type SandwichState struct {
 	guildsMu sync.RWMutex
-	Guilds   map[discord.Snowflake]*sandwich_structs.StateGuild
+	Guilds   map[discord.Snowflake]*discord.Guild
 
 	guildMembersMu sync.RWMutex
 	GuildMembers   map[discord.Snowflake]*sandwich_structs.StateGuildMembers
@@ -63,7 +63,7 @@ type SandwichState struct {
 func NewSandwichState() *SandwichState {
 	state := &SandwichState{
 		guildsMu: sync.RWMutex{},
-		Guilds:   make(map[discord.Snowflake]*sandwich_structs.StateGuild),
+		Guilds:   make(map[discord.Snowflake]*discord.Guild),
 
 		guildMembersMu: sync.RWMutex{},
 		GuildMembers:   make(map[discord.Snowflake]*sandwich_structs.StateGuildMembers),
