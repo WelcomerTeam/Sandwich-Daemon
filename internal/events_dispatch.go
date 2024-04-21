@@ -159,6 +159,8 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
+	result.KeepOriginalData = true // Chunks should just be raw data send
+
 	var guildMembersChunkPayload discord.GuildMembersChunk
 
 	err = ctx.decodeContent(msg, &guildMembersChunkPayload)

@@ -192,8 +192,12 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	packet.Sequence = msg.Sequence
 	packet.Type = msg.Type
 
-	// Setting result.Data will override what is sent to consumers.
-	packet.Data = result.Data
+	if !result.KeepOriginalData {
+		// Setting result.Data will override what is sent to consumers.
+		packet.Data = result.Data
+	} else {
+		packet.Data = msg.Data
+	}
 
 	// Extra contains any extra information such as before state and if it is a lazy guild.
 	packet.Extra = result.Extra
