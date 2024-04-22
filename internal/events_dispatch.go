@@ -25,7 +25,7 @@ func OnReady(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.S
 
 	ctx.Logger.Info().Msg("Received READY payload")
 	ctx.Shard.IsReady = true
-
+	ctx.ResumeGatewayURL.Store(readyPayload.ResumeGatewayUrl)
 	ctx.SessionID.Store(readyPayload.SessionID)
 
 	ctx.ShardGroup.userMu.Lock()

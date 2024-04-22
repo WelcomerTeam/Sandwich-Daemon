@@ -63,7 +63,8 @@ type Shard struct {
 
 	Logger zerolog.Logger `json:"-"`
 
-	ShardID int32 `json:"shard_id"`
+	ShardID          int32          `json:"shard_id"`
+	ResumeGatewayURL *atomic.String `json:"resume_gateway_url"`
 
 	Sandwich   *Sandwich   `json:"-"`
 	Manager    *Manager    `json:"-"`
@@ -149,8 +150,9 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 
 		channelMu: sync.RWMutex{},
 
-		Sequence:  &atomic.Int32{},
-		SessionID: &atomic.String{},
+		Sequence:         &atomic.Int32{},
+		SessionID:        &atomic.String{},
+		ResumeGatewayURL: &atomic.String{},
 
 		wsConnMu: sync.RWMutex{},
 
@@ -239,15 +241,35 @@ readyConsumer:
 		}
 	}()
 
-	gatewayURL := gatewayURL.String()
+	var origGwUrl = gatewayURL.String()
+	var resumeGwUrl = sh.ResumeGatewayURL.Load()
+	var gwUrl string
 
-	if !sh.hasWsConn() {
-		errorCh, messageCh, err := sh.FeedWebsocket(sh.ctx, gatewayURL, nil)
+	if resumeGwUrl != "" {
+		gwUrl = resumeGwUrl
+
+		sh.Logger.Debug().Str("url", gwUrl).Msg("Resuming shard")
+		sh.ResumeGatewayURL.Store("") // Reset the resume url
+	} else {
+		gwUrl = origGwUrl
+	}
+
+	if !sh.hasWsConn() || gwUrl != origGwUrl {
+		if sh.hasWsConn() {
+			sh.Logger.Debug().Msg("Closing existing websocket connection")
+			err = sh.CloseWS(websocket.StatusInternalError)
+
+			if err != nil {
+				sh.Logger.Error().Err(err).Msg("Failed to close existing websocket connection")
+			}
+		}
+
+		errorCh, messageCh, err := sh.FeedWebsocket(sh.ctx, gwUrl, nil)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to dial gateway")
 
 			go sh.Sandwich.PublishSimpleWebhook(
-				fmt.Sprintf("Failed to dial `%s`", gatewayURL),
+				fmt.Sprintf("Failed to dial `%s`", gwUrl),
 				"`"+err.Error()+"`",
 				fmt.Sprintf(
 					"Manager: %s ShardGroup: %d ShardID: %d/%d",

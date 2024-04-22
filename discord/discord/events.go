@@ -12,12 +12,13 @@ type Hello struct {
 
 // Ready represents when the client has completed the initial handshake.
 type Ready struct {
-	Application Application         `json:"application"`
-	User        User                `json:"user"`
-	SessionID   string              `json:"session_id"`
-	Guilds      []*UnavailableGuild `json:"guilds"`
-	Shard       []int32             `json:"shard,omitempty"`
-	Version     int32               `json:"v"`
+	Application      Application         `json:"application"`
+	User             User                `json:"user"`
+	SessionID        string              `json:"session_id"`
+	Guilds           []*UnavailableGuild `json:"guilds"`
+	Shard            []int32             `json:"shard,omitempty"`
+	Version          int32               `json:"v"`
+	ResumeGatewayUrl string              `json:"resume_gateway_url"`
 }
 
 // Resumed represents the response to a resume event.
