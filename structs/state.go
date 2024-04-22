@@ -2,6 +2,7 @@ package structs
 
 import (
 	"sync"
+	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	jsoniter "github.com/json-iterator/go"
@@ -41,7 +42,7 @@ type StateGuildRoles struct {
 type StateGuildEmojis struct {
 	EmojisMu sync.RWMutex `json:"-"`
 
-	Emojis map[discord.Snowflake]*StateEmoji `json:"emoji"`
+	Emojis map[discord.Snowflake]*discord.Emoji `json:"emoji"`
 }
 
 type StateGuildChannels struct {
@@ -53,50 +54,11 @@ type StateGuildChannels struct {
 type StateGuildVoiceStates struct {
 	VoiceStatesMu sync.RWMutex `json:"-"`
 
-	VoiceStates map[discord.Snowflake]*StateVoiceState `json:"voice_states"`
-}
-
-type StateEmoji struct {
-	ID            discord.Snowflake     `json:"id"`
-	GuildID       discord.Snowflake     `json:"guild_id"`
-	Name          string                `json:"name,omitempty"`
-	Roles         discord.SnowflakeList `json:"roles,omitempty"`
-	UserID        discord.Snowflake     `json:"user"`
-	RequireColons bool                  `json:"require_colons"`
-	Managed       bool                  `json:"managed"`
-	Animated      bool                  `json:"animated"`
-	Available     bool                  `json:"available"`
+	VoiceStates map[discord.Snowflake]*discord.VoiceState `json:"voice_states"`
 }
 
 type StateUser struct {
-	ID            discord.Snowflake       `json:"id"`
-	Username      string                  `json:"username,omitempty"`
-	Discriminator string                  `json:"discriminator,omitempty"`
-	GlobalName    string                  `json:"global_name,omitempty"`
-	Avatar        string                  `json:"avatar,omitempty"`
-	Bot           bool                    `json:"bot"`
-	System        bool                    `json:"system,omitempty"`
-	MFAEnabled    bool                    `json:"mfa_enabled,omitempty"`
-	Banner        string                  `json:"banner,omitempty"`
-	AccentColour  int32                   `json:"accent_color"`
-	Locale        string                  `json:"locale,omitempty"`
-	Verified      bool                    `json:"verified,omitempty"`
-	Email         string                  `json:"email,omitempty"`
-	Flags         discord.UserFlags       `json:"flags,omitempty"`
-	PremiumType   discord.UserPremiumType `json:"premium_type,omitempty"`
-	PublicFlags   discord.UserFlags       `json:"public_flags,omitempty"`
-	DMChannelID   *discord.Snowflake      `json:"dm_channel_id,omitempty"`
-}
+	*discord.User
 
-type StateVoiceState struct {
-	ChannelID               discord.Snowflake  `json:"channel_id"`
-	SessionID               string             `json:"session_id"`
-	Deaf                    bool               `json:"deaf"`
-	Mute                    bool               `json:"mute"`
-	SelfDeaf                bool               `json:"self_deaf"`
-	SelfMute                bool               `json:"self_mute"`
-	SelfStream              bool               `json:"self_stream"`
-	SelfVideo               bool               `json:"self_video"`
-	Suppress                bool               `json:"suppress"`
-	RequestToSpeakTimestamp *discord.Timestamp `json:"request_to_speak_timestamp,omitempty"`
+	LastUpdated time.Time `json:"__sandwich_last_updated,omitempty"`
 }

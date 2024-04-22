@@ -499,40 +499,18 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 			// Send to discord directly
 			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v", s.shard[0], msg)
 
-			cs.manager.shardGroupsMu.RLock()
+			sh := cs.getShard(s.shard)
 
-			for _, sg := range cs.manager.ShardGroups {
-				sg.shardsMu.RLock()
-				for _, sh := range sg.Shards {
-					if sh.ShardID == s.shard[0] {
-						cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Found shard %d, dispatching event", sh.ShardID)
-
-						sh.wsConnMu.RLock()
-						wsConn := sh.wsConn
-						sh.wsConnMu.RUnlock()
-
-						msg.message.Sequence = s.seq
-
-						serializedMessage, err := jsoniter.Marshal(msg.message)
-
-						if err != nil {
-							cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal message: %s", err.Error())
-							break
-						}
-
-						err = wsConn.Write(ctx, websocket.MessageText, serializedMessage)
-						if err != nil {
-							cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write to shard %d: %s", sh.ShardID, err.Error())
-						} else {
-							cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Sent packet to shard %d", sh.ShardID)
-						}
-						break
-					}
-				}
-				sg.shardsMu.RUnlock()
+			if sh == nil {
+				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d is nil", s.shard[0])
+				continue
 			}
 
-			cs.manager.shardGroupsMu.RUnlock()
+			err := sh.SendEvent(ctx, msg.message.Op, msg.message.Data)
+
+			if err != nil {
+				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to send event: %s", err.Error())
+			}
 		}
 	}
 }
