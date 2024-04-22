@@ -554,54 +554,55 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber, msg
 
 // writeMessages reads messages from the writer and sends them to the WebSocket
 func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
-	for msg := range s.writer {
+	for {
 		select {
+		// Case 1: Context is cancelled
 		case <-ctx.Done():
 			return
-		default:
-		}
+		// Case 2: Message is received
+		case msg := <-s.writer:
+			if len(msg.rawBytes) > 0 {
+				err := s.c.Write(ctx, websocket.MessageText, msg.rawBytes)
 
-		if len(msg.rawBytes) > 0 {
-			err := s.c.Write(ctx, websocket.MessageText, msg.rawBytes)
+				if err != nil {
+					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [rawBytes]: %s", err.Error())
+					s.c.Close(websocket.StatusInternalError, "Failed to write message [rawBytes]")
+					s.cancelFunc()
+					return
+				}
+			}
 
-			if err != nil {
-				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [rawBytes]: %s", err.Error())
-				s.c.Close(websocket.StatusInternalError, "Failed to write message [rawBytes]")
+			if msg.message != nil {
+				if msg.message.Op == discord.GatewayOpDispatch {
+					msg.message.Sequence = s.seq
+					s.seq++
+				} else {
+					msg.message.Sequence = 0
+				}
+
+				serializedMessage, err := jsoniter.Marshal(msg.message)
+
+				if err != nil {
+					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal message: %s", err.Error())
+					continue
+				}
+
+				err = s.c.Write(ctx, websocket.MessageText, serializedMessage)
+
+				if err != nil {
+					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [serialized]: %s", err.Error())
+					s.c.Close(websocket.StatusInternalError, "Failed to write message [serialized]")
+					s.cancelFunc()
+					return
+				}
+			}
+
+			if msg.closeCode != 0 {
+				s.up = false
+				s.c.Close(msg.closeCode, msg.closeString)
 				s.cancelFunc()
 				return
 			}
-		}
-
-		if msg.message != nil {
-			if msg.message.Op == discord.GatewayOpDispatch {
-				msg.message.Sequence = s.seq
-				s.seq++
-			} else {
-				msg.message.Sequence = 0
-			}
-
-			serializedMessage, err := jsoniter.Marshal(msg.message)
-
-			if err != nil {
-				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal message: %s", err.Error())
-				continue
-			}
-
-			err = s.c.Write(ctx, websocket.MessageText, serializedMessage)
-
-			if err != nil {
-				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [serialized]: %s", err.Error())
-				s.c.Close(websocket.StatusInternalError, "Failed to write message [serialized]")
-				s.cancelFunc()
-				return
-			}
-		}
-
-		if msg.closeCode != 0 {
-			s.up = false
-			s.c.Close(msg.closeCode, msg.closeString)
-			s.cancelFunc()
-			return
 		}
 	}
 
