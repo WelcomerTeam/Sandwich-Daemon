@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	"github.com/WelcomerTeam/Sandwich-Daemon/internal/broadcast"
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"nhooyr.io/websocket"
@@ -94,7 +93,7 @@ type subscriber struct {
 	up         bool
 	resumed    bool
 	seq        int32
-	reader     broadcast.BroadcastServer[*message]
+	reader     chan *message
 	writer     chan *message
 }
 
@@ -329,104 +328,100 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 	}
 
 	// Keep reading messages till we reach an identify
-	subChan := s.reader.Subscribe()
-	for msg := range subChan {
-		if msg.message == nil {
-			continue
-		}
-
-		packet := msg.message
-
-		// Read an identify packet
-		//
-		// Note that resume is not supported at this time
-		if packet.Op == discord.GatewayOpIdentify {
-			var identify struct {
-				Token string   `json:"token"`
-				Shard [2]int32 `json:"shard"`
-			}
-
-			err := jsoniter.Unmarshal(packet.Data, &identify)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal identify packet: %w", err)
-			}
-
-			identify.Token = strings.Replace(identify.Token, "Bot ", "", 1)
-
-			if identify.Token == cs.expectedToken {
-				s.sessionId = randomHex(12)
-
-				// dpy workaround
-				if identify.Shard[1] == 0 {
-					identify.Shard[1] = cs.manager.noShards
-				}
-
-				s.shard = identify.Shard
-				s.up = true
-
-				cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now identified with created session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
-				return nil, nil
-			} else {
-				return nil, errors.New("invalid token")
-			}
-		} else if packet.Op == discord.GatewayOpResume {
-			var resume struct {
-				Token     string `json:"token"`
-				SessionID string `json:"session_id"`
-				Seq       int32  `json:"seq"`
-			}
-
-			err := jsoniter.Unmarshal(packet.Data, &resume)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal resume packet: %w", err)
-			}
-
-			resume.Token = strings.Replace(resume.Token, "Bot ", "", 1)
-
-			if resume.Token == cs.expectedToken {
-				// Find session with same session id
-				cs.subscribersMu.RLock()
-				for _, shardSubs := range cs.subscribers {
-					for _, oldSess := range shardSubs {
-						if s.sessionId == resume.SessionID {
-							cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now identified with resumed session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
-							s.seq = resume.Seq
-							s.shard = oldSess.shard
-							s.resumed = true
-							s.up = true
-							cs.subscribersMu.RUnlock()
-							return oldSess, nil
-						}
-					}
-				}
-				cs.subscribersMu.RUnlock()
-
-				if !s.up {
-					return nil, errors.New("invalid session id")
-				}
-			} else {
-				return nil, errors.New("invalid token")
-			}
-		}
-
-		if s.up {
-			break
-		}
-
+	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		default:
+		case <-time.After(5 * time.Second):
+			return nil, errors.New("timed out waiting for identify")
+		case msg := <-s.reader:
+			if msg.message == nil {
+				continue
+			}
+
+			packet := msg.message
+
+			// Read an identify packet
+			//
+			// Note that resume is not supported at this time
+			if packet.Op == discord.GatewayOpIdentify {
+				var identify struct {
+					Token string   `json:"token"`
+					Shard [2]int32 `json:"shard"`
+				}
+
+				err := jsoniter.Unmarshal(packet.Data, &identify)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal identify packet: %w", err)
+				}
+
+				identify.Token = strings.Replace(identify.Token, "Bot ", "", 1)
+
+				if identify.Token == cs.expectedToken {
+					s.sessionId = randomHex(12)
+
+					// dpy workaround
+					if identify.Shard[1] == 0 {
+						identify.Shard[1] = cs.manager.noShards
+					}
+
+					s.shard = identify.Shard
+					s.up = true
+
+					cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now identified with created session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
+					return nil, nil
+				} else {
+					return nil, errors.New("invalid token")
+				}
+			} else if packet.Op == discord.GatewayOpResume {
+				var resume struct {
+					Token     string `json:"token"`
+					SessionID string `json:"session_id"`
+					Seq       int32  `json:"seq"`
+				}
+
+				err := jsoniter.Unmarshal(packet.Data, &resume)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal resume packet: %w", err)
+				}
+
+				resume.Token = strings.Replace(resume.Token, "Bot ", "", 1)
+
+				if resume.Token == cs.expectedToken {
+					// Find session with same session id
+					cs.subscribersMu.RLock()
+					for _, shardSubs := range cs.subscribers {
+						for _, oldSess := range shardSubs {
+							if s.sessionId == resume.SessionID {
+								cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now identified with resumed session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
+								s.seq = resume.Seq
+								s.shard = oldSess.shard
+								s.resumed = true
+								s.up = true
+								cs.subscribersMu.RUnlock()
+								return oldSess, nil
+							}
+						}
+					}
+					cs.subscribersMu.RUnlock()
+
+					if !s.up {
+						return nil, errors.New("invalid session id")
+					}
+				} else {
+					return nil, errors.New("invalid token")
+				}
+			}
 		}
 	}
-
-	return nil, nil
 }
 
 // reader reads messages from subscribe and sends them to the reader
+// Note that there must be only one reader reading from the goroutine
 func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 	for {
 		typ, ior, err := s.c.Read(ctx)
+
 		if err != nil {
 			s.cancelFunc()
 			return
@@ -457,15 +452,8 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 					rawBytes: []byte(`{"op":11}`),
 				}
 			} else {
-				s.reader.Broadcast(&message{
+				s.reader <- &message{
 					message: payload,
-				})
-
-				// Workaround bug where handlereadmessages does not get called
-				if s.up {
-					go cs.handleReadMessages(ctx, s, &message{
-						message: payload,
-					})
 				}
 			}
 		case websocket.MessageBinary:
@@ -493,15 +481,8 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 					rawBytes: []byte(`{"op":11}`),
 				}
 			} else {
-				s.reader.Broadcast(&message{
+				s.reader <- &message{
 					message: payload,
-				})
-
-				// Workaround bug where handlereadmessages does not get called
-				if s.up {
-					go cs.handleReadMessages(ctx, s, &message{
-						message: payload,
-					})
 				}
 			}
 		}
@@ -509,47 +490,51 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 }
 
 // handleReadMessages handles messages from reader
-func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber, msg *message) {
-	// Send to discord directly
-	cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v", s.shard[0], msg)
+func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg := <-s.reader:
+			// Send to discord directly
+			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v", s.shard[0], msg)
 
-	cs.manager.shardGroupsMu.RLock()
+			cs.manager.shardGroupsMu.RLock()
 
-	cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Finding shard")
+			for _, sg := range cs.manager.ShardGroups {
+				sg.shardsMu.RLock()
+				for _, sh := range sg.Shards {
+					if sh.ShardID == s.shard[0] {
+						cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Found shard %d, dispatching event", sh.ShardID)
 
-	for _, sg := range cs.manager.ShardGroups {
-		sg.shardsMu.RLock()
-		for _, sh := range sg.Shards {
-			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard ID %d", sh.ShardID)
-			if sh.ShardID == s.shard[0] {
-				cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Found shard %d, dispatching event", sh.ShardID)
+						sh.wsConnMu.RLock()
+						wsConn := sh.wsConn
+						sh.wsConnMu.RUnlock()
 
-				sh.wsConnMu.RLock()
-				wsConn := sh.wsConn
-				sh.wsConnMu.RUnlock()
+						msg.message.Sequence = s.seq
 
-				msg.message.Sequence = s.seq
+						serializedMessage, err := jsoniter.Marshal(msg.message)
 
-				serializedMessage, err := jsoniter.Marshal(msg.message)
+						if err != nil {
+							cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal message: %s", err.Error())
+							break
+						}
 
-				if err != nil {
-					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal message: %s", err.Error())
-					break
+						err = wsConn.Write(ctx, websocket.MessageText, serializedMessage)
+						if err != nil {
+							cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write to shard %d: %s", sh.ShardID, err.Error())
+						} else {
+							cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Sent packet to shard %d", sh.ShardID)
+						}
+						break
+					}
 				}
-
-				err = wsConn.Write(ctx, websocket.MessageText, serializedMessage)
-				if err != nil {
-					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write to shard %d: %s", sh.ShardID, err.Error())
-				} else {
-					cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Sent packet to shard %d", sh.ShardID)
-				}
-				break
+				sg.shardsMu.RUnlock()
 			}
-		}
-		sg.shardsMu.RUnlock()
-	}
 
-	cs.manager.shardGroupsMu.RUnlock()
+			cs.manager.shardGroupsMu.RUnlock()
+		}
+	}
 }
 
 // writeMessages reads messages from the writer and sends them to the WebSocket
@@ -619,7 +604,7 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var c *websocket.Conn
 	s := &subscriber{
-		reader: broadcast.NewBroadcastServer[*message](cs.subscriberMessageBuffer),
+		reader: make(chan *message, cs.subscriberMessageBuffer),
 		writer: make(chan *message, cs.subscriberMessageBuffer),
 	}
 
@@ -644,9 +629,9 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	// Start the reader+writer bit
 	go cs.writeMessages(newCtx, s)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	go cs.readMessages(newCtx, s)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now launched (reader+writer UP)", s.shard[0])
 
@@ -661,8 +646,14 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	cs.addSubscriber(s, s.shard)
 	defer cs.deleteSubscriber(s)
 
+	// SAFETY: at this point, the identifyClient loop has ended, so there should be no more subscribers to reader
+	//
+	// Calling handleReadMessages is hence safe
+	go cs.handleReadMessages(newCtx, s)
+
 	if oldSess != nil {
-		for msg := range oldSess.reader.Subscribe() {
+		cs.invalidSession(oldSess, "New session identified", true)
+		for msg := range oldSess.reader {
 			select {
 			case <-newCtx.Done():
 				return newCtx.Err()

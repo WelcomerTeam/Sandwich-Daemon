@@ -67,4 +67,4 @@ async def on_ready():
 async def ping(ctx):
     await ctx.send(f"Pong! {ctx.bot.latency}")
 
-client.run(os.environ.get("DISCORD_BOT_TOKEN"), log_level=logging.DEBUG)
+client.run(os.environ.get("DISCORD_BOT_TOKEN"), log_level=logging.INFO)
