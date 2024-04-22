@@ -1,5 +1,5 @@
 import discord
-from discord.ext.commands import Bot
+from discord.ext.commands import AutoShardedBot as Bot
 import os
 import re
 from collections import namedtuple
@@ -61,10 +61,10 @@ async def on_ready():
     await asyncio.sleep(2)
     for g in client.guilds:
         print(f"Connected to {g.name}")
-        await g.chunk()
+        #await g.chunk()
 
 @client.command()
 async def ping(ctx):
-    await ctx.send(f"Pong! {ctx.bot.latency}")
+    await ctx.send(f"Pong! {ctx.bot.latency} {len(ctx.bot.guilds)}")
 
 client.run(os.environ.get("DISCORD_BOT_TOKEN"), log_level=logging.INFO)

@@ -137,3 +137,15 @@ func (s ActivityList) MarshalJSON() ([]byte, error) {
 	// Just marshal normally
 	return jsoniter.Marshal([]*Activity(s))
 }
+
+type PresenceUpdateList []*PresenceUpdate
+
+func (p PresenceUpdateList) MarshalJSON() ([]byte, error) {
+	// If len(p) == 0, return []byte("[]"), nil
+	if len(p) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return jsoniter.Marshal([]*PresenceUpdate(p))
+}

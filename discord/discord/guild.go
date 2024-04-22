@@ -99,7 +99,7 @@ type Guild struct {
 	Splash                      string                     `json:"splash,omitempty"`
 	DiscoverySplash             string                     `json:"discovery_splash,omitempty"`
 	Region                      string                     `json:"region"`
-	Presences                   []*PresenceUpdate          `json:"presences"`
+	Presences                   PresenceUpdateList         `json:"presences"`
 	GuildScheduledEvents        ScheduledEventList         `json:"guild_scheduled_events"`
 	Stickers                    StickerList                `json:"stickers"`
 	Features                    StringList                 `json:"features"`
