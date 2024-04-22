@@ -23,7 +23,7 @@ var null = []byte("null")
 type Snowflake int64
 
 func (s *Snowflake) UnmarshalJSON(b []byte) error {
-	if !bytes.Equal(b, null) {
+	if !bytes.Equal(b, null) || len(b) < 2 {
 		i, err := strconv.ParseInt(gotils_strconv.B2S(b[1:len(b)-1]), decimalBase, bitSize)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal json: %w", err)
