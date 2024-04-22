@@ -153,7 +153,7 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 	readyPayload := map[string]any{
 		"v":          10,
 		"user":       cs.manager.User,
-		"session_id": s.sh.SessionID,
+		"session_id": s.sessionId,
 		"shard":      []int32{s.shard[0], s.shard[1]},
 		"application": map[string]any{
 			"id":    cs.manager.User.ID,
