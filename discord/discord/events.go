@@ -136,7 +136,7 @@ type GuildMembersChunk struct {
 	Nonce      string           `json:"nonce"`
 	Members    []*GuildMember   `json:"members"`
 	NotFound   []Snowflake      `json:"not_found,omitempty"`
-	Presences  []PresenceStatus `json:"presences,omitempty"`
+	Presences  []PresenceUpdate `json:"presences,omitempty"`
 	GuildID    Snowflake        `json:"guild_id"`
 	ChunkIndex int32            `json:"chunk_index"`
 	ChunkCount int32            `json:"chunk_count"`
@@ -233,7 +233,7 @@ type MessageReactionRemoveEmoji struct {
 // PresenceUpdate represents a presence update event.
 type PresenceUpdate struct {
 	User         *User          `json:"user"`
-	ClientStatus *ClientStatus  `json:"clienbt_status"`
+	ClientStatus *ClientStatus  `json:"client_status"`
 	Status       PresenceStatus `json:"status"`
 	Activities   []*Activity    `json:"activities"`
 	GuildID      Snowflake      `json:"guild_id"`
