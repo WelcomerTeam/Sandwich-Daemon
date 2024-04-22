@@ -426,7 +426,7 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 			now := time.Now().UTC()
 			sh.LastHeartbeatSent.Store(now)
 
-			if err != nil || now.Sub(sh.LastHeartbeatAck.Load()) > sh.HeartbeatFailureInterval {
+			if err != nil || (now.Sub(sh.LastHeartbeatAck.Load()) > sh.HeartbeatFailureInterval) {
 				if err != nil {
 					sh.Logger.Error().Err(err).Msg("Failed to heartbeat. Reconnecting")
 
@@ -444,12 +444,7 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 					)
 				} else {
 					sh.Logger.Warn().Msg("Failed to ack and passed heartbeat failure interval")
-
-					if err != nil {
-						err = fmt.Errorf("failed to ack and passed heartbeat failure interval: %w", err)
-					} else {
-						err = fmt.Errorf("failed to ack and passed heartbeat failure interval")
-					}
+					err = fmt.Errorf("failed to ack and passed heartbeat failure interval")
 
 					go sh.Sandwich.PublishSimpleWebhook(
 						"Failed to ack and passed heartbeat failure interval",
