@@ -24,9 +24,7 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Gui
 
 // SetGuild creates or updates a guild entry in the cache.
 func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
-	ctx.ShardGroup.guildsMu.Lock()
-	ctx.ShardGroup.Guilds[guild.ID] = true
-	ctx.ShardGroup.guildsMu.Unlock()
+	ctx.ShardGroup.Guilds.Store(guild.ID, true)
 
 	ss.guildsMu.Lock()
 	ss.Guilds[guild.ID] = guild
@@ -61,9 +59,7 @@ func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
 	ss.guildsMu.Unlock()
 
 	if !ctx.Stateless {
-		ctx.ShardGroup.guildsMu.Lock()
-		delete(ctx.ShardGroup.Guilds, guildID)
-		ctx.ShardGroup.guildsMu.Unlock()
+		ctx.ShardGroup.Guilds.Delete(guildID)
 	}
 
 	ss.RemoveAllGuildRoles(guildID)

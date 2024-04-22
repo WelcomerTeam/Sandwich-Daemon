@@ -15,6 +15,7 @@ import (
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/czlib"
 	jsoniter "github.com/json-iterator/go"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"go.uber.org/atomic"
@@ -81,16 +82,13 @@ type Shard struct {
 	HeartbeatFailureInterval time.Duration `json:"-"`
 
 	// Map of guilds that are currently unavailable.
-	unavailableMu sync.RWMutex
-	Unavailable   map[discord.Snowflake]bool `json:"unavailable"`
+	Unavailable *csmap.CsMap[discord.Snowflake, bool] `json:"unavailable"`
 
 	// Map of guilds that have were present in ready and not received yet.
-	lazyMu sync.RWMutex
-	Lazy   map[discord.Snowflake]bool `json:"lazy"`
+	Lazy *csmap.CsMap[discord.Snowflake, bool] `json:"lazy"`
 
 	// Stores a local list of all guilds in the shard.
-	guildsMu sync.RWMutex
-	Guilds   map[discord.Snowflake]bool `json:"guilds"`
+	Guilds *csmap.CsMap[discord.Snowflake, bool] `json:"guilds"`
 
 	statusMu sync.RWMutex
 	Status   sandwich_structs.ShardStatus `json:"status"`
@@ -136,14 +134,17 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		LastHeartbeatAck:  &atomic.Time{},
 		LastHeartbeatSent: &atomic.Time{},
 
-		unavailableMu: sync.RWMutex{},
-		Unavailable:   make(map[discord.Snowflake]bool),
+		Unavailable: csmap.Create(
+			csmap.WithSize[discord.Snowflake, bool](1000),
+		),
 
-		lazyMu: sync.RWMutex{},
-		Lazy:   make(map[discord.Snowflake]bool),
+		Lazy: csmap.Create(
+			csmap.WithSize[discord.Snowflake, bool](1000),
+		),
 
-		guildsMu: sync.RWMutex{},
-		Guilds:   make(map[discord.Snowflake]bool),
+		Guilds: csmap.Create(
+			csmap.WithSize[discord.Snowflake, bool](1000),
+		),
 
 		statusMu: sync.RWMutex{},
 		Status:   sandwich_structs.ShardStatusIdle,
@@ -934,17 +935,14 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 }
 
 func (sh *Shard) ChunkAllGuilds() {
-	sh.guildsMu.RLock()
-
-	guilds := make([]discord.Snowflake, len(sh.Guilds))
+	guilds := make([]discord.Snowflake, sh.Guilds.Count())
 	i := 0
 
-	for guildID := range sh.Guilds {
+	sh.Guilds.Range(func(guildID discord.Snowflake, _ bool) bool {
 		guilds[i] = guildID
 		i++
-	}
-
-	sh.guildsMu.RUnlock()
+		return false
+	})
 
 	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Started chunking all guilds")
 

@@ -8,6 +8,7 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/net/context"
@@ -30,14 +31,14 @@ type ShardGroup struct {
 
 	ID int32 `json:"id"`
 
-	ShardCount int32   `json:"shard_count"`
-	ShardIDs   []int32 `json:"shard_ids"`
+	ShardCount int32 `json:"shard_count"`
 
-	shardsMu sync.RWMutex     `json:"-"`
-	Shards   map[int32]*Shard `json:"shards"`
+	shardIdsMu sync.RWMutex `json:"-"`
+	ShardIDs   []int32      `json:"shard_ids"`
 
-	guildsMu sync.RWMutex               `json:"-"`
-	Guilds   map[discord.Snowflake]bool `json:"guilds"`
+	Shards *csmap.CsMap[int32, *Shard] `json:"shards"`
+
+	Guilds *csmap.CsMap[discord.Snowflake, bool] `json:"guilds"`
 
 	ReadyWait *sync.WaitGroup `json:"-"`
 
@@ -65,13 +66,17 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 		ID: shardGroupID,
 
 		ShardCount: shardCount,
+
+		shardIdsMu: sync.RWMutex{},
 		ShardIDs:   shardIDs,
 
-		shardsMu: sync.RWMutex{},
-		Shards:   make(map[int32]*Shard),
+		Shards: csmap.Create(
+			csmap.WithSize[int32, *Shard](1000),
+		),
 
-		guildsMu: sync.RWMutex{},
-		Guilds:   make(map[discord.Snowflake]bool),
+		Guilds: csmap.Create(
+			csmap.WithSize[discord.Snowflake, bool](1000),
+		),
 
 		statusMu: sync.RWMutex{},
 		Status:   sandwich_structs.ShardGroupStatusIdle,
@@ -106,18 +111,22 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 		Int("shardIds", len(sg.ShardIDs)).
 		Msg("Starting shardgroup")
 
-	sg.shardsMu.Lock()
+	sg.shardIdsMu.Lock()
 	for _, shardID := range sg.ShardIDs {
 		shard := sg.NewShard(shardID)
-		sg.Shards[shardID] = shard
+		sg.Shards.Store(shardID, shard)
 	}
-	sg.shardsMu.Unlock()
+	sg.shardIdsMu.Unlock()
 
 	if len(sg.ShardIDs) == 0 {
 		return nil, ErrMissingShards
 	}
 
-	initialShard := sg.Shards[sg.ShardIDs[0]]
+	initialShard, ok := sg.Shards.Load(sg.ShardIDs[0])
+
+	if !ok {
+		return nil, ErrNoShardPresent
+	}
 
 	sg.SetStatus(sandwich_structs.ShardGroupStatusConnecting)
 
@@ -158,9 +167,15 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 		connectGroup.Add(1)
 
 		go func(shardID int32) {
-			sg.shardsMu.RLock()
-			shard := sg.Shards[shardID]
-			sg.shardsMu.RUnlock()
+			shard, ok := sg.Shards.Load(shardID)
+
+			if !ok {
+				sg.Logger.Error().
+					Int32("shardId", shardID).
+					Msg("Failed to load shard")
+				connectGroup.Done()
+				return
+			}
 
 			for {
 				shardErr := shard.Connect()
@@ -185,13 +200,18 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	sg.SetStatus(sandwich_structs.ShardGroupStatusConnected)
 
 	go func(sg *ShardGroup) {
-		sg.shardsMu.RLock()
+		sg.shardIdsMu.RLock()
 		for _, shardID := range sg.ShardIDs {
-			shard := sg.Shards[shardID]
+			shard, ok := sg.Shards.Load(shardID)
+
+			if !ok {
+				sg.Logger.Error().Int32("shardId", shardID).Msg("Failed to load shard")
+				continue
+			}
 			sg.WaitingFor.Store(shardID)
 			shard.WaitForReady()
 		}
-		sg.shardsMu.RUnlock()
+		sg.shardIdsMu.RUnlock()
 
 		sg.Logger.Info().Msg("All shards are now ready")
 
@@ -224,22 +244,20 @@ func (sg *ShardGroup) Close() {
 
 	closeWaiter := sync.WaitGroup{}
 
-	sg.shardsMu.RLock()
-	for _, sh := range sg.Shards {
+	sg.Shards.Range(func(i int32, sh *Shard) bool {
 		closeWaiter.Add(1)
 
 		go func(sh *Shard) {
 			sh.Close(websocket.StatusNormalClosure)
 			closeWaiter.Done()
 		}(sh)
-	}
-	sg.shardsMu.RUnlock()
+
+		return false
+	})
 
 	closeWaiter.Wait()
 
-	sg.guildsMu.Lock()
-	sg.Guilds = make(map[discord.Snowflake]bool)
-	sg.guildsMu.Unlock()
+	sg.Guilds.Clear()
 
 	sg.SetStatus(sandwich_structs.ShardGroupStatusClosed)
 }

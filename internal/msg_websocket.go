@@ -90,6 +90,7 @@ type subscriber struct {
 	cancelFunc context.CancelFunc
 	sessionId  string
 	shard      [2]int32
+	sh         *Shard
 	up         bool
 	resumed    bool
 	seq        int32
@@ -119,15 +120,15 @@ func (cs *chatServer) invalidSession(s *subscriber, reason string, resumable boo
 func (cs *chatServer) getShard(shard [2]int32) *Shard {
 	var shardRes *Shard
 	cs.manager.ShardGroups.Range(func(k int32, sg *ShardGroup) bool {
-		sg.shardsMu.RLock()
-		for _, sh := range sg.Shards {
+		sg.Shards.Range(func(i int32, sh *Shard) bool {
 			if sh.ShardID == shard[0] {
 				shardRes = sh
 				return true
 			}
-		}
-		sg.shardsMu.RUnlock()
-		return false
+			return false
+		})
+
+		return shardRes != nil
 	})
 
 	return shardRes
@@ -136,21 +137,15 @@ func (cs *chatServer) getShard(shard [2]int32) *Shard {
 func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error {
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
-	shard := cs.getShard(s.shard)
 	guilds := make([]*discord.Guild, 0, len(cs.manager.Sandwich.State.Guilds))
 
-	if shard != nil {
-		shard.WaitForReady()
-	} else {
-		cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is nil", s.shard[0])
-
-	}
+	s.sh.WaitForReady()
 
 	// First send READY event with our initial state
 	readyPayload := map[string]any{
 		"v":          10,
 		"user":       cs.manager.User,
-		"session_id": shard.SessionID,
+		"session_id": s.sh.SessionID,
 		"shard":      []int32{s.shard[0], s.shard[1]},
 		"application": map[string]any{
 			"id":    cs.manager.User.ID,
@@ -499,14 +494,12 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 			// Send to discord directly
 			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v", s.shard[0], msg)
 
-			sh := cs.getShard(s.shard)
-
-			if sh == nil {
+			if s.sh == nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d is nil", s.shard[0])
 				continue
 			}
 
-			err := sh.SendEvent(ctx, msg.message.Op, msg.message.Data)
+			err := s.sh.SendEvent(ctx, msg.message.Op, msg.message.Data)
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to send event: %s", err.Error())
@@ -623,6 +616,14 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	cs.addSubscriber(s, s.shard)
 	defer cs.deleteSubscriber(s)
+
+	s.sh = cs.getShard(s.shard)
+
+	if s.sh == nil {
+		cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d is nil", s.shard[0])
+		cs.invalidSession(s, "Shard is nil", true)
+		return errors.New("shard is nil")
+	}
 
 	// SAFETY: at this point, the identifyClient loop has ended, so there should be no more subscribers to reader
 	//

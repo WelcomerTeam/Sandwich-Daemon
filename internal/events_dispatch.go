@@ -29,31 +29,21 @@ func OnReady(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.S
 	ctx.SessionID.Store(readyPayload.SessionID)
 
 	ctx.ShardGroup.userMu.Lock()
+
 	ctx.ShardGroup.User = &readyPayload.User
 	ctx.Manager.UserID.Store(int64(readyPayload.User.ID))
-
 	ctx.Manager.userMu.Lock()
 	ctx.Manager.User = readyPayload.User
 	ctx.Manager.userMu.Unlock()
 
 	ctx.ShardGroup.userMu.Unlock()
 
-	ctx.lazyMu.Lock()
-	ctx.guildsMu.Lock()
-	ctx.Shard.guildsMu.Lock()
-	ctx.Shard.lazyMu.Lock()
-
 	for _, guild := range readyPayload.Guilds {
-		ctx.Lazy[guild.ID] = true
-		ctx.Guilds[guild.ID] = true
-		ctx.Shard.Guilds[guild.ID] = true
-		ctx.Shard.Lazy[guild.ID] = true
+		ctx.Lazy.Store(guild.ID, true)
+		ctx.Guilds.Store(guild.ID, true)
+		ctx.Shard.Guilds.Store(guild.ID, true)
+		ctx.Shard.Lazy.Store(guild.ID, true)
 	}
-
-	ctx.guildsMu.Unlock()
-	ctx.lazyMu.Unlock()
-	ctx.Shard.guildsMu.Unlock()
-	ctx.lazyMu.Unlock()
 
 	guildCreateEvents := 0
 
@@ -132,15 +122,11 @@ func OnGuildCreate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 
 	ctx.Sandwich.State.SetGuild(ctx, guildCreatePayload)
 
-	ctx.lazyMu.Lock()
-	lazy := ctx.Lazy[guildCreatePayload.ID]
-	delete(ctx.Lazy, guildCreatePayload.ID)
-	ctx.lazyMu.Unlock()
+	lazy, _ := ctx.Lazy.Load(guildCreatePayload.ID)
+	ctx.Lazy.Delete(guildCreatePayload.ID)
 
-	ctx.unavailableMu.Lock()
-	unavailable := ctx.Unavailable[guildCreatePayload.ID]
-	delete(ctx.Unavailable, guildCreatePayload.ID)
-	ctx.unavailableMu.Unlock()
+	unavailable, _ := ctx.Unavailable.Load(guildCreatePayload.ID)
+	ctx.Unavailable.Delete(guildCreatePayload.ID)
 
 	extra, err := makeExtra(map[string]interface{}{
 		"lazy":        lazy,
@@ -390,14 +376,12 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildDeletePayload.ID)
 
 	if guildDeletePayload.Unavailable {
-		ctx.Unavailable[guildDeletePayload.ID] = true
+		ctx.Unavailable.Store(guildDeletePayload.ID, true)
 	} else {
 		// We do not remove the actual guild as other managers may be using it.
 		// Dereferencing it locally ensures that if other managers are using it,
 		// it will stay.
-		ctx.ShardGroup.guildsMu.Lock()
-		delete(ctx.ShardGroup.Guilds, guildDeletePayload.ID)
-		ctx.ShardGroup.guildsMu.Unlock()
+		ctx.ShardGroup.Guilds.Delete(guildDeletePayload.ID)
 	}
 
 	extra, err := makeExtra(map[string]interface{}{

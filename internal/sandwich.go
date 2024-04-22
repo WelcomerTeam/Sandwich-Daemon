@@ -519,13 +519,12 @@ func (sg *Sandwich) cacheEjector() {
 
 		sg.Managers.Range(func(key string, mg *Manager) bool {
 			mg.ShardGroups.Range(func(i int32, sg *ShardGroup) bool {
-				sg.guildsMu.RLock()
-				for guildID, ok := range sg.Guilds {
+				sg.Guilds.Range(func(guildID discord.Snowflake, ok bool) bool {
 					if ok {
 						allGuildIDs[guildID] = true
 					}
-				}
-				sg.guildsMu.RUnlock()
+					return false
+				})
 				return false
 			})
 
@@ -642,11 +641,10 @@ func (sg *Sandwich) prometheusGatherer() {
 
 		sg.Managers.Range(func(key string, manager *Manager) bool {
 			manager.ShardGroups.Range(func(i int32, shardgroup *ShardGroup) bool {
-				shardgroup.shardsMu.RLock()
-				for _, shard := range shardgroup.Shards {
+				shardgroup.Shards.Range(func(i int32, shard *Shard) bool {
 					eventsBuffer += len(shard.MessageCh)
-				}
-				shardgroup.shardsMu.RUnlock()
+					return false
+				})
 				return false
 			})
 			return false

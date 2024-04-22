@@ -421,43 +421,44 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 			continue
 		}
 
-		shardGroup.shardsMu.RLock()
 		statusShardGroup := &sandwich_structs.StatusEndpointShardGroup{
 			ShardGroupID: shardGroup.ID,
-			Shards:       make([][6]int, 0, len(shardGroup.Shards)),
+			Shards:       make([][6]int, 0, shardGroup.Shards.Count()),
 			Status:       shardGroup.Status,
 			Uptime:       int(time.Since(shardGroup.Start.Load()).Seconds()),
 		}
 
-		sortedShardIDs := make([]int, 0, len(shardGroup.Shards))
-		for shardID := range shardGroup.Shards {
-			sortedShardIDs = append(sortedShardIDs, int(shardID))
-		}
+		sortedShardIDs := make([]int, 0, shardGroup.Shards.Count())
+		shardGroup.Shards.Range(func(i int32, shardId *Shard) bool {
+			sortedShardIDs = append(sortedShardIDs, int(i))
+			return false
+		})
 
 		sort.Ints(sortedShardIDs)
 
 		for _, intShardID := range sortedShardIDs {
 			shardID := int32(intShardID)
 
-			shard := shardGroup.Shards[shardID]
+			shard, ok := shardGroup.Shards.Load(shardID)
+
+			if !ok {
+				manager.Logger.Error().Int32("shardID", shardID).Msg("Failed to load shard [getManagerShardGroupStatus]")
+				continue
+			}
 
 			shard.statusMu.RLock()
 			shardStatus := shard.Status
 			shard.statusMu.RUnlock()
 
-			shard.guildsMu.RLock()
-
 			statusShardGroup.Shards = append(statusShardGroup.Shards, [6]int{
 				int(shard.ShardID),
 				int(shardStatus),
 				int(shard.LastHeartbeatAck.Load().Sub(shard.LastHeartbeatSent.Load()).Milliseconds()),
-				len(shard.Guilds),
+				shard.Guilds.Count(),
 				int(time.Since(shard.Start.Load()).Seconds()),
 				int(time.Since(shard.Init.Load()).Seconds()),
 			})
-			shard.guildsMu.RUnlock()
 		}
-		shardGroup.shardsMu.RUnlock()
 
 		shardGroups = append(shardGroups, statusShardGroup)
 	}

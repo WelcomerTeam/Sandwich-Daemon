@@ -612,10 +612,8 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 func (grpc *routeSandwichServer) chunkGuild(guildID discord.Snowflake, alwaysChunk bool) (ok bool, err error) {
 	grpc.sg.Managers.Range(func(key string, manager *Manager) bool {
 		manager.ShardGroups.Range(func(key int32, shardGroup *ShardGroup) bool {
-			shardGroup.shardsMu.RLock()
-			for _, shard := range shardGroup.Shards {
-				shard.guildsMu.RLock()
-				if _, ok := shard.Guilds[guildID]; ok {
+			shardGroup.Shards.Range(func(shardID int32, shard *Shard) bool {
+				if _, ok := shard.Guilds.Load(guildID); ok {
 					err = shard.ChunkGuild(guildID, alwaysChunk)
 					if err != nil {
 						return true
@@ -623,9 +621,8 @@ func (grpc *routeSandwichServer) chunkGuild(guildID discord.Snowflake, alwaysChu
 						return true
 					}
 				}
-				shard.guildsMu.RUnlock()
-			}
-			shardGroup.shardsMu.RUnlock()
+				return false
+			})
 			return false
 		})
 
@@ -661,9 +658,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 		return response, ErrNoShardGroupPresent
 	}
 
-	shardGroup.shardsMu.RLock()
-	shard, ok := shardGroup.Shards[request.Shard]
-	defer shardGroup.shardsMu.RUnlock()
+	shard, ok := shardGroup.Shards.Load(request.Shard)
 
 	if !ok {
 		response.Error = ErrNoShardPresent.Error()
@@ -699,10 +694,8 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 
 	grpc.sg.Managers.Range(func(key string, manager *Manager) bool {
 		manager.ShardGroups.Range(func(key int32, shardGroup *ShardGroup) bool {
-			shardGroup.shardsMu.RLock()
-			for _, shard := range shardGroup.Shards {
-				shard.guildsMu.RLock()
-				if _, ok := shard.Guilds[discord.Snowflake(request.GuildID)]; ok {
+			shardGroup.Shards.Range(func(shardID int32, shard *Shard) bool {
+				if _, ok := shard.Guilds.Load(discord.Snowflake(request.GuildID)); ok {
 					var guildMember *pb.GuildMember
 
 					guildMember_sandwich, ok := shard.Sandwich.State.GetGuildMember(discord.Snowflake(request.GuildID), shard.Manager.User.ID)
@@ -722,9 +715,8 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 						GuildMember: guildMember,
 					})
 				}
-				shard.guildsMu.RUnlock()
-			}
-			shardGroup.shardsMu.RUnlock()
+				return false
+			})
 			return false
 		})
 		return false
