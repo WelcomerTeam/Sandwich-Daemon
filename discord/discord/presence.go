@@ -48,12 +48,13 @@ type Activity struct {
 	State         string        `json:"state"`
 	Type          ActivityType  `json:"type"`
 	Instance      bool          `json:"instance"`
+	CreatedAt     int64         `json:"created_at"`
 }
 
 // Timestamps represents the starting and ending timestamp of an activity.
 type Timestamps struct {
-	Start int64 `json:"start"`
-	End   int64 `json:"end"`
+	Start int64 `json:"start,omitempty"`
+	End   int64 `json:"end,omitempty"`
 }
 
 // Party represents an activity's current party information.
@@ -64,22 +65,22 @@ type Party struct {
 
 // Assets represents an activity's images and their hover texts.
 type Assets struct {
-	LargeImage string `json:"large_image"`
-	LargeText  string `json:"large_text"`
-	SmallImage string `json:"small_image"`
-	SmallText  string `json:"small_text"`
+	LargeImage string `json:"large_image,omitempty"`
+	LargeText  string `json:"large_text,omitempty"`
+	SmallImage string `json:"small_image,omitempty"`
+	SmallText  string `json:"small_text,omitempty"`
 }
 
 // Secrets represents an activity's secrets for Rich Presence joining and spectating.
 type Secrets struct {
-	Join     string `json:"join"`
-	Spectate string `json:"spectate"`
-	Match    string `json:"match"`
+	Join     string `json:"join,omitempty"`
+	Spectate string `json:"spectate,omitempty"`
+	Match    string `json:"match,omitempty"`
 }
 
 // ClientStatus represent's the status of a client.
 type ClientStatus struct {
-	Desktop string `json:"desktop"`
-	Mobile  string `json:"mobile"`
-	Web     string `json:"web"`
+	Desktop string `json:"desktop,omitempty"`
+	Mobile  string `json:"mobile,omitempty"`
+	Web     string `json:"web,omitempty"`
 }
