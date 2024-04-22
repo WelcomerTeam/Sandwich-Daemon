@@ -11,9 +11,7 @@ import (
 // GetGuild returns the guild with the same ID from the cache.
 // Returns a boolean to signify a match or not.
 func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Guild, ok bool) {
-	ss.guildsMu.RLock()
-	guild, ok = ss.Guilds[guildID]
-	ss.guildsMu.RUnlock()
+	guild, ok = ss.Guilds.Load(guildID)
 
 	if !ok {
 		return
@@ -25,10 +23,7 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Gui
 // SetGuild creates or updates a guild entry in the cache.
 func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 	ctx.ShardGroup.Guilds.Store(guild.ID, true)
-
-	ss.guildsMu.Lock()
-	ss.Guilds[guild.ID] = guild
-	ss.guildsMu.Unlock()
+	ss.Guilds.Store(guild.ID, guild)
 
 	for _, role := range guild.Roles {
 		ss.SetGuildRole(ctx, guild.ID, role)
@@ -54,9 +49,7 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 
 // RemoveGuild removes a guild from the cache.
 func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
-	ss.guildsMu.Lock()
-	delete(ss.Guilds, guildID)
-	ss.guildsMu.Unlock()
+	ss.Guilds.Delete(guildID)
 
 	if !ctx.Stateless {
 		ctx.ShardGroup.Guilds.Delete(guildID)
@@ -71,9 +64,7 @@ func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
 // GetGuildMember returns the guildMember with the same ID from the cache. Populated user field from cache.
 // Returns a boolean to signify a match or not.
 func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID discord.Snowflake) (guildMember *discord.GuildMember, ok bool) {
-	ss.guildMembersMu.RLock()
-	guildMembers, ok := ss.GuildMembers[guildID]
-	ss.guildMembersMu.RUnlock()
+	guildMembers, ok := ss.GuildMembers.Load(guildID)
 
 	if !ok {
 		return
@@ -102,9 +93,7 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 		return
 	}
 
-	ss.guildMembersMu.RLock()
-	guildMembers, ok := ss.GuildMembers[guildID]
-	ss.guildMembersMu.RUnlock()
+	guildMembers, ok := ss.GuildMembers.Load(guildID)
 
 	if !ok {
 		guildMembers = &sandwich_structs.StateGuildMembers{
@@ -112,9 +101,8 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 			Members:   make(map[discord.Snowflake]*discord.GuildMember),
 		}
 
-		ss.guildMembersMu.Lock()
-		ss.GuildMembers[guildID] = guildMembers
-		ss.guildMembersMu.Unlock()
+		// Only set if its not already set.
+		ss.GuildMembers.SetIfAbsent(guildID, guildMembers)
 	}
 
 	guildMembers.MembersMu.Lock()
@@ -126,9 +114,7 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 
 // RemoveGuildMember removes a guildMember from the cache.
 func (ss *SandwichState) RemoveGuildMember(guildID discord.Snowflake, guildMemberID discord.Snowflake) {
-	ss.guildMembersMu.RLock()
-	guildMembers, ok := ss.GuildMembers[guildID]
-	ss.guildMembersMu.RUnlock()
+	guildMembers, ok := ss.GuildMembers.Load(guildID)
 
 	if !ok {
 		return
@@ -141,9 +127,7 @@ func (ss *SandwichState) RemoveGuildMember(guildID discord.Snowflake, guildMembe
 
 // GetAllGuildMembers returns all guildMembers of a specific guild from the cache.
 func (ss *SandwichState) GetAllGuildMembers(guildID discord.Snowflake) (guildMembersList []*discord.GuildMember, ok bool) {
-	ss.guildMembersMu.RLock()
-	guildMembers, ok := ss.GuildMembers[guildID]
-	ss.guildMembersMu.RUnlock()
+	guildMembers, ok := ss.GuildMembers.Load(guildID)
 
 	if !ok {
 		return
@@ -161,17 +145,13 @@ func (ss *SandwichState) GetAllGuildMembers(guildID discord.Snowflake) (guildMem
 
 // RemoveAllGuildMembers removes all guildMembers of a specific guild from the cache.
 func (ss *SandwichState) RemoveAllGuildMembers(guildID discord.Snowflake) {
-	ss.guildMembersMu.Lock()
-	delete(ss.GuildMembers, guildID)
-	ss.guildMembersMu.Unlock()
+	ss.GuildMembers.Delete(guildID)
 }
 
 // GetGuildRole returns the role with the same ID from the cache.
 // Returns a boolean to signify a match or not.
 func (ss *SandwichState) GetGuildRole(guildID discord.Snowflake, roleID discord.Snowflake) (role *discord.Role, ok bool) {
-	ss.guildRolesMu.RLock()
-	stateGuildRoles, ok := ss.GuildRoles[roleID]
-	ss.guildRolesMu.RUnlock()
+	stateGuildRoles, ok := ss.GuildRoles.Load(roleID)
 
 	if !ok {
 		return
@@ -190,9 +170,7 @@ func (ss *SandwichState) GetGuildRole(guildID discord.Snowflake, roleID discord.
 
 // SetGuildRole creates or updates a role entry in the cache.
 func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, role *discord.Role) {
-	ss.guildRolesMu.RLock()
-	guildRoles, ok := ss.GuildRoles[guildID]
-	ss.guildRolesMu.RUnlock()
+	guildRoles, ok := ss.GuildRoles.Load(guildID)
 
 	if !ok {
 		guildRoles = &sandwich_structs.StateGuildRoles{
@@ -200,9 +178,7 @@ func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, 
 			Roles:   make(map[discord.Snowflake]*discord.Role),
 		}
 
-		ss.guildRolesMu.Lock()
-		ss.GuildRoles[guildID] = guildRoles
-		ss.guildRolesMu.Unlock()
+		ss.GuildRoles.SetIfAbsent(guildID, guildRoles)
 	}
 
 	guildRoles.RolesMu.Lock()
@@ -212,9 +188,7 @@ func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, 
 
 // RemoveGuildRole removes a role from the cache.
 func (ss *SandwichState) RemoveGuildRole(guildID discord.Snowflake, roleID discord.Snowflake) {
-	ss.guildRolesMu.RLock()
-	guildRoles, ok := ss.GuildRoles[guildID]
-	ss.guildRolesMu.RUnlock()
+	guildRoles, ok := ss.GuildRoles.Load(guildID)
 
 	if !ok {
 		return
@@ -227,9 +201,7 @@ func (ss *SandwichState) RemoveGuildRole(guildID discord.Snowflake, roleID disco
 
 // GetAllGuildRoles returns all guildRoles of a specific guild from the cache.
 func (ss *SandwichState) GetAllGuildRoles(guildID discord.Snowflake) (guildRolesList []*discord.Role, ok bool) {
-	ss.guildRolesMu.RLock()
-	guildRoles, ok := ss.GuildRoles[guildID]
-	ss.guildRolesMu.RUnlock()
+	guildRoles, ok := ss.GuildRoles.Load(guildID)
 
 	if !ok {
 		return
@@ -247,9 +219,7 @@ func (ss *SandwichState) GetAllGuildRoles(guildID discord.Snowflake) (guildRoles
 
 // RemoveGuildRoles removes all guild roles of a specifi guild from the cache.
 func (ss *SandwichState) RemoveAllGuildRoles(guildID discord.Snowflake) {
-	ss.guildRolesMu.Lock()
-	delete(ss.GuildRoles, guildID)
-	ss.guildRolesMu.Unlock()
+	ss.GuildRoles.Delete(guildID)
 }
 
 //
@@ -259,9 +229,7 @@ func (ss *SandwichState) RemoveAllGuildRoles(guildID discord.Snowflake) {
 // GetGuildEmoji returns the emoji with the same ID from the cache. Populated user field from cache.
 // Returns a boolean to signify a match or not.
 func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discord.Snowflake) (guildEmoji *discord.Emoji, ok bool) {
-	ss.guildEmojisMu.RLock()
-	guildEmojis, ok := ss.GuildEmojis[guildID]
-	ss.guildEmojisMu.RUnlock()
+	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
 
 	if !ok {
 		return
@@ -287,9 +255,7 @@ func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discor
 
 // SetGuildEmoji creates or updates a emoji entry in the cache. Adds user in user object to cache.
 func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake, emoji *discord.Emoji) {
-	ss.guildEmojisMu.RLock()
-	guildEmojis, ok := ss.GuildEmojis[guildID]
-	ss.guildEmojisMu.RUnlock()
+	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
 
 	if !ok {
 		guildEmojis = &sandwich_structs.StateGuildEmojis{
@@ -297,9 +263,7 @@ func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake,
 			Emojis:   make(map[discord.Snowflake]*discord.Emoji),
 		}
 
-		ss.guildEmojisMu.Lock()
-		ss.GuildEmojis[guildID] = guildEmojis
-		ss.guildEmojisMu.Unlock()
+		ss.GuildEmojis.SetIfAbsent(guildID, guildEmojis)
 	}
 
 	guildEmojis.EmojisMu.Lock()
@@ -313,9 +277,7 @@ func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake,
 
 // RemoveGuildEmoji removes a emoji from the cache.
 func (ss *SandwichState) RemoveGuildEmoji(guildID discord.Snowflake, emojiID discord.Snowflake) {
-	ss.guildEmojisMu.RLock()
-	guildEmojis, ok := ss.GuildEmojis[guildID]
-	ss.guildEmojisMu.RUnlock()
+	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
 
 	if !ok {
 		return
@@ -328,9 +290,7 @@ func (ss *SandwichState) RemoveGuildEmoji(guildID discord.Snowflake, emojiID dis
 
 // GetAllGuildEmojis returns all guildEmojis on a specific guild from the cache.
 func (ss *SandwichState) GetAllGuildEmojis(guildID discord.Snowflake) (guildEmojisList []*discord.Emoji, ok bool) {
-	ss.guildEmojisMu.RLock()
-	guildEmojis, ok := ss.GuildEmojis[guildID]
-	ss.guildEmojisMu.RUnlock()
+	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
 
 	if !ok {
 		return
@@ -348,9 +308,7 @@ func (ss *SandwichState) GetAllGuildEmojis(guildID discord.Snowflake) (guildEmoj
 
 // RemoveGuildEmojis removes all guildEmojis of a specific guild from the cache.
 func (ss *SandwichState) RemoveAllGuildEmojis(guildID discord.Snowflake) {
-	ss.guildEmojisMu.Lock()
-	delete(ss.GuildEmojis, guildID)
-	ss.guildEmojisMu.Unlock()
+	ss.GuildEmojis.Delete(guildID)
 }
 
 //
@@ -373,9 +331,7 @@ func (ss *SandwichState) UserToState(user *discord.User) (userState *sandwich_st
 // GetUser returns the user with the same ID from the cache.
 // Returns a boolean to signify a match or not.
 func (ss *SandwichState) GetUser(userID discord.Snowflake) (user *discord.User, ok bool) {
-	ss.usersMu.RLock()
-	stateUser, ok := ss.Users[userID]
-	ss.usersMu.RUnlock()
+	stateUser, ok := ss.Users.Load(userID)
 
 	if !ok {
 		return
@@ -393,16 +349,12 @@ func (ss *SandwichState) SetUser(ctx *StateCtx, user *discord.User) {
 		return
 	}
 
-	ss.usersMu.Lock()
-	ss.Users[user.ID] = ss.UserToState(user)
-	ss.usersMu.Unlock()
+	ss.Users.Store(user.ID, ss.UserToState(user))
 }
 
 // RemoveUser removes a user from the cache.
 func (ss *SandwichState) RemoveUser(userID discord.Snowflake) {
-	ss.usersMu.Lock()
-	delete(ss.Users, userID)
-	ss.usersMu.Unlock()
+	ss.Users.Delete(userID)
 }
 
 //
@@ -420,9 +372,7 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 		guildID = discord.Snowflake(0)
 	}
 
-	ss.guildChannelsMu.RLock()
-	stateChannels, ok := ss.GuildChannels[guildID]
-	ss.guildChannelsMu.RUnlock()
+	stateChannels, ok := ss.GuildChannels.Load(guildID)
 
 	if !ok {
 		return guildChannel, false
@@ -465,9 +415,7 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 	// Ensure channel has guild id set
 	channel.GuildID = &guildID
 
-	ss.guildChannelsMu.RLock()
-	guildChannels, ok := ss.GuildChannels[guildID]
-	ss.guildChannelsMu.RUnlock()
+	guildChannels, ok := ss.GuildChannels.Load(guildID)
 
 	if !ok {
 		guildChannels = &sandwich_structs.StateGuildChannels{
@@ -475,9 +423,7 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 			Channels:   make(map[discord.Snowflake]*discord.Channel),
 		}
 
-		ss.guildChannelsMu.Lock()
-		ss.GuildChannels[guildID] = guildChannels
-		ss.guildChannelsMu.Unlock()
+		ss.GuildChannels.SetIfAbsent(guildID, guildChannels)
 	}
 
 	guildChannels.ChannelsMu.Lock()
@@ -501,9 +447,7 @@ func (ss *SandwichState) RemoveGuildChannel(guildIDPtr *discord.Snowflake, chann
 		guildID = discord.Snowflake(0)
 	}
 
-	ss.guildChannelsMu.RLock()
-	guildChannels, ok := ss.GuildChannels[guildID]
-	ss.guildChannelsMu.RUnlock()
+	guildChannels, ok := ss.GuildChannels.Load(guildID)
 
 	if !ok {
 		return
@@ -516,9 +460,7 @@ func (ss *SandwichState) RemoveGuildChannel(guildIDPtr *discord.Snowflake, chann
 
 // GetAllGuildChannels returns all guildChannels of a specific guild from the cache.
 func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildChannelsList []*discord.Channel, ok bool) {
-	ss.guildChannelsMu.RLock()
-	guildChannels, ok := ss.GuildChannels[guildID]
-	ss.guildChannelsMu.RUnlock()
+	guildChannels, ok := ss.GuildChannels.Load(guildID)
 
 	if !ok {
 		return
@@ -536,16 +478,12 @@ func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildCh
 
 // RemoveAllGuildChannels removes all guildChannels of a specific guild from the cache.
 func (ss *SandwichState) RemoveAllGuildChannels(guildID discord.Snowflake) {
-	ss.guildChannelsMu.Lock()
-	delete(ss.GuildChannels, guildID)
-	ss.guildChannelsMu.Unlock()
+	ss.GuildChannels.Delete(guildID)
 }
 
 // GetDMChannel returns the DM channel of a user.
 func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discord.Channel, ok bool) {
-	ss.dmChannelsMu.RLock()
-	dmChannel, ok := ss.dmChannels[userID]
-	ss.dmChannelsMu.RUnlock()
+	dmChannel, ok := ss.DmChannels.Load(userID)
 
 	if !ok || int64(dmChannel.ExpiresAt) < time.Now().Unix() {
 		ok = false
@@ -556,9 +494,7 @@ func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discor
 	channel = dmChannel.Channel
 	dmChannel.ExpiresAt = discord.Int64(time.Now().Add(memberDMExpiration).Unix())
 
-	ss.dmChannelsMu.Lock()
-	ss.dmChannels[userID] = dmChannel
-	ss.dmChannelsMu.Unlock()
+	ss.DmChannels.Store(userID, dmChannel)
 
 	return
 }
@@ -570,23 +506,17 @@ func (ss *SandwichState) AddDMChannel(userID discord.Snowflake, channel *discord
 		ExpiresAt: discord.Int64(time.Now().Add(memberDMExpiration).Unix()),
 	}
 
-	ss.dmChannelsMu.Lock()
-	ss.dmChannels[userID] = dmChannel
-	ss.dmChannelsMu.Unlock()
+	ss.DmChannels.Store(userID, dmChannel)
 }
 
 // RemoveDMChannel removes a DM channel from a user.
 func (ss *SandwichState) RemoveDMChannel(userID discord.Snowflake) {
-	ss.dmChannelsMu.Lock()
-	delete(ss.dmChannels, userID)
-	ss.dmChannelsMu.Unlock()
+	ss.DmChannels.Delete(userID)
 }
 
 // GetUserMutualGuilds returns a list of snowflakes of mutual guilds a member is seen on.
 func (ss *SandwichState) GetUserMutualGuilds(userID discord.Snowflake) (guildIDs []discord.Snowflake, ok bool) {
-	ss.mutualsMu.RLock()
-	mutualGuilds, ok := ss.Mutuals[userID]
-	ss.mutualsMu.RUnlock()
+	mutualGuilds, ok := ss.Mutuals.Load(userID)
 
 	if !ok {
 		return
@@ -608,9 +538,7 @@ func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowfl
 		return
 	}
 
-	ss.mutualsMu.RLock()
-	mutualGuilds, ok := ss.Mutuals[userID]
-	ss.mutualsMu.RUnlock()
+	mutualGuilds, ok := ss.Mutuals.Load(userID)
 
 	if !ok {
 		mutualGuilds = &sandwich_structs.StateMutualGuilds{
@@ -618,9 +546,7 @@ func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowfl
 			Guilds:   make(map[discord.Snowflake]bool),
 		}
 
-		ss.mutualsMu.Lock()
-		ss.Mutuals[userID] = mutualGuilds
-		ss.mutualsMu.Unlock()
+		ss.Mutuals.SetIfAbsent(userID, mutualGuilds)
 	}
 
 	mutualGuilds.GuildsMu.Lock()
@@ -630,9 +556,7 @@ func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowfl
 
 // RemoveUserMutualGuild removes a mutual guild from a user.
 func (ss *SandwichState) RemoveUserMutualGuild(userID discord.Snowflake, guildID discord.Snowflake) {
-	ss.mutualsMu.RLock()
-	mutualGuilds, ok := ss.Mutuals[userID]
-	ss.mutualsMu.RUnlock()
+	mutualGuilds, ok := ss.Mutuals.Load(userID)
 
 	if !ok {
 		return
@@ -661,9 +585,7 @@ func (ss *SandwichState) ParseVoiceState(guildID discord.Snowflake, userID disco
 }
 
 func (ss *SandwichState) GetVoiceState(guildID discord.Snowflake, userID discord.Snowflake) (voiceState *discord.VoiceState, ok bool) {
-	ss.guildVoiceStatesMu.RLock()
-	guildVoiceStates, ok := ss.GuildVoiceStates[guildID]
-	ss.guildVoiceStatesMu.RUnlock()
+	guildVoiceStates, ok := ss.GuildVoiceStates.Load(guildID)
 
 	if !ok {
 		return
@@ -687,9 +609,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 		return
 	}
 
-	ss.guildVoiceStatesMu.RLock()
-	guildVoiceStates, ok := ss.GuildVoiceStates[*voiceState.GuildID]
-	ss.guildVoiceStatesMu.RUnlock()
+	guildVoiceStates, ok := ss.GuildVoiceStates.Load(*voiceState.GuildID)
 
 	if !ok {
 		guildVoiceStates = &sandwich_structs.StateGuildVoiceStates{
@@ -697,9 +617,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 			VoiceStates:   make(map[discord.Snowflake]*discord.VoiceState),
 		}
 
-		ss.guildVoiceStatesMu.Lock()
-		ss.GuildVoiceStates[*voiceState.GuildID] = guildVoiceStates
-		ss.guildVoiceStatesMu.Unlock()
+		ss.GuildVoiceStates.SetIfAbsent(*voiceState.GuildID, guildVoiceStates)
 	}
 
 	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
@@ -739,9 +657,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 }
 
 func (ss *SandwichState) CountMembersForVoiceChannel(guildID discord.Snowflake, channelID discord.Snowflake) int32 {
-	ss.guildVoiceStatesMu.RLock()
-	guildVoiceStates, ok := ss.GuildVoiceStates[guildID]
-	ss.guildVoiceStatesMu.RUnlock()
+	guildVoiceStates, ok := ss.GuildVoiceStates.Load(guildID)
 
 	if !ok {
 		return 0

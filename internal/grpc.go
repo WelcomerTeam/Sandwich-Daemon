@@ -174,13 +174,12 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 	// }
 
 	if hasQuery {
-		grpc.sg.State.usersMu.RLock()
-		for _, user := range grpc.sg.State.Users {
-			if requestMatch(request.Query, user.Username, user.Username+"#"+user.Discriminator, user.ID.String()) {
+		grpc.sg.State.Users.Range(func(key discord.Snowflake, user *sandwich_structs.StateUser) bool {
+			if requestMatch(request.Query, user.Username, user.Username+"#"+user.Discriminator, user.GlobalName, user.ID.String()) {
 				userIDs = append(userIDs, user.ID)
 			}
-		}
-		grpc.sg.State.usersMu.RUnlock()
+			return false
+		})
 	} else {
 		for _, userID := range request.UserIDs {
 			userIDs = append(userIDs, discord.Snowflake(userID))
@@ -464,10 +463,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 
 		request.Query = norm.NFKD.String(request.Query)
 
-		grpc.sg.State.guildsMu.RLock()
-		defer grpc.sg.State.guildsMu.RUnlock()
-
-		for _, guild := range grpc.sg.State.Guilds {
+		grpc.sg.State.Guilds.Range(func(key discord.Snowflake, guild *discord.Guild) bool {
 			if requestMatch(request.Query, guild.Name, guild.ID.String()) {
 				grpcGuild, err := pb.GuildToGRPC(guild)
 				if err == nil {
@@ -476,7 +472,8 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 					grpc.sg.Logger.Warn().Err(err).Msg("Failed to convert discord.Guild to pb.Guild")
 				}
 			}
-		}
+			return false
+		})
 	}
 
 	response.BaseResponse.Ok = true

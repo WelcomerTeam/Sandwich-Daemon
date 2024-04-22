@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"runtime/debug"
-	"sync"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 )
@@ -32,62 +32,62 @@ type StateCtx struct {
 // SandwichState stores the collective state of all ShardGroups
 // across all Managers.
 type SandwichState struct {
-	guildsMu sync.RWMutex
-	Guilds   map[discord.Snowflake]*discord.Guild
+	Guilds *csmap.CsMap[discord.Snowflake, *discord.Guild]
 
-	guildMembersMu sync.RWMutex
-	GuildMembers   map[discord.Snowflake]*sandwich_structs.StateGuildMembers
+	GuildMembers *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildMembers]
 
-	guildChannelsMu sync.RWMutex
-	GuildChannels   map[discord.Snowflake]*sandwich_structs.StateGuildChannels
+	GuildChannels *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildChannels]
 
-	guildRolesMu sync.RWMutex
-	GuildRoles   map[discord.Snowflake]*sandwich_structs.StateGuildRoles
+	GuildRoles *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildRoles]
 
-	guildEmojisMu sync.RWMutex
-	GuildEmojis   map[discord.Snowflake]*sandwich_structs.StateGuildEmojis
+	GuildEmojis *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildEmojis]
 
-	usersMu sync.RWMutex
-	Users   map[discord.Snowflake]*sandwich_structs.StateUser
+	Users *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateUser]
 
-	dmChannelsMu sync.RWMutex
-	dmChannels   map[discord.Snowflake]*sandwich_structs.StateDMChannel
+	DmChannels *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateDMChannel]
 
-	mutualsMu sync.RWMutex
-	Mutuals   map[discord.Snowflake]*sandwich_structs.StateMutualGuilds
+	Mutuals *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateMutualGuilds]
 
-	guildVoiceStatesMu sync.RWMutex
-	GuildVoiceStates   map[discord.Snowflake]*sandwich_structs.StateGuildVoiceStates
+	GuildVoiceStates *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildVoiceStates]
 }
 
 func NewSandwichState() *SandwichState {
 	state := &SandwichState{
-		guildsMu: sync.RWMutex{},
-		Guilds:   make(map[discord.Snowflake]*discord.Guild),
+		Guilds: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *discord.Guild](1000),
+		),
 
-		guildMembersMu: sync.RWMutex{},
-		GuildMembers:   make(map[discord.Snowflake]*sandwich_structs.StateGuildMembers),
+		GuildMembers: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildMembers](1000),
+		),
 
-		guildChannelsMu: sync.RWMutex{},
-		GuildChannels:   make(map[discord.Snowflake]*sandwich_structs.StateGuildChannels),
+		GuildChannels: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildChannels](1000),
+		),
 
-		guildRolesMu: sync.RWMutex{},
-		GuildRoles:   make(map[discord.Snowflake]*sandwich_structs.StateGuildRoles),
+		GuildRoles: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildRoles](1000),
+		),
 
-		guildEmojisMu: sync.RWMutex{},
-		GuildEmojis:   make(map[discord.Snowflake]*sandwich_structs.StateGuildEmojis),
+		GuildEmojis: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildEmojis](1000),
+		),
 
-		usersMu: sync.RWMutex{},
-		Users:   make(map[discord.Snowflake]*sandwich_structs.StateUser),
+		Users: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateUser](1000),
+		),
 
-		dmChannelsMu: sync.RWMutex{},
-		dmChannels:   make(map[discord.Snowflake]*sandwich_structs.StateDMChannel),
+		DmChannels: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateDMChannel](1000),
+		),
 
-		mutualsMu: sync.RWMutex{},
-		Mutuals:   make(map[discord.Snowflake]*sandwich_structs.StateMutualGuilds),
+		Mutuals: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateMutualGuilds](1000),
+		),
 
-		guildVoiceStatesMu: sync.RWMutex{},
-		GuildVoiceStates:   make(map[discord.Snowflake]*sandwich_structs.StateGuildVoiceStates),
+		GuildVoiceStates: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildVoiceStates](1000),
+		),
 	}
 
 	return state

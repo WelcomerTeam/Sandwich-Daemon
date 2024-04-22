@@ -25,7 +25,7 @@ func init() {
 }
 
 // Given a guild ID, return its shard ID
-func getShardIDFromGuildID(guildID string, shardCount int) (uint64, error) {
+func GetShardIDFromGuildID(guildID string, shardCount int) (uint64, error) {
 	gidNum, err := strconv.ParseInt(guildID, 10, 64)
 	if err != nil {
 		return 0, err
@@ -137,9 +137,17 @@ func (cs *chatServer) getShard(shard [2]int32) *Shard {
 func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error {
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
-	guilds := make([]*discord.Guild, 0, len(cs.manager.Sandwich.State.Guilds))
-
 	s.sh.WaitForReady()
+
+	// Get all guilds
+	unavailableGuilds := []*discord.UnavailableGuild{}
+	s.sh.Guilds.Range(func(id discord.Snowflake, ok bool) bool {
+		unavailableGuilds = append(unavailableGuilds, &discord.UnavailableGuild{
+			ID:          id,
+			Unavailable: true,
+		})
+		return false
+	})
 
 	// First send READY event with our initial state
 	readyPayload := map[string]any{
@@ -158,32 +166,7 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 				return cs.address
 			}
 		}(),
-		"guilds": func() []*discord.UnavailableGuild {
-			v := []*discord.UnavailableGuild{}
-			cs.manager.Sandwich.State.guildsMu.RLock()
-			defer cs.manager.Sandwich.State.guildsMu.RUnlock()
-
-			for _, guild := range cs.manager.Sandwich.State.Guilds {
-				shardInt, err := getShardIDFromGuildID(guild.ID.String(), int(s.shard[1]))
-				if err != nil {
-					cs.invalidSession(s, "[Sandwich] Failed to get shard ID from guild ID: "+err.Error(), true)
-					s.cancelFunc()
-					return v
-				}
-
-				if int32(shardInt) != s.shard[0] {
-					continue
-				}
-
-				guilds = append(guilds, guild)
-				v = append(v, &discord.UnavailableGuild{
-					ID:          guild.ID,
-					Unavailable: true,
-				})
-			}
-
-			return v
-		}(),
+		"guilds": unavailableGuilds,
 	}
 
 	select {
@@ -209,30 +192,41 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 		},
 	}
 
-	for _, guild := range guilds {
+	// Next dispatch guilds
+	var ctxErr error
+	s.sh.Guilds.Range(func(id discord.Snowflake, _ bool) bool {
+		guild, ok := cs.manager.Sandwich.State.Guilds.Load(id)
+
+		if !ok {
+			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to find guild %d", id)
+			return false
+		}
+
 		if guild.AFKChannelID == nil {
 			guild.AFKChannelID = &guild.ID
 		}
 
 		// Send initial guild_create's
 		if len(guild.Roles) == 0 {
-			// Lock RolesMu
-			cs.manager.Sandwich.State.guildRolesMu.RLock()
-			roles := cs.manager.Sandwich.State.GuildRoles[guild.ID]
-			cs.manager.Sandwich.State.guildRolesMu.RUnlock()
+			// Get roles
+			roles, ok := cs.manager.Sandwich.State.GuildRoles.Load(guild.ID)
 
+			roles.RolesMu.RLock()
 			guild.Roles = make([]*discord.Role, 0, len(roles.Roles))
-			for id, role := range roles.Roles {
-				role.ID = discord.Snowflake(id)
-				guild.Roles = append(guild.Roles, role)
+			if ok {
+				for id, role := range roles.Roles {
+					role.ID = discord.Snowflake(id)
+					guild.Roles = append(guild.Roles, role)
+				}
 			}
+			roles.RolesMu.RUnlock()
 		}
 
 		serializedGuild, err := jsoniter.Marshal(guild)
 
 		if err != nil {
 			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal guild: %s [shard %d]", err.Error(), s.shard[0])
-			continue
+			return false
 		}
 
 		s.writer <- &message{
@@ -245,12 +239,18 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			ctxErr = ctx.Err()
+			return true
 		default:
+			return false
 		}
+	})
+
+	if ctxErr != nil {
+		return ctxErr
 	}
 
-	return nil
+	return err
 }
 
 func (cs *chatServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -533,13 +533,12 @@ func (sg *Sandwich) cacheEjector() {
 
 		ejectedGuilds := make([]discord.Snowflake, 0)
 
-		sg.State.guildsMu.RLock()
-		for guildID := range sg.State.Guilds {
+		sg.State.Guilds.Range(func(guildID discord.Snowflake, guild *discord.Guild) bool {
 			if val, ok := allGuildIDs[guildID]; !val || !ok {
 				ejectedGuilds = append(ejectedGuilds, guildID)
 			}
-		}
-		sg.State.guildsMu.RUnlock()
+			return false
+		})
 
 		ctx := &StateCtx{
 			Stateless: true,
@@ -577,59 +576,51 @@ func (sg *Sandwich) prometheusGatherer() {
 	t := time.NewTicker(prometheusGatherInterval)
 
 	for range t.C {
-		sg.State.guildsMu.RLock()
-		stateGuilds := len(sg.State.Guilds)
-		sg.State.guildsMu.RUnlock()
+		stateGuilds := sg.State.Guilds.Count()
 
 		stateMembers := 0
 		stateRoles := 0
 		stateEmojis := 0
 		stateChannels := 0
+		stateUsers := 0
 		stateVoiceStates := 0
 
-		sg.State.guildMembersMu.RLock()
-		for _, guildMembers := range sg.State.GuildMembers {
+		sg.State.GuildMembers.Range(func(guildID discord.Snowflake, guildMembers *sandwich_structs.StateGuildMembers) bool {
 			guildMembers.MembersMu.RLock()
 			stateMembers += len(guildMembers.Members)
 			guildMembers.MembersMu.RUnlock()
-		}
-		sg.State.guildMembersMu.RUnlock()
+			return false
+		})
 
-		sg.State.guildRolesMu.RLock()
-		for _, guildRoles := range sg.State.GuildRoles {
+		sg.State.GuildRoles.Range(func(guildID discord.Snowflake, guildRoles *sandwich_structs.StateGuildRoles) bool {
 			guildRoles.RolesMu.RLock()
 			stateRoles += len(guildRoles.Roles)
 			guildRoles.RolesMu.RUnlock()
-		}
-		sg.State.guildRolesMu.RUnlock()
+			return false
+		})
 
-		sg.State.guildEmojisMu.RLock()
-		for _, guildEmojis := range sg.State.GuildEmojis {
+		sg.State.GuildEmojis.Range(func(guildID discord.Snowflake, guildEmojis *sandwich_structs.StateGuildEmojis) bool {
 			guildEmojis.EmojisMu.RLock()
 			stateEmojis += len(guildEmojis.Emojis)
 			guildEmojis.EmojisMu.RUnlock()
-		}
-		sg.State.guildEmojisMu.RUnlock()
+			return false
+		})
 
-		sg.State.guildChannelsMu.RLock()
-		for _, guildChannels := range sg.State.GuildChannels {
+		sg.State.GuildChannels.Range(func(guildID discord.Snowflake, guildChannels *sandwich_structs.StateGuildChannels) bool {
 			guildChannels.ChannelsMu.RLock()
 			stateChannels += len(guildChannels.Channels)
 			guildChannels.ChannelsMu.RUnlock()
-		}
-		sg.State.guildChannelsMu.RUnlock()
+			return false
+		})
 
-		sg.State.usersMu.RLock()
-		stateUsers := len(sg.State.Users)
-		sg.State.usersMu.RUnlock()
+		stateUsers = sg.State.Users.Count()
 
-		sg.State.guildVoiceStatesMu.RLock()
-		for _, voiceStates := range sg.State.GuildVoiceStates {
-			voiceStates.VoiceStatesMu.RLock()
-			stateVoiceStates += len(voiceStates.VoiceStates)
-			voiceStates.VoiceStatesMu.RUnlock()
-		}
-		sg.State.guildVoiceStatesMu.RUnlock()
+		sg.State.GuildVoiceStates.Range(func(guildID discord.Snowflake, guildVoiceStates *sandwich_structs.StateGuildVoiceStates) bool {
+			guildVoiceStates.VoiceStatesMu.RLock()
+			stateVoiceStates += len(guildVoiceStates.VoiceStates)
+			guildVoiceStates.VoiceStatesMu.RUnlock()
+			return false
+		})
 
 		sandwichStateTotalCount.Set(float64(
 			stateGuilds + stateMembers + stateRoles + stateEmojis + stateUsers + stateChannels + stateVoiceStates,

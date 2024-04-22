@@ -971,15 +971,21 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	guildChunk.Complete.Store(false)
 	guildChunk.StartedAt.Store(time.Now())
 
-	sh.Sandwich.State.guildMembersMu.RLock()
-	sh.Sandwich.State.GuildMembers[guildID].MembersMu.RLock()
-	memberCount := len(sh.Sandwich.State.GuildMembers[guildID].Members)
-	sh.Sandwich.State.GuildMembers[guildID].MembersMu.RUnlock()
-	sh.Sandwich.State.guildMembersMu.RUnlock()
+	var memberCount int
 
-	sh.Sandwich.State.guildsMu.RLock()
-	guild := sh.Sandwich.State.Guilds[guildID]
-	sh.Sandwich.State.guildsMu.RUnlock()
+	gm, ok := sh.Sandwich.State.GuildMembers.Load(guildID)
+
+	if ok {
+		gm.MembersMu.RLock()
+		memberCount = len(gm.Members)
+		gm.MembersMu.RUnlock()
+	}
+
+	guild, ok := sh.Sandwich.State.Guilds.Load(guildID)
+
+	if !ok {
+		return fmt.Errorf("guild not found in state, refusing to chunk")
+	}
 
 	needsChunking := guild.MemberCount > int32(memberCount)
 

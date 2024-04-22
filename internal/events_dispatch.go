@@ -524,14 +524,12 @@ func OnGuildMemberAdd(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_
 		ctx.Sandwich.AddDedupe(ddAddKey)
 		ctx.Sandwich.RemoveDedupe(ddRemoveKey)
 
-		ctx.Sandwich.State.guildsMu.Lock()
-		guild, ok := ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID]
+		guild, ok := ctx.Sandwich.State.Guilds.Load(*guildMemberAddPayload.GuildID)
 
 		if ok {
 			guild.MemberCount++
-			ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID] = guild
+			ctx.Sandwich.State.Guilds.SetIfPresent(*guildMemberAddPayload.GuildID, guild)
 		}
-		ctx.Sandwich.State.guildsMu.Unlock()
 	}
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, *guildMemberAddPayload.GuildID)
@@ -562,14 +560,12 @@ func OnGuildMemberRemove(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		ctx.Sandwich.AddDedupe(ddRemoveKey)
 		ctx.Sandwich.RemoveDedupe(ddAddKey)
 
-		ctx.Sandwich.State.guildsMu.Lock()
-		guild, ok := ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID]
+		guild, ok := ctx.Sandwich.State.Guilds.Load(guildMemberRemovePayload.GuildID)
 
 		if ok {
 			guild.MemberCount--
-			ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID] = guild
+			ctx.Sandwich.State.Guilds.SetIfPresent(guildMemberRemovePayload.GuildID, guild)
 		}
-		ctx.Sandwich.State.guildsMu.Unlock()
 	}
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberRemovePayload.GuildID)
 
