@@ -59,13 +59,15 @@ func (s Snowflake) Time() time.Time {
 type Int64 int64
 
 func (in *Int64) UnmarshalJSON(b []byte) error {
-	if !bytes.Equal(b, null) {
+	if !bytes.Equal(b, null) && len(b) >= 3 {
 		i, err := strconv.ParseInt(gotils_strconv.B2S(b[1:len(b)-1]), decimalBase, bitSize)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal json: %w", err)
 		}
 
 		*in = Int64(i)
+	} else {
+		*in = 0
 	}
 
 	return nil

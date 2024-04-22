@@ -23,7 +23,7 @@ const (
 	ShardMaxRetries              = 5
 	ShardCompression             = true
 	ShardLargeThreshold          = 100
-	ShardMaxHeartbeatFailures    = 5
+	ShardMaxHeartbeatFailures    = 50
 	MessagingMaxClientNameNumber = 9999
 
 	StandardIdentifyLimit = 5

@@ -372,6 +372,10 @@ readyConsumer:
 
 	select {
 	case err = <-errorCh:
+		if err == nil {
+			err = fmt.Errorf("error channel closed")
+		}
+
 		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
 
 		go sh.Sandwich.PublishSimpleWebhook(
@@ -440,6 +444,12 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 					)
 				} else {
 					sh.Logger.Warn().Msg("Failed to ack and passed heartbeat failure interval")
+
+					if err != nil {
+						err = fmt.Errorf("failed to ack and passed heartbeat failure interval: %w", err)
+					} else {
+						err = fmt.Errorf("failed to ack and passed heartbeat failure interval")
+					}
 
 					go sh.Sandwich.PublishSimpleWebhook(
 						"Failed to ack and passed heartbeat failure interval",
