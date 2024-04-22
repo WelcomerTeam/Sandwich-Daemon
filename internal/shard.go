@@ -957,9 +957,7 @@ func (sh *Shard) ChunkAllGuilds() {
 
 // ChunkGuilds chunks guilds to discord. It will wait for the operation to complete, or timeout.
 func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
-	sh.Sandwich.guildChunksMu.RLock()
-	guildChunk, ok := sh.Sandwich.guildChunks[guildID]
-	sh.Sandwich.guildChunksMu.RUnlock()
+	guildChunk, ok := sh.Sandwich.guildChunks.Load(guildID)
 
 	if !ok {
 		guildChunk = &GuildChunks{
@@ -969,9 +967,7 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 			CompletedAt:     *atomic.NewTime(time.Time{}),
 		}
 
-		sh.Sandwich.guildChunksMu.Lock()
-		sh.Sandwich.guildChunks[guildID] = guildChunk
-		sh.Sandwich.guildChunksMu.Unlock()
+		sh.Sandwich.guildChunks.Store(guildID, guildChunk)
 	}
 
 	guildChunk.Complete.Store(false)

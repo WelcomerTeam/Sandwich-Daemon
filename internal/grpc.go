@@ -72,15 +72,10 @@ func (grpc *routeSandwichServer) Listen(request *pb.ListenRequest, listener pb.S
 	globalPoolID := grpc.sg.globalPoolAccumulator.Add(1)
 	channel := make(chan []byte)
 
-	grpc.sg.globalPoolMu.Lock()
-	grpc.sg.globalPool[globalPoolID] = channel
-	grpc.sg.globalPoolMu.Unlock()
+	grpc.sg.globalPool.Store(globalPoolID, channel)
 
 	defer func() {
-		grpc.sg.globalPoolMu.Lock()
-		delete(grpc.sg.globalPool, globalPoolID)
-		grpc.sg.globalPoolMu.Unlock()
-
+		grpc.sg.globalPool.Delete(globalPoolID)
 		close(channel)
 	}()
 
@@ -124,8 +119,7 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 
 	identifiers := make(map[string]sandwich_structs.ManagerConsumerConfiguration)
 
-	grpc.sg.managersMu.RLock()
-	for _, manager := range grpc.sg.Managers {
+	grpc.sg.Managers.Range(func(key string, manager *Manager) bool {
 		manager.configurationMu.RLock()
 
 		manager.userMu.RLock()
@@ -138,8 +132,8 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 			User:  user,
 		}
 		manager.configurationMu.RUnlock()
-	}
-	grpc.sg.managersMu.RUnlock()
+		return false
+	})
 
 	sandwichConsumerConfiguration := sandwich_structs.SandwichConsumerConfiguration{
 		Version:     VERSION,
@@ -616,30 +610,31 @@ func (grpc *routeSandwichServer) RequestGuildChunk(ctx context.Context, request 
 }
 
 func (grpc *routeSandwichServer) chunkGuild(guildID discord.Snowflake, alwaysChunk bool) (ok bool, err error) {
-	grpc.sg.managersMu.RLock()
-	for _, manager := range grpc.sg.Managers {
-		manager.shardGroupsMu.RLock()
-		for _, shardGroup := range manager.ShardGroups {
+	grpc.sg.Managers.Range(func(key string, manager *Manager) bool {
+		manager.ShardGroups.Range(func(key int32, shardGroup *ShardGroup) bool {
 			shardGroup.shardsMu.RLock()
 			for _, shard := range shardGroup.Shards {
 				shard.guildsMu.RLock()
 				if _, ok := shard.Guilds[guildID]; ok {
 					err = shard.ChunkGuild(guildID, alwaysChunk)
 					if err != nil {
-						return true, err
+						return true
 					} else {
-						return true, nil
+						return true
 					}
 				}
 				shard.guildsMu.RUnlock()
 			}
 			shardGroup.shardsMu.RUnlock()
-		}
-		manager.shardGroupsMu.RUnlock()
-	}
-	grpc.sg.managersMu.RUnlock()
+			return false
+		})
 
-	return false, nil
+		return false
+	})
+
+	ok = (err == nil)
+
+	return
 }
 
 // SendWebsocketMessage manually sends a websocket message.
@@ -650,9 +645,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 		Ok: false,
 	}
 
-	grpc.sg.managersMu.RLock()
-	manager, cacheHit := grpc.sg.Managers[request.Manager]
-	grpc.sg.managersMu.RUnlock()
+	manager, cacheHit := grpc.sg.Managers.Load(request.Manager)
 
 	if !cacheHit {
 		response.Error = ErrNoManagerPresent.Error()
@@ -660,9 +653,7 @@ func (grpc *routeSandwichServer) SendWebsocketMessage(ctx context.Context, reque
 		return response, ErrNoManagerPresent
 	}
 
-	manager.shardGroupsMu.RLock()
-	shardGroup, ok := manager.ShardGroups[request.ShardGroup]
-	manager.shardGroupsMu.RUnlock()
+	shardGroup, ok := manager.ShardGroups.Load(request.ShardGroup)
 
 	if !ok {
 		response.Error = ErrNoShardGroupPresent.Error()
@@ -706,10 +697,8 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 		},
 	}
 
-	grpc.sg.managersMu.RLock()
-	for _, manager := range grpc.sg.Managers {
-		manager.shardGroupsMu.RLock()
-		for _, shardGroup := range manager.ShardGroups {
+	grpc.sg.Managers.Range(func(key string, manager *Manager) bool {
+		manager.ShardGroups.Range(func(key int32, shardGroup *ShardGroup) bool {
 			shardGroup.shardsMu.RLock()
 			for _, shard := range shardGroup.Shards {
 				shard.guildsMu.RLock()
@@ -736,10 +725,10 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 				shard.guildsMu.RUnlock()
 			}
 			shardGroup.shardsMu.RUnlock()
-		}
-		manager.shardGroupsMu.RUnlock()
-	}
-	grpc.sg.managersMu.RUnlock()
+			return false
+		})
+		return false
+	})
 
 	response.BaseResponse.Ok = true
 
@@ -755,9 +744,7 @@ func (grpc *routeSandwichServer) RelayMessage(ctx context.Context, request *pb.R
 		Ok: false,
 	}
 
-	grpc.sg.managersMu.RLock()
-	manager, cacheHit := grpc.sg.Managers[request.Manager]
-	grpc.sg.managersMu.RUnlock()
+	manager, cacheHit := grpc.sg.Managers.Load(request.Manager)
 
 	if !cacheHit {
 		response.Error = ErrNoManagerPresent.Error()

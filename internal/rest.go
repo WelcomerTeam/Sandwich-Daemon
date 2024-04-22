@@ -327,17 +327,14 @@ func (sg *Sandwich) LogoutEndpoint(ctx *fasthttp.RequestCtx) {
 
 // /api/status: Returns managers, shardgroups and shard status.
 func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
-	sg.managersMu.RLock()
-	defer sg.managersMu.RUnlock()
-
-	managers := make([]*sandwich_structs.StatusEndpointManager, 0, len(sg.Managers))
+	managers := make([]*sandwich_structs.StatusEndpointManager, 0, sg.Managers.Count())
 	unsortedManagers := make(map[string]*sandwich_structs.StatusEndpointManager)
 
 	manager := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
 	if manager == "" {
 		statusData := sg.statusCache.Result(StatusCacheDuration, func() interface{} {
-			for _, manager := range sg.Managers {
+			sg.Managers.Range(func(key string, manager *Manager) bool {
 				manager.configurationMu.RLock()
 				friendlyName := manager.Configuration.FriendlyName
 				keyName := manager.Configuration.FriendlyName + ":" + manager.Configuration.Identifier
@@ -347,7 +344,9 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 					DisplayName: friendlyName,
 					ShardGroups: getManagerShardGroupStatus(manager),
 				}
-			}
+
+				return false
+			})
 
 			// Sort manager list by friendly name.
 
@@ -374,7 +373,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 			Data: statusData,
 		})
 	} else {
-		manager, ok := sg.Managers[manager]
+		manager, ok := sg.Managers.Load(manager)
 		if !ok {
 			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 				Ok:    false,
@@ -399,11 +398,9 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 }
 
 func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_structs.StatusEndpointShardGroup) {
-	manager.shardGroupsMu.RLock()
-
 	sortedShardGroupIDs := make([]int, 0)
 
-	for shardGroupID, shardGroup := range manager.ShardGroups {
+	manager.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
 		shardGroup.statusMu.RLock()
 		shardGroupStatus := shardGroup.Status
 		shardGroup.statusMu.RUnlock()
@@ -411,13 +408,18 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 		if shardGroupStatus != sandwich_structs.ShardGroupStatusClosed {
 			sortedShardGroupIDs = append(sortedShardGroupIDs, int(shardGroupID))
 		}
-	}
+		return false
+	})
 
 	sort.Ints(sortedShardGroupIDs)
 
 	for _, _shardGroupID := range sortedShardGroupIDs {
 		shardGroupID := int32(_shardGroupID)
-		shardGroup := manager.ShardGroups[shardGroupID]
+		shardGroup, ok := manager.ShardGroups.Load(shardGroupID)
+
+		if !ok {
+			continue
+		}
 
 		shardGroup.shardsMu.RLock()
 		statusShardGroup := &sandwich_structs.StatusEndpointShardGroup{
@@ -459,7 +461,6 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 
 		shardGroups = append(shardGroups, statusShardGroup)
 	}
-	manager.shardGroupsMu.RUnlock()
 
 	return shardGroups
 }
@@ -549,9 +550,7 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	sg.managersMu.RLock()
-	_, ok := sg.Managers[createManagerArguments.Identifier]
-	sg.managersMu.RUnlock()
+	_, ok := sg.Managers.Load(createManagerArguments.Identifier)
 
 	if ok {
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -580,9 +579,7 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	manager := sg.NewManager(&defaultConfiguration)
 
-	sg.managersMu.Lock()
-	sg.Managers[createManagerArguments.Identifier] = manager
-	sg.managersMu.Unlock()
+	sg.Managers.Store(createManagerArguments.Identifier, manager)
 
 	sg.configurationMu.Lock()
 	sg.Configuration.Managers = append(sg.Configuration.Managers, &defaultConfiguration)
@@ -623,9 +620,7 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 func (sg *Sandwich) ManagerInitializeEndpoint(ctx *fasthttp.RequestCtx) {
 	managerName := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
-	sg.managersMu.RLock()
-	manager, ok := sg.Managers[managerName]
-	sg.managersMu.RUnlock()
+	manager, ok := sg.Managers.Load(managerName)
 
 	if !ok {
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -667,9 +662,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	sg.managersMu.RLock()
-	manager, ok := sg.Managers[managerConfiguration.Identifier]
-	sg.managersMu.RUnlock()
+	manager, ok := sg.Managers.Load(managerConfiguration.Identifier)
 
 	if !ok {
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -746,10 +739,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 	managerName := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
-
-	sg.managersMu.RLock()
-	manager, ok := sg.Managers[managerName]
-	sg.managersMu.RUnlock()
+	manager, ok := sg.Managers.Load(managerName)
 
 	if !ok {
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -762,9 +752,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 
 	manager.Close()
 
-	sg.managersMu.Lock()
-	delete(sg.Managers, managerName)
-	sg.managersMu.Unlock()
+	sg.Managers.Delete(managerName)
 
 	sg.configurationMu.Lock()
 	defer sg.configurationMu.Unlock()
@@ -821,9 +809,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	sg.managersMu.RLock()
-	manager, ok := sg.Managers[shardGroupArguments.Identifier]
-	sg.managersMu.RUnlock()
+	manager, ok := sg.Managers.Load(shardGroupArguments.Identifier)
 
 	if !ok {
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -849,9 +835,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	_, err = shardGroup.Open()
 	if err != nil {
 		// Cleanup ShardGroups to remove failed ShardGroup.
-		manager.shardGroupsMu.Lock()
-		delete(manager.ShardGroups, shardGroup.ID)
-		manager.shardGroupsMu.Unlock()
+		manager.ShardGroups.Delete(shardGroup.ID)
 
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -886,9 +870,7 @@ func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 func (sg *Sandwich) ShardGroupStopEndpoint(ctx *fasthttp.RequestCtx) {
 	managerName := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
-	sg.managersMu.RLock()
-	manager, ok := sg.Managers[managerName]
-	sg.managersMu.RUnlock()
+	manager, ok := sg.Managers.Load(managerName)
 
 	if !ok {
 		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{

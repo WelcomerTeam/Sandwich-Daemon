@@ -117,20 +117,20 @@ func (cs *chatServer) invalidSession(s *subscriber, reason string, resumable boo
 }
 
 func (cs *chatServer) getShard(shard [2]int32) *Shard {
-	cs.manager.shardGroupsMu.RLock()
-	defer cs.manager.shardGroupsMu.RUnlock()
-
-	for _, sg := range cs.manager.ShardGroups {
+	var shardRes *Shard
+	cs.manager.ShardGroups.Range(func(k int32, sg *ShardGroup) bool {
 		sg.shardsMu.RLock()
 		for _, sh := range sg.Shards {
 			if sh.ShardID == shard[0] {
-				return sh
+				shardRes = sh
+				return true
 			}
 		}
 		sg.shardsMu.RUnlock()
-	}
+		return false
+	})
 
-	return nil
+	return shardRes
 }
 
 func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error {

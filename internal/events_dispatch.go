@@ -166,47 +166,45 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		return result, false, err
 	}
 
-	go func() {
-		// Force caching of users and members.
-		ctx.CacheUsers = true
-		ctx.CacheMembers = true
+	// Force caching of users and members.
+	ctx.CacheUsers = true
+	ctx.CacheMembers = true
 
-		for _, member := range guildMembersChunkPayload.Members {
-			ctx.Sandwich.State.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
-		}
+	for _, member := range guildMembersChunkPayload.Members {
+		ctx.Sandwich.State.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
+	}
 
-		ctx.Logger.Debug().
-			Int("memberCount", len(guildMembersChunkPayload.Members)).
-			Int32("chunkIndex", guildMembersChunkPayload.ChunkIndex).
-			Int32("chunkCount", guildMembersChunkPayload.ChunkCount).
+	ctx.Logger.Debug().
+		Int("memberCount", len(guildMembersChunkPayload.Members)).
+		Int32("chunkIndex", guildMembersChunkPayload.ChunkIndex).
+		Int32("chunkCount", guildMembersChunkPayload.ChunkCount).
+		Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
+		Msg("Chunked guild members")
+
+	guildChunk, ok := ctx.Sandwich.guildChunks.Load(guildMembersChunkPayload.GuildID)
+
+	if !ok {
+		// Probably a consumer emitting a chunk request
+		// TODO: Handle this better
+		return sandwich_structs.StateResult{
+			Data: msg.Data,
+		}, true, nil
+	}
+
+	if guildChunk.Complete.Load() {
+		ctx.Logger.Warn().
 			Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
-			Msg("Chunked guild members")
+			Msg("GuildChunks entry is marked as complete, but we received a guild member chunk")
+	}
 
-		ctx.Sandwich.guildChunksMu.RLock()
-		guildChunk, ok := ctx.Sandwich.guildChunks[guildMembersChunkPayload.GuildID]
-		ctx.Sandwich.guildChunksMu.RUnlock()
-
-		if !ok {
-			// Probably a consumer emitting a chunk request
-			// TODO: Handle this better
-			return
-		}
-
-		if guildChunk.Complete.Load() {
-			ctx.Logger.Warn().
-				Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
-				Msg("GuildChunks entry is marked as complete, but we received a guild member chunk")
-		}
-
-		select {
-		case guildChunk.ChunkingChannel <- GuildChunkPartial{
-			ChunkIndex: guildMembersChunkPayload.ChunkIndex,
-			ChunkCount: guildMembersChunkPayload.ChunkCount,
-			Nonce:      guildMembersChunkPayload.Nonce,
-		}:
-		default:
-		}
-	}()
+	select {
+	case guildChunk.ChunkingChannel <- GuildChunkPartial{
+		ChunkIndex: guildMembersChunkPayload.ChunkIndex,
+		ChunkCount: guildMembersChunkPayload.ChunkCount,
+		Nonce:      guildMembersChunkPayload.Nonce,
+	}:
+	default:
+	}
 
 	return sandwich_structs.StateResult{
 		Data: msg.Data,

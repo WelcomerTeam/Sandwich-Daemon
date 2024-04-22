@@ -20,6 +20,7 @@ import (
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
 	jsoniter "github.com/json-iterator/go"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
@@ -82,15 +83,12 @@ type Sandwich struct {
 
 	EventsInflight *atomic.Int32 `json:"-"`
 
-	managersMu sync.RWMutex
-	Managers   map[string]*Manager `json:"managers" yaml:"managers"`
+	Managers *csmap.CsMap[string, *Manager] `json:"managers" yaml:"managers"`
 
-	globalPoolMu          sync.RWMutex
-	globalPool            map[int32]chan []byte
+	globalPool            *csmap.CsMap[int32, chan []byte]
 	globalPoolAccumulator *atomic.Int32
 
-	dedupeMu sync.RWMutex
-	Dedupe   map[string]int64
+	Dedupe *csmap.CsMap[string, int64]
 
 	State  *SandwichState `json:"-"`
 	Client *Client        `json:"-"`
@@ -110,8 +108,7 @@ type Sandwich struct {
 	// SentPayload pool
 	sentPool sync.Pool
 
-	guildChunksMu sync.RWMutex
-	guildChunks   map[discord.Snowflake]*GuildChunks
+	guildChunks *csmap.CsMap[discord.Snowflake, *GuildChunks]
 }
 
 // SandwichConfiguration represents the configuration file.
@@ -191,15 +188,18 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 
 		gatewayLimiter: *limiter.NewDurationLimiter(1, time.Second),
 
-		managersMu: sync.RWMutex{},
-		Managers:   make(map[string]*Manager),
+		Managers: csmap.Create(
+			csmap.WithSize[string, *Manager](10),
+		),
 
-		globalPoolMu:          sync.RWMutex{},
-		globalPool:            make(map[int32]chan []byte),
+		globalPool: csmap.Create(
+			csmap.WithSize[int32, chan []byte](1000),
+		),
 		globalPoolAccumulator: atomic.NewInt32(0),
 
-		dedupeMu: sync.RWMutex{},
-		Dedupe:   make(map[string]int64),
+		Dedupe: csmap.Create(
+			csmap.WithSize[string, int64](1000),
+		),
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
 
@@ -222,8 +222,9 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 			New: func() interface{} { return new(discord.SentPayload) },
 		},
 
-		guildChunksMu: sync.RWMutex{},
-		guildChunks:   make(map[discord.Snowflake]*GuildChunks),
+		guildChunks: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *GuildChunks](1000),
+		),
 	}
 
 	sg.ctx, sg.cancel = context.WithCancel(context.Background())
@@ -314,9 +315,6 @@ func (sg *Sandwich) Open() {
 
 // PublishGlobalEvent publishes an event to all Consumers.
 func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessage) error {
-	sg.globalPoolMu.RLock()
-	defer sg.globalPoolMu.RUnlock()
-
 	packet, _ := sg.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer sg.payloadPool.Put(packet)
 
@@ -334,9 +332,10 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 		return fmt.Errorf("failed to marshal packet: %w", err)
 	}
 
-	for _, pool := range sg.globalPool {
+	sg.globalPool.Range(func(key int32, pool chan []byte) bool {
 		pool <- payload
-	}
+		return false
+	})
 
 	return nil
 }
@@ -347,11 +346,10 @@ func (sg *Sandwich) Close() error {
 
 	go sg.PublishSimpleWebhook("Sandwich closing", "", "", EmbedColourSandwich)
 
-	sg.managersMu.RLock()
-	for _, manager := range sg.Managers {
+	sg.Managers.Range(func(key string, manager *Manager) bool {
 		manager.Close()
-	}
-	sg.managersMu.RUnlock()
+		return false
+	})
 
 	if sg.cancel != nil {
 		sg.cancel()
@@ -361,8 +359,6 @@ func (sg *Sandwich) Close() error {
 }
 
 func (sg *Sandwich) startManagers() {
-	sg.managersMu.Lock()
-
 	for _, managerConfiguration := range sg.Configuration.Managers {
 		if managerConfiguration.Identifier == "" {
 			sg.Logger.Warn().Msg("Manager does not have an identifier. Ignoring")
@@ -370,7 +366,7 @@ func (sg *Sandwich) startManagers() {
 			continue
 		}
 
-		if _, duplicate := sg.Managers[managerConfiguration.Identifier]; duplicate {
+		if _, duplicate := sg.Managers.Load(managerConfiguration.Identifier); duplicate {
 			sg.Logger.Warn().
 				Str("identifier", managerConfiguration.Identifier).
 				Msg("Manager contains duplicate identifier. Ignoring")
@@ -385,7 +381,7 @@ func (sg *Sandwich) startManagers() {
 
 		manager := sg.NewManager(managerConfiguration)
 
-		sg.Managers[managerConfiguration.Identifier] = manager
+		sg.Managers.Store(managerConfiguration.Identifier, manager)
 
 		err := manager.Initialize(false)
 		if err != nil {
@@ -398,8 +394,6 @@ func (sg *Sandwich) startManagers() {
 			go manager.Open()
 		}
 	}
-
-	sg.managersMu.Unlock()
 }
 
 func (sg *Sandwich) setupGRPC() error {
@@ -523,10 +517,8 @@ func (sg *Sandwich) cacheEjector() {
 		// Guild Ejector
 		allGuildIDs := make(map[discord.Snowflake]bool)
 
-		sg.managersMu.RLock()
-		for _, mg := range sg.Managers {
-			mg.shardGroupsMu.RLock()
-			for _, sg := range mg.ShardGroups {
+		sg.Managers.Range(func(key string, mg *Manager) bool {
+			mg.ShardGroups.Range(func(i int32, sg *ShardGroup) bool {
 				sg.guildsMu.RLock()
 				for guildID, ok := range sg.Guilds {
 					if ok {
@@ -534,10 +526,11 @@ func (sg *Sandwich) cacheEjector() {
 					}
 				}
 				sg.guildsMu.RUnlock()
-			}
-			mg.shardGroupsMu.RUnlock()
-		}
-		sg.managersMu.RUnlock()
+				return false
+			})
+
+			return false
+		})
 
 		ejectedGuilds := make([]discord.Snowflake, 0)
 
@@ -560,20 +553,17 @@ func (sg *Sandwich) cacheEjector() {
 		ejectedDedupes := make([]string, 0)
 
 		// MemberDedup Ejector
-		sg.dedupeMu.RLock()
-		for i, t := range sg.Dedupe {
+		sg.Dedupe.Range(func(i string, t int64) bool {
 			if now > t {
 				ejectedDedupes = append(ejectedDedupes, i)
 			}
-		}
-		sg.dedupeMu.RUnlock()
+			return false
+		})
 
 		if len(ejectedDedupes) > 0 {
-			sg.dedupeMu.Lock()
 			for _, i := range ejectedDedupes {
-				delete(sg.Dedupe, i)
+				sg.Dedupe.Delete(i)
 			}
-			sg.dedupeMu.Unlock()
 		}
 
 		sg.Logger.Debug().
@@ -650,19 +640,17 @@ func (sg *Sandwich) prometheusGatherer() {
 
 		eventsBuffer := 0
 
-		sg.managersMu.RLock()
-		for _, manager := range sg.Managers {
-			manager.shardGroupsMu.RLock()
-			for _, shardgroup := range manager.ShardGroups {
+		sg.Managers.Range(func(key string, manager *Manager) bool {
+			manager.ShardGroups.Range(func(i int32, shardgroup *ShardGroup) bool {
 				shardgroup.shardsMu.RLock()
 				for _, shard := range shardgroup.Shards {
 					eventsBuffer += len(shard.MessageCh)
 				}
 				shardgroup.shardsMu.RUnlock()
-			}
-			manager.shardGroupsMu.RUnlock()
-		}
-		sg.managersMu.RUnlock()
+				return false
+			})
+			return false
+		})
 
 		sandwichStateGuildCount.Set(float64(stateGuilds))
 		sandwichStateGuildMembersCount.Set(float64(stateMembers))

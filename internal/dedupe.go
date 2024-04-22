@@ -14,25 +14,23 @@ func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Sno
 	return "MR:" + guildID.String() + ":" + memberID.String()
 }
 
-// AddMemberDedupe creates a new dedupe.
+// AddDedupe creates a new dedupe.
 func (sg *Sandwich) AddDedupe(key string) {
-	sg.dedupeMu.Lock()
-	sg.Dedupe[key] = time.Now().Add(memberDedupeExpiration).Unix()
-	sg.dedupeMu.Unlock()
+	sg.Dedupe.Store(key, time.Now().Add(memberDedupeExpiration).Unix())
 }
 
-// CheckMemberDedupe returns if a dedupe is set. If true, event should be ignored.
+// CheckDedupe returns if a dedupe is set. If true, event should be ignored.
 func (sg *Sandwich) CheckDedupe(key string) bool {
-	sg.dedupeMu.RLock()
-	value := sg.Dedupe[key]
-	sg.dedupeMu.RUnlock()
+	value, ok := sg.Dedupe.Load(key)
+
+	if !ok {
+		return false
+	}
 
 	return time.Now().Unix() < value && value != 0
 }
 
-// RemoveMemberDedupe removes a dedupe.
+// RemoveDedupe removes a dedupe.
 func (sg *Sandwich) RemoveDedupe(key string) {
-	sg.dedupeMu.Lock()
-	delete(sg.Dedupe, key)
-	sg.dedupeMu.Unlock()
+	sg.Dedupe.Delete(key)
 }

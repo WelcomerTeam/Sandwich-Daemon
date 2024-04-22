@@ -92,13 +92,12 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	sg.Start.Store(time.Now().UTC())
 
-	sg.Manager.shardGroupsMu.RLock()
-	for _, shardGroup := range sg.Manager.ShardGroups {
+	sg.Manager.ShardGroups.Range(func(i int32, shardGroup *ShardGroup) bool {
 		if shardGroup.GetStatus() != sandwich_structs.ShardGroupStatusErroring && shardGroup.ID != sg.ID {
 			shardGroup.SetStatus(sandwich_structs.ShardGroupStatusMarkedForClosure)
 		}
-	}
-	sg.Manager.shardGroupsMu.RUnlock()
+		return false
+	})
 
 	ready = make(chan bool, 1)
 
@@ -196,8 +195,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 		sg.Logger.Info().Msg("All shards are now ready")
 
-		sg.Manager.shardGroupsMu.RLock()
-		for shardGroupID, shardGroup := range sg.Manager.ShardGroups {
+		sg.Manager.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
 			if shardGroupID != sg.ID {
 				sg.floodgateMu.Lock()
 				sg.floodgate = false
@@ -205,8 +203,8 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 				shardGroup.Close()
 			}
-		}
-		sg.Manager.shardGroupsMu.RUnlock()
+			return false
+		})
 
 		sg.floodgateMu.Lock()
 		sg.floodgate = true

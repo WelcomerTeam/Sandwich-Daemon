@@ -15,6 +15,7 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 )
@@ -49,8 +50,7 @@ type Manager struct {
 	gatewayMu sync.RWMutex
 	Gateway   discord.GatewayBotResponse `json:"gateway" yaml:"gateway"`
 
-	shardGroupsMu sync.RWMutex
-	ShardGroups   map[int32]*ShardGroup `json:"shard_groups" yaml:"shard_groups"`
+	ShardGroups *csmap.CsMap[int32, *ShardGroup] `json:"shard_groups" yaml:"shard_groups"`
 
 	ProducerClient MQClient `json:"-"`
 
@@ -136,8 +136,9 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		gatewayMu: sync.RWMutex{},
 		Gateway:   discord.GatewayBotResponse{},
 
-		shardGroupsMu: sync.RWMutex{},
-		ShardGroups:   make(map[int32]*ShardGroup),
+		ShardGroups: csmap.Create(
+			csmap.WithSize[int32, *ShardGroup](10),
+		),
 
 		Client: NewClient(baseURL, configuration.Token),
 
@@ -266,9 +267,7 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 	shardGroupID := mg.shardGroupCounter.Add(1)
 	sg = mg.NewShardGroup(shardGroupID, shardIDs, shardCount)
 
-	mg.shardGroupsMu.Lock()
-	mg.ShardGroups[shardGroupID] = sg
-	mg.shardGroupsMu.Unlock()
+	mg.ShardGroups.Store(shardGroupID, sg)
 
 	return sg
 }
@@ -421,11 +420,10 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 func (mg *Manager) Close() {
 	mg.Logger.Info().Msg("Closing manager shardgroups")
 
-	mg.shardGroupsMu.RLock()
-	for _, sg := range mg.ShardGroups {
+	mg.ShardGroups.Range(func(key int32, sg *ShardGroup) bool {
 		sg.Close()
-	}
-	mg.shardGroupsMu.RUnlock()
+		return false
+	})
 }
 
 // getInitialShardCount returns the initial shard count and ids to use.
