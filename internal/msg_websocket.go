@@ -42,6 +42,9 @@ type chatServer struct {
 	// sandwich state
 	manager *Manager
 
+	// external address (used for resuming)
+	externalAddress string
+
 	// address
 	address string
 
@@ -159,14 +162,8 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			"id":    cs.manager.User.ID,
 			"flags": int32(cs.manager.User.Flags),
 		},
-		"resume_gateway_url": func() string {
-			if !strings.HasPrefix(cs.address, "ws") {
-				return "ws://" + cs.address
-			} else {
-				return cs.address
-			}
-		}(),
-		"guilds": unavailableGuilds,
+		"resume_gateway_url": cs.externalAddress,
+		"guilds":             unavailableGuilds,
 	}
 
 	select {
@@ -748,14 +745,28 @@ func (mq *WebsocketClient) Cluster() string {
 	return "websocket"
 }
 
+// Supported options:
+//
+// address (string): the address to listen on
+// expectedToken (string): the expected token for identify
+// externalAddress (string): the external address to use for resuming, defaults to ws://address if unset
 func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error {
 	var ok bool
 
 	var address string
+	var externalAddress string
 	var expectedToken string
 
 	if address, ok = GetEntry(args, "Address").(string); !ok {
 		return errors.New("websocketMQ connect: string type assertion failed for Address")
+	}
+
+	if externalAddress, ok = GetEntry(args, "Address").(string); !ok {
+		if !strings.HasPrefix(address, "ws") {
+			externalAddress = "ws://" + address
+		} else {
+			externalAddress = address
+		}
 	}
 
 	if expectedToken, ok = GetEntry(args, "ExpectedToken").(string); !ok {
@@ -771,6 +782,7 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	mq.cs.expectedToken = expectedToken
 	mq.cs.manager = manager
 	mq.cs.address = address
+	mq.cs.externalAddress = externalAddress
 	s := &http.Server{Handler: mq.cs}
 
 	go func() {
