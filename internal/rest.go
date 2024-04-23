@@ -532,6 +532,43 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		EmbedColourSandwich,
 	)
 
+	// Save event blacklist/producer blacklist to managers.
+	go func() {
+		for _, manager := range sandwichConfiguration.Managers {
+			m, ok := sg.Managers.Load(manager.Identifier)
+
+			if !ok {
+				continue
+			}
+
+			if manager.Events.EventBlacklist != nil {
+				m.eventBlacklistMu.Lock()
+				m.eventBlacklist = manager.Events.EventBlacklist
+				m.eventBlacklistMu.Unlock()
+			}
+
+			if manager.Events.ProduceBlacklist != nil {
+				m.produceBlacklistMu.Lock()
+				m.produceBlacklist = manager.Events.ProduceBlacklist
+				m.produceBlacklistMu.Unlock()
+			}
+
+			/*if manager.Bot.DefaultPresence.Status != "" {
+				// Update presence.
+				m.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
+					shardGroup.Shards.Range(func(shardID int32, shard *Shard) bool {
+						shard.UpdatePresence(ctx, &manager.Bot.DefaultPresence)
+						return false
+					})
+
+					return false
+				})
+			}*/
+		}
+
+		sg.Logger.Info().Msg("Updated event blacklist and producer blacklist")
+	}()
+
 	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: "Changes applied.",
@@ -731,6 +768,42 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		),
 		EmbedColourSandwich,
 	)
+
+	// Save event blacklist/producer blacklist to managers.
+	go func() {
+		m, ok := sg.Managers.Load(managerConfiguration.Identifier)
+
+		if !ok {
+			return
+		}
+
+		if managerConfiguration.Events.EventBlacklist != nil {
+			m.eventBlacklistMu.Lock()
+			m.eventBlacklist = managerConfiguration.Events.EventBlacklist
+			m.eventBlacklistMu.Unlock()
+		}
+
+		if managerConfiguration.Events.ProduceBlacklist != nil {
+			m.produceBlacklistMu.Lock()
+			m.produceBlacklist = managerConfiguration.Events.ProduceBlacklist
+			m.produceBlacklistMu.Unlock()
+		}
+
+		/*if managerConfiguration.Bot.DefaultPresence.Status != "" {
+			p := managerConfiguration.Bot.DefaultPresence
+			// Update presence.
+			m.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
+				shardGroup.Shards.Range(func(shardID int32, shard *Shard) bool {
+					shard.UpdatePresence(ctx, &p)
+					return false
+				})
+
+				return false
+			})
+		}*/
+
+		sg.Logger.Info().Msg("Updated event blacklist and producer blacklist")
+	}()
 
 	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,

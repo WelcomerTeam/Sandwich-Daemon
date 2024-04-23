@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -690,7 +691,7 @@ func (sh *Shard) Identify(ctx context.Context) error {
 
 	sh.Manager.configurationMu.RLock()
 	token := sh.Manager.Configuration.Token
-	presence := sh.Manager.Configuration.Bot.DefaultPresence
+	presence := sh.fillInUpdateStatus(&sh.Manager.Configuration.Bot.DefaultPresence)
 	intents := sh.Manager.Configuration.Bot.Intents
 	sh.Manager.configurationMu.RUnlock()
 
@@ -706,7 +707,7 @@ func (sh *Shard) Identify(ctx context.Context) error {
 		Compress:       true,
 		LargeThreshold: GatewayLargeThreshold,
 		Shard:          [2]int32{sh.ShardID, sh.ShardGroup.ShardCount},
-		Presence:       &presence,
+		Presence:       presence,
 		Intents:        intents,
 	})
 }
@@ -724,6 +725,29 @@ func (sh *Shard) Resume(ctx context.Context) error {
 		SessionID: sh.SessionID.Load(),
 		Sequence:  sh.Sequence.Load(),
 	})
+}
+
+func (sh *Shard) fillInUpdateStatus(us *discord.UpdateStatus) *discord.UpdateStatus {
+	for _, activity := range us.Activities {
+		activity.Name = strings.ReplaceAll(activity.Name, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
+		activity.Name = strings.ReplaceAll(activity.Name, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
+		activity.State = strings.ReplaceAll(activity.State, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
+		activity.State = strings.ReplaceAll(activity.State, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
+	}
+	return us
+}
+
+func (sh *Shard) UpdatePresence(ctx context.Context, us *discord.UpdateStatus) error {
+	filledInStatus := sh.fillInUpdateStatus(us)
+	jsonStatusBytes, err := jsoniter.Marshal(filledInStatus)
+
+	if err != nil {
+		return fmt.Errorf("failed to marshal status: %w", err)
+	}
+
+	sh.Logger.Debug().Str("status", string(jsonStatusBytes)).Msg("Sending update status")
+
+	return sh.SendEvent(ctx, discord.GatewayOpStatusUpdate, *sh.fillInUpdateStatus(us))
 }
 
 // SendEvent sends an event to discord.
@@ -752,6 +776,12 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 			sh.Logger.Warn().Err(r.(error)).Bool("hasWsConn", sh.wsConn != nil).Msg("Recovered panic in WriteJSON")
 		}
 	}()
+
+	if !sh.hasWsConn() {
+		// Try to reconnect
+		err := sh.Reconnect(websocket.StatusNormalClosure)
+		return fmt.Errorf("no websocket connection: %w", err)
+	}
 
 	res, err := jsoniter.Marshal(i)
 	if err != nil {
