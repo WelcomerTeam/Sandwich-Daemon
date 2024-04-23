@@ -36,7 +36,7 @@ const (
 	MemberChunkTimeout = 1 * time.Second
 
 	// Number of retries attempted before considering a shard not working.
-	ShardConnectRetries = 3
+	ShardConnectRetries = 10
 
 	ShardWSRateLimit      = 118
 	GatewayLargeThreshold = 250
