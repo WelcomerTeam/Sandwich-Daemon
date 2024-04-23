@@ -255,6 +255,7 @@ readyConsumer:
 		sh.Logger.Debug().Str("url", gwUrl).Msg("Resuming shard")
 		sh.ResumeGatewayURL.Store("") // Reset the resume url
 	} else {
+		sh.SessionID.Store("")
 		gwUrl = origGwUrl
 	}
 
