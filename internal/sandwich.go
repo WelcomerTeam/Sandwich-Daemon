@@ -34,7 +34,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.12.6"
+const VERSION = "1.13.0-antiraid"
 
 const (
 	PermissionsDefault = 0o744
@@ -56,7 +56,7 @@ var baseURL = url.URL{
 var gatewayURL = url.URL{
 	Scheme:   "wss",
 	Host:     "gateway.discord.gg",
-	RawQuery: "v=9&encoding=json",
+	RawQuery: "v=10&encoding=json",
 }
 
 type Sandwich struct {

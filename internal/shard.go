@@ -38,7 +38,7 @@ const (
 	// Number of retries attempted before considering a shard not working.
 	ShardConnectRetries = 10
 
-	ShardWSRateLimit      = 118
+	ShardWSRateLimit      = 110
 	GatewayLargeThreshold = 250
 
 	FirstEventTimeout = 5 * time.Second
@@ -160,9 +160,9 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 
 		wsConnMu: sync.RWMutex{},
 
-		// We use 118 just to allow heartbeating to not be limited
-		// by WS but not use it itself.
-		wsRatelimit: limiter.NewDurationLimiter(ShardWSRateLimit, time.Minute),
+		// We use 110 both to allow heartbeating to not be limited and to allow
+		// bursts of 10 messages can be sent.
+		wsRatelimit: limiter.NewDurationLimiter(ShardWSRateLimit, 2*time.Minute),
 
 		ready: make(chan void, 1),
 	}

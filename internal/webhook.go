@@ -53,6 +53,8 @@ func (sg *Sandwich) PublishWebhook(message discord.WebhookMessageParams) {
 }
 
 func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessageParams) (status int, err error) {
+	sg.Logger.Debug().Str("url", webhookURL).Any("message", message).Msg("Sending webhook")
+
 	webhookURL = strings.TrimSpace(webhookURL)
 
 	_, err = url.Parse(webhookURL)
