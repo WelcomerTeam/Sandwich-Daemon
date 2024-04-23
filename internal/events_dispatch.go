@@ -368,7 +368,10 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 
 	err = ctx.decodeContent(msg, &guildDeletePayload)
 	if err != nil {
-		return result, false, err
+		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_DELETE payload")
+		return sandwich_structs.StateResult{
+			Data: msg.Data,
+		}, true, nil
 	}
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildDeletePayload.ID)
@@ -387,8 +390,12 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeGuild,
 	})
+
+	// We still need to dispatch the event to the producers
 	if err != nil {
-		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
+		return sandwich_structs.StateResult{
+			Data: msg.Data,
+		}, true, nil
 	}
 
 	return sandwich_structs.StateResult{
