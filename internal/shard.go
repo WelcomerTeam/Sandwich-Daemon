@@ -748,7 +748,7 @@ func (sh *Shard) UpdatePresence(ctx context.Context, us *discord.UpdateStatus) e
 
 	sh.Logger.Debug().Str("status", string(jsonStatusBytes)).Msg("Sending update status")
 
-	return sh.SendEvent(ctx, discord.GatewayOpStatusUpdate, *sh.fillInUpdateStatus(us))
+	return sh.SendEvent(ctx, discord.GatewayOpStatusUpdate, jsoniter.RawMessage(jsonStatusBytes))
 }
 
 // SendEvent sends an event to discord.
