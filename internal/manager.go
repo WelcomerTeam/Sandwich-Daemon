@@ -20,10 +20,11 @@ import (
 	"go.uber.org/atomic"
 )
 
+// TODO: Make these config options
 const (
 	ShardMaxRetries              = 5
 	ShardCompression             = true
-	ShardLargeThreshold          = 100
+	ShardLargeThreshold          = 250
 	ShardMaxHeartbeatFailures    = 50
 	MessagingMaxClientNameNumber = 9999
 

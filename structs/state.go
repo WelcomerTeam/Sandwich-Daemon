@@ -1,11 +1,11 @@
 package structs
 
 import (
-	"sync"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	jsoniter "github.com/json-iterator/go"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 // StateResult represents the data a state handler would return which would be converted to
@@ -22,39 +22,27 @@ type StateDMChannel struct {
 }
 
 type StateMutualGuilds struct {
-	GuildsMu sync.RWMutex `json:"-"`
-
-	Guilds map[discord.Snowflake]bool `json:"guilds"`
+	Guilds *csmap.CsMap[discord.Snowflake, bool] `json:"guilds"`
 }
 
 type StateGuildMembers struct {
-	MembersMu sync.RWMutex `json:"-"`
-
-	Members map[discord.Snowflake]*discord.GuildMember `json:"members"`
+	Members *csmap.CsMap[discord.Snowflake, *discord.GuildMember] `json:"members"`
 }
 
 type StateGuildRoles struct {
-	RolesMu sync.RWMutex `json:"-"`
-
-	Roles map[discord.Snowflake]*discord.Role `json:"roles"`
+	Roles *csmap.CsMap[discord.Snowflake, *discord.Role] `json:"roles"`
 }
 
 type StateGuildEmojis struct {
-	EmojisMu sync.RWMutex `json:"-"`
-
-	Emojis map[discord.Snowflake]*discord.Emoji `json:"emoji"`
+	Emojis *csmap.CsMap[discord.Snowflake, *discord.Emoji] `json:"emoji"`
 }
 
 type StateGuildChannels struct {
-	ChannelsMu sync.RWMutex `json:"-"`
-
-	Channels map[discord.Snowflake]*discord.Channel `json:"channels"`
+	Channels *csmap.CsMap[discord.Snowflake, *discord.Channel] `json:"channels"`
 }
 
 type StateGuildVoiceStates struct {
-	VoiceStatesMu sync.RWMutex `json:"-"`
-
-	VoiceStates map[discord.Snowflake]*discord.VoiceState `json:"voice_states"`
+	VoiceStates *csmap.CsMap[discord.Snowflake, *discord.VoiceState] `json:"voice_states"`
 }
 
 type StateUser struct {

@@ -38,7 +38,7 @@ const (
 	ShardConnectRetries = 3
 
 	ShardWSRateLimit      = 118
-	GatewayLargeThreshold = 100
+	GatewayLargeThreshold = 250
 
 	FirstEventTimeout = 5 * time.Second
 
@@ -976,9 +976,7 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	gm, ok := sh.Sandwich.State.GuildMembers.Load(guildID)
 
 	if ok {
-		gm.MembersMu.RLock()
-		memberCount = len(gm.Members)
-		gm.MembersMu.RUnlock()
+		memberCount = gm.Members.Count()
 	}
 
 	guild, ok := sh.Sandwich.State.Guilds.Load(guildID)

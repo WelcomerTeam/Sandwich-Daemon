@@ -208,15 +208,14 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			// Get roles
 			roles, ok := cs.manager.Sandwich.State.GuildRoles.Load(guild.ID)
 
-			roles.RolesMu.RLock()
-			guild.Roles = make([]*discord.Role, 0, len(roles.Roles))
+			guild.Roles = make([]*discord.Role, 0, roles.Roles.Count())
 			if ok {
-				for id, role := range roles.Roles {
+				roles.Roles.Range(func(id discord.Snowflake, role *discord.Role) bool {
 					role.ID = discord.Snowflake(id)
 					guild.Roles = append(guild.Roles, role)
-				}
+					return false
+				})
 			}
-			roles.RolesMu.RUnlock()
 		}
 
 		serializedGuild, err := jsoniter.Marshal(guild)
