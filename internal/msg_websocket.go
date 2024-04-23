@@ -410,6 +410,14 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 // reader reads messages from subscribe and sends them to the reader
 // Note that there must be only one reader reading from the goroutine
 func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
+	defer func() {
+		if err := recover(); err != nil {
+			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d panicked on readMessages: %v", s.shard[0], err)
+			cs.invalidSession(s, "panicked", true)
+			return
+		}
+	}()
+
 	for {
 		typ, ior, err := s.c.Read(ctx)
 
@@ -517,6 +525,14 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 
 // writeMessages reads messages from the writer and sends them to the WebSocket
 func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
+	defer func() {
+		if err := recover(); err != nil {
+			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d panicked on writeMessages: %v", s.shard[0], err)
+			cs.invalidSession(s, "panicked", true)
+			return
+		}
+	}()
+
 	for {
 		select {
 		// Case 1: Context is cancelled
