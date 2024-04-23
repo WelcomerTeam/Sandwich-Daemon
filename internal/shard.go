@@ -66,6 +66,7 @@ type Shard struct {
 
 	ShardID          int32          `json:"shard_id"`
 	ResumeGatewayURL *atomic.String `json:"resume_gateway_url"`
+	ConnectionURL    *atomic.String `json:"connection_url"`
 
 	Sandwich   *Sandwich   `json:"-"`
 	Manager    *Manager    `json:"-"`
@@ -154,6 +155,7 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		Sequence:         &atomic.Int32{},
 		SessionID:        &atomic.String{},
 		ResumeGatewayURL: &atomic.String{},
+		ConnectionURL:    &atomic.String{},
 
 		wsConnMu: sync.RWMutex{},
 
@@ -255,7 +257,7 @@ readyConsumer:
 		gwUrl = origGwUrl
 	}
 
-	if !sh.hasWsConn() || gwUrl != origGwUrl {
+	if !sh.hasWsConn() || sh.ConnectionURL.Load() != gwUrl {
 		if sh.hasWsConn() {
 			sh.Logger.Debug().Msg("Closing existing websocket connection")
 			err = sh.CloseWS(websocket.StatusInternalError)
@@ -263,7 +265,11 @@ readyConsumer:
 			if err != nil {
 				sh.Logger.Error().Err(err).Msg("Failed to close existing websocket connection")
 			}
+
+			sh.ConnectionURL.Store("")
 		}
+
+		sh.ConnectionURL.Store(gwUrl)
 
 		errorCh, messageCh, err := sh.FeedWebsocket(sh.ctx, gwUrl, nil)
 		if err != nil {

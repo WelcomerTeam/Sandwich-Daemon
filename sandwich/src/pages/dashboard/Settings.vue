@@ -25,7 +25,7 @@
             v-model="settings.producer.type"
             name="producer_type"
             label="Producer Type"
-            description="Type of producer. Accepts: stan, kafka, redis"
+            description="Type of producer. Accepts: stan, kafka, redis, websocket"
           />
           <text-input
             type="text"
