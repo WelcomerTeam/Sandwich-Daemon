@@ -83,7 +83,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 	sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session")
 
 	go sh.Sandwich.PublishSimpleWebhook(
-		"Received invalid session from gateway",
+		"Received invalid session from gateway (resumable: "+strconv.FormatBool(resumable)+")",
 		"",
 		fmt.Sprintf(
 			"Manager: %s ShardGroup: %d ShardID: %d/%d",

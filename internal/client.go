@@ -114,7 +114,7 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (*http.Response, e
 	}
 
 	if res.StatusCode == http.StatusTooManyRequests {
-		return res, fmt.Errorf("failed to do HTTP request: %w", err)
+		return res, fmt.Errorf("failed to do HTTP request, got 429")
 	}
 
 	if res.StatusCode == http.StatusUnauthorized {

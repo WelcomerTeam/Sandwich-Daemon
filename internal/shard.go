@@ -324,8 +324,11 @@ readyConsumer:
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
-	sh.HeartbeatInterval = time.Duration(helloResponse.HeartbeatInterval) * time.Millisecond
+	var hbIntervalWithJitter = int32(float32(helloResponse.HeartbeatInterval) * 0.8)
+
+	sh.HeartbeatInterval = time.Duration(hbIntervalWithJitter) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
+
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
 	go sh.Heartbeat(sh.ctx)
@@ -774,7 +777,12 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 	// are raised.
 	defer func() {
 		if r := recover(); r != nil {
-			sh.Logger.Warn().Err(r.(error)).Bool("hasWsConn", sh.wsConn != nil).Msg("Recovered panic in WriteJSON")
+			err, ok := r.(error)
+			if ok {
+				sh.Logger.Warn().Err(err).Bool("hasWsConn", sh.wsConn != nil).Msg("Recovered panic in WriteJSON")
+			} else {
+				sh.Logger.Warn().Interface("recovered", r).Bool("hasWsConn", sh.wsConn != nil).Msg("Recovered panic in WriteJSON")
+			}
 		}
 	}()
 

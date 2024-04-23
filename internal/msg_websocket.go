@@ -2,7 +2,6 @@ package internal
 
 import (
 	"bytes"
-	"compress/zlib"
 	"context"
 	"errors"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	"github.com/WelcomerTeam/czlib"
 	jsoniter "github.com/json-iterator/go"
 	"nhooyr.io/websocket"
 )
@@ -436,20 +436,31 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 				return
 			}
 
-			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d received packet: %v", s.shard[0], payload)
-
 			if payload.Op == discord.GatewayOpHeartbeat {
 				s.writer <- &message{
 					rawBytes: []byte(`{"op":11}`),
 				}
 			} else {
-				s.reader <- &message{
-					message: payload,
+				if !s.up {
+					s.reader <- &message{
+						message: payload,
+					}
+				} else {
+					// Only handle op of Request Guild Members, Update Voice State and Update Presence
+					if payload.Op == discord.GatewayOpRequestGuildMembers || payload.Op == discord.GatewayOpVoiceStateUpdate || payload.Op == discord.GatewayOpStatusUpdate {
+						cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d received packet: %v", s.shard[0], payload)
+
+						s.reader <- &message{
+							message: payload,
+						}
+					} else {
+						cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Shard %d received UNKNOWN packet: %v", s.shard[0], string(ior))
+					}
 				}
 			}
 		case websocket.MessageBinary:
 			// ZLIB compressed message sigh
-			newReader, err := zlib.NewReader(bytes.NewReader(ior))
+			newReader, err := czlib.NewReader(bytes.NewReader(ior))
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to decompress message: %s", err.Error())
