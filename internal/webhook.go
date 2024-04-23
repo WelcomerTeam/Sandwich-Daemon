@@ -45,9 +45,13 @@ func (sg *Sandwich) PublishSimpleWebhook(title string, description string, foote
 // PublishWebhook sends a webhook message to all added webhooks in the configuration.
 func (sg *Sandwich) PublishWebhook(message discord.WebhookMessageParams) {
 	for _, webhook := range sg.Configuration.Webhooks {
-		_, err := sg.SendWebhook(webhook, message)
+		status, err := sg.SendWebhook(webhook, message)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			sg.Logger.Warn().Err(err).Str("url", webhook).Msg("Failed to send webhook")
+		}
+
+		if status != 200 {
+			sg.Logger.Warn().Int("status", status).Str("url", webhook).Msg("Webhook returned non-200 status")
 		}
 	}
 }
