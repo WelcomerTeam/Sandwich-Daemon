@@ -605,6 +605,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	var err error
 	c, err = websocket.Accept(w, r, nil)
+	c.SetReadLimit(WebsocketReadLimit)
 	if err != nil {
 		return err
 	}
