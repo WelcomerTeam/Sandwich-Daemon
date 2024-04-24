@@ -7,6 +7,7 @@ import (
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 type MQClient interface {
@@ -64,7 +65,13 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 		},
 	}
 
-	packet.Trace["publish"] = discord.Int64(time.Now().Unix())
+	if packet.Trace == nil {
+		packet.Trace = csmap.Create(
+			csmap.WithSize[string, discord.Int64](uint64(1)),
+		)
+	}
+
+	packet.Trace.Store("publish", discord.Int64(time.Now().Unix()))
 
 	err := sh.Manager.ProducerClient.Publish(
 		ctx,

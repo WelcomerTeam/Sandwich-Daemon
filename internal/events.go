@@ -8,6 +8,7 @@ import (
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	jsoniter "github.com/json-iterator/go"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
@@ -151,7 +152,13 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	storeMutuals := sh.Manager.Configuration.Caching.StoreMutuals
 	sh.Manager.configurationMu.RUnlock()
 
-	trace["state"] = discord.Int64(time.Now().Unix())
+	if trace == nil {
+		trace = csmap.Create(
+			csmap.WithSize[string, discord.Int64](uint64(1)),
+		)
+	}
+
+	trace.Store("state", discord.Int64(time.Now().Unix()))
 
 	result, continuable, err := StateDispatch(&StateCtx{
 		context:      ctx,
@@ -186,6 +193,11 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	}
 
 	packet, _ := sh.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
+
+	if packet == nil {
+		return errors.New("failed to get sandwich payload from pool")
+	}
+
 	defer sh.Sandwich.payloadPool.Put(packet)
 
 	// Directly copy op, sequence and type from original message.
@@ -197,7 +209,13 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	packet.Data = result.Data
 
 	// Extra contains any extra information such as before state and if it is a lazy guild.
-	packet.Extra = result.Extra
+	packet.Extra = csmap.Create(
+		csmap.WithSize[string, jsoniter.RawMessage](uint64(len(result.Extra))),
+	)
+
+	for key, value := range result.Extra {
+		packet.Extra.Store(key, value)
+	}
 
 	packet.Trace = trace
 

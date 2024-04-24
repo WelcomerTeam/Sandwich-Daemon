@@ -321,7 +321,6 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 	packet.Op = discord.GatewayOpDispatch
 	packet.Type = eventType
 	packet.Data = data
-	packet.Extra = make(map[string]jsoniter.RawMessage)
 
 	packet.Metadata = sandwich_structs.SandwichMetadata{
 		Version: VERSION,

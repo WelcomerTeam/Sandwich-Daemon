@@ -579,9 +579,11 @@ func (sh *Shard) Listen(ctx context.Context) error {
 			sh.wsConnMu.RUnlock()
 		}
 
-		trace := sandwich_structs.SandwichTrace{
-			"receive": discord.Int64(time.Now().Unix()),
-		}
+		trace := csmap.Create(
+			csmap.WithSize[string, discord.Int64](uint64(1)),
+		)
+
+		trace.Store("receive", discord.Int64(time.Now().Unix()))
 
 		sh.OnEvent(ctx, msg, trace)
 

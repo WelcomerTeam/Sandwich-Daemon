@@ -18,7 +18,7 @@ const MagicDecimalBase = 10
 func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
 	sh.Sequence.Store(msg.Sequence)
 
-	trace["dispatch"] = discord.Int64(time.Now().Unix())
+	trace.Store("dispatch", discord.Int64(time.Now().Unix()))
 
 	go func(msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 		sh.Sandwich.EventsInflight.Inc()
