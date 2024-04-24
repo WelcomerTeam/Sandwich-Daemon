@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
 	"github.com/rs/zerolog"

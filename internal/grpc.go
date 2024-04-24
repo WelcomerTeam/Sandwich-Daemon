@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"golang.org/x/text/unicode/norm"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

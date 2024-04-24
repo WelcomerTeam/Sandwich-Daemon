@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"nhooyr.io/websocket"
 )
 

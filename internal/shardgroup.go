@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"

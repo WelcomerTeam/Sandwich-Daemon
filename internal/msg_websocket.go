@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/czlib"
 	"nhooyr.io/websocket"
 )

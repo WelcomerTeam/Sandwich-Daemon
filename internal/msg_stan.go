@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 )

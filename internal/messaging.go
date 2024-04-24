@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
-	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
