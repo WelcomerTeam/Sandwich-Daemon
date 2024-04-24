@@ -34,7 +34,7 @@ const (
 	MessageChannelBuffer = 64
 
 	// Time necessary to mark chunking as completed when no more events are received in this time frame.
-	MemberChunkTimeout = 1 * time.Second
+	MemberChunkTimeout = 2 * time.Second
 
 	// Number of retries attempted before considering a shard not working.
 	ShardConnectRetries = 10
