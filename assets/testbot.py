@@ -51,7 +51,7 @@ def patch_with_gateway(env_gateway):
     discord.gateway.ReconnectWebSocket.__init__ = ProductionReconnectWebSocket.__init__
     return ProductionBot
 
-bot = patch_with_gateway("ws://127.0.0.1:3600")
+bot = patch_with_gateway("ws://127.0.0.1:3600/?writeDelay=100")
 
 client = bot(command_prefix="!", intents=discord.Intents.all(), chunk_guilds_at_startup=True)
 

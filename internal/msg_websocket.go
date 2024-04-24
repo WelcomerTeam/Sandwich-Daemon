@@ -98,6 +98,7 @@ type subscriber struct {
 	up         bool
 	resumed    bool
 	seq        int32
+	writeDelay int64
 	reader     chan *message
 	writer     chan *message
 }
@@ -257,7 +258,28 @@ func (cs *chatServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // subscribeHandler accepts the WebSocket connection and then subscribes
 // it to all future messages.
 func (cs *chatServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
-	err := cs.subscribe(r.Context(), w, r)
+	// Check for special query params
+	//
+	// - writeDelay (int): the delay to write messages in microseconds
+	var writeDelay int64
+
+	wd := r.URL.Query().Get("writeDelay")
+
+	if wd != "" {
+		// Parse to int
+		delay, err := strconv.ParseInt(wd, 10, 64)
+
+		if err != nil {
+			http.Error(w, "Invalid writeDelay", http.StatusBadRequest)
+			return
+		}
+
+		writeDelay = delay
+	}
+
+	err := cs.subscribe(r.Context(), w, r, subscribeOpts{
+		writeDelay: writeDelay,
+	})
 	if errors.Is(err, context.Canceled) {
 		return
 	}
@@ -541,6 +563,10 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 			return
 		// Case 2: Message is received
 		case msg := <-s.writer:
+			if s.writeDelay > 0 {
+				time.Sleep(time.Duration(s.writeDelay) * time.Microsecond)
+			}
+
 			if len(msg.rawBytes) > 0 {
 				err := s.c.Write(ctx, websocket.MessageText, msg.rawBytes)
 
@@ -585,7 +611,12 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 			}
 		}
 	}
+}
 
+// subscribeOpts are the extra options sent when subscribing.
+type subscribeOpts struct {
+	// writeDelay is the delay to write messages.
+	writeDelay int64
 }
 
 // subscribe subscribes the given WebSocket to all broadcast messages.
@@ -596,11 +627,12 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 //
 // It uses CloseRead to keep reading from the connection to process control
 // messages and cancel the context if the connection drops.
-func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, opts subscribeOpts) error {
 	var c *websocket.Conn
 	s := &subscriber{
-		reader: make(chan *message, cs.subscriberMessageBuffer),
-		writer: make(chan *message, cs.subscriberMessageBuffer),
+		reader:     make(chan *message, cs.subscriberMessageBuffer),
+		writer:     make(chan *message, cs.subscriberMessageBuffer),
+		writeDelay: opts.writeDelay,
 	}
 
 	var err error
