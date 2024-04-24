@@ -861,6 +861,7 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	case float64:
 		mq.cs.defaultWriteDelay = int64(defaultWriteDelay)
 	default:
+		manager.Logger.Warn().Msg("DefaultWriteDelay not set, defaulting to 10 microseconds")
 		mq.cs.defaultWriteDelay = 10
 	}
 
