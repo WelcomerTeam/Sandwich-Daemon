@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 )
@@ -105,7 +105,7 @@ func (stanMQ *StanMQClient) Connect(ctx context.Context, manager *Manager, clien
 }
 
 func (stanMQ *StanMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string) error {
-	data, err := jsoniter.Marshal(packet)
+	data, err := sandwichjson.Marshal(packet)
 
 	if err != nil {
 		return err

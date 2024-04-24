@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 )
 
 // Embed colours for webhooks.
@@ -66,7 +66,7 @@ func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessag
 		return nil, -1, fmt.Errorf("failed to parse webhook URL: %w", err)
 	}
 
-	res, err := jsoniter.Marshal(message)
+	res, err := sandwichjson.Marshal(message)
 	if err != nil {
 		return nil, -1, fmt.Errorf("failed to marshal webhook message: %w", err)
 	}

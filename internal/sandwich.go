@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -11,15 +12,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/interfacecache"
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
-	jsoniter "github.com/json-iterator/go"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -314,7 +315,7 @@ func (sg *Sandwich) Open() {
 }
 
 // PublishGlobalEvent publishes an event to all Consumers.
-func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessage) error {
+func (sg *Sandwich) PublishGlobalEvent(eventType string, data json.RawMessage) error {
 	packet, _ := sg.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer sg.payloadPool.Put(packet)
 
@@ -326,7 +327,7 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 		Version: VERSION,
 	}
 
-	payload, err := jsoniter.Marshal(packet)
+	payload, err := sandwichjson.Marshal(packet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal packet: %w", err)
 	}

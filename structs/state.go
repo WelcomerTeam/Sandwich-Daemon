@@ -1,18 +1,18 @@
 package structs
 
 import (
+	"encoding/json"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 // StateResult represents the data a state handler would return which would be converted to
 // a sandwich payload.
 type StateResult struct {
-	Data  jsoniter.RawMessage
-	Extra map[string]jsoniter.RawMessage
+	Data  json.RawMessage
+	Extra map[string]json.RawMessage
 }
 
 type StateDMChannel struct {

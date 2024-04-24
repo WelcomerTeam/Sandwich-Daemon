@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
@@ -111,7 +112,7 @@ func (sg *Sandwich) requireDiscordAuthentication(h fasthttp.RequestHandler) fast
 }
 
 func writeResponse(ctx *fasthttp.RequestCtx, statusCode int, i interface{}) {
-	body, err := jsoniter.Marshal(i)
+	body, err := sandwichjson.Marshal(i)
 	if err == nil {
 		_, _ = ctx.Write(body)
 		ctx.SetStatusCode(statusCode)
@@ -148,7 +149,7 @@ func (sg *Sandwich) authenticateValue(ctx *fasthttp.RequestCtx) (store *session.
 		return
 	}
 
-	err = jsoniter.Unmarshal(userData, &user)
+	err = sandwichjson.Unmarshal(userData, &user)
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to unmarshal user object")
 
@@ -287,7 +288,7 @@ func (sg *Sandwich) CallbackEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	userData, err := jsoniter.Marshal(user)
+	userData, err := sandwichjson.Marshal(user)
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to marshal user object")
 
@@ -497,7 +498,7 @@ func (sg *Sandwich) SandwichGetEndpoint(ctx *fasthttp.RequestCtx) {
 func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	sandwichConfiguration := SandwichConfiguration{}
 
-	err := jsoniter.Unmarshal(ctx.PostBody(), &sandwichConfiguration)
+	err := sandwichjson.Unmarshal(ctx.PostBody(), &sandwichConfiguration)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -578,7 +579,7 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	createManagerArguments := sandwich_structs.CreateManagerArguments{}
 
-	err := jsoniter.Unmarshal(ctx.PostBody(), &createManagerArguments)
+	err := sandwichjson.Unmarshal(ctx.PostBody(), &createManagerArguments)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -690,7 +691,7 @@ func (sg *Sandwich) ManagerInitializeEndpoint(ctx *fasthttp.RequestCtx) {
 func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	managerConfiguration := ManagerConfiguration{}
 
-	err := jsoniter.Unmarshal(ctx.PostBody(), &managerConfiguration)
+	err := sandwichjson.Unmarshal(ctx.PostBody(), &managerConfiguration)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -873,7 +874,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 func (sg *Sandwich) ShardGroupCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	shardGroupArguments := sandwich_structs.CreateManagerShardGroupArguments{}
 
-	err := jsoniter.Unmarshal(ctx.PostBody(), &shardGroupArguments)
+	err := sandwichjson.Unmarshal(ctx.PostBody(), &shardGroupArguments)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,

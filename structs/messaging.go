@@ -1,8 +1,9 @@
 package structs
 
 import (
-	"github.com/WelcomerTeam/Discord/discord"
-	jsoniter "github.com/json-iterator/go"
+	"encoding/json"
+
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
@@ -20,12 +21,12 @@ type SandwichTrace = *csmap.CsMap[string, discord.Int64]
 
 // SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
-	Op       discord.GatewayOp   `json:"op"`
-	Data     jsoniter.RawMessage `json:"d"`
-	Sequence int32               `json:"s"`
-	Type     string              `json:"t"`
+	Op       discord.GatewayOp `json:"op"`
+	Data     json.RawMessage   `json:"d"`
+	Sequence int32             `json:"s"`
+	Type     string            `json:"t"`
 
-	Extra    *csmap.CsMap[string, jsoniter.RawMessage] `json:"__extra,omitempty"`
-	Metadata SandwichMetadata                          `json:"__sandwich"`
-	Trace    SandwichTrace                             `json:"__sandwich_trace"`
+	Extra    *csmap.CsMap[string, json.RawMessage] `json:"__extra,omitempty"`
+	Metadata SandwichMetadata                      `json:"__sandwich"`
+	Trace    SandwichTrace                         `json:"__sandwich_trace"`
 }

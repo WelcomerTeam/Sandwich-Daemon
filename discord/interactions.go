@@ -1,8 +1,6 @@
 package discord
 
-import (
-	jsoniter "github.com/json-iterator/go"
-)
+import "encoding/json"
 
 // interactions.go represents the interaction objects.
 
@@ -134,7 +132,7 @@ type InteractionData struct {
 	Options       []*InteractionDataOption   `json:"options,omitempty"`
 	Values        []*ApplicationSelectOption `json:"values,omitempty"`
 	Components    []*InteractionComponent    `json:"components,omitempty"`
-	Value         jsoniter.RawMessage        `json:"value,omitempty"`
+	Value         json.RawMessage            `json:"value,omitempty"`
 	ID            Snowflake                  `json:"id"`
 	Type          ApplicationCommandType     `json:"type"`
 	Focused       bool                       `json:"focused,omitempty"`
@@ -160,7 +158,7 @@ type InteractionCallbackData struct {
 // InteractionDataOption represents the structure of an interaction option.
 type InteractionDataOption struct {
 	Name    string                       `json:"name"`
-	Value   jsoniter.RawMessage          `json:"value,omitempty"`
+	Value   json.RawMessage              `json:"value,omitempty"`
 	Options []*InteractionDataOption     `json:"options,omitempty"`
 	Type    ApplicationCommandOptionType `json:"type"`
 	Focused bool                         `json:"focused,omitempty"`

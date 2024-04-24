@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	"nhooyr.io/websocket"

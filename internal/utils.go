@@ -3,12 +3,13 @@ package internal
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"strconv"
 	"strings"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 )
 
 type void struct{}
@@ -58,11 +59,11 @@ func randomHex(length int) (result string) {
 }
 
 // makeExtra converts from interfaces to RawMessages. Used for extra data in payloads.
-func makeExtra(extra map[string]interface{}) (out map[string]jsoniter.RawMessage, err error) {
-	out = make(map[string]jsoniter.RawMessage)
+func makeExtra(extra map[string]interface{}) (out map[string]json.RawMessage, err error) {
+	out = make(map[string]json.RawMessage)
 
 	for k, v := range extra {
-		p, err := jsoniter.Marshal(v)
+		p, err := sandwichjson.Marshal(v)
 		if err != nil {
 			return out, fmt.Errorf("failed to marshal extra: %w", err)
 		}

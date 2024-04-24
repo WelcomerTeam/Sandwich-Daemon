@@ -2,13 +2,13 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"runtime/debug"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
@@ -210,7 +210,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 
 	// Extra contains any extra information such as before state and if it is a lazy guild.
 	packet.Extra = csmap.Create(
-		csmap.WithSize[string, jsoniter.RawMessage](uint64(len(result.Extra))),
+		csmap.WithSize[string, json.RawMessage](uint64(len(result.Extra))),
 	)
 
 	for key, value := range result.Extra {

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 )
 
 const (
@@ -144,7 +144,7 @@ func (bi *BaseInterface) FetchBJ(session *Session, method, endpoint, contentType
 	}
 
 	if response != nil {
-		err = jsoniter.Unmarshal(resp, response)
+		err = sandwichjson.Unmarshal(resp, response)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal response: %w", err)
 		}
@@ -158,7 +158,7 @@ func (bi *BaseInterface) FetchJJ(session *Session, method, endpoint string, payl
 	var err error
 
 	if payload != nil {
-		body, err = jsoniter.Marshal(payload)
+		body, err = sandwichjson.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -267,7 +267,7 @@ func (tl *TwilightProxy) FetchBJ(session *Session, method, endpoint, contentType
 	}
 
 	if response != nil {
-		err = jsoniter.Unmarshal(resp, response)
+		err = sandwichjson.Unmarshal(resp, response)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal response: %w", err)
 		}
@@ -281,7 +281,7 @@ func (tl *TwilightProxy) FetchJJ(session *Session, method, endpoint string, payl
 	var err error
 
 	if payload != nil {
-		body, err = jsoniter.Marshal(payload)
+		body, err = sandwichjson.Marshal(payload)
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}

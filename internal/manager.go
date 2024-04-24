@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	jsoniter "github.com/json-iterator/go"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
@@ -274,7 +275,7 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 }
 
 // PublishEvent sends an event to consumers.
-func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData jsoniter.RawMessage) error {
+func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData json.RawMessage) error {
 	packet, _ := mg.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer mg.Sandwich.payloadPool.Put(packet)
 

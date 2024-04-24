@@ -1,6 +1,6 @@
 package discord
 
-import jsoniter "github.com/json-iterator/go"
+import "github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 
 type SnowflakeList []Snowflake
 
@@ -11,7 +11,7 @@ func (s SnowflakeList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]Snowflake(s))
+	return sandwichjson.Marshal([]Snowflake(s))
 }
 
 type StringList []string
@@ -23,7 +23,7 @@ func (s StringList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]string(s))
+	return sandwichjson.Marshal([]string(s))
 }
 
 type StageInstanceList []StageInstance
@@ -34,7 +34,7 @@ func (s StageInstanceList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]StageInstance(s))
+	return sandwichjson.Marshal([]StageInstance(s))
 }
 
 type StickerList []*Sticker
@@ -45,7 +45,7 @@ func (s StickerList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*Sticker(s))
+	return sandwichjson.Marshal([]*Sticker(s))
 }
 
 type ScheduledEventList []ScheduledEvent
@@ -56,7 +56,7 @@ func (s ScheduledEventList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]ScheduledEvent(s))
+	return sandwichjson.Marshal([]ScheduledEvent(s))
 }
 
 type RoleList []*Role
@@ -67,7 +67,7 @@ func (s RoleList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*Role(s))
+	return sandwichjson.Marshal([]*Role(s))
 }
 
 type EmojiList []*Emoji
@@ -78,7 +78,7 @@ func (e EmojiList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*Emoji(e))
+	return sandwichjson.Marshal([]*Emoji(e))
 }
 
 type VoiceStateList []*VoiceState
@@ -89,7 +89,7 @@ func (v VoiceStateList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*VoiceState(v))
+	return sandwichjson.Marshal([]*VoiceState(v))
 }
 
 type GuildMemberList []*GuildMember
@@ -100,7 +100,7 @@ func (m GuildMemberList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*GuildMember(m))
+	return sandwichjson.Marshal([]*GuildMember(m))
 }
 
 type ChannelList []*Channel
@@ -111,7 +111,7 @@ func (c ChannelList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*Channel(c))
+	return sandwichjson.Marshal([]*Channel(c))
 }
 
 type NullMap bool
@@ -135,7 +135,7 @@ func (s ActivityList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*Activity(s))
+	return sandwichjson.Marshal([]*Activity(s))
 }
 
 type PresenceUpdateList []*PresenceUpdate
@@ -147,5 +147,5 @@ func (p PresenceUpdateList) MarshalJSON() ([]byte, error) {
 	}
 
 	// Just marshal normally
-	return jsoniter.Marshal([]*PresenceUpdate(p))
+	return sandwichjson.Marshal([]*PresenceUpdate(p))
 }

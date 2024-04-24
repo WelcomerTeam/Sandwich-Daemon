@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/czlib"
 	jsoniter "github.com/json-iterator/go"
@@ -172,7 +174,7 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 	default:
 	}
 
-	serializedReadyPayload, err := jsoniter.Marshal(readyPayload)
+	serializedReadyPayload, err := sandwichjson.Marshal(readyPayload)
 
 	if err != nil {
 		cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal ready payload: %s", err.Error())
@@ -218,7 +220,7 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 			}
 		}
 
-		serializedGuild, err := jsoniter.Marshal(guild)
+		serializedGuild, err := sandwichjson.Marshal(guild)
 
 		if err != nil {
 			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal guild: %s [shard %d]", err.Error(), s.shard[0])
@@ -299,7 +301,7 @@ func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
 
 	var payload structs.SandwichPayload
 
-	err = jsoniter.Unmarshal(msg, &payload)
+	err = sandwichjson.Unmarshal(msg, &payload)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -341,7 +343,7 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 					Shard [2]int32 `json:"shard"`
 				}
 
-				err := jsoniter.Unmarshal(packet.Data, &identify)
+				err := sandwichjson.Unmarshal(packet.Data, &identify)
 				if err != nil {
 					return nil, fmt.Errorf("failed to unmarshal identify packet: %w", err)
 				}
@@ -371,7 +373,7 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 					Seq       int32  `json:"seq"`
 				}
 
-				err := jsoniter.Unmarshal(packet.Data, &resume)
+				err := sandwichjson.Unmarshal(packet.Data, &resume)
 				if err != nil {
 					return nil, fmt.Errorf("failed to unmarshal resume packet: %w", err)
 				}
@@ -436,7 +438,7 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 		case websocket.MessageText:
 			var payload *structs.SandwichPayload
 
-			err := jsoniter.Unmarshal(ior, &payload)
+			err := sandwichjson.Unmarshal(ior, &payload)
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
@@ -559,7 +561,7 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 					msg.message.Sequence = 0
 				}
 
-				serializedMessage, err := jsoniter.Marshal(msg.message)
+				serializedMessage, err := sandwichjson.Marshal(msg.message)
 
 				if err != nil {
 					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal message: %s", err.Error())
@@ -683,7 +685,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		s.writer <- &message{
 			message: &structs.SandwichPayload{
 				Op:   discord.GatewayOpDispatch,
-				Data: jsoniter.RawMessage([]byte(`{}`)),
+				Data: json.RawMessage([]byte(`{}`)),
 				Type: "RESUMED",
 			},
 		}

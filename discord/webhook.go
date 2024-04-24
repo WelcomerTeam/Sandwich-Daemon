@@ -1,8 +1,6 @@
 package discord
 
-import (
-	jsoniter "github.com/json-iterator/go"
-)
+import "encoding/json"
 
 // webhook.go represents all structures to create a webhook and interact with it.
 
@@ -30,7 +28,7 @@ type Webhook struct {
 
 // WebhookMessage represents the structure for sending a webhook message.
 type WebhookMessageParams struct {
-	PayloadJSON     *jsoniter.RawMessage      `json:"payload_json,omitempty"`
+	PayloadJSON     *json.RawMessage          `json:"payload_json,omitempty"`
 	Content         string                    `json:"content,omitempty"`
 	Username        string                    `json:"username,omitempty"`
 	AvatarURL       string                    `json:"avatar_url,omitempty"`

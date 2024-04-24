@@ -1,8 +1,6 @@
 package discord
 
-import (
-	jsoniter "github.com/json-iterator/go"
-)
+import "encoding/json"
 
 // gateway.go contains all structures for interacting with discord's gateway and contains
 // all events and structures we send to
@@ -68,10 +66,10 @@ const (
 
 // GatewayPayload represents the base payload received from discord gateway.
 type GatewayPayload struct {
-	Type     string              `json:"t"`
-	Data     jsoniter.RawMessage `json:"d"`
-	Sequence int32               `json:"s"`
-	Op       GatewayOp           `json:"op"`
+	Type     string          `json:"t"`
+	Data     json.RawMessage `json:"d"`
+	Sequence int32           `json:"s"`
+	Op       GatewayOp       `json:"op"`
 }
 
 // SentPayload represents the base payload we send to discords gateway.

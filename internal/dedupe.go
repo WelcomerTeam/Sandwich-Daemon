@@ -3,7 +3,7 @@ package internal
 import (
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 )
 
 func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) string {

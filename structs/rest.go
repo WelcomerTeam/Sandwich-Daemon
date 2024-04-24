@@ -1,7 +1,7 @@
 package structs
 
 import (
-	"github.com/WelcomerTeam/Discord/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 )
 
 type BaseRestResponse struct {

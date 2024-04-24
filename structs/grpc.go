@@ -1,6 +1,6 @@
 package structs
 
-import "github.com/WelcomerTeam/Discord/discord"
+import "github.com/WelcomerTeam/Sandwich-Daemon/discord"
 
 // BaseResponse represents data included in all GRPC responses.
 type BaseResponse struct {
