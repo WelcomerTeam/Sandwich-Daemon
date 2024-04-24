@@ -23,7 +23,7 @@ def patch_with_gateway(env_gateway):
                 data = await self.request(discord.http.Route("GET", "/gateway/bot"))
             except discord.HTTPException as exc:
                 raise discord.GatewayNotFound() from exc
-            return data["shards"], f"{env_gateway}?encoding=json&v=9&writeDelay=10"
+            return data["shards"], f"{env_gateway}?encoding=json&v=9&writeDelay=20"
 
     class ProductionDiscordWebSocket(discord.gateway.DiscordWebSocket):
         DEFAULT_GATEWAY = yarl.URL(env_gateway)
