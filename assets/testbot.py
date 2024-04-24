@@ -53,7 +53,7 @@ def patch_with_gateway(env_gateway):
 
 bot = patch_with_gateway("ws://127.0.0.1:3600")
 
-client = bot(command_prefix="!", intents=discord.Intents.all(), chunk_guilds_at_startup=False)
+client = bot(command_prefix="!", intents=discord.Intents.all(), chunk_guilds_at_startup=True)
 
 @client.event
 async def on_ready():
