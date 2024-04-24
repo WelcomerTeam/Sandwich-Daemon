@@ -13,7 +13,6 @@ import (
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
@@ -268,7 +267,8 @@ func (sg *Sandwich) CallbackEndpoint(ctx *fasthttp.RequestCtx) {
 
 	user := discord.User{}
 
-	err = jsoniter.NewDecoder(resp.Body).Decode(&user)
+	err = sandwichjson.UnmarshalReader(resp.Body, &user)
+
 	if err != nil {
 		sg.Logger.Error().Err(err).Msg("Failed to decode body")
 

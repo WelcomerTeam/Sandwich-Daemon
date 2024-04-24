@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	"nhooyr.io/websocket"
 )
 
@@ -74,7 +74,18 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 }
 
 func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
-	resumable := jsoniter.Get(msg.Data, "d").ToBool()
+	var body struct {
+		Resumable bool `json:"d"`
+	}
+
+	err := sandwichjson.Unmarshal(msg.Data, &body)
+
+	if err != nil {
+		body.Resumable = false
+	}
+
+	resumable := body.Resumable
+
 	if !resumable {
 		sh.SessionID.Store("")
 		sh.Sequence.Store(0)
@@ -95,7 +106,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 		EmbedColourSandwich,
 	)
 
-	err := sh.Reconnect(WebsocketReconnectCloseCode)
+	err = sh.Reconnect(WebsocketReconnectCloseCode)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 

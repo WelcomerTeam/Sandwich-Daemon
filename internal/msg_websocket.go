@@ -18,7 +18,6 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/czlib"
-	jsoniter "github.com/json-iterator/go"
 	"nhooyr.io/websocket"
 )
 
@@ -197,7 +196,7 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 		guild, ok := cs.manager.Sandwich.State.Guilds.Load(id)
 
 		if !ok {
-			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to find guild %d", id)
+			cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Failed to find guild %d for dispatching. This is normal for first connect", id)
 			return false
 		}
 
@@ -480,7 +479,7 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 
 			var payload *structs.SandwichPayload
 
-			err = jsoniter.NewDecoder(newReader).Decode(&payload)
+			err = sandwichjson.UnmarshalReader(newReader, &payload)
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())

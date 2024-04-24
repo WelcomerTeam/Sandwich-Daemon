@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
@@ -355,10 +355,6 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 			return fmt.Errorf("failed to create valid identify URL: %w", err)
 		}
 
-		var body bytes.Buffer
-
-		var identifyResponse sandwich_structs.IdentifyResponse
-
 		identifyPayload := sandwich_structs.IdentifyPayload{
 			ShardID:        shardID,
 			ShardCount:     shardCount,
@@ -367,7 +363,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 			MaxConcurrency: maxConcurrency,
 		}
 
-		err = jsoniter.NewEncoder(&body).Encode(identifyPayload)
+		identifyPayloadBytes, err := sandwichjson.Marshal(identifyPayload)
 		if err != nil {
 			return fmt.Errorf("failed to encode identify payload: %w", err)
 		}
@@ -375,7 +371,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 		client := http.DefaultClient
 
 		for {
-			req, err := http.NewRequestWithContext(mg.ctx, http.MethodPost, sendURL, bytes.NewBuffer(body.Bytes()))
+			req, err := http.NewRequestWithContext(mg.ctx, http.MethodPost, sendURL, bytes.NewReader(identifyPayloadBytes))
 			if err != nil {
 				return fmt.Errorf("failed to create request: %w", err)
 			}
@@ -394,7 +390,9 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 				continue
 			}
 
-			err = jsoniter.NewDecoder(res.Body).Decode(&identifyResponse)
+			var identifyResponse sandwich_structs.IdentifyResponse
+			err = sandwichjson.UnmarshalReader(res.Body, &identifyResponse)
+
 			if err != nil {
 				mg.Logger.Warn().Err(err).Msg("Failed to decode identify response")
 				time.Sleep(IdentifyRetry)

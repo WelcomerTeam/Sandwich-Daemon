@@ -10,7 +10,7 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
-	"github.com/savsgio/gotils/strconv"
+	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 )
 
@@ -170,7 +170,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 
 	if err != nil {
 		if !errors.Is(err, ErrNoDispatchHandler) {
-			sh.Logger.Error().Err(err).Str("data", strconv.B2S(msg.Data)).Msg("Encountered error whilst handling " + msg.Type)
+			sh.Logger.Error().Err(err).Str("data", gotils_strconv.B2S(msg.Data)).Msg("Encountered error whilst handling " + msg.Type)
 		}
 
 		return err

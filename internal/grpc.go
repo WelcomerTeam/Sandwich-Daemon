@@ -10,8 +10,8 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/text/unicode/norm"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -142,7 +142,7 @@ func (grpc *routeSandwichServer) FetchConsumerConfiguration(ctx context.Context,
 
 	var buf bytes.Buffer
 
-	err = jsoniter.NewEncoder(&buf).Encode(sandwichConsumerConfiguration)
+	err = sandwichjson.MarshalToWriter(&buf, sandwichConsumerConfiguration)
 	if err != nil {
 		grpc.sg.Logger.Warn().Err(err).Msg("Failed to marshal consumer configuration")
 	}
