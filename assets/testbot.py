@@ -16,14 +16,14 @@ import asyncio
 def patch_with_gateway(env_gateway):
     class ProductionHTTPClient(discord.http.HTTPClient):
         async def get_gateway(self, **_):
-            return f"{env_gateway}?encoding=json&v=9"
+            return f"{env_gateway}?encoding=json"
 
         async def get_bot_gateway(self, **_):
             try:
                 data = await self.request(discord.http.Route("GET", "/gateway/bot"))
             except discord.HTTPException as exc:
                 raise discord.GatewayNotFound() from exc
-            return data["shards"], f"{env_gateway}?encoding=json&v=9&writeDelay=20"
+            return data["shards"], f"{env_gateway}?encoding=json&v=9"
 
     class ProductionDiscordWebSocket(discord.gateway.DiscordWebSocket):
         DEFAULT_GATEWAY = yarl.URL(env_gateway)

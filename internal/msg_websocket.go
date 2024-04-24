@@ -49,6 +49,9 @@ type chatServer struct {
 	// address
 	address string
 
+	// defaultWriteDelay
+	defaultWriteDelay int64
+
 	// subscriberMessageBuffer controls the max number
 	// of messages that can be queued for a subscriber
 	// before it is kicked.
@@ -265,6 +268,8 @@ func (cs *chatServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 
 	wd := r.URL.Query().Get("writeDelay")
 
+	cs.manager.Logger.Info().Str("url", r.URL.String()).Msgf("[WS] Shard %d is now subscribing", 0)
+
 	if wd != "" {
 		// Parse to int
 		delay, err := strconv.ParseInt(wd, 10, 64)
@@ -275,6 +280,8 @@ func (cs *chatServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeDelay = delay
+	} else {
+		writeDelay = cs.defaultWriteDelay
 	}
 
 	err := cs.subscribe(r.Context(), w, r, subscribeOpts{
@@ -844,6 +851,17 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	mq.cs.address = address
 	mq.cs.externalAddress = externalAddress
 	s := &http.Server{Handler: mq.cs}
+
+	switch defaultWriteDelay := GetEntry(args, "DefaultWriteDelay").(type) {
+	case int:
+		mq.cs.defaultWriteDelay = int64(defaultWriteDelay)
+	case int64:
+		mq.cs.defaultWriteDelay = defaultWriteDelay
+	case float64:
+		mq.cs.defaultWriteDelay = int64(defaultWriteDelay)
+	default:
+		mq.cs.defaultWriteDelay = 0
+	}
 
 	go func() {
 		s.Serve(l)
