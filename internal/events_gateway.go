@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
-	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"nhooyr.io/websocket"
 )
 
@@ -74,17 +74,7 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 }
 
 func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
-	var body struct {
-		Resumable bool `json:"d"`
-	}
-
-	err := sandwichjson.Unmarshal(msg.Data, &body)
-
-	if err != nil {
-		body.Resumable = false
-	}
-
-	resumable := body.Resumable
+	var resumable = bytes.Equal(msg.Data, []byte("true"))
 
 	if !resumable {
 		sh.SessionID.Store("")
@@ -106,7 +96,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 		EmbedColourSandwich,
 	)
 
-	err = sh.Reconnect(WebsocketReconnectCloseCode)
+	err := sh.Reconnect(WebsocketReconnectCloseCode)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 
