@@ -846,7 +846,7 @@ func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
 }
 
 // Close closes the shard connection.
-func (sh *Shard) Close(code websocket.StatusCode) {
+func (sh *Shard) Close(code websocket.StatusCode, intermittentGwIssue bool) {
 	sh.Logger.Info().Int("code", int(code)).Msg("Closing shard")
 
 	sh.IsReady = false
@@ -869,7 +869,12 @@ func (sh *Shard) Close(code websocket.StatusCode) {
 	// Try killing the producer's shard as well
 	pc := sh.Manager.ProducerClient
 	if pc != nil {
-		pc.CloseShard(sh.ShardID)
+		if intermittentGwIssue {
+			pc.CloseShard(sh.ShardID, MQCloseShardReasonGateway)
+		} else {
+			pc.CloseShard(sh.ShardID, MQCloseShardReasonOther)
+
+		}
 	}
 
 	sh.SetStatus(sandwich_structs.ShardStatusClosed)
@@ -935,7 +940,7 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 
 	sh.SetStatus(sandwich_structs.ShardStatusReconnecting)
 
-	sh.Close(code)
+	sh.Close(code, true)
 
 	for {
 		sh.Logger.Info().Msg("Trying to reconnect to gateway")
@@ -951,7 +956,7 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 		retries := sh.RetriesRemaining.Sub(-1)
 		if retries <= 0 {
 			sh.Logger.Warn().Msg("Ran out of retries whilst connecting. Attempting to reconnect client")
-			sh.Close(code)
+			sh.Close(code, false)
 
 			err = sh.Connect()
 			if err != nil {

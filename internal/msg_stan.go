@@ -131,7 +131,7 @@ func (stanMQ *StanMQClient) IsClosed() bool {
 	return stanMQ.StanClient == nil
 }
 
-func (stanMQ *StanMQClient) CloseShard(shardID int32) {
+func (stanMQ *StanMQClient) CloseShard(shardID int32, reason MQCloseShardReason) {
 	// No-op
 }
 

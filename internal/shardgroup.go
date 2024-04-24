@@ -249,7 +249,7 @@ func (sg *ShardGroup) Close() {
 		closeWaiter.Add(1)
 
 		go func(sh *Shard) {
-			sh.Close(websocket.StatusNormalClosure)
+			sh.Close(websocket.StatusNormalClosure, false)
 			closeWaiter.Done()
 		}(sh)
 

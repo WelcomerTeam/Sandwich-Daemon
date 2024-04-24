@@ -10,6 +10,14 @@ import (
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
+type MQCloseShardReason int
+
+const (
+	// CloseShardReasonGateway means that the gateway connection was closed.
+	MQCloseShardReasonGateway MQCloseShardReason = iota
+	MQCloseShardReasonOther   MQCloseShardReason = iota
+)
+
 type MQClient interface {
 	String() string
 	Channel() string
@@ -22,7 +30,7 @@ type MQClient interface {
 	IsClosed() bool
 
 	// Close all connections for a specific shard, only supported by websocket producer
-	CloseShard(shardID int32)
+	CloseShard(shardID int32, reason MQCloseShardReason)
 
 	// Close the connection
 	Close()

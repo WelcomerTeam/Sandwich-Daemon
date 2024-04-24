@@ -833,7 +833,11 @@ func (mq *WebsocketClient) IsClosed() bool {
 	return mq.cs == nil
 }
 
-func (mq *WebsocketClient) CloseShard(shardID int32) {
+func (mq *WebsocketClient) CloseShard(shardID int32, reason MQCloseShardReason) {
+	if reason == MQCloseShardReasonGateway {
+		return // No-op if the reason is a gateway reconnect
+	}
+
 	// Send RESUME for single shard
 	for _, shardSubs := range mq.cs.subscribers {
 		for _, s := range shardSubs {

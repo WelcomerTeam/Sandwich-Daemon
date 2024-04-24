@@ -91,7 +91,7 @@ func (redisMQ *RedisMQClient) IsClosed() bool {
 	return redisMQ.redisClient == nil
 }
 
-func (redisMQ *RedisMQClient) CloseShard(shardID int32) {
+func (redisMQ *RedisMQClient) CloseShard(shardID int32, reason MQCloseShardReason) {
 	// No-op
 }
 

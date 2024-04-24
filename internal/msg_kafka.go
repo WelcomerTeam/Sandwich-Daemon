@@ -104,7 +104,7 @@ func (kafkaMQ *KafkaMQClient) IsClosed() bool {
 	return kafkaMQ.KafkaClient == nil
 }
 
-func (kafkaMQ *KafkaMQClient) CloseShard(shardID int32) {
+func (kafkaMQ *KafkaMQClient) CloseShard(shardID int32, reason MQCloseShardReason) {
 	// No-op for kafka
 }
 
