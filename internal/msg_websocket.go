@@ -817,6 +817,7 @@ func (mq *WebsocketClient) Cluster() string {
 // address (string): the address to listen on
 // expectedToken (string): the expected token for identify
 // externalAddress (string): the external address to use for resuming, defaults to ws://address if unset
+// defaultWriteDelay (int): the default write delay in microseconds, defaults to 10
 func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error {
 	var ok bool
 
@@ -860,7 +861,7 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	case float64:
 		mq.cs.defaultWriteDelay = int64(defaultWriteDelay)
 	default:
-		mq.cs.defaultWriteDelay = 0
+		mq.cs.defaultWriteDelay = 10
 	}
 
 	go func() {
