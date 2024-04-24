@@ -177,11 +177,11 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		}, true, nil
 	}
 
-	if guildChunk.Complete.Load() {
-		ctx.Logger.Warn().
-			Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
-			Msg("GuildChunks entry is marked as complete, but we received a guild member chunk")
-	}
+	// if guildChunk.Complete.Load() {
+	// 	ctx.Logger.Warn().
+	// 		Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
+	// 		Msg("GuildChunks entry is marked as complete, but we received a guild member chunk")
+	// }
 
 	select {
 	case guildChunk.ChunkingChannel <- GuildChunkPartial{
