@@ -3,7 +3,6 @@ module github.com/WelcomerTeam/Sandwich-Daemon
 go 1.22
 
 require (
-	github.com/WelcomerTeam/Discord v0.0.0-20240310114051-2a2497c4bbb8
 	github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/fasthttp/router v1.5.0
@@ -70,5 +69,3 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240415180920-8c6c420018be // indirect
 )
-
-replace github.com/WelcomerTeam/Discord => ./discord
