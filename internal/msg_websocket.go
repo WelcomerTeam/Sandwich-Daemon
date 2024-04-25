@@ -345,7 +345,7 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 	// Before adding the subscriber for external access, send the initial hello payload and wait for identify
 	// If the client does not identify within 5 seconds, close the connection
 	s.writer <- &message{
-		rawBytes: []byte(`{"op":10,"d":{"heartbeat_interval":45000}}`),
+		rawBytes: []byte(`{"op":10,"d":{"heartbeat_interval":41250}}`),
 	}
 
 	// Keep reading messages till we reach an identify
