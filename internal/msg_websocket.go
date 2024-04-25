@@ -21,6 +21,10 @@ import (
 	"nhooyr.io/websocket"
 )
 
+var (
+	heartbeatAck = []byte(`{"op":11}`)
+)
+
 func init() {
 	MQClients = append(MQClients, "websocket")
 }
@@ -56,7 +60,7 @@ type chatServer struct {
 	// of messages that can be queued for a subscriber
 	// before it is kicked.
 	//
-	// Defaults to 16.
+	// Defaults to 100000.
 	subscriberMessageBuffer int
 
 	// serveMux routes the various endpoints to the appropriate handler.
@@ -69,8 +73,7 @@ type chatServer struct {
 // newChatServer constructs a chatServer with the defaults.
 func newChatServer() *chatServer {
 	cs := &chatServer{
-		subscriberMessageBuffer: 100000, // Make it large enough for handling resumes
-		subscribers:             make(map[[2]int32][]*subscriber),
+		subscribers: make(map[[2]int32][]*subscriber),
 	}
 	cs.serveMux.HandleFunc("/", cs.subscribeHandler)
 	cs.serveMux.HandleFunc("/publish", cs.publishHandler)
@@ -93,17 +96,18 @@ type message struct {
 // Messages are sent on the msgs channel and if the client
 // cannot keep up with the messages, closeSlow is called.
 type subscriber struct {
-	c          *websocket.Conn
-	cancelFunc context.CancelFunc
-	sessionId  string
-	shard      [2]int32
-	sh         *Shard
-	up         bool
-	resumed    bool
-	seq        int32
-	writeDelay int64
-	reader     chan *message
-	writer     chan *message
+	c              *websocket.Conn
+	cancelFunc     context.CancelFunc
+	sessionId      string
+	shard          [2]int32
+	sh             *Shard
+	up             bool
+	resumed        bool
+	seq            int32
+	writeDelay     int64
+	reader         chan *message
+	writer         chan *message
+	writeHeartbeat chan void
 }
 
 // invalidSession closes the connection with the given reason.
@@ -475,9 +479,7 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 			}
 
 			if payload.Op == discord.GatewayOpHeartbeat {
-				s.writer <- &message{
-					rawBytes: []byte(`{"op":11}`),
-				}
+				s.writeHeartbeat <- struct{}{}
 			} else {
 				if !s.up {
 					s.reader <- &message{
@@ -568,7 +570,20 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 		// Case 1: Context is cancelled
 		case <-ctx.Done():
 			return
-		// Case 2: Message is received
+		// Case 2: Heartbeat
+		case <-s.writeHeartbeat:
+			if s.writeDelay > 0 {
+				time.Sleep(time.Duration(s.writeDelay) * time.Microsecond)
+			}
+
+			err := s.c.Write(ctx, websocket.MessageText, heartbeatAck)
+
+			if err != nil {
+				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write heartbeat: %s", err.Error())
+				s.cancelFunc()
+				return
+			}
+		// Case 3: Message is received
 		case msg := <-s.writer:
 			if s.writeDelay > 0 {
 				time.Sleep(time.Duration(s.writeDelay) * time.Microsecond)
@@ -637,9 +652,10 @@ type subscribeOpts struct {
 func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, opts subscribeOpts) error {
 	var c *websocket.Conn
 	s := &subscriber{
-		reader:     make(chan *message, cs.subscriberMessageBuffer),
-		writer:     make(chan *message, cs.subscriberMessageBuffer),
-		writeDelay: opts.writeDelay,
+		reader:         make(chan *message, cs.subscriberMessageBuffer),
+		writer:         make(chan *message, cs.subscriberMessageBuffer),
+		writeHeartbeat: make(chan void, cs.subscriberMessageBuffer),
+		writeDelay:     opts.writeDelay,
 	}
 
 	var err error
@@ -871,6 +887,26 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	default:
 		manager.Logger.Warn().Msg("DefaultWriteDelay not set, defaulting to 10 microseconds")
 		mq.cs.defaultWriteDelay = 10
+	}
+
+	switch subscriberMessageBuffer := GetEntry(args, "SubscriberMessageBuffer").(type) {
+	case int:
+		mq.cs.subscriberMessageBuffer = subscriberMessageBuffer
+	case int64:
+		mq.cs.subscriberMessageBuffer = int(subscriberMessageBuffer)
+	case float64:
+		mq.cs.subscriberMessageBuffer = int(subscriberMessageBuffer)
+	case string:
+		buffer, err := strconv.ParseInt(subscriberMessageBuffer, 10, 64)
+
+		if err != nil {
+			return errors.New("websocketMQ connect: failed to parse SubscriberMessageBuffer: " + err.Error())
+		}
+
+		mq.cs.subscriberMessageBuffer = int(buffer)
+	default:
+		manager.Logger.Warn().Msg("SubscriberMessageBuffer not set, defaulting to 16")
+		mq.cs.subscriberMessageBuffer = 100000
 	}
 
 	go func() {
