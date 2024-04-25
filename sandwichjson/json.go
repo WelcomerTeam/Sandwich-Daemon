@@ -9,10 +9,10 @@ import (
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 )
 
-var useSonic = runtime.GOARCH == "amd64" && runtime.GOOS == "linux"
+const UseSonic = runtime.GOARCH == "amd64" && runtime.GOOS == "linux"
 
 func Unmarshal(data []byte, v any) error {
-	if useSonic {
+	if UseSonic {
 		return sonic.UnmarshalString(gotils_strconv.B2S(data), v)
 	} else {
 		return jsoniter.Unmarshal(data, v)
@@ -20,7 +20,7 @@ func Unmarshal(data []byte, v any) error {
 }
 
 func UnmarshalReader(reader io.Reader, v any) error {
-	if useSonic {
+	if UseSonic {
 		return sonic.ConfigDefault.NewDecoder(reader).Decode(v)
 	} else {
 		return jsoniter.NewDecoder(reader).Decode(v)
@@ -28,7 +28,7 @@ func UnmarshalReader(reader io.Reader, v any) error {
 }
 
 func Marshal(v any) ([]byte, error) {
-	if useSonic {
+	if UseSonic {
 		return sonic.Marshal(v)
 	} else {
 		return jsoniter.Marshal(v)
@@ -36,7 +36,7 @@ func Marshal(v any) ([]byte, error) {
 }
 
 func MarshalToWriter(writer io.Writer, v any) error {
-	if useSonic {
+	if UseSonic {
 		return sonic.ConfigDefault.NewEncoder(writer).Encode(v)
 	} else {
 		return jsoniter.NewEncoder(writer).Encode(v)

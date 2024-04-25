@@ -79,6 +79,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 	if !resumable {
 		sh.SessionID.Store("")
 		sh.Sequence.Store(0)
+		sh.ResumeGatewayURL.Store("")
 	}
 
 	sh.Logger.Warn().Bool("resumable", resumable).Str("d", string(msg.Data)).Msg("Received invalid session")

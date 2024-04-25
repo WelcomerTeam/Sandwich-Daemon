@@ -13,6 +13,7 @@ import (
 	"time"
 
 	internal "github.com/WelcomerTeam/Sandwich-Daemon/internal"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -97,6 +98,9 @@ func main() {
 	mw := io.MultiWriter(writers...)
 	logger := zerolog.New(mw).With().Timestamp().Logger()
 	logger.Info().Msg("Logging configured")
+
+	// Send json parsing stuff
+	logger.Info().Bool("useSonic", sandwichjson.UseSonic).Msg("SandwichJson config")
 
 	options := internal.SandwichOptions{
 		ConfigurationLocation: *configurationPath,

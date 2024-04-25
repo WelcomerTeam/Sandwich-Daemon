@@ -54,10 +54,12 @@ var baseURL = url.URL{
 	Host:   "discord.com",
 }
 
+var gatewayBaseQuery = "v=10&encoding=json"
+
 var gatewayURL = url.URL{
 	Scheme:   "wss",
 	Host:     "gateway.discord.gg",
-	RawQuery: "v=10&encoding=json",
+	RawQuery: gatewayBaseQuery,
 }
 
 type Sandwich struct {

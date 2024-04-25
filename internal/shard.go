@@ -255,52 +255,54 @@ readyConsumer:
 
 		sh.Logger.Debug().Str("url", gwUrl).Msg("Resuming shard")
 		sh.ResumeGatewayURL.Store("") // Reset the resume url
+
+		// Ensure the baseQuery is set
+		gwUrl = strings.TrimSuffix(gwUrl, "?")
+		if strings.Contains(gwUrl, "?") {
+			gwUrl += "&" + gatewayBaseQuery
+		} else {
+			gwUrl += "?" + gatewayBaseQuery
+		}
 	} else {
 		sh.SessionID.Store("")
 		gwUrl = origGwUrl
 	}
 
-	if !sh.hasWsConn() || sh.ConnectionURL.Load() != gwUrl {
-		if sh.hasWsConn() {
-			sh.Logger.Debug().Msg("Closing existing websocket connection")
-			err = sh.CloseWS(websocket.StatusInternalError)
+	if sh.hasWsConn() {
+		sh.Logger.Debug().Msg("Closing existing websocket connection")
+		err = sh.CloseWS(websocket.StatusInternalError)
 
-			if err != nil {
-				sh.Logger.Error().Err(err).Msg("Failed to close existing websocket connection")
-			}
-
-			sh.ConnectionURL.Store("")
-		}
-
-		sh.ConnectionURL.Store(gwUrl)
-
-		errorCh, messageCh, err := sh.FeedWebsocket(sh.ctx, gwUrl, nil)
 		if err != nil {
-			sh.Logger.Error().Err(err).Msg("Failed to dial gateway")
-
-			go sh.Sandwich.PublishSimpleWebhook(
-				fmt.Sprintf("Failed to dial `%s`", gwUrl),
-				"`"+err.Error()+"`",
-				fmt.Sprintf(
-					"Manager: %s ShardGroup: %d ShardID: %d/%d",
-					sh.Manager.Configuration.Identifier,
-					sh.ShardGroup.ID,
-					sh.ShardID,
-					sh.ShardGroup.ShardCount,
-				),
-				EmbedColourDanger,
-			)
-
-			return err
+			sh.Logger.Error().Err(err).Msg("Failed to close existing websocket connection")
 		}
-
-		sh.channelMu.Lock()
-		sh.ErrorCh = errorCh
-		sh.MessageCh = messageCh
-		sh.channelMu.Unlock()
-	} else {
-		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
+
+	sh.ConnectionURL.Store(gwUrl)
+
+	errorCh, messageCh, err := sh.FeedWebsocket(sh.ctx, gwUrl, nil)
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to dial gateway")
+
+		go sh.Sandwich.PublishSimpleWebhook(
+			fmt.Sprintf("Failed to dial `%s`", gwUrl),
+			"`"+err.Error()+"`",
+			fmt.Sprintf(
+				"Manager: %s ShardGroup: %d ShardID: %d/%d",
+				sh.Manager.Configuration.Identifier,
+				sh.ShardGroup.ID,
+				sh.ShardID,
+				sh.ShardGroup.ShardCount,
+			),
+			EmbedColourDanger,
+		)
+
+		return err
+	}
+
+	sh.channelMu.Lock()
+	sh.ErrorCh = errorCh
+	sh.MessageCh = messageCh
+	sh.channelMu.Unlock()
 
 	sh.Logger.Trace().Msg("Reading from gateway")
 
@@ -325,7 +327,7 @@ readyConsumer:
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
-	var hbIntervalWithJitter = int32(float32(helloResponse.HeartbeatInterval) * 0.8)
+	var hbIntervalWithJitter = int32(float32(helloResponse.HeartbeatInterval) * 0.9)
 
 	sh.HeartbeatInterval = time.Duration(hbIntervalWithJitter) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
@@ -342,7 +344,7 @@ readyConsumer:
 		Int32("sequence", sequence).
 		Msg("Received HELLO event")
 
-	if sessionID == "" || sequence == 0 {
+	if sessionID == "" || sequence == 0 || resumeGwUrl != "" {
 		err = sh.Identify(sh.ctx)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to identify")
@@ -401,8 +403,8 @@ readyConsumer:
 	defer sh.channelMu.RUnlock()
 
 	sh.channelMu.RLock()
-	errorCh := sh.ErrorCh
-	messageCh := sh.MessageCh
+	errorCh = sh.ErrorCh
+	messageCh = sh.MessageCh
 	sh.channelMu.RUnlock()
 
 	select {
@@ -567,7 +569,7 @@ func (sh *Shard) Listen(ctx context.Context) error {
 			if connEqual {
 				// We have likely closed so we should attempt to reconnect
 				sh.Logger.Warn().Msg("We have encountered an error whilst in the same connection. Reconnecting")
-				err = sh.Reconnect(websocket.StatusNormalClosure)
+				err = sh.Reconnect(WebsocketReconnectCloseCode)
 				if err != nil {
 					return err
 				}
@@ -791,7 +793,7 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 
 	if !sh.hasWsConn() {
 		// Try to reconnect
-		err := sh.Reconnect(websocket.StatusNormalClosure)
+		err := sh.Reconnect(WebsocketReconnectCloseCode)
 		return fmt.Errorf("no websocket connection: %w", err)
 	}
 
