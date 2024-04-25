@@ -344,7 +344,7 @@ readyConsumer:
 		Int32("sequence", sequence).
 		Msg("Received HELLO event")
 
-	if sessionID == "" || sequence == 0 || resumeGwUrl != "" {
+	if sessionID == "" || sequence == 0 || resumeGwUrl == "" {
 		err = sh.Identify(sh.ctx)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to identify")
