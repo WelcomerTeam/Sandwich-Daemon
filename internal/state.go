@@ -96,7 +96,7 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 	if !ok {
 		guildMembers = &sandwich_structs.StateGuildMembers{
 			Members: csmap.Create(
-				csmap.WithSize[discord.Snowflake, *discord.GuildMember](500),
+				csmap.WithSize[discord.Snowflake, *discord.GuildMember](100),
 			),
 		}
 
@@ -244,7 +244,7 @@ func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake,
 	if !ok {
 		guildEmojis = &sandwich_structs.StateGuildEmojis{
 			Emojis: csmap.Create(
-				csmap.WithSize[discord.Snowflake, *discord.Emoji](100),
+				csmap.WithSize[discord.Snowflake, *discord.Emoji](50),
 			),
 		}
 
@@ -396,7 +396,7 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 	if !ok {
 		guildChannels = &sandwich_structs.StateGuildChannels{
 			Channels: csmap.Create(
-				csmap.WithSize[discord.Snowflake, *discord.Channel](500),
+				csmap.WithSize[discord.Snowflake, *discord.Channel](50),
 			),
 		}
 
@@ -511,7 +511,7 @@ func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowfl
 	if !ok {
 		mutualGuilds = &sandwich_structs.StateMutualGuilds{
 			Guilds: csmap.Create(
-				csmap.WithSize[discord.Snowflake, bool](100),
+				csmap.WithSize[discord.Snowflake, bool](20),
 			),
 		}
 
@@ -577,7 +577,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 	if !ok {
 		guildVoiceStates = &sandwich_structs.StateGuildVoiceStates{
 			VoiceStates: csmap.Create(
-				csmap.WithSize[discord.Snowflake, *discord.VoiceState](100),
+				csmap.WithSize[discord.Snowflake, *discord.VoiceState](50),
 			),
 		}
 

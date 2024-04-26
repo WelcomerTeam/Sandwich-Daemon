@@ -27,6 +27,6 @@ type SandwichPayload struct {
 	Type     string            `json:"t"`
 
 	Extra    *csmap.CsMap[string, json.RawMessage] `json:"__extra,omitempty"`
-	Metadata SandwichMetadata                      `json:"__sandwich"`
+	Metadata *SandwichMetadata                     `json:"__sandwich"`
 	Trace    SandwichTrace                         `json:"__sandwich_trace"`
 }

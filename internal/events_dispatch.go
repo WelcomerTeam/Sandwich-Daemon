@@ -8,6 +8,7 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
+	"go.uber.org/atomic"
 )
 
 // OnReady handles the READY event.
@@ -167,14 +168,16 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 		Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
 		Msg("Chunked guild members")
 
-	guildChunk, ok := ctx.Sandwich.guildChunks.Load(guildMembersChunkPayload.GuildID)
+	var guildChunk *GuildChunks
+	guildChunk, ok = ctx.Sandwich.guildChunks.Load(guildMembersChunkPayload.GuildID)
 
 	if !ok {
-		// Probably a consumer emitting a chunk request
-		// TODO: Handle this better
-		return sandwich_structs.StateResult{
-			Data: msg.Data,
-		}, true, nil
+		guildChunk = &GuildChunks{
+			Complete:   *atomic.NewBool(false),
+			ChunkCount: *atomic.NewInt32(0),
+		}
+
+		ctx.Sandwich.guildChunks.Store(guildMembersChunkPayload.GuildID, guildChunk)
 	}
 
 	// if guildChunk.Complete.Load() {
@@ -183,13 +186,24 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 	// 		Msg("GuildChunks entry is marked as complete, but we received a guild member chunk")
 	// }
 
-	select {
-	case guildChunk.ChunkingChannel <- GuildChunkPartial{
-		ChunkIndex: guildMembersChunkPayload.ChunkIndex,
-		ChunkCount: guildMembersChunkPayload.ChunkCount,
-		Nonce:      guildMembersChunkPayload.Nonce,
-	}:
-	default:
+	if guildChunk.ChunkingChannel != nil {
+		select {
+		case guildChunk.ChunkingChannel <- &guildMembersChunkPayload:
+		default:
+		}
+	} else {
+		// Partial
+		totalRecv := guildChunk.ChunkCount.Inc()
+
+		if totalRecv >= guildMembersChunkPayload.ChunkCount {
+			ctx.Logger.Debug().
+				Int32("chunkIndex", guildMembersChunkPayload.ChunkIndex).
+				Int32("chunkCount", guildMembersChunkPayload.ChunkCount).
+				Int64("guildID", int64(guildMembersChunkPayload.GuildID)).
+				Msg("Finished chunked guild members via partial mode")
+			guildChunk.Complete.Store(true)
+			guildChunk.CompletedAt.Store(time.Now())
+		}
 	}
 
 	return sandwich_structs.StateResult{

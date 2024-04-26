@@ -611,7 +611,7 @@ func (grpc *routeSandwichServer) chunkGuild(guildID discord.Snowflake, alwaysChu
 		manager.ShardGroups.Range(func(key int32, shardGroup *ShardGroup) bool {
 			shardGroup.Shards.Range(func(shardID int32, shard *Shard) bool {
 				if _, ok := shard.Guilds.Load(guildID); ok {
-					err = shard.ChunkGuild(guildID, alwaysChunk)
+					_, err = shard.ChunkGuild(guildID, alwaysChunk, nil)
 					if err != nil {
 						return true
 					} else {

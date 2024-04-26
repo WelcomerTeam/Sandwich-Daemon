@@ -54,32 +54,21 @@ func NewMQClient(mqType string) (MQClient, error) {
 // PublishEvent publishes a SandwichPayload.
 func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.SandwichPayload) error {
 	sh.Manager.configurationMu.RLock()
-	identifier := sh.Manager.Configuration.ProducerIdentifier
 	channelName := sh.Manager.Configuration.Messaging.ChannelName
-	application := sh.Manager.Identifier.Load()
+	disableTrace := sh.Manager.Configuration.DisableTrace
 	sh.Manager.configurationMu.RUnlock()
 
-	userID := sh.Manager.UserID.Load()
+	packet.Metadata = sh.metadata
 
-	packet.Metadata = sandwich_structs.SandwichMetadata{
-		Version:       VERSION,
-		Identifier:    identifier,
-		Application:   application,
-		ApplicationID: discord.Snowflake(userID),
-		Shard: [3]int32{
-			sh.ShardGroup.ID,
-			sh.ShardID,
-			sh.ShardGroup.ShardCount,
-		},
+	if !disableTrace {
+		if packet.Trace == nil {
+			packet.Trace = csmap.Create(
+				csmap.WithSize[string, discord.Int64](uint64(1)),
+			)
+		}
+
+		packet.Trace.Store("publish", discord.Int64(time.Now().Unix()))
 	}
-
-	if packet.Trace == nil {
-		packet.Trace = csmap.Create(
-			csmap.WithSize[string, discord.Int64](uint64(1)),
-		)
-	}
-
-	packet.Trace.Store("publish", discord.Int64(time.Now().Unix()))
 
 	err := sh.Manager.ProducerClient.Publish(
 		ctx,

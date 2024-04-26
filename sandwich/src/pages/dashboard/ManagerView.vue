@@ -115,6 +115,13 @@
           label="Auto Start"
           description="When enabled, will start up the manager when Sandwich is started up."
         />
+        <text-input
+          type="checkbox"
+          v-model="manager.disable_trace"
+          name="disable_trace"
+          label="Disable Trace"
+          description="Disable trace (may reduce memory usage)"
+        />
       </field-set>
       <field-set name="Bot" class="space-y-4">
         <text-input

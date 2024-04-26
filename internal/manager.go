@@ -73,6 +73,9 @@ type Manager struct {
 	produceBlacklist   []string
 
 	noShards int32
+
+	metadataMu sync.RWMutex
+	metadata   *sandwich_structs.SandwichMetadata
 }
 
 // ManagerConfiguration represents the configuration for the manager.
@@ -84,8 +87,9 @@ type ManagerConfiguration struct {
 
 	FriendlyName string `json:"friendly_name" yaml:"friendly_name"`
 
-	Token     string `json:"token" yaml:"token"`
-	AutoStart bool   `json:"auto_start" yaml:"auto_start"`
+	Token        string `json:"token" yaml:"token"`
+	AutoStart    bool   `json:"auto_start" yaml:"auto_start"`
+	DisableTrace bool   `json:"disable_trace" yaml:"disable_trace"`
 
 	// Bot specific configuration
 	Bot struct {
@@ -156,6 +160,13 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 
 		produceBlacklistMu: sync.RWMutex{},
 		produceBlacklist:   configuration.Events.ProduceBlacklist,
+
+		metadataMu: sync.RWMutex{},
+		metadata: &sandwich_structs.SandwichMetadata{
+			Version:     VERSION,
+			Identifier:  configuration.Identifier,
+			Application: configuration.Identifier, // TODO: Change this
+		},
 	}
 
 	mg.ctx, mg.cancel = context.WithCancel(sg.ctx)
@@ -277,22 +288,16 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 // PublishEvent sends an event to consumers.
 func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData json.RawMessage) error {
 	mg.configurationMu.RLock()
-	identifier := mg.Configuration.ProducerIdentifier
 	channelName := mg.Configuration.Messaging.ChannelName
 	mg.configurationMu.RUnlock()
 
 	err := mg.ProducerClient.Publish(
 		ctx,
 		&sandwich_structs.SandwichPayload{
-			Type: eventType,
-			Data: eventData,
-			Op:   discord.GatewayOpDispatch,
-			Metadata: sandwich_structs.SandwichMetadata{
-				Version:       VERSION,
-				Identifier:    identifier,
-				Application:   mg.Identifier.Load(),
-				ApplicationID: discord.Snowflake(mg.UserID.Load()),
-			},
+			Type:     eventType,
+			Data:     eventData,
+			Op:       discord.GatewayOpDispatch,
+			Metadata: mg.metadata,
 		},
 		channelName,
 	)

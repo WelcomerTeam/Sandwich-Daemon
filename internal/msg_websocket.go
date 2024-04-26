@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -546,6 +547,102 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 				continue
 			}
 
+			if msg.message.Op == discord.GatewayOpRequestGuildMembers {
+				if !s.sh.IsReady {
+					cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Shard %d is not ready yet yet recv'd message over websocketMQ", s.shard[0])
+					continue
+				}
+
+				// Special case, decode body as ChunkRequest to allow only chunking where needed
+				var chunkRequest discord.RequestGuildMembers
+
+				err := sandwichjson.Unmarshal(msg.message.Data, &chunkRequest)
+
+				if err != nil {
+					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal chunk request: %s", err.Error())
+					continue
+				}
+
+				cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d is now chunking guild %d", s.shard[0], chunkRequest.GuildID)
+
+				// Check if chunking completed
+				chunkMeta, ok := s.sh.Sandwich.guildChunks.Load(chunkRequest.GuildID)
+
+				var madeChunks bool
+				if ok {
+					madeChunks = chunkMeta.Complete.Load()
+				}
+
+				cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d is now chunking guild %d, completed: %v, ok: %v, count: %d", s.shard[0], chunkRequest.GuildID, madeChunks, ok, s.sh.Sandwich.guildChunks.Count())
+
+				if madeChunks {
+					// This is a bit more tricky as no chunks are needed meaning we need to forge a response
+					var chunk = discord.GuildMembersChunk{
+						Nonce:     chunkRequest.Nonce,
+						GuildID:   chunkRequest.GuildID,
+						Members:   make([]*discord.GuildMember, 0),
+						NotFound:  make([]discord.Snowflake, 0),
+						Presences: make([]discord.PresenceUpdate, 0),
+					}
+
+					guild, ok := cs.manager.Sandwich.State.GuildMembers.Load(chunkRequest.GuildID)
+
+					if !ok {
+						cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Failed to find guild %d for chunk request", chunkRequest.GuildID)
+						// Send to writer
+						chunk.ChunkCount = 1
+						serializedChunk, err := sandwichjson.Marshal(chunk)
+
+						if err != nil {
+							cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal chunk: %s", err.Error())
+							continue
+						}
+
+						s.writer <- &message{
+							message: &structs.SandwichPayload{
+								Op:   discord.GatewayOpDispatch,
+								Data: serializedChunk,
+								Type: "GUILD_MEMBERS_CHUNK",
+							},
+						}
+					}
+
+					chunk.ChunkCount = int32(math.Ceil(float64(guild.Members.Count()) / 1000.0))
+
+					// Get all members
+					guild.Members.Range(func(id discord.Snowflake, member *discord.GuildMember) bool {
+						chunk.Members = append(chunk.Members, member)
+
+						// TODO, set presence once we actually cache that
+
+						if len(chunk.Members) >= 1000 {
+							serializedChunk, err := sandwichjson.Marshal(chunk)
+
+							if err != nil {
+								cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal chunk: %s", err.Error())
+								return true
+							}
+
+							s.writer <- &message{
+								message: &structs.SandwichPayload{
+									Op:   discord.GatewayOpDispatch,
+									Data: serializedChunk,
+									Type: "GUILD_MEMBERS_CHUNK",
+								},
+							}
+
+							clear(chunk.Members)
+							chunk.ChunkIndex++
+						}
+
+						return false
+					})
+
+					continue
+				}
+			}
+
+			// Otherwise just send to discord
 			err := s.sh.SendEvent(ctx, msg.message.Op, msg.message.Data)
 
 			if err != nil {
@@ -783,6 +880,30 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 	}
 }
 
+// publishGlobal publishes the msg to all subscribers.
+// It never blocks and so messages to slow subscribers
+// are dropped.
+func (cs *chatServer) publishGlobal(msg *structs.SandwichPayload) {
+	cs.manager.Sandwich.Logger.Trace().Msg("[WS] Global is now publishing message")
+
+	cs.subscribersMu.RLock()
+	defer cs.subscribersMu.RUnlock()
+
+	for _, shardSubs := range cs.subscribers {
+		for _, s := range shardSubs {
+			if !s.up {
+				continue
+			}
+
+			cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Global is now publishing message to %d subscribers", len(shardSubs))
+
+			s.writer <- &message{
+				message: msg,
+			}
+		}
+	}
+}
+
 // addSubscriber registers a subscriber.
 func (cs *chatServer) addSubscriber(s *subscriber, shard [2]int32) {
 	cs.subscribersMu.Lock()
@@ -917,10 +1038,16 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 }
 
 func (mq *WebsocketClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string) error {
-	go mq.cs.publish(
-		[2]int32{packet.Metadata.Shard[1], packet.Metadata.Shard[2]},
-		packet,
-	)
+	if len(packet.Metadata.Shard) < 3 {
+		mq.cs.publishGlobal(
+			packet,
+		)
+	} else {
+		go mq.cs.publish(
+			[2]int32{packet.Metadata.Shard[1], packet.Metadata.Shard[2]},
+			packet,
+		)
+	}
 
 	return nil
 }

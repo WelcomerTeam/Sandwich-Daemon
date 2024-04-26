@@ -63,15 +63,15 @@ func NewSandwichState() *SandwichState {
 		),
 
 		GuildChannels: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildChannels](1000),
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildChannels](100),
 		),
 
 		GuildRoles: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildRoles](1000),
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildRoles](100),
 		),
 
 		GuildEmojis: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildEmojis](1000),
+			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildEmojis](100),
 		),
 
 		Users: csmap.Create(
@@ -150,15 +150,18 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	cacheUsers := sh.Manager.Configuration.Caching.CacheUsers
 	cacheMembers := sh.Manager.Configuration.Caching.CacheMembers
 	storeMutuals := sh.Manager.Configuration.Caching.StoreMutuals
+	disableTrace := sh.Manager.Configuration.DisableTrace
 	sh.Manager.configurationMu.RUnlock()
 
-	if trace == nil {
-		trace = csmap.Create(
-			csmap.WithSize[string, discord.Int64](uint64(1)),
-		)
-	}
+	if !disableTrace {
+		if trace == nil {
+			trace = csmap.Create(
+				csmap.WithSize[string, discord.Int64](uint64(1)),
+			)
+		}
 
-	trace.Store("state", discord.Int64(time.Now().Unix()))
+		trace.Store("state", discord.Int64(time.Now().Unix()))
+	}
 
 	result, continuable, err := StateDispatch(&StateCtx{
 		context:      ctx,

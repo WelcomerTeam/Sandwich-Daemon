@@ -159,11 +159,14 @@ type SandwichOptions struct {
 }
 
 type GuildChunks struct {
+	// Only used for partials, stores number of chunks recieved
+	ChunkCount atomic.Int32
+
 	// Indicates if all chunks have been received.
 	Complete atomic.Bool
 
 	// Channel for receiving when chunks have been received.
-	ChunkingChannel chan GuildChunkPartial
+	ChunkingChannel chan *discord.GuildMembersChunk
 
 	StartedAt   atomic.Time
 	CompletedAt atomic.Time
@@ -313,20 +316,12 @@ func (sg *Sandwich) Open() {
 // PublishGlobalEvent publishes an event to all Consumers.
 func (sg *Sandwich) PublishGlobalEvent(eventType string, data json.RawMessage) error {
 	packet := &sandwich_structs.SandwichPayload{
-		Metadata: sandwich_structs.SandwichMetadata{
+		Metadata: &sandwich_structs.SandwichMetadata{
 			Version: VERSION,
 		},
 		Op:   discord.GatewayOpDispatch,
 		Type: eventType,
 		Data: data,
-	}
-
-	packet.Op = discord.GatewayOpDispatch
-	packet.Type = eventType
-	packet.Data = data
-
-	packet.Metadata = sandwich_structs.SandwichMetadata{
-		Version: VERSION,
 	}
 
 	payload, err := sandwichjson.Marshal(packet)

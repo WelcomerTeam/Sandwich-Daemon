@@ -555,6 +555,15 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 				m.produceBlacklistMu.Unlock()
 			}
 
+			m.metadataMu.Lock()
+			m.metadata = &sandwich_structs.SandwichMetadata{
+				Version:       VERSION,
+				Identifier:    manager.Identifier,
+				Application:   m.Identifier.Load(),
+				ApplicationID: discord.Snowflake(m.UserID.Load()),
+			}
+			m.metadataMu.Unlock()
+
 			/*if manager.Bot.DefaultPresence.Status != "" {
 				// Update presence.
 				m.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {

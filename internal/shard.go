@@ -111,6 +111,9 @@ type Shard struct {
 	ready chan void
 
 	IsReady bool
+
+	metadataMu sync.RWMutex
+	metadata   *sandwich_structs.SandwichMetadata `json:"-"`
 }
 
 // NewShard creates a new shard object.
@@ -166,6 +169,19 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		wsRatelimit: limiter.NewDurationLimiter(ShardWSRateLimit, 2*time.Minute),
 
 		ready: make(chan void, 1),
+
+		metadataMu: sync.RWMutex{},
+		metadata: &sandwich_structs.SandwichMetadata{
+			Version:       VERSION,
+			Identifier:    sg.Manager.Configuration.ProducerIdentifier,
+			Application:   sg.Manager.Identifier.Load(),
+			ApplicationID: discord.Snowflake(sg.Manager.UserID.Load()),
+			Shard: [3]int32{
+				sg.ID,
+				shardID,
+				sg.ShardCount,
+			},
+		},
 	}
 
 	sh.ctx, sh.cancel = context.WithCancel(sg.Manager.ctx)
@@ -511,6 +527,10 @@ func (sh *Shard) Listen(ctx context.Context) error {
 	wsConn := sh.wsConn
 	sh.wsConnMu.RUnlock()
 
+	sh.Manager.configurationMu.RLock()
+	disableTrace := sh.Manager.Configuration.DisableTrace
+	sh.Manager.configurationMu.RUnlock()
+
 	for {
 		select {
 		case <-sh.RoutineDeadSignal.Dead():
@@ -582,11 +602,14 @@ func (sh *Shard) Listen(ctx context.Context) error {
 			sh.wsConnMu.RUnlock()
 		}
 
-		trace := csmap.Create(
-			csmap.WithSize[string, discord.Int64](uint64(1)),
-		)
+		var trace *csmap.CsMap[string, discord.Int64]
+		if !disableTrace {
+			trace = csmap.Create(
+				csmap.WithSize[string, discord.Int64](uint64(1)),
+			)
 
-		trace.Store("receive", discord.Int64(time.Now().Unix()))
+			trace.Store("receive", discord.Int64(time.Now().Unix()))
+		}
 
 		sh.OnEvent(ctx, msg, trace)
 
@@ -1002,22 +1025,27 @@ func (sh *Shard) ChunkAllGuilds() {
 	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Started chunking all guilds")
 
 	for _, guildID := range guilds {
-		sh.ChunkGuild(guildID, false)
+		sh.ChunkGuild(guildID, false, nil)
 	}
 
 	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Finished chunking all guilds")
 }
 
 // ChunkGuilds chunks guilds to discord. It will wait for the operation to complete, or timeout.
-func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
+func (sh *Shard) ChunkGuild(
+	guildID discord.Snowflake,
+	alwaysChunk bool,
+	chunkReq *discord.RequestGuildMembers,
+) (madeChunks bool, err error) {
 	guildChunk, ok := sh.Sandwich.guildChunks.Load(guildID)
 
 	if !ok {
 		guildChunk = &GuildChunks{
 			Complete:        *atomic.NewBool(false),
-			ChunkingChannel: make(chan GuildChunkPartial),
+			ChunkingChannel: make(chan *discord.GuildMembersChunk),
 			StartedAt:       *atomic.NewTime(time.Time{}),
 			CompletedAt:     *atomic.NewTime(time.Time{}),
+			ChunkCount:      *atomic.NewInt32(0),
 		}
 
 		sh.Sandwich.guildChunks.Store(guildID, guildChunk)
@@ -1027,6 +1055,7 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	guildChunk.StartedAt.Store(time.Now())
 
 	var memberCount int
+	var needsChunking bool
 
 	gm, ok := sh.Sandwich.State.GuildMembers.Load(guildID)
 
@@ -1037,20 +1066,30 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	guild, ok := sh.Sandwich.State.Guilds.Load(guildID)
 
 	if !ok {
-		return fmt.Errorf("guild not found in state, refusing to chunk")
+		sh.Sandwich.Logger.Warn().Int64("guild_id", int64(guildID)).Msg("Guild not found in state")
+		needsChunking = true
+	} else {
+		needsChunking = guild.MemberCount > int32(memberCount)
 	}
 
-	needsChunking := guild.MemberCount > int32(memberCount)
-
 	if needsChunking || alwaysChunk {
-		nonce := randomHex(16)
+		var nonce string
+		var req *discord.RequestGuildMembers
 
-		err := sh.SendEvent(sh.ctx, discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
-			GuildID: guildID,
-			Nonce:   nonce,
-		})
+		if chunkReq != nil {
+			nonce = chunkReq.Nonce
+			req = chunkReq
+		} else {
+			nonce = randomHex(16)
+			req = &discord.RequestGuildMembers{
+				GuildID: guildID,
+				Nonce:   nonce,
+			}
+		}
+
+		err := sh.SendEvent(sh.ctx, discord.GatewayOpRequestGuildMembers, req)
 		if err != nil {
-			return fmt.Errorf("failed to send request guild members event: %w", err)
+			return false, fmt.Errorf("failed to send request guild members event: %w", err)
 		}
 
 		chunksReceived := int32(0)
@@ -1061,21 +1100,21 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	guildChunkLoop:
 		for {
 			select {
-			case guildChunkPartial := <-guildChunk.ChunkingChannel:
-				if guildChunkPartial.Nonce != nonce {
+			case guildChunk := <-guildChunk.ChunkingChannel:
+				if guildChunk.Nonce != nonce {
 					continue
 				}
 
 				chunksReceived++
-				totalChunks = guildChunkPartial.ChunkCount
+				totalChunks = guildChunk.ChunkCount
 
 				// When receiving a chunk, reset the timeout.
 				timeout.Reset(MemberChunkTimeout)
 
 				sh.Logger.Debug().
 					Int64("guild_id", int64(guildID)).
-					Int32("chunk_index", guildChunkPartial.ChunkIndex).
-					Int32("chunk_count", guildChunkPartial.ChunkCount).
+					Int32("chunk_index", guildChunk.ChunkIndex).
+					Int32("chunk_count", guildChunk.ChunkCount).
 					Msg("Received guild member chunk")
 
 				if chunksReceived >= totalChunks {
@@ -1105,7 +1144,7 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	guildChunk.Complete.Store(true)
 	guildChunk.CompletedAt.Store(time.Now())
 
-	return nil
+	return needsChunking || alwaysChunk, nil
 }
 
 // OnDispatchEvent is called during the dispatch event to call analytics.
