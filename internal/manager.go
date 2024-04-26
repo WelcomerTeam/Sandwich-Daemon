@@ -281,21 +281,19 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	channelName := mg.Configuration.Messaging.ChannelName
 	mg.configurationMu.RUnlock()
 
-	packet := &sandwich_structs.SandwichPayload{
-		Type: eventType,
-		Data: eventData,
-		Op:   discord.GatewayOpDispatch,
-		Metadata: sandwich_structs.SandwichMetadata{
-			Version:       VERSION,
-			Identifier:    identifier,
-			Application:   mg.Identifier.Load(),
-			ApplicationID: discord.Snowflake(mg.UserID.Load()),
-		},
-	}
-
 	err := mg.ProducerClient.Publish(
 		ctx,
-		packet,
+		&sandwich_structs.SandwichPayload{
+			Type: eventType,
+			Data: eventData,
+			Op:   discord.GatewayOpDispatch,
+			Metadata: sandwich_structs.SandwichMetadata{
+				Version:       VERSION,
+				Identifier:    identifier,
+				Application:   mg.Identifier.Load(),
+				ApplicationID: discord.Snowflake(mg.UserID.Load()),
+			},
+		},
 		channelName,
 	)
 

@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/pprofhandler"
 )
 
 var (
@@ -49,7 +50,7 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	// Sandwich related endpoints
 	r.GET("/api/sandwich", sg.requireDiscordAuthentication(sg.SandwichGetEndpoint))
 	r.PATCH("/api/sandwich", sg.requireDiscordAuthentication(sg.SandwichUpdateEndpoint))
-
+	r.GET("/debug/pprof/{profile:*}", sg.requireDiscordAuthentication(pprofhandler.PprofHandler))
 	r.POST("/api/manager", sg.requireDiscordAuthentication(sg.ManagerCreateEndpoint))
 	r.POST("/api/manager/initialize", sg.requireDiscordAuthentication(sg.ManagerInitializeEndpoint))
 	r.PATCH("/api/manager", sg.requireDiscordAuthentication(sg.ManagerUpdateEndpoint))
