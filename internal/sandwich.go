@@ -104,8 +104,6 @@ type Sandwich struct {
 	RouterHandler fasthttp.RequestHandler `json:"-"`
 	DistHandler   fasthttp.RequestHandler `json:"-"`
 
-	// SandwichPayload pool
-	payloadPool sync.Pool
 	// ReceivedPayload pool
 	receivedPool sync.Pool
 	// SentPayload pool
@@ -213,10 +211,6 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		webhookBuckets: bucketstore.NewBucketStore(),
 		statusCache:    interfacecache.NewInterfaceCache(),
 
-		payloadPool: sync.Pool{
-			New: func() interface{} { return new(sandwich_structs.SandwichPayload) },
-		},
-
 		receivedPool: sync.Pool{
 			New: func() interface{} { return new(discord.GatewayPayload) },
 		},
@@ -318,8 +312,14 @@ func (sg *Sandwich) Open() {
 
 // PublishGlobalEvent publishes an event to all Consumers.
 func (sg *Sandwich) PublishGlobalEvent(eventType string, data json.RawMessage) error {
-	packet, _ := sg.payloadPool.Get().(*sandwich_structs.SandwichPayload)
-	defer sg.payloadPool.Put(packet)
+	packet := &sandwich_structs.SandwichPayload{
+		Metadata: sandwich_structs.SandwichMetadata{
+			Version: VERSION,
+		},
+		Op:   discord.GatewayOpDispatch,
+		Type: eventType,
+		Data: data,
+	}
 
 	packet.Op = discord.GatewayOpDispatch
 	packet.Type = eventType

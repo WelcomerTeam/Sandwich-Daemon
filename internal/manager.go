@@ -276,29 +276,22 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 
 // PublishEvent sends an event to consumers.
 func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData json.RawMessage) error {
-	packet, _ := mg.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
-	defer mg.Sandwich.payloadPool.Put(packet)
-
 	mg.configurationMu.RLock()
 	identifier := mg.Configuration.ProducerIdentifier
 	channelName := mg.Configuration.Messaging.ChannelName
 	mg.configurationMu.RUnlock()
 
-	packet.Type = eventType
-	packet.Op = discord.GatewayOpDispatch
-	packet.Data = eventData
-
-	packet.Metadata = sandwich_structs.SandwichMetadata{
-		Version:       VERSION,
-		Identifier:    identifier,
-		Application:   mg.Identifier.Load(),
-		ApplicationID: discord.Snowflake(mg.UserID.Load()),
+	packet := &sandwich_structs.SandwichPayload{
+		Type: eventType,
+		Data: eventData,
+		Op:   discord.GatewayOpDispatch,
+		Metadata: sandwich_structs.SandwichMetadata{
+			Version:       VERSION,
+			Identifier:    identifier,
+			Application:   mg.Identifier.Load(),
+			ApplicationID: discord.Snowflake(mg.UserID.Load()),
+		},
 	}
-
-	// Clear currently unused values
-	packet.Sequence = 0
-	packet.Extra = nil
-	packet.Trace = nil
 
 	err := mg.ProducerClient.Publish(
 		ctx,

@@ -192,32 +192,16 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 		return nil
 	}
 
-	packet, _ := sh.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
-
-	if packet == nil {
-		return errors.New("failed to get sandwich payload from pool")
+	packet := &sandwich_structs.SandwichPayload{
+		Op:       msg.Op,
+		Sequence: msg.Sequence,
+		Type:     msg.Type,
+		Data:     result.Data,
+		Extra: csmap.Create(
+			csmap.WithSize[string, json.RawMessage](uint64(len(result.Extra))),
+		),
+		Trace: trace,
 	}
-
-	defer sh.Sandwich.payloadPool.Put(packet)
-
-	// Directly copy op, sequence and type from original message.
-	packet.Op = msg.Op
-	packet.Sequence = msg.Sequence
-	packet.Type = msg.Type
-
-	// Setting result.Data will override what is sent to consumers.
-	packet.Data = result.Data
-
-	// Extra contains any extra information such as before state and if it is a lazy guild.
-	packet.Extra = csmap.Create(
-		csmap.WithSize[string, json.RawMessage](uint64(len(result.Extra))),
-	)
-
-	for key, value := range result.Extra {
-		packet.Extra.Store(key, value)
-	}
-
-	packet.Trace = trace
 
 	return sh.PublishEvent(ctx, packet)
 }
