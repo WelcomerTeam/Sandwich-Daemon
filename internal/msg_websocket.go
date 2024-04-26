@@ -104,6 +104,7 @@ type subscriber struct {
 	sh             *Shard
 	up             bool
 	resumed        bool
+	moving         bool
 	seq            int32
 	writeDelay     int64
 	reader         chan *message
@@ -573,6 +574,7 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 					madeChunks = chunkMeta.Complete.Load()
 				}
 
+				// Note: this bit is a bit buggy
 				cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d is now chunking guild %d, completed: %v, ok: %v, count: %d", s.shard[0], chunkRequest.GuildID, madeChunks, ok, s.sh.Sandwich.guildChunks.Count())
 
 				if madeChunks {
@@ -792,7 +794,26 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	cs.addSubscriber(s, s.shard)
-	defer cs.deleteSubscriber(s)
+	defer func() {
+		// Delete session after 1 minute resume timeout
+		ticker := time.NewTicker(1 * time.Minute)
+
+		for {
+			select {
+			case <-ticker.C:
+				ticker.Stop()
+				if s.moving {
+					return
+				}
+				cs.deleteSubscriber(s)
+			default:
+				if s.moving {
+					return
+				}
+				continue
+			}
+		}
+	}()
 
 	s.sh = cs.getShard(s.shard)
 
@@ -809,6 +830,11 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	if oldSess != nil {
 		cs.invalidSession(oldSess, "New session identified", true)
+		oldSess.moving = true
+
+		// Close old session
+		cs.deleteSubscriber(oldSess)
+
 		for msg := range oldSess.reader {
 			select {
 			case <-newCtx.Done():
