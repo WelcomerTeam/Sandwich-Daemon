@@ -13,6 +13,7 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
@@ -47,6 +48,10 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r.GET("/api/status", sg.StatusEndpoint)
 	r.GET("/api/user", sg.UserEndpoint)
 
+	// State route
+	r.GET("/api/state", sg.internalEndpoint(sg.StateEndpoint))
+	r.POST("/api/state", sg.internalEndpoint(sg.StateEndpoint))
+
 	// Sandwich related endpoints
 	r.GET("/api/sandwich", sg.requireDiscordAuthentication(sg.SandwichGetEndpoint))
 	r.PATCH("/api/sandwich", sg.requireDiscordAuthentication(sg.SandwichUpdateEndpoint))
@@ -72,6 +77,23 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	}
 
 	return r.Handler, fs.NewRequestHandler()
+}
+
+// internalEndpoint wraps a RequestHandler and blocks requests made to
+// such endpoints if the X-Forwarded-For header is set
+func (sg *Sandwich) internalEndpoint(h fasthttp.RequestHandler) fasthttp.RequestHandler {
+	return fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) {
+		if len(ctx.Request.Header.Peek("X-Forwarded-For")) > 0 {
+			writeResponse(ctx, fasthttp.StatusForbidden, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: "Forbidden",
+			})
+
+			return
+		}
+
+		h(ctx)
+	})
 }
 
 // RequireDiscordAuthentication wraps a RequestHandler and
@@ -396,6 +418,163 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 				ShardGroups: getManagerShardGroupStatus(manager),
 			},
 		})
+	}
+}
+
+// /api/state?col={collection}&id={id}: Returns data from the sandwich state
+func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
+	col := ctx.QueryArgs().Peek("col")
+	id := ctx.QueryArgs().Peek("id")
+
+	if len(col) == 0 || len(id) == 0 {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Missing col or id",
+		})
+
+		return
+	}
+
+	switch gotils_strconv.B2S(col) {
+	case "users":
+		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		if ctx.IsGet() {
+			user, ok := sg.State.GetUser(discord.Snowflake(idInt64))
+
+			if !ok {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: "User not found",
+				})
+
+				return
+			}
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: user,
+			})
+		} else {
+			// Read request body as a user
+			var user discord.User
+
+			err := sandwichjson.Unmarshal(ctx.PostBody(), &user)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+
+				return
+			}
+
+			sg.State.Users.Store(user.ID, sg.State.UserToState(&user))
+		}
+	case "members":
+		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		guildId := ctx.QueryArgs().Peek("guild_id")
+
+		if len(guildId) == 0 {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: "Missing guild_id",
+			})
+
+			return
+		}
+
+		guildIdInt64, err := strconv.ParseInt(gotils_strconv.B2S(guildId), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+		}
+
+		if ctx.IsGet() {
+			g, ok := sg.State.GuildMembers.Load(discord.Snowflake(guildIdInt64))
+
+			if !ok {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: "Guild not found",
+				})
+
+				return
+			}
+
+			member, ok := g.Members.Load(discord.Snowflake(idInt64))
+
+			if !ok {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: "Member not found",
+				})
+
+				return
+			}
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: member,
+			})
+		} else {
+			g, ok := sg.State.GuildMembers.Load(discord.Snowflake(guildIdInt64))
+
+			if !ok {
+				// Create new state entry
+				g = &sandwich_structs.StateGuildMembers{
+					Members: csmap.Create(
+						csmap.WithSize[discord.Snowflake, *discord.GuildMember](100),
+					),
+				}
+
+				sg.State.GuildMembers.Store(discord.Snowflake(guildIdInt64), g)
+			}
+
+			// Read request body as a member
+			var member discord.GuildMember
+
+			err := sandwichjson.Unmarshal(ctx.PostBody(), &member)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+
+				return
+			}
+
+			g.Members.Store(member.User.ID, &member)
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: nil,
+			})
+		}
 	}
 }
 
