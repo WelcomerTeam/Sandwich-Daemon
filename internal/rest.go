@@ -511,6 +511,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				Ok:    false,
 				Error: err.Error(),
 			})
+			return
 		}
 
 		if ctx.IsGet() {
@@ -569,6 +570,56 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			}
 
 			g.Members.Store(member.User.ID, &member)
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: nil,
+			})
+		}
+	case "guilds":
+		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		if ctx.IsGet() {
+			guild, ok := sg.State.Guilds.Load(discord.Snowflake(idInt64))
+
+			if !ok {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: "Guild not found",
+				})
+
+				return
+			}
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: guild,
+			})
+		} else {
+			// Read request body as a guild
+			var guild discord.Guild
+
+			err := sandwichjson.Unmarshal(ctx.PostBody(), &guild)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+
+				return
+			}
+
+			sg.State.Guilds.Store(guild.ID, &guild)
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
