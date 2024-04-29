@@ -1,5 +1,7 @@
 package discord
 
+import "github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
+
 // user.go represents all structures for a discord user.
 
 // UserFlags represents the flags on a user's account.
@@ -51,8 +53,8 @@ type User struct {
 	AvatarDecoration *string         `json:"avatar_decoration,omitempty"`
 	Username         string          `json:"username"`
 	Discriminator    string          `json:"discriminator"`
-	Locale           string          `json:"locale"`
-	Email            string          `json:"email"`
+	Locale           string          `json:"locale,omitempty"`
+	Email            string          `json:"email,omitempty"`
 	ID               Snowflake       `json:"id"`
 	PremiumType      UserPremiumType `json:"premium_type"`
 	Flags            UserFlags       `json:"flags"`
@@ -62,6 +64,18 @@ type User struct {
 	Verified         bool            `json:"verified"`
 	Bot              bool            `json:"bot"`
 	System           bool            `json:"system"`
+}
+
+// Used to avoid a marshal loop.
+type marshalUser User
+
+func (u User) MarshalJSON() ([]byte, error) {
+	// Patch for discriminator
+	if u.Discriminator == "" {
+		u.Discriminator = "0"
+	}
+
+	return sandwichjson.Marshal(marshalUser(u))
 }
 
 // ClientUser aliases User to provide current user specific methods.
