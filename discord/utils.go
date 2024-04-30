@@ -1,3 +1,3 @@
 package discord
 
-type Timestamp string
+type Timestamp = string
