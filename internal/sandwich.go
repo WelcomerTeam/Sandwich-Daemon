@@ -582,29 +582,29 @@ func (sg *Sandwich) prometheusGatherer() {
 		stateUsers := 0
 		stateVoiceStates := 0
 
-		sg.State.GuildMembers.Range(func(guildID discord.Snowflake, guildMembers *sandwich_structs.StateGuildMembers) bool {
+		sg.State.GuildMembers.Range(func(guildID discord.Snowflake, guildMembers sandwich_structs.StateGuildMembers) bool {
 			stateMembers += guildMembers.Members.Count()
 			return false
 		})
 
-		sg.State.GuildRoles.Range(func(guildID discord.Snowflake, guildRoles *sandwich_structs.StateGuildRoles) bool {
+		sg.State.GuildRoles.Range(func(guildID discord.Snowflake, guildRoles sandwich_structs.StateGuildRoles) bool {
 			stateRoles += guildRoles.Roles.Count()
 			return false
 		})
 
-		sg.State.GuildEmojis.Range(func(guildID discord.Snowflake, guildEmojis *sandwich_structs.StateGuildEmojis) bool {
+		sg.State.GuildEmojis.Range(func(guildID discord.Snowflake, guildEmojis sandwich_structs.StateGuildEmojis) bool {
 			stateEmojis += guildEmojis.Emojis.Count()
 			return false
 		})
 
-		sg.State.GuildChannels.Range(func(guildID discord.Snowflake, guildChannels *sandwich_structs.StateGuildChannels) bool {
+		sg.State.GuildChannels.Range(func(guildID discord.Snowflake, guildChannels sandwich_structs.StateGuildChannels) bool {
 			stateChannels += guildChannels.Channels.Count()
 			return false
 		})
 
 		stateUsers = sg.State.Users.Count()
 
-		sg.State.GuildVoiceStates.Range(func(guildID discord.Snowflake, guildVoiceStates *sandwich_structs.StateGuildVoiceStates) bool {
+		sg.State.GuildVoiceStates.Range(func(guildID discord.Snowflake, guildVoiceStates sandwich_structs.StateGuildVoiceStates) bool {
 			stateVoiceStates += guildVoiceStates.VoiceStates.Count()
 			return false
 		})

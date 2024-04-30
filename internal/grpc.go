@@ -174,7 +174,7 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 	// }
 
 	if hasQuery {
-		grpc.sg.State.Users.Range(func(key discord.Snowflake, user *sandwich_structs.StateUser) bool {
+		grpc.sg.State.Users.Range(func(key discord.Snowflake, user sandwich_structs.StateUser) bool {
 			if requestMatch(request.Query, user.Username, user.Username+"#"+user.Discriminator, user.GlobalName, user.ID.String()) {
 				userIDs = append(userIDs, user.ID)
 			}

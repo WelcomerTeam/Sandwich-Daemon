@@ -13,7 +13,6 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/session/v2"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
@@ -479,7 +478,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
-			sg.State.Users.Store(user.ID, sg.State.UserToState(&user))
+			sg.State.Users.Store(user.ID, *sg.State.UserToState(&user))
 		}
 	case "members":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
@@ -515,18 +514,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 
 		if ctx.IsGet() {
-			g, ok := sg.State.GuildMembers.Load(discord.Snowflake(guildIdInt64))
-
-			if !ok {
-				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
-					Ok:    false,
-					Error: "Guild not found",
-				})
-
-				return
-			}
-
-			member, ok := g.Members.Load(discord.Snowflake(idInt64))
+			member, ok := sg.State.GetGuildMember(discord.Snowflake(guildIdInt64), discord.Snowflake(idInt64))
 
 			if !ok {
 				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -537,24 +525,13 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
+			sg.Logger.Info().Any("member", member).Msg("Getting member")
+
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
 				Data: *member,
 			})
 		} else {
-			g, ok := sg.State.GuildMembers.Load(discord.Snowflake(guildIdInt64))
-
-			if !ok {
-				// Create new state entry
-				g = &sandwich_structs.StateGuildMembers{
-					Members: csmap.Create(
-						csmap.WithSize[discord.Snowflake, *discord.GuildMember](100),
-					),
-				}
-
-				sg.State.GuildMembers.Store(discord.Snowflake(guildIdInt64), g)
-			}
-
 			// Read request body as a member
 			var member discord.GuildMember
 
@@ -569,7 +546,19 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
-			g.Members.Store(member.User.ID, &member)
+			sg.Logger.Info().Any("member", member).Msg("Adding member")
+
+			sg.State.SetGuildMember(
+				&StateCtx{
+					CacheUsers:   true,
+					CacheMembers: true,
+					Shard: &Shard{
+						Manager: &Manager{},
+					},
+				},
+				discord.Snowflake(guildIdInt64),
+				&member,
+			)
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,

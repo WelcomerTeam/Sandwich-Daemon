@@ -76,6 +76,15 @@ func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID
 		return
 	}
 
+	// FIX: Ensure that joined_at is set correctly, it tends to get corrupted for some reason
+	//
+	// This is common enough to not warrning a log message for it.
+	if guildMember.JoinedAt != "" {
+		if _, err := time.Parse(time.RFC3339, string(guildMember.JoinedAt)); err != nil {
+			guildMember.JoinedAt = ""
+		}
+	}
+
 	user, ok := ss.GetUser(guildMember.User.ID)
 	if ok {
 		guildMember.User = user
@@ -94,14 +103,14 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 	guildMembers, ok := ss.GuildMembers.Load(guildID)
 
 	if !ok {
-		guildMembers = &sandwich_structs.StateGuildMembers{
+		// Only set if its not already set.
+		ss.GuildMembers.SetIfAbsent(guildID, sandwich_structs.StateGuildMembers{
 			Members: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.GuildMember](100),
 			),
-		}
+		})
 
-		// Only set if its not already set.
-		ss.GuildMembers.SetIfAbsent(guildID, guildMembers)
+		guildMembers, _ = ss.GuildMembers.Load(guildID)
 	}
 
 	guildMembers.Members.Store(guildMember.User.ID, guildMember)
@@ -164,13 +173,13 @@ func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, 
 	guildRoles, ok := ss.GuildRoles.Load(guildID)
 
 	if !ok {
-		guildRoles = &sandwich_structs.StateGuildRoles{
+		ss.GuildRoles.SetIfAbsent(guildID, sandwich_structs.StateGuildRoles{
 			Roles: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.Role](100),
 			),
-		}
+		})
 
-		ss.GuildRoles.SetIfAbsent(guildID, guildRoles)
+		guildRoles, _ = ss.GuildRoles.Load(guildID)
 	}
 
 	guildRoles.Roles.Store(role.ID, role)
@@ -242,13 +251,13 @@ func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake,
 	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
 
 	if !ok {
-		guildEmojis = &sandwich_structs.StateGuildEmojis{
+		ss.GuildEmojis.SetIfAbsent(guildID, sandwich_structs.StateGuildEmojis{
 			Emojis: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.Emoji](50),
 			),
-		}
+		})
 
-		ss.GuildEmojis.SetIfAbsent(guildID, guildEmojis)
+		guildEmojis, _ = ss.GuildEmojis.Load(guildID)
 	}
 
 	guildEmojis.Emojis.Store(emoji.ID, emoji)
@@ -316,7 +325,7 @@ func (ss *SandwichState) GetUser(userID discord.Snowflake) (user *discord.User, 
 		return
 	}
 
-	user = ss.UserFromState(stateUser)
+	user = ss.UserFromState(&stateUser)
 
 	return
 }
@@ -328,7 +337,7 @@ func (ss *SandwichState) SetUser(ctx *StateCtx, user *discord.User) {
 		return
 	}
 
-	ss.Users.Store(user.ID, ss.UserToState(user))
+	ss.Users.Store(user.ID, *ss.UserToState(user))
 }
 
 // RemoveUser removes a user from the cache.
@@ -394,13 +403,13 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 	guildChannels, ok := ss.GuildChannels.Load(guildID)
 
 	if !ok {
-		guildChannels = &sandwich_structs.StateGuildChannels{
+		ss.GuildChannels.SetIfAbsent(guildID, sandwich_structs.StateGuildChannels{
 			Channels: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.Channel](50),
 			),
-		}
+		})
 
-		ss.GuildChannels.SetIfAbsent(guildID, guildChannels)
+		guildChannels, _ = ss.GuildChannels.Load(guildID)
 	}
 
 	guildChannels.Channels.Store(channel.ID, channel)
@@ -471,12 +480,10 @@ func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discor
 
 // AddDMChannel adds a DM channel to a user.
 func (ss *SandwichState) AddDMChannel(userID discord.Snowflake, channel *discord.Channel) {
-	dmChannel := &sandwich_structs.StateDMChannel{
+	ss.DmChannels.Store(userID, sandwich_structs.StateDMChannel{
 		Channel:   channel,
 		ExpiresAt: discord.Int64(time.Now().Add(memberDMExpiration).Unix()),
-	}
-
-	ss.DmChannels.Store(userID, dmChannel)
+	})
 }
 
 // RemoveDMChannel removes a DM channel from a user.
@@ -509,13 +516,13 @@ func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowfl
 	mutualGuilds, ok := ss.Mutuals.Load(userID)
 
 	if !ok {
-		mutualGuilds = &sandwich_structs.StateMutualGuilds{
+		ss.Mutuals.SetIfAbsent(userID, sandwich_structs.StateMutualGuilds{
 			Guilds: csmap.Create(
 				csmap.WithSize[discord.Snowflake, bool](20),
 			),
-		}
+		})
 
-		ss.Mutuals.SetIfAbsent(userID, mutualGuilds)
+		mutualGuilds, _ = ss.Mutuals.Load(userID)
 	}
 
 	mutualGuilds.Guilds.Store(guildID, true)
@@ -575,13 +582,13 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 	guildVoiceStates, ok := ss.GuildVoiceStates.Load(*voiceState.GuildID)
 
 	if !ok {
-		guildVoiceStates = &sandwich_structs.StateGuildVoiceStates{
+		ss.GuildVoiceStates.SetIfAbsent(*voiceState.GuildID, sandwich_structs.StateGuildVoiceStates{
 			VoiceStates: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.VoiceState](50),
 			),
-		}
+		})
 
-		ss.GuildVoiceStates.SetIfAbsent(*voiceState.GuildID, guildVoiceStates)
+		guildVoiceStates, _ = ss.GuildVoiceStates.Load(*voiceState.GuildID)
 	}
 
 	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(*voiceState.GuildID, voiceState.UserID)

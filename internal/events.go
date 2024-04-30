@@ -35,21 +35,21 @@ type StateCtx struct {
 type SandwichState struct {
 	Guilds *csmap.CsMap[discord.Snowflake, *discord.Guild]
 
-	GuildMembers *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildMembers]
+	GuildMembers *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildMembers]
 
-	GuildChannels *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildChannels]
+	GuildChannels *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildChannels]
 
-	GuildRoles *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildRoles]
+	GuildRoles *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildRoles]
 
-	GuildEmojis *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildEmojis]
+	GuildEmojis *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildEmojis]
 
-	Users *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateUser]
+	Users *csmap.CsMap[discord.Snowflake, sandwich_structs.StateUser]
 
-	DmChannels *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateDMChannel]
+	DmChannels *csmap.CsMap[discord.Snowflake, sandwich_structs.StateDMChannel]
 
-	Mutuals *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateMutualGuilds]
+	Mutuals *csmap.CsMap[discord.Snowflake, sandwich_structs.StateMutualGuilds]
 
-	GuildVoiceStates *csmap.CsMap[discord.Snowflake, *sandwich_structs.StateGuildVoiceStates]
+	GuildVoiceStates *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildVoiceStates]
 }
 
 func NewSandwichState() *SandwichState {
@@ -59,35 +59,35 @@ func NewSandwichState() *SandwichState {
 		),
 
 		GuildMembers: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildMembers](1000),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildMembers](1000),
 		),
 
 		GuildChannels: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildChannels](100),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildChannels](100),
 		),
 
 		GuildRoles: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildRoles](100),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildRoles](100),
 		),
 
 		GuildEmojis: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildEmojis](100),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildEmojis](100),
 		),
 
 		Users: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateUser](1000),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateUser](1000),
 		),
 
 		DmChannels: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateDMChannel](1000),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateDMChannel](1000),
 		),
 
 		Mutuals: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateMutualGuilds](1000),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateMutualGuilds](1000),
 		),
 
 		GuildVoiceStates: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *sandwich_structs.StateGuildVoiceStates](1000),
+			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildVoiceStates](1000),
 		),
 	}
 

@@ -138,7 +138,6 @@ type UnavailableGuild struct {
 
 // GuildMember represents a guild member on discord.
 type GuildMember struct {
-	JoinedAt                   Timestamp     `json:"joined_at"`
 	User                       *User         `json:"user,omitempty"`
 	GuildID                    *Snowflake    `json:"guild_id,omitempty"`
 	Permissions                Int64         `json:"permissions"`
@@ -146,7 +145,8 @@ type GuildMember struct {
 	Nick                       string        `json:"nick,omitempty"`
 	Avatar                     string        `json:"avatar,omitempty"`
 	PremiumSince               string        `json:"premium_since,omitempty"`
-	CommunicationDisabledUntil string        `json:"communication_disabled_until,omitempty"`
+	CommunicationDisabledUntil *string       `json:"communication_disabled_until,omitempty"`
+	JoinedAt                   Timestamp     `json:"joined_at,omitempty"`
 	Roles                      SnowflakeList `json:"roles"`
 	Deaf                       bool          `json:"deaf"`
 	Mute                       bool          `json:"mute"`
