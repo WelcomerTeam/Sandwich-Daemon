@@ -462,7 +462,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
-				Data: user,
+				Data: *user,
 			})
 		} else {
 			// Read request body as a user
@@ -539,7 +539,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
-				Data: member,
+				Data: *member,
 			})
 		} else {
 			g, ok := sg.State.GuildMembers.Load(discord.Snowflake(guildIdInt64))
@@ -602,7 +602,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
-				Data: guild,
+				Data: *guild,
 			})
 		} else {
 			// Read request body as a guild
