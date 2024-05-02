@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -548,6 +547,8 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 				continue
 			}
 
+			/* The below code doesnt work that great and needs to be rewritten tbh
+
 			if msg.message.Op == discord.GatewayOpRequestGuildMembers {
 				if !s.sh.IsReady {
 					cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Shard %d is not ready yet yet recv'd message over websocketMQ", s.shard[0])
@@ -642,7 +643,7 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 
 					continue
 				}
-			}
+			}*/
 
 			// Otherwise just send to discord
 			err := s.sh.SendEvent(ctx, msg.message.Op, msg.message.Data)
