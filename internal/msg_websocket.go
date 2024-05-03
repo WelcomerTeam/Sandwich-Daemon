@@ -436,7 +436,6 @@ func (cs *chatServer) readMessages(done chan void, s *subscriber) {
 	for {
 		select {
 		case <-done:
-			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d [readMessages is exiting]", s.shard[0])
 			return
 		default:
 			typ, ior, err := s.c.Read(ctx)
@@ -503,7 +502,6 @@ func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 	for {
 		select {
 		case <-done:
-			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d [handleReadMessages is exiting]", s.shard[0])
 			return
 		case msg := <-s.reader:
 			// Send to discord directly
@@ -542,7 +540,6 @@ func (cs *chatServer) writeMessages(done chan void, s *subscriber) {
 		select {
 		// Case 1: Done is closed
 		case <-done:
-			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d [writeMessages is exiting]", s.shard[0])
 			return
 		// Case 2: Heartbeat
 		case <-s.writeHeartbeat:
