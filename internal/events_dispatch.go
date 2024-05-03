@@ -40,10 +40,10 @@ func OnReady(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.S
 	ctx.ShardGroup.userMu.Unlock()
 
 	for _, guild := range readyPayload.Guilds {
-		ctx.Lazy.Store(guild.ID, true)
-		ctx.Guilds.Store(guild.ID, true)
-		ctx.Shard.Guilds.Store(guild.ID, true)
-		ctx.Shard.Lazy.Store(guild.ID, true)
+		ctx.Lazy.Store(guild.ID, struct{}{})
+		ctx.Guilds.Store(guild.ID, struct{}{})
+		ctx.Shard.Guilds.Store(guild.ID, struct{}{})
+		ctx.Shard.Lazy.Store(guild.ID, struct{}{})
 	}
 
 	guildCreateEvents := 0
@@ -393,7 +393,7 @@ func OnGuildDelete(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_str
 	beforeGuild, _ := ctx.Sandwich.State.GetGuild(guildDeletePayload.ID)
 
 	if guildDeletePayload.Unavailable {
-		ctx.Unavailable.Store(guildDeletePayload.ID, true)
+		ctx.Unavailable.Store(guildDeletePayload.ID, struct{}{})
 	} else {
 		// We do not remove the actual guild as other managers may be using it.
 		// Dereferencing it locally ensures that if other managers are using it,

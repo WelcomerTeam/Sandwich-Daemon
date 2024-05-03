@@ -22,7 +22,7 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Gui
 
 // SetGuild creates or updates a guild entry in the cache.
 func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
-	ctx.ShardGroup.Guilds.Store(guild.ID, true)
+	ctx.ShardGroup.Guilds.Store(guild.ID, struct{}{})
 	ss.Guilds.Store(guild.ID, guild)
 
 	for _, role := range guild.Roles {
@@ -499,7 +499,7 @@ func (ss *SandwichState) GetUserMutualGuilds(userID discord.Snowflake) (guildIDs
 		return
 	}
 
-	mutualGuilds.Guilds.Range(func(guildID discord.Snowflake, _ bool) bool {
+	mutualGuilds.Guilds.Range(func(guildID discord.Snowflake, _ struct{}) bool {
 		guildIDs = append(guildIDs, guildID)
 		return false
 	})
@@ -518,14 +518,14 @@ func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowfl
 	if !ok {
 		ss.Mutuals.SetIfAbsent(userID, sandwich_structs.StateMutualGuilds{
 			Guilds: csmap.Create(
-				csmap.WithSize[discord.Snowflake, bool](20),
+				csmap.WithSize[discord.Snowflake, struct{}](1),
 			),
 		})
 
 		mutualGuilds, _ = ss.Mutuals.Load(userID)
 	}
 
-	mutualGuilds.Guilds.Store(guildID, true)
+	mutualGuilds.Guilds.Store(guildID, struct{}{})
 }
 
 // RemoveUserMutualGuild removes a mutual guild from a user.

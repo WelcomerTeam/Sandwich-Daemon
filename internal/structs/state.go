@@ -22,7 +22,7 @@ type StateDMChannel struct {
 }
 
 type StateMutualGuilds struct {
-	Guilds *csmap.CsMap[discord.Snowflake, bool] `json:"guilds"`
+	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
 }
 
 type StateGuildMembers struct {

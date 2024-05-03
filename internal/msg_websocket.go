@@ -153,7 +153,7 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 
 	// Get all guilds
 	unavailableGuilds := []*discord.UnavailableGuild{}
-	s.sh.Guilds.Range(func(id discord.Snowflake, ok bool) bool {
+	s.sh.Guilds.Range(func(id discord.Snowflake, v struct{}) bool {
 		unavailableGuilds = append(unavailableGuilds, &discord.UnavailableGuild{
 			ID:          id,
 			Unavailable: true,
@@ -199,7 +199,7 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 	}
 
 	// Next dispatch guilds
-	s.sh.Guilds.Range(func(id discord.Snowflake, _ bool) bool {
+	s.sh.Guilds.Range(func(id discord.Snowflake, _ struct{}) bool {
 		guild, ok := cs.manager.Sandwich.State.Guilds.Load(id)
 
 		if !ok {

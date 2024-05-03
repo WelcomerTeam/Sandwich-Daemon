@@ -516,10 +516,8 @@ func (sg *Sandwich) cacheEjector() {
 
 		sg.Managers.Range(func(key string, mg *Manager) bool {
 			mg.ShardGroups.Range(func(i int32, sg *ShardGroup) bool {
-				sg.Guilds.Range(func(guildID discord.Snowflake, ok bool) bool {
-					if ok {
-						allGuildIDs[guildID] = true
-					}
+				sg.Guilds.Range(func(guildID discord.Snowflake, _ struct{}) bool {
+					allGuildIDs[guildID] = true
 					return false
 				})
 				return false

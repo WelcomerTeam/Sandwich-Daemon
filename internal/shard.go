@@ -85,13 +85,13 @@ type Shard struct {
 	HeartbeatFailureInterval time.Duration `json:"-"`
 
 	// Map of guilds that are currently unavailable.
-	Unavailable *csmap.CsMap[discord.Snowflake, bool] `json:"unavailable"`
+	Unavailable *csmap.CsMap[discord.Snowflake, struct{}] `json:"unavailable"`
 
 	// Map of guilds that have were present in ready and not received yet.
-	Lazy *csmap.CsMap[discord.Snowflake, bool] `json:"lazy"`
+	Lazy *csmap.CsMap[discord.Snowflake, struct{}] `json:"lazy"`
 
 	// Stores a local list of all guilds in the shard.
-	Guilds *csmap.CsMap[discord.Snowflake, bool] `json:"guilds"`
+	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
 
 	statusMu sync.RWMutex
 	Status   sandwich_structs.ShardStatus `json:"status"`
@@ -141,15 +141,15 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		LastHeartbeatSent: &atomic.Time{},
 
 		Unavailable: csmap.Create(
-			csmap.WithSize[discord.Snowflake, bool](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](1000),
 		),
 
 		Lazy: csmap.Create(
-			csmap.WithSize[discord.Snowflake, bool](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](1000),
 		),
 
 		Guilds: csmap.Create(
-			csmap.WithSize[discord.Snowflake, bool](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](1000),
 		),
 
 		statusMu: sync.RWMutex{},
@@ -1016,7 +1016,7 @@ func (sh *Shard) ChunkAllGuilds() {
 	guilds := make([]discord.Snowflake, sh.Guilds.Count())
 	i := 0
 
-	sh.Guilds.Range(func(guildID discord.Snowflake, _ bool) bool {
+	sh.Guilds.Range(func(guildID discord.Snowflake, _ struct{}) bool {
 		guilds[i] = guildID
 		i++
 		return false

@@ -39,7 +39,7 @@ type ShardGroup struct {
 
 	Shards *csmap.CsMap[int32, *Shard] `json:"shards"`
 
-	Guilds *csmap.CsMap[discord.Snowflake, bool] `json:"guilds"`
+	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
 
 	ReadyWait *sync.WaitGroup `json:"-"`
 
@@ -76,7 +76,7 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 		),
 
 		Guilds: csmap.Create(
-			csmap.WithSize[discord.Snowflake, bool](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](1000),
 		),
 
 		statusMu: sync.RWMutex{},
