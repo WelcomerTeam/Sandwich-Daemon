@@ -8,7 +8,6 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
-	"go.uber.org/atomic"
 )
 
 // OnReady handles the READY event.
@@ -172,12 +171,10 @@ func OnGuildMembersChunk(ctx *StateCtx, msg discord.GatewayPayload, trace sandwi
 	guildChunk, ok = ctx.Sandwich.guildChunks.Load(guildMembersChunkPayload.GuildID)
 
 	if !ok {
-		guildChunk = &GuildChunks{
-			Complete:   *atomic.NewBool(false),
-			ChunkCount: *atomic.NewInt32(0),
-		}
-
-		ctx.Sandwich.guildChunks.Store(guildMembersChunkPayload.GuildID, guildChunk)
+		// We don't need to care further
+		return sandwich_structs.StateResult{
+			Data: msg.Data,
+		}, true, nil
 	}
 
 	// if guildChunk.Complete.Load() {
