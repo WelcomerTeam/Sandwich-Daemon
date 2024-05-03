@@ -481,17 +481,8 @@ func (cs *chatServer) readMessages(done chan void, s *subscriber) {
 
 			if payload.Op == discord.GatewayOpHeartbeat {
 				s.writeHeartbeat <- struct{}{}
-			} else if !s.up {
-				s.reader <- payload
 			} else {
-				// Only handle op of Request Guild Members, Update Voice State and Update Presence
-				if payload.Op == discord.GatewayOpRequestGuildMembers || payload.Op == discord.GatewayOpVoiceStateUpdate || payload.Op == discord.GatewayOpStatusUpdate {
-					cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d received packet: %v", s.shard[0], payload)
-
-					s.reader <- payload
-				} else {
-					cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Shard %d received UNKNOWN packet: %v", s.shard[0], string(ior))
-				}
+				s.reader <- payload
 			}
 		}
 	}
@@ -702,20 +693,18 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		// Close old session
 		cs.deleteSubscriber(oldSess)
 
-		for msg := range oldSess.reader {
+		for msg := range oldSess.writer {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
 			}
 
-			if msg.Op != discord.GatewayOpDispatch {
+			if msg.message == nil || msg.message.Op != discord.GatewayOpDispatch {
 				continue
 			}
 
-			s.writer <- &message{
-				message: msg,
-			}
+			s.writer <- msg
 		}
 	}
 
