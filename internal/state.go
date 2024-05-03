@@ -175,7 +175,7 @@ func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, 
 	if !ok {
 		ss.GuildRoles.SetIfAbsent(guildID, sandwich_structs.StateGuildRoles{
 			Roles: csmap.Create(
-				csmap.WithSize[discord.Snowflake, *discord.Role](100),
+				csmap.WithSize[discord.Snowflake, *discord.Role](50),
 			),
 		})
 

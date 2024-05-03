@@ -141,15 +141,15 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		LastHeartbeatSent: &atomic.Time{},
 
 		Unavailable: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](0),
 		),
 
 		Lazy: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](0),
 		),
 
 		Guilds: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](0),
 		),
 
 		statusMu: sync.RWMutex{},

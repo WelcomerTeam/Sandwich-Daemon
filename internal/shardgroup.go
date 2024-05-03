@@ -72,11 +72,11 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 		ShardIDs:   shardIDs,
 
 		Shards: csmap.Create(
-			csmap.WithSize[int32, *Shard](1000),
+			csmap.WithSize[int32, *Shard](1),
 		),
 
 		Guilds: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](1000),
+			csmap.WithSize[discord.Snowflake, struct{}](50),
 		),
 
 		statusMu: sync.RWMutex{},

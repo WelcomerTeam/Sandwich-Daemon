@@ -197,12 +197,12 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		),
 
 		globalPool: csmap.Create(
-			csmap.WithSize[int32, chan []byte](1000),
+			csmap.WithSize[int32, chan []byte](10),
 		),
 		globalPoolAccumulator: atomic.NewInt32(0),
 
 		Dedupe: csmap.Create(
-			csmap.WithSize[string, int64](1000),
+			csmap.WithSize[string, int64](10),
 		),
 
 		IdentifyBuckets: bucketstore.NewBucketStore(),
@@ -223,7 +223,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		},
 
 		guildChunks: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *GuildChunks](1000),
+			csmap.WithSize[discord.Snowflake, *GuildChunks](50),
 		),
 	}
 

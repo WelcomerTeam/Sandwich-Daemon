@@ -143,7 +143,7 @@ func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager
 		Gateway:   discord.GatewayBotResponse{},
 
 		ShardGroups: csmap.Create(
-			csmap.WithSize[int32, *ShardGroup](10),
+			csmap.WithSize[int32, *ShardGroup](0),
 		),
 
 		Client: NewClient(baseURL, configuration.Token),
