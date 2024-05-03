@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -106,7 +105,7 @@ type subscriber struct {
 	moving         bool
 	seq            int32
 	writeDelay     int64
-	reader         chan *message
+	reader         chan *structs.SandwichPayload
 	writer         chan *message
 	writeHeartbeat chan void
 }
@@ -147,7 +146,7 @@ func (cs *chatServer) getShard(shard [2]int32) *Shard {
 	return shardRes
 }
 
-func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error {
+func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
 	s.sh.WaitForReady()
@@ -177,8 +176,8 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 	}
 
 	select {
-	case <-ctx.Done():
-		return ctx.Err()
+	case <-done:
+		return nil
 	default:
 	}
 
@@ -200,7 +199,6 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 	}
 
 	// Next dispatch guilds
-	var ctxErr error
 	s.sh.Guilds.Range(func(id discord.Snowflake, _ bool) bool {
 		guild, ok := cs.manager.Sandwich.State.Guilds.Load(id)
 
@@ -244,17 +242,12 @@ func (cs *chatServer) dispatchInitial(ctx context.Context, s *subscriber) error 
 		}
 
 		select {
-		case <-ctx.Done():
-			ctxErr = ctx.Err()
+		case <-done:
 			return true
 		default:
 			return false
 		}
 	})
-
-	if ctxErr != nil {
-		return ctxErr
-	}
 
 	return err
 }
@@ -289,19 +282,7 @@ func (cs *chatServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 		writeDelay = cs.defaultWriteDelay
 	}
 
-	err := cs.subscribe(r.Context(), w, r, subscribeOpts{
-		writeDelay: writeDelay,
-	})
-	if errors.Is(err, context.Canceled) {
-		return
-	}
-	if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
-		websocket.CloseStatus(err) == websocket.StatusGoingAway {
-		return
-	}
-	if err != nil {
-		return
-	}
+	cs.subscribe(r.Context(), w, r, writeDelay)
 }
 
 // publishHandler reads the request body with a limit of 8192 bytes and then publishes
@@ -346,7 +327,7 @@ func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // identifyClient tries to identify a incoming connection
-func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSess *subscriber, err error) {
+func (cs *chatServer) identifyClient(done chan void, s *subscriber) (oldSess *subscriber, err error) {
 	// Before adding the subscriber for external access, send the initial hello payload and wait for identify
 	// If the client does not identify within 5 seconds, close the connection
 	s.writer <- &message{
@@ -356,17 +337,11 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 	// Keep reading messages till we reach an identify
 	for {
 		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		case <-done:
+			return nil, nil
 		case <-time.After(5 * time.Second):
 			return nil, errors.New("timed out waiting for identify")
-		case msg := <-s.reader:
-			if msg.message == nil {
-				continue
-			}
-
-			packet := msg.message
-
+		case packet := <-s.reader:
 			// Read an identify packet
 			//
 			// Note that resume is not supported at this time
@@ -444,8 +419,13 @@ func (cs *chatServer) identifyClient(ctx context.Context, s *subscriber) (oldSes
 
 // reader reads messages from subscribe and sends them to the reader
 // Note that there must be only one reader reading from the goroutine
-func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
+func (cs *chatServer) readMessages(done chan void, s *subscriber) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
 	defer func() {
+		cancelFunc()
+		s.cancelFunc()
+
 		if err := recover(); err != nil {
 			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d panicked on readMessages: %v", s.shard[0], err)
 			cs.invalidSession(s, "panicked", true)
@@ -454,78 +434,64 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 	}()
 
 	for {
-		typ, ior, err := s.c.Read(ctx)
-
-		if err != nil {
-			s.cancelFunc()
-			return
-		}
-
 		select {
-		case <-ctx.Done():
+		case <-done:
+			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d [readMessages is exiting]", s.shard[0])
 			return
 		default:
-		}
-
-		switch typ {
-		case websocket.MessageText:
-			var payload *structs.SandwichPayload
-
-			err := sandwichjson.Unmarshal(ior, &payload)
+			typ, ior, err := s.c.Read(ctx)
 
 			if err != nil {
-				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
-				cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
 				return
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			var payload *structs.SandwichPayload
+			switch typ {
+			case websocket.MessageText:
+				err := sandwichjson.Unmarshal(ior, &payload)
+
+				if err != nil {
+					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
+					cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
+					return
+				}
+			case websocket.MessageBinary:
+				// ZLIB compressed message sigh
+				newReader, err := czlib.NewReader(bytes.NewReader(ior))
+
+				if err != nil {
+					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to decompress message: %s", err.Error())
+					cs.invalidSession(s, "failed to decompress message: "+err.Error(), true)
+					return
+				}
+
+				err = sandwichjson.UnmarshalReader(newReader, &payload)
+
+				if err != nil {
+					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
+					cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
+					return
+				}
 			}
 
 			if payload.Op == discord.GatewayOpHeartbeat {
 				s.writeHeartbeat <- struct{}{}
+			} else if !s.up {
+				s.reader <- payload
 			} else {
-				if !s.up {
-					s.reader <- &message{
-						message: payload,
-					}
+				// Only handle op of Request Guild Members, Update Voice State and Update Presence
+				if payload.Op == discord.GatewayOpRequestGuildMembers || payload.Op == discord.GatewayOpVoiceStateUpdate || payload.Op == discord.GatewayOpStatusUpdate {
+					cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d received packet: %v", s.shard[0], payload)
+
+					s.reader <- payload
 				} else {
-					// Only handle op of Request Guild Members, Update Voice State and Update Presence
-					if payload.Op == discord.GatewayOpRequestGuildMembers || payload.Op == discord.GatewayOpVoiceStateUpdate || payload.Op == discord.GatewayOpStatusUpdate {
-						cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d received packet: %v", s.shard[0], payload)
-
-						s.reader <- &message{
-							message: payload,
-						}
-					} else {
-						cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Shard %d received UNKNOWN packet: %v", s.shard[0], string(ior))
-					}
-				}
-			}
-		case websocket.MessageBinary:
-			// ZLIB compressed message sigh
-			newReader, err := czlib.NewReader(bytes.NewReader(ior))
-
-			if err != nil {
-				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to decompress message: %s", err.Error())
-				cs.invalidSession(s, "failed to decompress message: "+err.Error(), true)
-				return
-			}
-
-			var payload *structs.SandwichPayload
-
-			err = sandwichjson.UnmarshalReader(newReader, &payload)
-
-			if err != nil {
-				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
-				cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
-				return
-			}
-
-			if payload.Op == discord.GatewayOpHeartbeat {
-				s.writer <- &message{
-					rawBytes: []byte(`{"op":11}`),
-				}
-			} else {
-				s.reader <- &message{
-					message: payload,
+					cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Shard %d received UNKNOWN packet: %v", s.shard[0], string(ior))
 				}
 			}
 		}
@@ -533,10 +499,11 @@ func (cs *chatServer) readMessages(ctx context.Context, s *subscriber) {
 }
 
 // handleReadMessages handles messages from reader
-func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
+func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-done:
+			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d [handleReadMessages is exiting]", s.shard[0])
 			return
 		case msg := <-s.reader:
 			// Send to discord directly
@@ -544,109 +511,11 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 
 			if s.sh == nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d is nil", s.shard[0])
-				continue
+				return
 			}
 
-			/* The below code doesnt work that great and needs to be rewritten tbh
-
-			if msg.message.Op == discord.GatewayOpRequestGuildMembers {
-				if !s.sh.IsReady {
-					cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Shard %d is not ready yet yet recv'd message over websocketMQ", s.shard[0])
-					continue
-				}
-
-				// Special case, decode body as ChunkRequest to allow only chunking where needed
-				var chunkRequest discord.RequestGuildMembers
-
-				err := sandwichjson.Unmarshal(msg.message.Data, &chunkRequest)
-
-				if err != nil {
-					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to unmarshal chunk request: %s", err.Error())
-					continue
-				}
-
-				cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d is now chunking guild %d", s.shard[0], chunkRequest.GuildID)
-
-				// Check if chunking completed
-				chunkMeta, ok := s.sh.Sandwich.guildChunks.Load(chunkRequest.GuildID)
-
-				var madeChunks bool
-				if ok {
-					madeChunks = chunkMeta.Complete.Load()
-				}
-
-				// Note: this bit is a bit buggy
-				cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d is now chunking guild %d, completed: %v, ok: %v, count: %d", s.shard[0], chunkRequest.GuildID, madeChunks, ok, s.sh.Sandwich.guildChunks.Count())
-
-				if madeChunks {
-					// This is a bit more tricky as no chunks are needed meaning we need to forge a response
-					var chunk = discord.GuildMembersChunk{
-						Nonce:     chunkRequest.Nonce,
-						GuildID:   chunkRequest.GuildID,
-						Members:   make([]*discord.GuildMember, 0),
-						NotFound:  make([]discord.Snowflake, 0),
-						Presences: make([]discord.PresenceUpdate, 0),
-					}
-
-					guild, ok := cs.manager.Sandwich.State.GuildMembers.Load(chunkRequest.GuildID)
-
-					if !ok {
-						cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Failed to find guild %d for chunk request", chunkRequest.GuildID)
-						// Send to writer
-						chunk.ChunkCount = 1
-						serializedChunk, err := sandwichjson.Marshal(chunk)
-
-						if err != nil {
-							cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal chunk: %s", err.Error())
-							continue
-						}
-
-						s.writer <- &message{
-							message: &structs.SandwichPayload{
-								Op:   discord.GatewayOpDispatch,
-								Data: serializedChunk,
-								Type: "GUILD_MEMBERS_CHUNK",
-							},
-						}
-					}
-
-					chunk.ChunkCount = int32(math.Ceil(float64(guild.Members.Count()) / 1000.0))
-
-					// Get all members
-					guild.Members.Range(func(id discord.Snowflake, member *discord.GuildMember) bool {
-						chunk.Members = append(chunk.Members, member)
-
-						// TODO, set presence once we actually cache that
-
-						if len(chunk.Members) >= 1000 {
-							serializedChunk, err := sandwichjson.Marshal(chunk)
-
-							if err != nil {
-								cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to marshal chunk: %s", err.Error())
-								return true
-							}
-
-							s.writer <- &message{
-								message: &structs.SandwichPayload{
-									Op:   discord.GatewayOpDispatch,
-									Data: serializedChunk,
-									Type: "GUILD_MEMBERS_CHUNK",
-								},
-							}
-
-							clear(chunk.Members)
-							chunk.ChunkIndex++
-						}
-
-						return false
-					})
-
-					continue
-				}
-			}*/
-
-			// Otherwise just send to discord
-			err := s.sh.SendEvent(ctx, msg.message.Op, msg.message.Data)
+			// Just send the event to discord for now
+			err := s.sh.SendEvent(s.sh.ctx, msg.Op, msg.Data)
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to send event: %s", err.Error())
@@ -656,8 +525,12 @@ func (cs *chatServer) handleReadMessages(ctx context.Context, s *subscriber) {
 }
 
 // writeMessages reads messages from the writer and sends them to the WebSocket
-func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
+func (cs *chatServer) writeMessages(done chan void, s *subscriber) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	defer func() {
+		s.cancelFunc()
+		cancelFunc()
+
 		if err := recover(); err != nil {
 			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d panicked on writeMessages: %v", s.shard[0], err)
 			cs.invalidSession(s, "panicked", true)
@@ -667,8 +540,9 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 
 	for {
 		select {
-		// Case 1: Context is cancelled
-		case <-ctx.Done():
+		// Case 1: Done is closed
+		case <-done:
+			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d [writeMessages is exiting]", s.shard[0])
 			return
 		// Case 2: Heartbeat
 		case <-s.writeHeartbeat:
@@ -680,7 +554,6 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write heartbeat: %s", err.Error())
-				s.cancelFunc()
 				return
 			}
 		// Case 3: Message is received
@@ -695,7 +568,6 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 				if err != nil {
 					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [rawBytes]: %s", err.Error())
 					s.c.Close(websocket.StatusInternalError, "Failed to write message [rawBytes]")
-					s.cancelFunc()
 					return
 				}
 			}
@@ -720,25 +592,18 @@ func (cs *chatServer) writeMessages(ctx context.Context, s *subscriber) {
 				if err != nil {
 					cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to write message [serialized]: %s", err.Error())
 					s.c.Close(websocket.StatusInternalError, "Failed to write message [serialized]")
-					s.cancelFunc()
 					return
 				}
 			}
 
 			if msg.closeCode != 0 {
 				s.up = false
-				s.c.Close(msg.closeCode, msg.closeString)
 				s.cancelFunc()
+				s.c.Close(msg.closeCode, msg.closeString)
 				return
 			}
 		}
 	}
-}
-
-// subscribeOpts are the extra options sent when subscribing.
-type subscribeOpts struct {
-	// writeDelay is the delay to write messages.
-	writeDelay int64
 }
 
 // subscribe subscribes the given WebSocket to all broadcast messages.
@@ -749,20 +614,26 @@ type subscribeOpts struct {
 //
 // It uses CloseRead to keep reading from the connection to process control
 // messages and cancel the context if the connection drops.
-func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, opts subscribeOpts) error {
+func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, writeDelay int64) error {
 	var c *websocket.Conn
 	s := &subscriber{
-		reader:         make(chan *message, cs.subscriberMessageBuffer),
+		reader:         make(chan *structs.SandwichPayload, cs.subscriberMessageBuffer),
 		writer:         make(chan *message, cs.subscriberMessageBuffer),
 		writeHeartbeat: make(chan void, cs.subscriberMessageBuffer),
-		writeDelay:     opts.writeDelay,
+		writeDelay:     writeDelay,
 	}
+
+	// Create cancellable ctx
+	ctx, cancelFunc := context.WithCancel(ctx)
+	s.cancelFunc = cancelFunc
 
 	var err error
 	c, err = websocket.Accept(w, r, nil)
+
 	if err != nil {
 		return err
 	}
+
 	c.SetReadLimit(WebsocketReadLimit)
 
 	s.c = c
@@ -772,22 +643,37 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		return errors.New("sandwich is nil")
 	}
 
-	newCtx, cancelFunc := context.WithCancel(ctx)
-	s.cancelFunc = cancelFunc
-	defer s.cancelFunc()
-
 	defer c.Close(websocket.StatusCode(4000), `{"op":9,"d":true}`)
 
+	// Create done channels for subscriber/reader/writer/handleReadMessages, allowing
+	// a goroutine to then close
+	writerDone := make(chan void)
+	readerDone := make(chan void)
+	identifyClientDone := make(chan void)
+	dispatchInitialDone := make(chan void)
+	handleReadMessagesDone := make(chan void)
+	subscriberDone := make(chan void)
+
+	go func() {
+		<-ctx.Done()
+		close(writerDone)
+		close(readerDone)
+		close(identifyClientDone)
+		close(dispatchInitialDone)
+		close(handleReadMessagesDone)
+		close(subscriberDone)
+	}()
+
 	// Start the reader+writer bit
-	go cs.writeMessages(newCtx, s)
-	time.Sleep(5 * time.Millisecond)
-	go cs.readMessages(newCtx, s)
-	time.Sleep(5 * time.Millisecond)
+	go cs.writeMessages(writerDone, s)
+	time.Sleep(1 * time.Millisecond)
+	go cs.readMessages(readerDone, s)
+	time.Sleep(1 * time.Millisecond)
 
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now launched (reader+writer UP)", s.shard[0])
 
 	// Now identifyClient
-	oldSess, err := cs.identifyClient(newCtx, s)
+	oldSess, err := cs.identifyClient(identifyClientDone, s)
 
 	if err != nil {
 		cs.invalidSession(s, err.Error(), false)
@@ -796,24 +682,9 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	cs.addSubscriber(s, s.shard)
 	defer func() {
-		// Delete session after 1 minute resume timeout
-		ticker := time.NewTicker(1 * time.Minute)
-
-		for {
-			select {
-			case <-ticker.C:
-				ticker.Stop()
-				if s.moving {
-					return
-				}
-				cs.deleteSubscriber(s)
-			default:
-				if s.moving {
-					return
-				}
-				continue
-			}
-		}
+		// Give one minute for resumes
+		time.Sleep(1 * time.Minute)
+		cs.deleteSubscriber(s)
 	}()
 
 	s.sh = cs.getShard(s.shard)
@@ -824,10 +695,8 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		return errors.New("shard is nil")
 	}
 
-	// SAFETY: at this point, the identifyClient loop has ended, so there should be no more subscribers to reader
-	//
-	// Calling handleReadMessages is hence safe
-	go cs.handleReadMessages(newCtx, s)
+	// SAFETY: There should be no other reader at this point, so start up handleReadMessages
+	go cs.handleReadMessages(handleReadMessagesDone, s)
 
 	if oldSess != nil {
 		cs.invalidSession(oldSess, "New session identified", true)
@@ -838,33 +707,31 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 		for msg := range oldSess.reader {
 			select {
-			case <-newCtx.Done():
-				return newCtx.Err()
+			case <-ctx.Done():
+				return ctx.Err()
 			default:
 			}
 
-			if msg.message == nil {
+			if msg.Op != discord.GatewayOpDispatch {
 				continue
 			}
 
-			if msg.message.Op != discord.GatewayOpDispatch {
-				continue
+			s.writer <- &message{
+				message: msg,
 			}
-
-			s.writer <- msg
 		}
 	}
 
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now connected (oldSess fanout done)", s.shard[0])
 
 	if !s.resumed {
-		cs.dispatchInitial(ctx, s)
+		cs.dispatchInitial(dispatchInitialDone, s)
 	} else {
 		// Send a RESUMED event
 		s.writer <- &message{
 			message: &structs.SandwichPayload{
 				Op:   discord.GatewayOpDispatch,
-				Data: json.RawMessage([]byte(`{}`)),
+				Data: []byte(`{}`),
 				Type: "RESUMED",
 			},
 		}
@@ -872,10 +739,8 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 
 	// Wait for the context to be cancelled
 	// readMessages and writeMessages will handle the rest
-	for range newCtx.Done() {
-		return newCtx.Err()
-	}
-
+	<-subscriberDone
+	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now disconnected", s.shard[0])
 	return nil
 }
 
@@ -934,30 +799,28 @@ func (cs *chatServer) publishGlobal(msg *structs.SandwichPayload) {
 // addSubscriber registers a subscriber.
 func (cs *chatServer) addSubscriber(s *subscriber, shard [2]int32) {
 	cs.subscribersMu.Lock()
+	defer cs.subscribersMu.Unlock()
 
 	if subs, ok := cs.subscribers[shard]; ok {
 		cs.subscribers[shard] = append(subs, s)
 	} else {
 		cs.subscribers[shard] = []*subscriber{s}
 	}
-
-	cs.subscribersMu.Unlock()
 }
 
 // deleteSubscriber deletes the given subscriber.
 func (cs *chatServer) deleteSubscriber(s *subscriber) {
 	cs.subscribersMu.Lock()
+	defer cs.subscribersMu.Unlock()
 
 	if sub, ok := cs.subscribers[s.shard]; ok {
 		for i, is := range sub {
-			if is.sessionId == s.sessionId {
+			if is.sessionId == s.sessionId || is == s {
+				is.cancelFunc()
 				cs.subscribers[s.shard] = append(sub[:i], sub[i+1:]...)
-				break
 			}
 		}
 	}
-
-	cs.subscribersMu.Unlock()
 }
 
 type WebsocketClient struct {
