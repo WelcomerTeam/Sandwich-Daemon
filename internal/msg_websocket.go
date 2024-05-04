@@ -219,7 +219,10 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 			guild.Roles = make([]*discord.Role, 0, roles.Roles.Count())
 			if ok {
 				roles.Roles.Range(func(id discord.Snowflake, role *discord.Role) bool {
-					role.ID = discord.Snowflake(id)
+					if role.ID == 0 {
+						role.ID = discord.Snowflake(role.ID)
+					}
+
 					guild.Roles = append(guild.Roles, role)
 					return false
 				})
