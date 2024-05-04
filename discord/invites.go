@@ -70,7 +70,7 @@ type ScheduledEvent struct {
 	EntityID           *Snowflake                `json:"entity_id,omitempty"`
 	PrivacyLevel       *StageChannelPrivacyLevel `json:"privacy_level"`
 	ScheduledStartTime Timestamp                 `json:"scheduled_start_time"`
-	ScheduledEndTime   Timestamp                 `json:"scheduled_end_time"`
+	ScheduledEndTime   *Timestamp                `json:"scheduled_end_time"`
 	Description        string                    `json:"description,omitempty"`
 	Name               string                    `json:"name"`
 	ID                 Snowflake                 `json:"id"`

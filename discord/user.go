@@ -49,7 +49,7 @@ type User struct {
 	DMChannelID      *Snowflake      `json:"dm_channel_id"`
 	Banner           string          `json:"banner,omitempty"`
 	GlobalName       string          `json:"global_name"`
-	Avatar           string          `json:"avatar"`
+	Avatar           *string         `json:"avatar"`
 	AvatarDecoration *string         `json:"avatar_decoration,omitempty"`
 	Username         string          `json:"username"`
 	Discriminator    string          `json:"discriminator"`

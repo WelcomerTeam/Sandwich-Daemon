@@ -149,3 +149,80 @@ func (p PresenceUpdateList) MarshalJSON() ([]byte, error) {
 	// Just marshal normally
 	return sandwichjson.Marshal([]*PresenceUpdate(p))
 }
+
+type ChannelOverwriteList []*ChannelOverwrite
+
+func (c ChannelOverwriteList) MarshalJSON() ([]byte, error) {
+	if len(c) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return sandwichjson.Marshal([]*ChannelOverwrite(c))
+}
+
+type UserList []*User
+
+func (u UserList) MarshalJSON() ([]byte, error) {
+	if len(u) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return sandwichjson.Marshal([]*User(u))
+}
+
+type AuditLogEntryList []*AuditLogEntry
+
+func (a AuditLogEntryList) MarshalJSON() ([]byte, error) {
+	if len(a) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return sandwichjson.Marshal([]*AuditLogEntry(a))
+}
+
+type AuditLogChangesList []*AuditLogChanges
+
+func (a AuditLogChangesList) MarshalJSON() ([]byte, error) {
+	if len(a) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return sandwichjson.Marshal([]*AuditLogChanges(a))
+}
+
+type IntegrationList []*Integration
+
+func (i IntegrationList) MarshalJSON() ([]byte, error) {
+	if len(i) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return sandwichjson.Marshal([]*Integration(i))
+}
+
+type WebhookList []*Webhook
+
+func (w WebhookList) MarshalJSON() ([]byte, error) {
+	if len(w) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return sandwichjson.Marshal([]*Webhook(w))
+}
+
+type EmbedFieldList []*EmbedField
+
+func (e EmbedFieldList) MarshalJSON() ([]byte, error) {
+	if len(e) == 0 {
+		return []byte("[]"), nil
+	}
+
+	// Just marshal normally
+	return sandwichjson.Marshal([]*EmbedField(e))
+}

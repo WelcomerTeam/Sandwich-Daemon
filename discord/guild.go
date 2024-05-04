@@ -92,7 +92,7 @@ type Guild struct {
 	Description                 string                     `json:"description"`
 	PreferredLocale             string                     `json:"preferred_locale"`
 	Name                        string                     `json:"name"`
-	Icon                        string                     `json:"icon"`
+	Icon                        *string                    `json:"icon"`
 	IconHash                    string                     `json:"icon_hash,omitempty"`
 	Banner                      string                     `json:"banner,omitempty"`
 	VanityURLCode               string                     `json:"vanity_url_code"`

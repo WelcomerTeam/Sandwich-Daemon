@@ -40,32 +40,32 @@ const (
 
 // Channel represents a Discord channel.
 type Channel struct {
-	OwnerID                    *Snowflake          `json:"owner_id,omitempty"`
-	GuildID                    *Snowflake          `json:"guild_id,omitempty"`
-	Permissions                Int64               `json:"permissions"`
-	ThreadMember               *ThreadMember       `json:"member,omitempty"`
-	ThreadMetadata             *ThreadMetadata     `json:"thread_metadata,omitempty"`
-	VideoQualityMode           VideoQualityMode    `json:"video_quality_mode"`
-	LastPinTimestamp           *Timestamp          `json:"last_pin_timestamp"`
-	ParentID                   *Snowflake          `json:"parent_id,omitempty"`
-	ApplicationID              *Snowflake          `json:"application_id,omitempty"`
-	RTCRegion                  string              `json:"rtc_region"`
-	Topic                      string              `json:"topic"`
-	Icon                       string              `json:"icon"`
-	Name                       string              `json:"name"`
-	LastMessageID              *string             `json:"last_message_id"`
-	PermissionOverwrites       []*ChannelOverwrite `json:"permission_overwrites"`
-	Recipients                 []*User             `json:"recipients"`
-	ID                         Snowflake           `json:"id"`
-	UserLimit                  int32               `json:"user_limit"`
-	Bitrate                    int32               `json:"bitrate"`
-	MessageCount               int32               `json:"message_count"`
-	MemberCount                int32               `json:"member_count"`
-	RateLimitPerUser           int32               `json:"rate_limit_per_user"`
-	Position                   int32               `json:"position"`
-	DefaultAutoArchiveDuration int32               `json:"default_auto_archive_duration"`
-	NSFW                       bool                `json:"nsfw"`
-	Type                       ChannelType         `json:"type"`
+	OwnerID                    *Snowflake           `json:"owner_id,omitempty"`
+	GuildID                    *Snowflake           `json:"guild_id,omitempty"`
+	Permissions                Int64                `json:"permissions"`
+	ThreadMember               *ThreadMember        `json:"member,omitempty"`
+	ThreadMetadata             *ThreadMetadata      `json:"thread_metadata,omitempty"`
+	VideoQualityMode           VideoQualityMode     `json:"video_quality_mode"`
+	LastPinTimestamp           *Timestamp           `json:"last_pin_timestamp"`
+	ParentID                   *Snowflake           `json:"parent_id,omitempty"`
+	ApplicationID              *Snowflake           `json:"application_id,omitempty"`
+	RTCRegion                  string               `json:"rtc_region"`
+	Topic                      string               `json:"topic"`
+	Icon                       string               `json:"icon"`
+	Name                       string               `json:"name"`
+	LastMessageID              *string              `json:"last_message_id"`
+	PermissionOverwrites       ChannelOverwriteList `json:"permission_overwrites"`
+	Recipients                 UserList             `json:"recipients"`
+	ID                         Snowflake            `json:"id"`
+	UserLimit                  int32                `json:"user_limit"`
+	Bitrate                    int32                `json:"bitrate"`
+	MessageCount               int32                `json:"message_count"`
+	MemberCount                int32                `json:"member_count"`
+	RateLimitPerUser           int32                `json:"rate_limit_per_user"`
+	Position                   int32                `json:"position"`
+	DefaultAutoArchiveDuration int32                `json:"default_auto_archive_duration"`
+	NSFW                       bool                 `json:"nsfw"`
+	Type                       ChannelType          `json:"type"`
 }
 
 // ChannelOverwrite represents a permission overwrite for a channel.

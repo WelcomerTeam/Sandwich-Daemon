@@ -98,7 +98,7 @@ type ApplicationTeam struct {
 type ApplicationTeamMember struct {
 	User            User                        `json:"user"`
 	MembershipState *ApplicationTeamMemberState `json:"membership_state"`
-	Permissions     []string                    `json:"permissions"`
+	Permissions     StringList                  `json:"permissions"`
 	TeamID          Snowflake                   `json:"team_id"`
 }
 
