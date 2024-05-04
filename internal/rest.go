@@ -578,7 +578,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 
 		if ctx.IsGet() {
-			guild, ok := sg.State.Guilds.Load(discord.Snowflake(idInt64))
+			guild, ok := sg.State.GetGuild(discord.Snowflake(idInt64))
 
 			if !ok {
 				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{

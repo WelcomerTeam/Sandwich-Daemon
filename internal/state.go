@@ -17,6 +17,57 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Gui
 		return
 	}
 
+	// Get list of roles
+	roles, ok := ss.GetAllGuildRoles(guildID)
+
+	if !ok {
+		return
+	}
+
+	guild.Roles = roles
+
+	// Get list of channels
+	guildChannels, ok := ss.GetAllGuildChannels(guildID)
+
+	if !ok {
+		return
+	}
+
+	guild.Channels = guildChannels
+
+	// Get list of voice states
+	voiceStates, ok := ss.GuildVoiceStates.Load(guildID)
+
+	if !ok {
+		return
+	}
+
+	guild.VoiceStates = make([]*discord.VoiceState, 0, voiceStates.VoiceStates.Count())
+
+	voiceStates.VoiceStates.Range(func(_ discord.Snowflake, voiceState *discord.VoiceState) bool {
+		guild.VoiceStates = append(guild.VoiceStates, voiceState)
+		return false
+	})
+
+	// Get list of emojis
+	emojis, ok := ss.GetAllGuildEmojis(guildID)
+
+	if !ok {
+		return
+	}
+
+	guild.Emojis = emojis
+
+	// Get list of members
+	members, ok := ss.GetAllGuildMembers(guildID)
+
+	if !ok {
+		return
+	}
+
+	guild.Members = members
+	ok = true
+
 	return
 }
 
@@ -25,26 +76,75 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 	ctx.ShardGroup.Guilds.Store(guild.ID, struct{}{})
 	ss.Guilds.Store(guild.ID, guild)
 
+	// Safety: there is guaranteed to be at least one role
 	for _, role := range guild.Roles {
 		ss.SetGuildRole(ctx, guild.ID, role)
+	}
+
+	// Set channel default state
+	if len(guild.Channels) == 0 {
+		_, ok := ss.GuildChannels.Load(guild.ID)
+
+		if !ok {
+			ss.GuildChannels.SetIfAbsent(guild.ID, sandwich_structs.StateGuildChannels{
+				Channels: csmap.Create(
+					csmap.WithSize[discord.Snowflake, *discord.Channel](0),
+				),
+			})
+		}
 	}
 
 	for _, channel := range guild.Channels {
 		ss.SetGuildChannel(ctx, &guild.ID, channel)
 	}
 
+	// Set emoji default state
+	if len(guild.Emojis) == 0 {
+		_, ok := ss.GuildEmojis.Load(guild.ID)
+
+		if !ok {
+			ss.GuildEmojis.SetIfAbsent(guild.ID, sandwich_structs.StateGuildEmojis{
+				Emojis: csmap.Create(
+					csmap.WithSize[discord.Snowflake, *discord.Emoji](0),
+				),
+			})
+		}
+	}
+
 	for _, emoji := range guild.Emojis {
 		ss.SetGuildEmoji(ctx, guild.ID, emoji)
 	}
 
+	// Safety: there is guaranteed to be at least one member
 	for _, member := range guild.Members {
 		ss.SetGuildMember(ctx, guild.ID, member)
+	}
+
+	// Set voice state default state
+	if len(guild.VoiceStates) == 0 {
+		_, ok := ss.GuildVoiceStates.Load(guild.ID)
+
+		if !ok {
+			ss.GuildVoiceStates.SetIfAbsent(guild.ID, sandwich_structs.StateGuildVoiceStates{
+
+				VoiceStates: csmap.Create(
+					csmap.WithSize[discord.Snowflake, *discord.VoiceState](0),
+				),
+			})
+		}
 	}
 
 	for _, voiceState := range guild.VoiceStates {
 		voiceState.GuildID = &guild.ID
 		ss.UpdateVoiceState(ctx, *voiceState)
 	}
+
+	// Clear out some data that we don't need to cache in guild
+	guild.Roles = nil
+	guild.Channels = nil
+	guild.VoiceStates = nil
+	guild.Members = nil // No need to duplicate this data.
+	guild.Emojis = nil  // No need to duplicate this data.
 }
 
 // RemoveGuild removes a guild from the cache.
@@ -204,7 +304,11 @@ func (ss *SandwichState) GetAllGuildRoles(guildID discord.Snowflake) (guildRoles
 		return
 	}
 
-	guildRoles.Roles.Range(func(_ discord.Snowflake, role *discord.Role) bool {
+	guildRoles.Roles.Range(func(id discord.Snowflake, role *discord.Role) bool {
+		if role.ID == 0 {
+			role.ID = id
+		}
+
 		guildRolesList = append(guildRolesList, role)
 		return false
 	})

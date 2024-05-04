@@ -200,7 +200,7 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 
 	// Next dispatch guilds
 	s.sh.Guilds.Range(func(id discord.Snowflake, _ struct{}) bool {
-		guild, ok := cs.manager.Sandwich.State.Guilds.Load(id)
+		guild, ok := cs.manager.Sandwich.State.GetGuild(id)
 
 		if !ok {
 			cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Failed to find guild %d for dispatching. This is normal for first connect", id)
@@ -209,24 +209,6 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 
 		if guild.AFKChannelID == nil {
 			guild.AFKChannelID = &guild.ID
-		}
-
-		// Send initial guild_create's
-		if len(guild.Roles) == 0 {
-			// Get roles
-			roles, ok := cs.manager.Sandwich.State.GuildRoles.Load(guild.ID)
-
-			guild.Roles = make([]*discord.Role, 0, roles.Roles.Count())
-			if ok {
-				roles.Roles.Range(func(id discord.Snowflake, role *discord.Role) bool {
-					if role.ID == 0 {
-						role.ID = discord.Snowflake(role.ID)
-					}
-
-					guild.Roles = append(guild.Roles, role)
-					return false
-				})
-			}
 		}
 
 		serializedGuild, err := sandwichjson.Marshal(guild)
