@@ -47,9 +47,15 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r.GET("/api/status", sg.StatusEndpoint)
 	r.GET("/api/user", sg.UserEndpoint)
 
-	// State route
+	// State routes
 	r.GET("/api/state", sg.internalEndpoint(sg.StateEndpoint))
 	r.POST("/api/state", sg.internalEndpoint(sg.StateEndpoint))
+
+	// Discord gateway routes (uses cached data)
+	//
+	// This can then be freely used for any discord library that just needs get gateway bot information
+	r.GET("/{manager}/api/{version}/gateway/bot", sg.internalEndpoint(sg.GatewayEndpoint))
+	r.GET("/{manager}/api/gateway/bot", sg.internalEndpoint(sg.GatewayEndpoint))
 
 	// Sandwich related endpoints
 	r.GET("/api/sandwich", sg.requireDiscordAuthentication(sg.SandwichGetEndpoint))
@@ -66,9 +72,9 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	fs := fasthttp.FS{
 		IndexNames:     []string{"index.html"},
 		Root:           DistPath,
+		CacheDuration:  time.Hour,
 		Compress:       true,
 		CompressBrotli: true,
-		CacheDuration:  time.Hour,
 		PathNotFound: func(ctx *fasthttp.RequestCtx) {
 			ctx.Response.Reset()
 			ctx.SendFile(DistPath + "/index.html")
@@ -418,6 +424,40 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 			},
 		})
 	}
+}
+
+// /{manager}/api/v*/gateway/bot
+func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
+	managerKey := ctx.UserValue("manager").(string)
+
+	mg, ok := sg.Managers.Load(managerKey)
+
+	if !ok {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Manager not found",
+		})
+
+		return
+	}
+
+	mg.gatewayMu.RLock()
+	gateway := mg.Gateway
+	mg.gatewayMu.RUnlock()
+
+	if gateway.SessionStartLimit.Total == 0 {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Manager not yet initialized",
+		})
+
+		return
+	}
+
+	gateway.SessionStartLimit.Remaining = 1000 // Sandwich doesnt have a rate limit
+
+	// Write raw, as discord libraries dont support sandwich_structs.BaseRestResponse
+	writeResponse(ctx, fasthttp.StatusOK, gateway)
 }
 
 // /api/state?col={collection}&id={id}: Returns data from the sandwich state
