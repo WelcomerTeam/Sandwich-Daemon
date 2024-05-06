@@ -470,14 +470,17 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 	})
 
 	if err != nil {
-		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+		ctx.Response.Header.Set("Retry-After", "7")
+		ctx.Response.Header.Set("x-ratelimit-scope", "shared")
+		writeResponse(ctx, fasthttp.StatusTooManyRequests, sandwich_structs.BaseRestResponse{
 			Ok:    false,
 			Error: err.Error(),
 		})
+		return
 	}
 
-	gateway.SessionStartLimit.MaxConcurrency = int32(shards / 2)
-	gateway.SessionStartLimit.Remaining = 1000 // Sandwich doesnt have a rate limit
+	gateway.SessionStartLimit.MaxConcurrency = int32(shards/2) + 1 // To ensure we dont get hammered, only allow half the shards (rounded up)
+	gateway.SessionStartLimit.Remaining = 1000                     // Sandwich doesnt have a rate limit
 
 	// Write raw, as discord libraries dont support sandwich_structs.BaseRestResponse
 	writeResponse(ctx, fasthttp.StatusOK, gateway)
