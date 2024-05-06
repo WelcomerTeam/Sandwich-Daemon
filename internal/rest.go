@@ -454,6 +454,29 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	var shards int
+	var err error
+	mg.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
+		if shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusClosed ||
+			shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusClosing ||
+			shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusConnecting ||
+			shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusErroring {
+			err = errors.New("ShardGroup not ready")
+			return true
+		}
+
+		shards += shardGroup.Shards.Count()
+		return false
+	})
+
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
+		})
+	}
+
+	gateway.SessionStartLimit.MaxConcurrency = int32(shards / 2)
 	gateway.SessionStartLimit.Remaining = 1000 // Sandwich doesnt have a rate limit
 
 	// Write raw, as discord libraries dont support sandwich_structs.BaseRestResponse
