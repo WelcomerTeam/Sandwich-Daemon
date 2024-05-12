@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 )
@@ -253,7 +253,7 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 }
 
 // PublishEvent sends an event to consumers.
-func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData jsoniter.RawMessage) error {
+func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData json.RawMessage) error {
 	packet, _ := mg.Sandwich.payloadPool.Get().(*sandwich_structs.SandwichPayload)
 	defer mg.Sandwich.payloadPool.Put(packet)
 
@@ -278,7 +278,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 	packet.Extra = nil
 	packet.Trace = nil
 
-	payload, err := jsoniter.Marshal(packet)
+	payload, err := json.Marshal(packet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
@@ -350,7 +350,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 			MaxConcurrency: maxConcurrency,
 		}
 
-		err = jsoniter.NewEncoder(&body).Encode(identifyPayload)
+		err = json.NewEncoder(&body).Encode(identifyPayload)
 		if err != nil {
 			return fmt.Errorf("failed to encode identify payload: %w", err)
 		}
@@ -377,7 +377,7 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 				continue
 			}
 
-			err = jsoniter.NewDecoder(res.Body).Decode(&identifyResponse)
+			err = json.NewDecoder(res.Body).Decode(&identifyResponse)
 			if err != nil {
 				mg.Logger.Warn().Err(err).Msg("Failed to decode identify response")
 				time.Sleep(IdentifyRetry)

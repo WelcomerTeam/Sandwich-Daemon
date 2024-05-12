@@ -1,13 +1,13 @@
 package internal
 
 import (
+	"encoding/json"
 	"errors"
 	"sync"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/net/context"
@@ -255,13 +255,13 @@ func (sg *ShardGroup) SetStatus(status sandwich_structs.ShardGroupStatus) {
 
 	sg.Status = status
 
-	payload, _ := jsoniter.Marshal(sandwich_structs.ShardGroupStatusUpdate{
+	payload, _ := json.Marshal(sandwich_structs.ShardGroupStatusUpdate{
 		Manager:    sg.Manager.Identifier.Load(),
 		ShardGroup: sg.ID,
 		Status:     sg.Status,
 	})
 
-	_ = sg.Manager.Sandwich.PublishGlobalEvent(sandwich_structs.SandwichEventShardGroupStatusUpdate, jsoniter.RawMessage(payload))
+	_ = sg.Manager.Sandwich.PublishGlobalEvent(sandwich_structs.SandwichEventShardGroupStatusUpdate, json.RawMessage(payload))
 }
 
 // GetStatus returns the status of a ShardGroup.

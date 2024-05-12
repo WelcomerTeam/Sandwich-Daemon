@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 	"nhooyr.io/websocket"
 )
 
@@ -73,14 +73,24 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 	return nil
 }
 
+type invalidSession struct {
+	Resumable bool `json:"d"`
+}
+
 func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
-	resumable := jsoniter.Get(msg.Data, "d").ToBool()
-	if !resumable {
+	invalidSession := invalidSession{}
+
+	err := json.Unmarshal(msg.Data, &invalidSession)
+	if err != nil {
+		return err
+	}
+
+	if !invalidSession.Resumable {
 		sh.SessionID.Store("")
 		sh.Sequence.Store(0)
 	}
 
-	sh.Logger.Warn().Bool("resumable", resumable).Msg("Received invalid session")
+	sh.Logger.Warn().Bool("resumable", invalidSession.Resumable).Msg("Received invalid session")
 
 	go sh.Sandwich.PublishSimpleWebhook(
 		"Received invalid session from gateway",
@@ -95,7 +105,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 		EmbedColourSandwich,
 	)
 
-	err := sh.Reconnect(WebsocketReconnectCloseCode)
+	err = sh.Reconnect(WebsocketReconnectCloseCode)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 

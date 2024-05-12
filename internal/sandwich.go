@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -19,7 +20,6 @@ import (
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.14.1"
+const VERSION = "1.14.2"
 
 const (
 	PermissionsDefault = 0o744
@@ -313,7 +313,7 @@ func (sg *Sandwich) Open() {
 }
 
 // PublishGlobalEvent publishes an event to all Consumers.
-func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessage) error {
+func (sg *Sandwich) PublishGlobalEvent(eventType string, data json.RawMessage) error {
 	sg.globalPoolMu.RLock()
 	defer sg.globalPoolMu.RUnlock()
 
@@ -323,13 +323,13 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data jsoniter.RawMessag
 	packet.Op = discord.GatewayOpDispatch
 	packet.Type = eventType
 	packet.Data = data
-	packet.Extra = make(map[string]jsoniter.RawMessage)
+	packet.Extra = make(map[string]json.RawMessage)
 
 	packet.Metadata = sandwich_structs.SandwichMetadata{
 		Version: VERSION,
 	}
 
-	payload, err := jsoniter.Marshal(packet)
+	payload, err := json.Marshal(packet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal packet: %w", err)
 	}

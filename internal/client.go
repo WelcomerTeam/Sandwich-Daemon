@@ -2,14 +2,13 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-
-	jsoniter "github.com/json-iterator/go"
 )
 
 // Client represents the REST client.
@@ -81,7 +80,7 @@ func (c *Client) FetchJSON(ctx context.Context, method string, url string, body 
 		return status, err
 	}
 
-	err = jsoniter.Unmarshal(responseBody, &structure)
+	err = json.Unmarshal(responseBody, &structure)
 	if err != nil {
 		return -1, fmt.Errorf("failed to unmarshal body: %w", err)
 	}

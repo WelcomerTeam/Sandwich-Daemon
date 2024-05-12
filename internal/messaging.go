@@ -2,13 +2,13 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	messaging "github.com/WelcomerTeam/Sandwich-Daemon/messaging"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
-	jsoniter "github.com/json-iterator/go"
 )
 
 type MQClient interface {
@@ -58,7 +58,7 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 
 	packet.Trace["publish"] = discord.Int64(time.Now().Unix())
 
-	payload, err := jsoniter.Marshal(packet)
+	payload, err := json.Marshal(packet)
 	if err != nil {
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}

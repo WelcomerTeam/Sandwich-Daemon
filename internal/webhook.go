@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	jsoniter "github.com/json-iterator/go"
 )
 
 // Embed colours for webhooks.
@@ -60,7 +60,7 @@ func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessag
 		return -1, fmt.Errorf("failed to parse webhook URL: %w", err)
 	}
 
-	res, err := jsoniter.Marshal(message)
+	res, err := json.Marshal(message)
 	if err != nil {
 		return -1, fmt.Errorf("failed to marshal webhook message: %w", err)
 	}
