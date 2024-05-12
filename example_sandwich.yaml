@@ -3,7 +3,7 @@ identify:
   headers:
     TEST: TEST
 producer:
-  type: stan
+  type: jetstream
   configuration:
     address: 127.0.0.1:4222
     channel: sandwich

@@ -23,8 +23,8 @@ type MQClient interface {
 
 func NewMQClient(mqType string) (MQClient, error) {
 	switch mqType {
-	case "stan":
-		return &messaging.StanMQClient{}, nil
+	case "jetstream":
+		return &messaging.JetStreamMQClient{}, nil
 	case "kafka":
 		return &messaging.KafkaMQClient{}, nil
 	case "redis":
