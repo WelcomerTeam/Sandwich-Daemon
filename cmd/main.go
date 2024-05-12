@@ -59,7 +59,9 @@ func main() {
 		panic(fmt.Errorf(`failed to parse loggingLevel. zerolog.ParseLevel(%s): %w`, *loggingLevel, err))
 	}
 
-	zerolog.SetGlobalLevel(level)
+	if level != zerolog.NoLevel {
+		zerolog.SetGlobalLevel(level)
+	}
 
 	writer := zerolog.ConsoleWriter{
 		Out:        os.Stdout,

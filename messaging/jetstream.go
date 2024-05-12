@@ -73,7 +73,6 @@ func (jetstreamMQ *JetStreamMQClient) Publish(ctx context.Context, channelName s
 	_, err := jetstreamMQ.JetStreamClient.PublishAsync(
 		channelName,
 		data,
-		nil,
 	)
 
 	return err
