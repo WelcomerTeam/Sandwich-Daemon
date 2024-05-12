@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -15,9 +17,9 @@ func init() {
 
 type JetStreamMQClient struct {
 	JetStreamClient jetstream.JetStream `json:"-"`
+	JetStreamStream jetstream.Stream    `json:"-"`
 
 	channel string
-	cluster string
 }
 
 func (jetstreamMQ *JetStreamMQClient) String() string {
@@ -26,10 +28,6 @@ func (jetstreamMQ *JetStreamMQClient) String() string {
 
 func (jetstreamMQ *JetStreamMQClient) Channel() string {
 	return jetstreamMQ.channel
-}
-
-func (jetstreamMQ *JetStreamMQClient) Cluster() string {
-	return jetstreamMQ.cluster
 }
 
 func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, clientName string, args map[string]interface{}) error {
@@ -41,19 +39,12 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, clientName st
 		return errors.New("jetstreamMQ connect: string type assertion failed for Address")
 	}
 
-	var cluster string
-
-	if cluster, ok = GetEntry(args, "Cluster").(string); !ok {
-		return errors.New("jetstreamMQ connect: string type assertion failed for Cluster")
-	}
-
 	var channel string
 
 	if channel, ok = GetEntry(args, "Channel").(string); !ok {
 		return errors.New("jetstreamMQ connect: string type assertion failed for Channel")
 	}
 
-	jetstreamMQ.cluster = cluster
 	jetstreamMQ.channel = channel
 
 	nc, err := nats.Connect(address)
@@ -66,12 +57,27 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, clientName st
 		return fmt.Errorf("jetstreamMQ new: %w", err)
 	}
 
+	jetstreamMQ.JetStreamStream, err = jetstreamMQ.JetStreamClient.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		Name:              jetstreamMQ.channel,
+		Subjects:          []string{jetstreamMQ.channel + ".*"},
+		Retention:         jetstream.InterestPolicy,
+		Discard:           jetstream.DiscardOld,
+		MaxAge:            5 * time.Minute,
+		Storage:           jetstream.MemoryStorage,
+		MaxMsgsPerSubject: 1_000_000,
+		MaxMsgSize:        math.MaxInt32,
+		NoAck:             true,
+	})
+	if err != nil {
+		return fmt.Errorf("jetstreamMQ create stream: %w", err)
+	}
+
 	return nil
 }
 
 func (jetstreamMQ *JetStreamMQClient) Publish(ctx context.Context, channelName string, data []byte) error {
 	_, err := jetstreamMQ.JetStreamClient.PublishAsync(
-		channelName,
+		jetstreamMQ.channel+"."+channelName,
 		data,
 	)
 

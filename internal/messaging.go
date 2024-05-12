@@ -14,7 +14,6 @@ import (
 type MQClient interface {
 	String() string
 	Channel() string
-	Cluster() string
 
 	Connect(ctx context.Context, clientName string, args map[string]interface{}) error
 	Publish(ctx context.Context, channel string, data []byte) error
