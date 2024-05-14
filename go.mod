@@ -3,7 +3,7 @@ module github.com/WelcomerTeam/Sandwich-Daemon
 go 1.22
 
 require (
-	github.com/WelcomerTeam/Discord v0.0.0-20240512183153-c1cea3c12cb0
+	github.com/WelcomerTeam/Discord v0.0.0-20240514163306-3aed427237a5
 	github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/fasthttp/router v1.5.0
@@ -15,7 +15,7 @@ require (
 	github.com/rs/zerolog v1.32.0
 	github.com/savsgio/gotils v0.0.0-20240303185622-093b76447511
 	github.com/segmentio/kafka-go v0.4.47
-	github.com/valyala/fasthttp v1.52.0
+	github.com/valyala/fasthttp v1.53.0
 	go.uber.org/atomic v1.11.0
 	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.20.0
@@ -43,11 +43,11 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
-	github.com/prometheus/procfs v0.14.0 // indirect
+	github.com/prometheus/procfs v0.15.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/tinylib/msgp v1.1.9 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240509183442-62759503f434 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240513163218-0867130af1f8 // indirect
 )
