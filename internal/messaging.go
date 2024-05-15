@@ -21,7 +21,6 @@ const (
 type MQClient interface {
 	String() string
 	Channel() string
-	Cluster() string
 
 	Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error
 	Publish(ctx context.Context, packet *sandwich_structs.SandwichPayload, channel string) error
@@ -38,8 +37,8 @@ type MQClient interface {
 
 func NewMQClient(mqType string) (MQClient, error) {
 	switch mqType {
-	case "stan":
-		return &StanMQClient{}, nil
+	case "jetstream":
+		return &JetStreamMQClient{}, nil
 	case "kafka":
 		return &KafkaMQClient{}, nil
 	case "redis":

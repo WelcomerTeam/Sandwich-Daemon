@@ -18,7 +18,6 @@ type KafkaMQClient struct {
 	KafkaClient *kafka.Writer
 
 	channel string
-	cluster string
 }
 
 func parseKafkaBalancer(balancer string) kafka.Balancer {
@@ -44,10 +43,6 @@ func (kafkaMQ *KafkaMQClient) String() string {
 
 func (kafkaMQ *KafkaMQClient) Channel() string {
 	return kafkaMQ.channel
-}
-
-func (kafkaMQ *KafkaMQClient) Cluster() string {
-	return kafkaMQ.cluster
 }
 
 func (kafkaMQ *KafkaMQClient) Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error {

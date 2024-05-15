@@ -19,7 +19,6 @@ type RedisMQClient struct {
 	redisClient *redis.Client
 
 	channel string
-	cluster string
 }
 
 func (redisMQ *RedisMQClient) String() string {
@@ -28,10 +27,6 @@ func (redisMQ *RedisMQClient) String() string {
 
 func (redisMQ *RedisMQClient) Channel() string {
 	return redisMQ.channel
-}
-
-func (redisMQ *RedisMQClient) Cluster() string {
-	return redisMQ.cluster
 }
 
 func (redisMQ *RedisMQClient) Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error {
