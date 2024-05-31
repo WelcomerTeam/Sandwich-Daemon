@@ -76,7 +76,8 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, clientName st
 }
 
 func (jetstreamMQ *JetStreamMQClient) Publish(ctx context.Context, channelName string, data []byte) error {
-	_, err := jetstreamMQ.JetStreamClient.PublishAsync(
+	_, err := jetstreamMQ.JetStreamClient.Publish(
+		ctx,
 		jetstreamMQ.channel+"."+channelName,
 		data,
 	)
