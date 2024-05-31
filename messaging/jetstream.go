@@ -66,7 +66,7 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, clientName st
 		Storage:           jetstream.MemoryStorage,
 		MaxMsgsPerSubject: 1_000_000,
 		MaxMsgSize:        math.MaxInt32,
-		NoAck:             true,
+		NoAck:             false,
 	})
 	if err != nil {
 		return fmt.Errorf("jetstreamMQ create stream: %w", err)
