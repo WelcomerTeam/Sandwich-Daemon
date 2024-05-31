@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -57,10 +59,16 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, clientName st
 		return fmt.Errorf("jetstreamMQ new: %w", err)
 	}
 
+	retention := jetstream.WorkQueuePolicy
+
+	if v := mustParseBool(os.Getenv("JETSTREAM_USE_INTEREST_POLICY")); v {
+		retention = jetstream.InterestPolicy
+	}
+
 	jetstreamMQ.JetStreamStream, err = jetstreamMQ.JetStreamClient.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:              jetstreamMQ.channel,
 		Subjects:          []string{jetstreamMQ.channel + ".*"},
-		Retention:         jetstream.InterestPolicy,
+		Retention:         retention,
 		Discard:           jetstream.DiscardOld,
 		MaxAge:            5 * time.Minute,
 		Storage:           jetstream.MemoryStorage,
@@ -73,6 +81,12 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, clientName st
 	}
 
 	return nil
+}
+
+func mustParseBool(str string) bool {
+	boolean, _ := strconv.ParseBool(str)
+
+	return boolean
 }
 
 func (jetstreamMQ *JetStreamMQClient) Publish(ctx context.Context, channelName string, data []byte) error {
