@@ -6,14 +6,13 @@ import (
 
 	"github.com/bytedance/sonic"
 	jsoniter "github.com/json-iterator/go"
-	gotils_strconv "github.com/savsgio/gotils/strconv"
 )
 
 const UseSonic = runtime.GOARCH == "amd64" && runtime.GOOS == "linux"
 
 func Unmarshal(data []byte, v any) error {
 	if UseSonic {
-		return sonic.UnmarshalString(gotils_strconv.B2S(data), v)
+		return sonic.Unmarshal(data, v)
 	} else {
 		return jsoniter.Unmarshal(data, v)
 	}
