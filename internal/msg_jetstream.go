@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
@@ -60,16 +62,22 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, manager *Mana
 		return fmt.Errorf("jetstreamMQ new: %w", err)
 	}
 
+	retention := jetstream.WorkQueuePolicy
+
+	if v := mustParseBool(os.Getenv("JETSTREAM_USE_INTEREST_POLICY")); v {
+		retention = jetstream.InterestPolicy
+	}
+
 	jetstreamMQ.JetStreamStream, err = jetstreamMQ.JetStreamClient.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:              jetstreamMQ.channel,
 		Subjects:          []string{jetstreamMQ.channel + ".*"},
-		Retention:         jetstream.InterestPolicy,
+		Retention:         retention,
 		Discard:           jetstream.DiscardOld,
 		MaxAge:            5 * time.Minute,
 		Storage:           jetstream.MemoryStorage,
 		MaxMsgsPerSubject: 1_000_000,
 		MaxMsgSize:        math.MaxInt32,
-		NoAck:             true,
+		NoAck:             false,
 	})
 	if err != nil {
 		return fmt.Errorf("jetstreamMQ create stream: %w", err)
@@ -79,6 +87,12 @@ func (jetstreamMQ *JetStreamMQClient) Connect(ctx context.Context, manager *Mana
 	return nil
 }
 
+func mustParseBool(str string) bool {
+	boolean, _ := strconv.ParseBool(str)
+
+	return boolean
+}
+
 func (jetstreamMQ *JetStreamMQClient) Publish(ctx context.Context, packet *structs.SandwichPayload, channelName string) error {
 	data, err := sandwichjson.Marshal(packet)
 
@@ -86,7 +100,8 @@ func (jetstreamMQ *JetStreamMQClient) Publish(ctx context.Context, packet *struc
 		return err
 	}
 
-	_, err = jetstreamMQ.JetStreamClient.PublishAsync(
+	_, err = jetstreamMQ.JetStreamClient.Publish(
+		ctx,
 		jetstreamMQ.channel+"."+channelName,
 		data,
 	)
