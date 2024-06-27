@@ -827,7 +827,9 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 		return errors.New("websocketMQ connect: string type assertion failed for Address")
 	}
 
-	if externalAddress, ok = GetEntry(args, "Address").(string); !ok {
+	externalAddress, ok = GetEntry(args, "ExternalAddress").(string)
+
+	if !ok {
 		if !strings.HasPrefix(address, "ws") {
 			externalAddress = "ws://" + address
 		} else {

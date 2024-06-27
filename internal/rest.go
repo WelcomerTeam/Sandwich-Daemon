@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
@@ -479,6 +480,28 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	var address string
+	var externalAddress string
+
+	if address, ok = GetEntry(mg.Sandwich.Configuration.Producer.Configuration, "Address").(string); !ok {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Address not found",
+		})
+		return
+	}
+
+	externalAddress, ok = GetEntry(mg.Sandwich.Configuration.Producer.Configuration, "ExternalAddress").(string)
+
+	if !ok {
+		if !strings.HasPrefix(address, "ws") {
+			externalAddress = "ws://" + address
+		} else {
+			externalAddress = address
+		}
+	}
+
+	gateway.URL = externalAddress
 	gateway.SessionStartLimit.MaxConcurrency = int32(shards/2) + 1 // To ensure we dont get hammered, only allow half the shards (rounded up)
 	gateway.SessionStartLimit.Remaining = 1000                     // Sandwich doesnt have a rate limit
 
