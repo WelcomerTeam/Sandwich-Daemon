@@ -14,85 +14,17 @@ import (
 	"github.com/savsgio/gotils/strings"
 )
 
+// EventDispatchData represents the data returned by an event handler after processing state etc.
+type EventDispatchData struct {
+	Data  json.RawMessage
+	Extra map[string]json.RawMessage
+}
+
 // List of handlers for gateway events.
 var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error)
 
 // List of handlers for dispatch events.
-var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error))
-
-type StateCtx struct {
-	CacheUsers   bool
-	CacheMembers bool
-	Stateless    bool
-	StoreMutuals bool
-
-	context context.Context
-	*Shard
-}
-
-// SandwichState stores the collective state of all ShardGroups
-// across all Managers.
-type SandwichState struct {
-	Guilds *csmap.CsMap[discord.Snowflake, *discord.Guild]
-
-	GuildMembers *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildMembers]
-
-	GuildChannels *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildChannels]
-
-	GuildRoles *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildRoles]
-
-	GuildEmojis *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildEmojis]
-
-	Users *csmap.CsMap[discord.Snowflake, sandwich_structs.StateUser]
-
-	DmChannels *csmap.CsMap[discord.Snowflake, sandwich_structs.StateDMChannel]
-
-	Mutuals *csmap.CsMap[discord.Snowflake, sandwich_structs.StateMutualGuilds]
-
-	GuildVoiceStates *csmap.CsMap[discord.Snowflake, sandwich_structs.StateGuildVoiceStates]
-}
-
-func NewSandwichState() *SandwichState {
-	state := &SandwichState{
-		Guilds: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *discord.Guild](0),
-		),
-
-		GuildMembers: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildMembers](0),
-		),
-
-		GuildChannels: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildChannels](50),
-		),
-
-		GuildRoles: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildRoles](50),
-		),
-
-		GuildEmojis: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildEmojis](50),
-		),
-
-		Users: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateUser](50),
-		),
-
-		DmChannels: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateDMChannel](50),
-		),
-
-		Mutuals: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateMutualGuilds](50),
-		),
-
-		GuildVoiceStates: csmap.Create(
-			csmap.WithSize[discord.Snowflake, sandwich_structs.StateGuildVoiceStates](50),
-		),
-	}
-
-	return state
-}
+var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error))
 
 func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 	err := GatewayDispatch(ctx, sh, msg, trace)
@@ -213,7 +145,7 @@ func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context
 	gatewayHandlers[op] = handler
 }
 
-func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error)) {
+func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error)) {
 	dispatchHandlers[eventType] = handler
 }
 
@@ -233,7 +165,7 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx *StateCtx,
 	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace,
-) (result sandwich_structs.StateResult, ok bool, err error) {
+) (result EventDispatchData, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
 		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
 

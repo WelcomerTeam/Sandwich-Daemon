@@ -28,16 +28,6 @@ func init() {
 	MQClients = append(MQClients, "websocket")
 }
 
-// Given a guild ID, return its shard ID
-func GetShardIDFromGuildID(guildID string, shardCount int) (uint64, error) {
-	gidNum, err := strconv.ParseInt(guildID, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(gidNum>>22) % uint64(shardCount), nil
-}
-
 // chatServer enables broadcasting to a set of subscribers.
 type chatServer struct {
 	// the expected token

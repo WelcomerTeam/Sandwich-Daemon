@@ -73,3 +73,52 @@ func makeExtra(extra map[string]interface{}) (out map[string]json.RawMessage, er
 
 	return
 }
+
+// getShardId returns the shard ID from a guild id
+// Given a guild ID, return its shard ID
+func getShardIDFromGuildID(guildID string, shardCount int) (uint64, error) {
+	gidNum, err := strconv.ParseInt(guildID, 10, 64)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(gidNum>>22) % uint64(shardCount), nil
+}
+
+func findShardOfGuild(guildId string, mg *Manager) (*Shard, error) {
+	// Find the corresponding shard
+	mg.gatewayMu.RLock()
+	gateway := mg.Gateway
+	mg.gatewayMu.RUnlock()
+
+	shardID64, err := getShardIDFromGuildID(guildId, int(gateway.Shards))
+
+	if err != nil {
+		return nil, err
+	}
+
+	shardID := int32(shardID64)
+
+	// Find shard corresponding to guild
+	var shard *Shard
+
+	mg.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
+		shardGroup.Shards.Range(func(_shardID int32, _shard *Shard) bool {
+			if shardID == _shardID {
+				shard = _shard
+				return true
+			}
+
+			return false
+		})
+
+		return shard != nil
+	})
+
+	if shard == nil {
+		return nil, fmt.Errorf("could not find shard for guild %s", guildId)
+	}
+
+	return shard, nil
+}

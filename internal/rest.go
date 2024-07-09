@@ -49,8 +49,8 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r.GET("/api/user", sg.UserEndpoint)
 
 	// State routes
-	r.GET("/api/state", sg.internalEndpoint(sg.StateEndpoint))
-	r.POST("/api/state", sg.internalEndpoint(sg.StateEndpoint))
+	r.GET("/{manager}/api/state", sg.internalEndpoint(sg.StateEndpoint))
+	r.POST("/{manager}/api/state", sg.internalEndpoint(sg.StateEndpoint))
 
 	// Discord gateway routes (uses cached data)
 	//
@@ -509,8 +509,21 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 	writeResponse(ctx, fasthttp.StatusOK, gateway)
 }
 
-// /api/state?col={collection}&id={id}: Returns data from the sandwich state
+// /{manager}/api/state?col={collection}&id={id}: Returns data from the sandwich state
 func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
+	managerKey := ctx.UserValue("manager").(string)
+
+	mg, ok := sg.Managers.Load(managerKey)
+
+	if !ok {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Manager not found",
+		})
+
+		return
+	}
+
 	col := ctx.QueryArgs().Peek("col")
 	id := ctx.QueryArgs().Peek("id")
 
@@ -548,9 +561,10 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
+			userData := *user
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
-				Data: *user,
+				Data: userData,
 			})
 		} else {
 			// Read request body as a user
@@ -568,6 +582,52 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			}
 
 			sg.State.Users.Store(user.ID, *sg.State.UserToState(&user))
+		}
+	case "channels":
+		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		if ctx.IsGet() {
+			channels, ok := sg.State.GetAllGuildChannels(discord.Snowflake(idInt64))
+
+			if !ok {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: "Guild not found",
+				})
+
+				return
+			}
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: channels,
+			})
+		} else {
+			// Read request body as a user
+			var ch discord.Channel
+
+			err := sandwichjson.Unmarshal(ctx.PostBody(), &ch)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+
+				return
+			}
+
+			snowflake := discord.Snowflake(idInt64)
+			sg.State.SetGuildChannel(NewFakeCtx(mg), &snowflake, &ch)
 		}
 	case "members":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
@@ -638,13 +698,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			sg.Logger.Info().Any("member", member).Msg("Adding member")
 
 			sg.State.SetGuildMember(
-				&StateCtx{
-					CacheUsers:   true,
-					CacheMembers: true,
-					Shard: &Shard{
-						Manager: &Manager{},
-					},
-				},
+				NewFakeCtx(mg),
 				discord.Snowflake(guildIdInt64),
 				&member,
 			)
@@ -697,12 +751,69 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
-			sg.State.Guilds.Store(guild.ID, &guild)
+			sh, err := findShardOfGuild(gotils_strconv.B2S(id), mg)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+				return
+			}
+
+			fakeCtx := NewFakeCtx(mg)
+			fakeCtx.Shard = sh // Required for proper SetGuild
+			sg.State.SetGuild(fakeCtx, &guild)
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
 				Data: nil,
 			})
+		}
+	case "derived.has_guild_id":
+		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		if ctx.IsGet() {
+			sh, err := findShardOfGuild(gotils_strconv.B2S(id), mg)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+				return
+			}
+
+			var found bool
+			var lookingForGuildId = discord.Snowflake(idInt64)
+			sh.Guilds.Range(func(guildId discord.Snowflake, _ struct{}) bool {
+				if guildId == lookingForGuildId {
+					found = true
+					return true
+				}
+
+				return false
+			})
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: found,
+			})
+		} else {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: "Cannot edit a derived property",
+			})
+			return // Not implemented
 		}
 	}
 }
@@ -872,17 +983,18 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 			}
 			m.metadataMu.Unlock()
 
-			/*if manager.Bot.DefaultPresence.Status != "" {
+			if manager.Bot.DefaultPresence.Status != "" {
 				// Update presence.
 				m.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
 					shardGroup.Shards.Range(func(shardID int32, shard *Shard) bool {
-						shard.UpdatePresence(ctx, &manager.Bot.DefaultPresence)
+						fmt.Println(manager.Bot.DefaultPresence)
+						//shard.UpdatePresence(shard.ctx, &manager.Bot.DefaultPresence)
 						return false
 					})
 
 					return false
 				})
-			}*/
+			}
 		}
 
 		sg.Logger.Info().Msg("Updated event blacklist and producer blacklist")

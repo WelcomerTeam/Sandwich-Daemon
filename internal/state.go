@@ -1,12 +1,98 @@
 package internal
 
 import (
+	"context"
 	"time"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
-	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
+
+type StateCtx struct {
+	CacheUsers   bool
+	CacheMembers bool
+	Stateless    bool
+	StoreMutuals bool
+
+	context context.Context
+	*Shard
+}
+
+func NewFakeCtx(mg *Manager) *StateCtx {
+	return &StateCtx{
+		CacheUsers:   true,
+		CacheMembers: true,
+		StoreMutuals: true,
+		Shard: &Shard{
+			ctx:     mg.ctx,
+			Manager: mg,
+		},
+	}
+}
+
+// SandwichState stores the collective state of all ShardGroups
+// across all Managers.
+type SandwichState struct {
+	Guilds *csmap.CsMap[discord.Snowflake, *discord.Guild]
+
+	GuildMembers *csmap.CsMap[discord.Snowflake, StateGuildMembers]
+
+	GuildChannels *csmap.CsMap[discord.Snowflake, StateGuildChannels]
+
+	GuildRoles *csmap.CsMap[discord.Snowflake, StateGuildRoles]
+
+	GuildEmojis *csmap.CsMap[discord.Snowflake, StateGuildEmojis]
+
+	Users *csmap.CsMap[discord.Snowflake, StateUser]
+
+	DmChannels *csmap.CsMap[discord.Snowflake, StateDMChannel]
+
+	Mutuals *csmap.CsMap[discord.Snowflake, StateMutualGuilds]
+
+	GuildVoiceStates *csmap.CsMap[discord.Snowflake, StateGuildVoiceStates]
+}
+
+func NewSandwichState() *SandwichState {
+	state := &SandwichState{
+		Guilds: csmap.Create(
+			csmap.WithSize[discord.Snowflake, *discord.Guild](0),
+		),
+
+		GuildMembers: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateGuildMembers](0),
+		),
+
+		GuildChannels: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateGuildChannels](50),
+		),
+
+		GuildRoles: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateGuildRoles](50),
+		),
+
+		GuildEmojis: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateGuildEmojis](50),
+		),
+
+		Users: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateUser](50),
+		),
+
+		DmChannels: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateDMChannel](50),
+		),
+
+		Mutuals: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateMutualGuilds](50),
+		),
+
+		GuildVoiceStates: csmap.Create(
+			csmap.WithSize[discord.Snowflake, StateGuildVoiceStates](50),
+		),
+	}
+
+	return state
+}
 
 // GetGuild returns the guild with the same ID from the cache.
 // Returns a boolean to signify a match or not.
@@ -72,13 +158,15 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Gui
 }
 
 // SetGuild creates or updates a guild entry in the cache.
+//
+// NOT fake-ctx-safe UNLESS
 func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 	ctx.ShardGroup.Guilds.Store(guild.ID, struct{}{})
 	ss.Guilds.Store(guild.ID, guild)
 
 	// Safety: there is guaranteed to be at least one role
 	for _, role := range guild.Roles {
-		ss.SetGuildRole(ctx, guild.ID, role)
+		ss.SetGuildRole(guild.ID, role)
 	}
 
 	// Set channel default state
@@ -86,7 +174,7 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 		_, ok := ss.GuildChannels.Load(guild.ID)
 
 		if !ok {
-			ss.GuildChannels.SetIfAbsent(guild.ID, sandwich_structs.StateGuildChannels{
+			ss.GuildChannels.SetIfAbsent(guild.ID, StateGuildChannels{
 				Channels: csmap.Create(
 					csmap.WithSize[discord.Snowflake, *discord.Channel](0),
 				),
@@ -103,7 +191,7 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 		_, ok := ss.GuildEmojis.Load(guild.ID)
 
 		if !ok {
-			ss.GuildEmojis.SetIfAbsent(guild.ID, sandwich_structs.StateGuildEmojis{
+			ss.GuildEmojis.SetIfAbsent(guild.ID, StateGuildEmojis{
 				Emojis: csmap.Create(
 					csmap.WithSize[discord.Snowflake, *discord.Emoji](0),
 				),
@@ -125,7 +213,7 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 		_, ok := ss.GuildVoiceStates.Load(guild.ID)
 
 		if !ok {
-			ss.GuildVoiceStates.SetIfAbsent(guild.ID, sandwich_structs.StateGuildVoiceStates{
+			ss.GuildVoiceStates.SetIfAbsent(guild.ID, StateGuildVoiceStates{
 
 				VoiceStates: csmap.Create(
 					csmap.WithSize[discord.Snowflake, *discord.VoiceState](0),
@@ -148,6 +236,8 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 }
 
 // RemoveGuild removes a guild from the cache.
+//
+// NOT fake-ctx-safe
 func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
 	ss.Guilds.Delete(guildID)
 
@@ -194,6 +284,8 @@ func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID
 }
 
 // SetGuildMember creates or updates a guildMember entry in the cache. Adds user in guildMember object to cache.
+//
+// fake-ctx-safe
 func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake, guildMember *discord.GuildMember) {
 	// We will always cache the guild member of the bot that receives this event.
 	if !ctx.CacheMembers && guildMember.User.ID != ctx.Manager.User.ID {
@@ -204,7 +296,7 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 
 	if !ok {
 		// Only set if its not already set.
-		ss.GuildMembers.SetIfAbsent(guildID, sandwich_structs.StateGuildMembers{
+		ss.GuildMembers.SetIfAbsent(guildID, StateGuildMembers{
 			Members: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.GuildMember](100),
 			),
@@ -269,11 +361,11 @@ func (ss *SandwichState) GetGuildRole(guildID discord.Snowflake, roleID discord.
 }
 
 // SetGuildRole creates or updates a role entry in the cache.
-func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, role *discord.Role) {
+func (ss *SandwichState) SetGuildRole(guildID discord.Snowflake, role *discord.Role) {
 	guildRoles, ok := ss.GuildRoles.Load(guildID)
 
 	if !ok {
-		ss.GuildRoles.SetIfAbsent(guildID, sandwich_structs.StateGuildRoles{
+		ss.GuildRoles.SetIfAbsent(guildID, StateGuildRoles{
 			Roles: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.Role](50),
 			),
@@ -351,11 +443,13 @@ func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discor
 }
 
 // SetGuildEmoji creates or updates a emoji entry in the cache. Adds user in user object to cache.
+//
+// fake-ctx-safe
 func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake, emoji *discord.Emoji) {
 	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
 
 	if !ok {
-		ss.GuildEmojis.SetIfAbsent(guildID, sandwich_structs.StateGuildEmojis{
+		ss.GuildEmojis.SetIfAbsent(guildID, StateGuildEmojis{
 			Emojis: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.Emoji](50),
 			),
@@ -408,13 +502,13 @@ func (ss *SandwichState) RemoveAllGuildEmojis(guildID discord.Snowflake) {
 //
 
 // UserFromState converts the structs.StateUser into a discord.User, for use within the application.
-func (ss *SandwichState) UserFromState(userState *sandwich_structs.StateUser) (user *discord.User) {
+func (ss *SandwichState) UserFromState(userState *StateUser) (user *discord.User) {
 	return userState.User
 }
 
 // UserFromState converts from discord.User to structs.StateUser, for storing in cache.
-func (ss *SandwichState) UserToState(user *discord.User) (userState *sandwich_structs.StateUser) {
-	return &sandwich_structs.StateUser{
+func (ss *SandwichState) UserToState(user *discord.User) (userState *StateUser) {
+	return &StateUser{
 		User:        user,
 		LastUpdated: time.Now(),
 	}
@@ -435,6 +529,8 @@ func (ss *SandwichState) GetUser(userID discord.Snowflake) (user *discord.User, 
 }
 
 // SetUser creates or updates a user entry in the cache.
+//
+// fake-ctx-safe
 func (ss *SandwichState) SetUser(ctx *StateCtx, user *discord.User) {
 	// We will always cache the user of the bot that receives this event.
 	if !ctx.CacheUsers && user.ID != ctx.Manager.User.ID {
@@ -492,6 +588,8 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 }
 
 // SetGuildChannel creates or updates a channel entry in the cache.
+//
+// fake-ctx-safe
 func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snowflake, channel *discord.Channel) {
 	var guildID discord.Snowflake
 
@@ -507,7 +605,7 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 	guildChannels, ok := ss.GuildChannels.Load(guildID)
 
 	if !ok {
-		ss.GuildChannels.SetIfAbsent(guildID, sandwich_structs.StateGuildChannels{
+		ss.GuildChannels.SetIfAbsent(guildID, StateGuildChannels{
 			Channels: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.Channel](50),
 			),
@@ -584,7 +682,7 @@ func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discor
 
 // AddDMChannel adds a DM channel to a user.
 func (ss *SandwichState) AddDMChannel(userID discord.Snowflake, channel *discord.Channel) {
-	ss.DmChannels.Store(userID, sandwich_structs.StateDMChannel{
+	ss.DmChannels.Store(userID, StateDMChannel{
 		Channel:   channel,
 		ExpiresAt: discord.Int64(time.Now().Add(memberDMExpiration).Unix()),
 	})
@@ -612,6 +710,8 @@ func (ss *SandwichState) GetUserMutualGuilds(userID discord.Snowflake) (guildIDs
 }
 
 // AddUserMutualGuild adds a mutual guild to a user.
+//
+// fake-ctx-safe
 func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowflake, guildID discord.Snowflake) {
 	if !ctx.StoreMutuals {
 		return
@@ -620,7 +720,7 @@ func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowfl
 	mutualGuilds, ok := ss.Mutuals.Load(userID)
 
 	if !ok {
-		ss.Mutuals.SetIfAbsent(userID, sandwich_structs.StateMutualGuilds{
+		ss.Mutuals.SetIfAbsent(userID, StateMutualGuilds{
 			Guilds: csmap.Create(
 				csmap.WithSize[discord.Snowflake, struct{}](1),
 			),
@@ -678,6 +778,9 @@ func (ss *SandwichState) GetVoiceState(guildID discord.Snowflake, userID discord
 	return
 }
 
+// UpdateVoiceState updates the voice state of a user in a guild.
+//
+// fake-ctx-safe
 func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.VoiceState) {
 	if voiceState.GuildID == nil {
 		return
@@ -686,7 +789,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 	guildVoiceStates, ok := ss.GuildVoiceStates.Load(*voiceState.GuildID)
 
 	if !ok {
-		ss.GuildVoiceStates.SetIfAbsent(*voiceState.GuildID, sandwich_structs.StateGuildVoiceStates{
+		ss.GuildVoiceStates.SetIfAbsent(*voiceState.GuildID, StateGuildVoiceStates{
 			VoiceStates: csmap.Create(
 				csmap.WithSize[discord.Snowflake, *discord.VoiceState](50),
 			),
@@ -695,7 +798,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 		guildVoiceStates, _ = ss.GuildVoiceStates.Load(*voiceState.GuildID)
 	}
 
-	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
+	beforeVoiceState, _ := ss.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
 
 	if voiceState.ChannelID == 0 {
 		// Remove from voice states if leaving voice channel.
@@ -712,19 +815,19 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 
 	if beforeVoiceState == nil || beforeVoiceState.ChannelID != voiceState.ChannelID {
 		if beforeVoiceState != nil {
-			voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
+			voiceChannel, ok := ss.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
 			if ok {
 				voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*beforeVoiceState.GuildID, voiceChannel.ID)
 
-				ctx.Sandwich.State.SetGuildChannel(ctx, beforeVoiceState.GuildID, voiceChannel)
+				ss.SetGuildChannel(ctx, beforeVoiceState.GuildID, voiceChannel)
 			}
 		}
 
-		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, voiceState.ChannelID)
+		voiceChannel, ok := ss.GetGuildChannel(voiceState.GuildID, voiceState.ChannelID)
 		if ok {
 			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, voiceChannel.ID)
 
-			ctx.Sandwich.State.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
+			ss.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
 		}
 	}
 }
@@ -746,4 +849,42 @@ func (ss *SandwichState) CountMembersForVoiceChannel(guildID discord.Snowflake, 
 	})
 
 	return count
+}
+
+// Special state structs
+
+type StateDMChannel struct {
+	*discord.Channel
+
+	ExpiresAt discord.Int64 `json:"expires_at"`
+}
+
+type StateMutualGuilds struct {
+	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
+}
+
+type StateGuildMembers struct {
+	Members *csmap.CsMap[discord.Snowflake, *discord.GuildMember] `json:"members"`
+}
+
+type StateGuildRoles struct {
+	Roles *csmap.CsMap[discord.Snowflake, *discord.Role] `json:"roles"`
+}
+
+type StateGuildEmojis struct {
+	Emojis *csmap.CsMap[discord.Snowflake, *discord.Emoji] `json:"emoji"`
+}
+
+type StateGuildChannels struct {
+	Channels *csmap.CsMap[discord.Snowflake, *discord.Channel] `json:"channels"`
+}
+
+type StateGuildVoiceStates struct {
+	VoiceStates *csmap.CsMap[discord.Snowflake, *discord.VoiceState] `json:"voice_states"`
+}
+
+type StateUser struct {
+	*discord.User
+
+	LastUpdated time.Time `json:"__sandwich_last_updated,omitempty"`
 }
