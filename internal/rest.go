@@ -27,7 +27,7 @@ var (
 	discordUserMeEndpoint = "https://discord.com/api/users/@me"
 
 	EnableDistHandling = true
-	DistPath           = "sandwich/dist"
+	DistPath           = "web/dist"
 
 	loggedInAttrKey      = "isLoggedIn"
 	authenticatedAttrKey = "isAuthenticated"

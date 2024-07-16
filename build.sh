@@ -1,5 +1,5 @@
 echo "Build Web Distributable"
-cd sandwich
+cd web
 yarn build
 cd ..
 
