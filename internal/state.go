@@ -641,6 +641,33 @@ func (ss *SandwichState) RemoveGuildChannel(guildIDPtr *discord.Snowflake, chann
 	guildChannels.Channels.Delete(channelID)
 }
 
+// GetChannel returns a channel from its ID searching both DMs and guild channels.
+//
+// Note that guildIdHint must be provided if the channel is not a DM channel otherwise no result will be returned.
+func (ss *SandwichState) GetChannel(guildIdHint *discord.Snowflake, channelID discord.Snowflake) (channel *discord.Channel, ok bool) {
+	dmChannel, ok := ss.GetDMChannel(channelID)
+
+	if ok {
+		return dmChannel, true
+	}
+
+	if guildIdHint != nil {
+		channel, ok = ss.GetGuildChannel(guildIdHint, channelID)
+		return
+	} else {
+		return nil, false
+	}
+}
+
+// SetChannelDynamic sets a channel based on its type
+func (ss *SandwichState) SetChannelDynamic(ctx *StateCtx, channel *discord.Channel) {
+	if channel.GuildID != nil {
+		ss.SetGuildChannel(ctx, channel.GuildID, channel)
+	} else if channel.Type == discord.ChannelTypeDM || channel.Type == discord.ChannelTypeGroupDM {
+		ss.AddDMChannel(channel.ID, channel)
+	}
+}
+
 // GetAllGuildChannels returns all guildChannels of a specific guild from the cache.
 func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildChannelsList []*discord.Channel, ok bool) {
 	guildChannels, ok := ss.GuildChannels.Load(guildID)

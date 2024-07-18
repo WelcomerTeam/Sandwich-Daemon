@@ -553,7 +553,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			user, ok := sg.State.GetUser(discord.Snowflake(idInt64))
 
 			if !ok {
-				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				writeResponse(ctx, fasthttp.StatusNotFound, sandwich_structs.BaseRestResponse{
 					Ok:    false,
 					Error: "User not found",
 				})
@@ -583,7 +583,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			sg.State.Users.Store(user.ID, *sg.State.UserToState(&user))
 		}
-	case "channels":
+	case "guild_channels":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
 
 		if err != nil {
@@ -599,9 +599,9 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			channels, ok := sg.State.GetAllGuildChannels(discord.Snowflake(idInt64))
 
 			if !ok {
-				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				writeResponse(ctx, fasthttp.StatusNotFound, sandwich_structs.BaseRestResponse{
 					Ok:    false,
-					Error: "Guild not found",
+					Error: "Guild channel not found",
 				})
 
 				return
@@ -626,8 +626,79 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
+			sg.Logger.Info().Any("channel", ch).Any("guildId", idInt64).Msg("Setting guild channels")
+
 			snowflake := discord.Snowflake(idInt64)
 			sg.State.SetGuildChannel(NewFakeCtx(mg), &snowflake, &ch)
+		}
+	case "channels":
+		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		if ctx.IsGet() {
+			guildIdHint := ctx.QueryArgs().Peek("guild_id")
+
+			var guildIdHintInt64 *discord.Snowflake
+
+			if len(guildIdHint) > 0 {
+				i, err := strconv.ParseInt(gotils_strconv.B2S(guildIdHint), 10, 64)
+
+				if err != nil {
+					writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+						Ok:    false,
+						Error: err.Error(),
+					})
+
+					return
+				}
+
+				snow := discord.Snowflake(i)
+				guildIdHintInt64 = &snow
+			}
+
+			ch, ok := sg.State.GetChannel(guildIdHintInt64, discord.Snowflake(idInt64))
+
+			if !ok {
+				writeResponse(ctx, fasthttp.StatusNotFound, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: "Channel not found",
+				})
+
+				return
+			}
+
+			sg.Logger.Info().Any("channel", ch).Any("guildIdHint", guildIdHintInt64).Msg("Getting channel")
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: ch,
+			})
+		} else {
+			// Read request body as a user
+			var ch discord.Channel
+
+			err := sandwichjson.Unmarshal(ctx.PostBody(), &ch)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+
+				return
+			}
+
+			sg.Logger.Info().Any("channel", ch).Msg("Setting channel")
+
+			sg.State.SetChannelDynamic(NewFakeCtx(mg), &ch)
 		}
 	case "members":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
