@@ -553,7 +553,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			user, ok := sg.State.GetUser(discord.Snowflake(idInt64))
 
 			if !ok {
-				writeResponse(ctx, fasthttp.StatusNotFound, sandwich_structs.BaseRestResponse{
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 					Ok:    false,
 					Error: "User not found",
 				})
@@ -599,7 +599,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			channels, ok := sg.State.GetAllGuildChannels(discord.Snowflake(idInt64))
 
 			if !ok {
-				writeResponse(ctx, fasthttp.StatusNotFound, sandwich_structs.BaseRestResponse{
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 					Ok:    false,
 					Error: "Guild channel not found",
 				})
@@ -667,7 +667,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			ch, ok := sg.State.GetChannel(guildIdHintInt64, discord.Snowflake(idInt64))
 
 			if !ok {
-				writeResponse(ctx, fasthttp.StatusNotFound, sandwich_structs.BaseRestResponse{
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
 					Ok:    false,
 					Error: "Channel not found",
 				})
