@@ -33,13 +33,27 @@ func quickHash(hashMethod hash.Hash, text string) (string, error) {
 
 // returnRangeInt32 converts a string like 0-4,6-7 to [0,1,2,3,4,6,7].
 func returnRangeInt32(rangeString string, max int32) (result []int32) {
-	for _, split := range strings.Split(rangeString, ",") {
+	splits := strings.Split(rangeString, ",")
+	if len(splits) == 0 {
+		splits = append(splits, rangeString)
+	}
+
+	for _, split := range splits {
 		ranges := strings.Split(split, "-")
-		if low, err := strconv.Atoi(ranges[0]); err == nil {
-			if hi, err := strconv.Atoi(ranges[len(ranges)-1]); err == nil {
-				for i := int32(low); i < int32(hi+1); i++ {
-					if 0 <= i && i < max {
-						result = append(result, i)
+
+		if len(ranges) == 0 {
+			if i, err := strconv.Atoi(split); err == nil {
+				if 0 <= i && int32(i) < max {
+					result = append(result, int32(i))
+				}
+			}
+		} else {
+			if low, err := strconv.Atoi(ranges[0]); err == nil {
+				if hi, err := strconv.Atoi(ranges[len(ranges)-1]); err == nil {
+					for i := int32(low); i < int32(hi+1); i++ {
+						if 0 <= i && i < max {
+							result = append(result, i)
+						}
 					}
 				}
 			}
@@ -50,8 +64,16 @@ func returnRangeInt32(rangeString string, max int32) (result []int32) {
 }
 
 func randomHex(length int) (result string) {
+	if length <= 0 {
+		return ""
+	}
+
 	buf := make([]byte, length)
-	rand.Read(buf)
+
+	_, err := rand.Read(buf)
+	if err != nil {
+		return ""
+	}
 
 	return hex.EncodeToString(buf)
 }
