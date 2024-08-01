@@ -430,6 +430,21 @@ func OnThreadMembersUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sand
 	}, true, nil
 }
 
+func OnGuildAuditLogEntryCreate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	var threadMembersUpdatePayload discord.GuildAuditLogEntryCreate
+
+	err = ctx.decodeContent(msg, &threadMembersUpdatePayload)
+	if err != nil {
+		return result, false, err
+	}
+
+	return sandwich_structs.StateResult{
+		Data: msg.Data,
+	}, true, nil
+}
+
 func OnGuildUpdate(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildUpdatePayload discord.GuildUpdate
 
@@ -1212,6 +1227,7 @@ func init() {
 	registerDispatch(discord.DiscordEventThreadListSync, OnThreadListSync)
 	registerDispatch(discord.DiscordEventThreadMemberUpdate, OnThreadMemberUpdate)
 	registerDispatch(discord.DiscordEventThreadMembersUpdate, OnThreadMembersUpdate)
+	registerDispatch(discord.DiscordEventGuildAuditLogEntryCreate, OnGuildAuditLogEntryCreate)
 	registerDispatch(discord.DiscordEventGuildCreate, OnGuildCreate)
 	registerDispatch(discord.DiscordEventGuildUpdate, OnGuildUpdate)
 	registerDispatch(discord.DiscordEventGuildDelete, OnGuildDelete)
