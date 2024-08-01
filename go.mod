@@ -3,7 +3,7 @@ module github.com/WelcomerTeam/Sandwich-Daemon
 go 1.22
 
 require (
-	github.com/WelcomerTeam/Discord v0.0.0-20240801163056-e66cb01aa754
+	github.com/WelcomerTeam/Discord v0.0.0-20240801165734-6a96dff723b7
 	github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15
 	github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904
 	github.com/fasthttp/router v1.5.2
