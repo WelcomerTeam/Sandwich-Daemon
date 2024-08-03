@@ -321,8 +321,8 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.managersMu.RLock()
 	defer sg.managersMu.RUnlock()
 
-	managers := make([]*sandwich_structs.StatusEndpointManager, 0, len(sg.Managers))
-	unsortedManagers := make(map[string]*sandwich_structs.StatusEndpointManager)
+	managers := make([]sandwich_structs.StatusEndpointManager, 0, len(sg.Managers))
+	unsortedManagers := make(map[string]sandwich_structs.StatusEndpointManager)
 
 	manager := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
@@ -334,7 +334,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 				keyName := manager.Configuration.FriendlyName + ":" + manager.Configuration.Identifier
 				manager.configurationMu.RUnlock()
 
-				unsortedManagers[keyName] = &sandwich_structs.StatusEndpointManager{
+				unsortedManagers[keyName] = sandwich_structs.StatusEndpointManager{
 					DisplayName: friendlyName,
 					ShardGroups: getManagerShardGroupStatus(manager),
 				}
@@ -389,7 +389,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_structs.StatusEndpointShardGroup) {
+func getManagerShardGroupStatus(manager *Manager) (shardGroups []sandwich_structs.StatusEndpointShardGroup) {
 	manager.shardGroupsMu.RLock()
 
 	sortedShardGroupIDs := make([]int, 0)
@@ -411,7 +411,7 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 		shardGroup := manager.ShardGroups[shardGroupID]
 
 		shardGroup.shardsMu.RLock()
-		statusShardGroup := &sandwich_structs.StatusEndpointShardGroup{
+		statusShardGroup := sandwich_structs.StatusEndpointShardGroup{
 			ShardGroupID: shardGroup.ID,
 			Shards:       make([][6]int, 0, len(shardGroup.Shards)),
 			Status:       shardGroup.Status,
@@ -498,10 +498,10 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	sg.configurationMu.Lock()
 	sandwichConfiguration.Managers = sg.Configuration.Managers
-	sg.Configuration = &sandwichConfiguration
+	sg.Configuration = sandwichConfiguration
 	sg.configurationMu.Unlock()
 
-	err = sg.SaveConfiguration(&sandwichConfiguration, sg.ConfigurationLocation)
+	err = sg.SaveConfiguration(sandwichConfiguration, sg.ConfigurationLocation)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -569,14 +569,14 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 		},
 	}
 
-	manager := sg.NewManager(&defaultConfiguration)
+	manager := sg.NewManager(defaultConfiguration)
 
 	sg.managersMu.Lock()
 	sg.Managers[createManagerArguments.Identifier] = manager
 	sg.managersMu.Unlock()
 
 	sg.configurationMu.Lock()
-	sg.Configuration.Managers = append(sg.Configuration.Managers, &defaultConfiguration)
+	sg.Configuration.Managers = append(sg.Configuration.Managers, defaultConfiguration)
 	sg.configurationMu.Unlock()
 
 	sg.configurationMu.RLock()
@@ -670,7 +670,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	}
 
 	manager.configurationMu.Lock()
-	manager.Configuration = &managerConfiguration
+	manager.Configuration = managerConfiguration
 	manager.configurationMu.Unlock()
 
 	manager.clientMu.Lock()
@@ -690,7 +690,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.configurationMu.Lock()
 	defer sg.configurationMu.Unlock()
 
-	managers := make([]*ManagerConfiguration, 0)
+	managers := make([]ManagerConfiguration, 0)
 
 	for _, manager := range sg.Configuration.Managers {
 		if manager.Identifier != managerConfiguration.Identifier {
@@ -698,7 +698,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	managers = append(managers, &managerConfiguration)
+	managers = append(managers, managerConfiguration)
 
 	sg.Configuration.Managers = managers
 
@@ -756,7 +756,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.configurationMu.Lock()
 	defer sg.configurationMu.Unlock()
 
-	managers := make([]*ManagerConfiguration, 0)
+	managers := make([]ManagerConfiguration, 0)
 
 	for _, manager := range sg.Configuration.Managers {
 		if manager.Identifier != managerName {

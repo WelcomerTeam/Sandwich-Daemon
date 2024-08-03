@@ -17,7 +17,7 @@ import (
 var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error)
 
 // List of handlers for dispatch events.
-var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error))
+var dispatchHandlers = make(map[string]func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error))
 
 type StateCtx struct {
 	CacheUsers   bool
@@ -33,7 +33,7 @@ type StateCtx struct {
 // across all Managers.
 type SandwichState struct {
 	guildsMu sync.RWMutex
-	Guilds   map[discord.Snowflake]*sandwich_structs.StateGuild
+	Guilds   map[discord.Snowflake]sandwich_structs.StateGuild
 
 	guildMembersMu sync.RWMutex
 	GuildMembers   map[discord.Snowflake]*sandwich_structs.StateGuildMembers
@@ -48,10 +48,10 @@ type SandwichState struct {
 	GuildEmojis   map[discord.Snowflake]*sandwich_structs.StateGuildEmojis
 
 	usersMu sync.RWMutex
-	Users   map[discord.Snowflake]*sandwich_structs.StateUser
+	Users   map[discord.Snowflake]sandwich_structs.StateUser
 
 	dmChannelsMu sync.RWMutex
-	dmChannels   map[discord.Snowflake]*sandwich_structs.StateDMChannel
+	dmChannels   map[discord.Snowflake]sandwich_structs.StateDMChannel
 
 	mutualsMu sync.RWMutex
 	Mutuals   map[discord.Snowflake]*sandwich_structs.StateMutualGuilds
@@ -63,7 +63,7 @@ type SandwichState struct {
 func NewSandwichState() *SandwichState {
 	state := &SandwichState{
 		guildsMu: sync.RWMutex{},
-		Guilds:   make(map[discord.Snowflake]*sandwich_structs.StateGuild),
+		Guilds:   make(map[discord.Snowflake]sandwich_structs.StateGuild),
 
 		guildMembersMu: sync.RWMutex{},
 		GuildMembers:   make(map[discord.Snowflake]*sandwich_structs.StateGuildMembers),
@@ -78,10 +78,10 @@ func NewSandwichState() *SandwichState {
 		GuildEmojis:   make(map[discord.Snowflake]*sandwich_structs.StateGuildEmojis),
 
 		usersMu: sync.RWMutex{},
-		Users:   make(map[discord.Snowflake]*sandwich_structs.StateUser),
+		Users:   make(map[discord.Snowflake]sandwich_structs.StateUser),
 
 		dmChannelsMu: sync.RWMutex{},
-		dmChannels:   make(map[discord.Snowflake]*sandwich_structs.StateDMChannel),
+		dmChannels:   make(map[discord.Snowflake]sandwich_structs.StateDMChannel),
 
 		mutualsMu: sync.RWMutex{},
 		Mutuals:   make(map[discord.Snowflake]*sandwich_structs.StateMutualGuilds),
@@ -153,7 +153,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 
 	trace["state"] = discord.Int64(time.Now().Unix())
 
-	result, continuable, err := StateDispatch(&StateCtx{
+	result, continuable, err := StateDispatch(StateCtx{
 		context:      ctx,
 		Shard:        sh,
 		CacheUsers:   cacheUsers,
@@ -207,7 +207,7 @@ func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context
 	gatewayHandlers[op] = handler
 }
 
-func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error)) {
+func registerDispatch(eventType string, handler func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error)) {
 	dispatchHandlers[eventType] = handler
 }
 
@@ -225,9 +225,7 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 }
 
 // StateDispatch handles selecting the proper state handler and executing it.
-func StateDispatch(ctx *StateCtx,
-	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace,
-) (result sandwich_structs.StateResult, ok bool, err error) {
+func StateDispatch(ctx StateCtx, event discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
 		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
 

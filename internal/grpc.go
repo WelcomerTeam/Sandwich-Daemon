@@ -202,7 +202,7 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 				// TODO: Refactor to use Discord session.
 				// user.DMChannelID = &resp.ID
 
-				grpc.sg.State.SetUser(&StateCtx{CacheUsers: true}, user)
+				grpc.sg.State.SetUser(StateCtx{CacheUsers: true}, user)
 			}
 
 			grpcUser, err := pb.UserToGRPC(user)
@@ -423,7 +423,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 	return response, nil
 }
 
-func guildMemberMatch(query string, guildMember *discord.GuildMember) (ok bool) {
+func guildMemberMatch(query string, guildMember discord.GuildMember) (ok bool) {
 	if guildMember.Nick != "" {
 		return requestMatch(query, guildMember.Nick, guildMember.User.Username,
 			guildMember.User.Username+"#"+guildMember.User.Discriminator, guildMember.User.ID.String())

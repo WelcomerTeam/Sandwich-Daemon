@@ -44,7 +44,7 @@ type Manager struct {
 	Logger   zerolog.Logger `json:"-"`
 
 	configurationMu sync.RWMutex
-	Configuration   *ManagerConfiguration `json:"configuration" yaml:"configuration"`
+	Configuration   ManagerConfiguration `json:"configuration" yaml:"configuration"`
 
 	gatewayMu sync.RWMutex
 	Gateway   discord.GatewayBotResponse `json:"gateway" yaml:"gateway"`
@@ -116,7 +116,7 @@ type ManagerConfiguration struct {
 }
 
 // NewManager creates a new manager.
-func (sg *Sandwich) NewManager(configuration *ManagerConfiguration) (mg *Manager) {
+func (sg *Sandwich) NewManager(configuration ManagerConfiguration) (mg *Manager) {
 	logger := sg.Logger.With().Str("manager", configuration.Identifier).Logger()
 	logger.Info().Msg("Creating new manager")
 
@@ -324,7 +324,10 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 			identifyBucketName, 1, IdentifyRateLimit,
 		)
 
-		_ = mg.Sandwich.IdentifyBuckets.WaitForBucket(identifyBucketName)
+		err = mg.Sandwich.IdentifyBuckets.WaitForBucket(identifyBucketName)
+		if err != nil {
+			return fmt.Errorf("failed to wait for identify bucket: %w", err)
+		}
 	} else {
 		// Pass arguments to URL.
 		sendURL := strings.ReplaceAll(identifyURL, "{shard_id}", strconv.Itoa(int(shardID)))

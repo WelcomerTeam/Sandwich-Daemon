@@ -14,8 +14,8 @@ import (
 
 // GuildFromState converts the structs.StateGuild into a discord.Guild, for use within the application.
 // Channels, Roles, Members and Emoji lists will not be populated.
-func (ss *SandwichState) GuildFromState(guildState *sandwich_structs.StateGuild) (guild *discord.Guild) {
-	guild = &discord.Guild{
+func (ss *SandwichState) GuildFromState(guildState sandwich_structs.StateGuild) discord.Guild {
+	guild := discord.Guild{
 		ID:              guildState.ID,
 		Name:            guildState.Name,
 		Icon:            guildState.Icon,
@@ -66,24 +66,24 @@ func (ss *SandwichState) GuildFromState(guildState *sandwich_structs.StateGuild)
 		PremiumProgressBarEnabled: guildState.PremiumProgressBarEnabled,
 
 		Features:             guildState.Features,
-		StageInstances:       make([]*discord.StageInstance, 0, len(guildState.StageInstances)),
-		Stickers:             make([]*discord.Sticker, 0, len(guildState.Stickers)),
-		GuildScheduledEvents: make([]*discord.ScheduledEvent, 0, len(guildState.GuildScheduledEvents)),
+		StageInstances:       make([]discord.StageInstance, 0, len(guildState.StageInstances)),
+		Stickers:             make([]discord.Sticker, 0, len(guildState.Stickers)),
+		GuildScheduledEvents: make([]discord.ScheduledEvent, 0, len(guildState.GuildScheduledEvents)),
 	}
 
 	for _, stageInstance := range guildState.StageInstances {
 		stageInstance := stageInstance
-		guild.StageInstances = append(guild.StageInstances, &stageInstance)
+		guild.StageInstances = append(guild.StageInstances, stageInstance)
 	}
 
 	for _, sticker := range guildState.Stickers {
 		sticker := sticker
-		guild.Stickers = append(guild.Stickers, &sticker)
+		guild.Stickers = append(guild.Stickers, sticker)
 	}
 
 	for _, scheduledEvent := range guildState.GuildScheduledEvents {
 		scheduledEvent := scheduledEvent
-		guild.GuildScheduledEvents = append(guild.GuildScheduledEvents, &scheduledEvent)
+		guild.GuildScheduledEvents = append(guild.GuildScheduledEvents, scheduledEvent)
 	}
 
 	return guild
@@ -91,8 +91,8 @@ func (ss *SandwichState) GuildFromState(guildState *sandwich_structs.StateGuild)
 
 // GuildFromState converts from discord.Guild to structs.StateGuild, for storing in cache.
 // Does not add Channels, Roles, Members and Emojis to state.
-func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwich_structs.StateGuild) {
-	guildState = &sandwich_structs.StateGuild{
+func (ss *SandwichState) GuildToState(guild discord.Guild) sandwich_structs.StateGuild {
+	guildState := sandwich_structs.StateGuild{
 		ID:              guild.ID,
 		Name:            guild.Name,
 		Icon:            guild.Icon,
@@ -146,20 +146,15 @@ func (ss *SandwichState) GuildToState(guild *discord.Guild) (guildState *sandwic
 		Stickers:       make([]discord.Sticker, 0),
 	}
 
-	for _, stageInstance := range guild.StageInstances {
-		guildState.StageInstances = append(guildState.StageInstances, *stageInstance)
-	}
-
-	for _, sticker := range guild.Stickers {
-		guildState.Stickers = append(guildState.Stickers, *sticker)
-	}
+	guildState.StageInstances = append(guildState.StageInstances, guild.StageInstances...)
+	guildState.Stickers = append(guildState.Stickers, guild.Stickers...)
 
 	return guildState
 }
 
 // GetGuild returns the guild with the same ID from the cache.
 // Returns a boolean to signify a match or not.
-func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Guild, ok bool) {
+func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild discord.Guild, ok bool) {
 	ss.guildsMu.RLock()
 	stateGuild, ok := ss.Guilds[guildID]
 	ss.guildsMu.RUnlock()
@@ -174,7 +169,7 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild *discord.Gui
 }
 
 // SetGuild creates or updates a guild entry in the cache.
-func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
+func (ss *SandwichState) SetGuild(ctx StateCtx, guild discord.Guild) {
 	ctx.ShardGroup.guildsMu.Lock()
 	ctx.ShardGroup.Guilds[guild.ID] = true
 	ctx.ShardGroup.guildsMu.Unlock()
@@ -201,12 +196,12 @@ func (ss *SandwichState) SetGuild(ctx *StateCtx, guild *discord.Guild) {
 
 	for _, voiceState := range guild.VoiceStates {
 		voiceState.GuildID = &guild.ID
-		ss.UpdateVoiceState(ctx, *voiceState)
+		ss.UpdateVoiceState(ctx, voiceState)
 	}
 }
 
 // RemoveGuild removes a guild from the cache.
-func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
+func (ss *SandwichState) RemoveGuild(ctx StateCtx, guildID discord.Snowflake) {
 	ss.guildsMu.Lock()
 	delete(ss.Guilds, guildID)
 	ss.guildsMu.Unlock()
@@ -230,8 +225,8 @@ func (ss *SandwichState) RemoveGuild(ctx *StateCtx, guildID discord.Snowflake) {
 // GuildMemberFromState converts the structs.StateGuildMembers into a discord.GuildMember,
 // for use within the application.
 // This will not populate the user object from cache, it will be an empty object with only an ID.
-func (ss *SandwichState) GuildMemberFromState(guildMemberState *sandwich_structs.StateGuildMember) (guildMember *discord.GuildMember) {
-	return &discord.GuildMember{
+func (ss *SandwichState) GuildMemberFromState(guildMemberState sandwich_structs.StateGuildMember) discord.GuildMember {
+	return discord.GuildMember{
 		User: &discord.User{
 			ID: guildMemberState.UserID,
 		},
@@ -250,8 +245,8 @@ func (ss *SandwichState) GuildMemberFromState(guildMemberState *sandwich_structs
 
 // GuildMemberFromState converts from discord.GuildMember to structs.StateGuildMembers, for storing in cache.
 // This does not add the user to the cache.
-func (ss *SandwichState) GuildMemberToState(guildMember *discord.GuildMember) (guildMemberState *sandwich_structs.StateGuildMember) {
-	return &sandwich_structs.StateGuildMember{
+func (ss *SandwichState) GuildMemberToState(guildMember discord.GuildMember) sandwich_structs.StateGuildMember {
+	return sandwich_structs.StateGuildMember{
 		UserID:                     guildMember.User.ID,
 		Nick:                       guildMember.Nick,
 		Avatar:                     guildMember.Avatar,
@@ -268,7 +263,7 @@ func (ss *SandwichState) GuildMemberToState(guildMember *discord.GuildMember) (g
 
 // GetGuildMember returns the guildMember with the same ID from the cache. Populated user field from cache.
 // Returns a boolean to signify a match or not.
-func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID discord.Snowflake) (guildMember *discord.GuildMember, ok bool) {
+func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID discord.Snowflake) (guildMember discord.GuildMember, ok bool) {
 	ss.guildMembersMu.RLock()
 	guildMembers, ok := ss.GuildMembers[guildID]
 	ss.guildMembersMu.RUnlock()
@@ -288,15 +283,15 @@ func (ss *SandwichState) GetGuildMember(guildID discord.Snowflake, guildMemberID
 	guildMember = ss.GuildMemberFromState(stateGuildMember)
 
 	user, ok := ss.GetUser(guildMember.User.ID)
-	if ok {
-		guildMember.User = user
+	if ok && user.ID != 0 {
+		guildMember.User = &user
 	}
 
 	return
 }
 
 // SetGuildMember creates or updates a guildMember entry in the cache. Adds user in guildMember object to cache.
-func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake, guildMember *discord.GuildMember) {
+func (ss *SandwichState) SetGuildMember(ctx StateCtx, guildID discord.Snowflake, guildMember discord.GuildMember) {
 	// We will always cache the guild member of the bot that receives this event.
 	if !ctx.CacheMembers && guildMember.User.ID != ctx.Manager.User.ID {
 		return
@@ -309,7 +304,7 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 	if !ok {
 		guildMembers = &sandwich_structs.StateGuildMembers{
 			MembersMu: sync.RWMutex{},
-			Members:   make(map[discord.Snowflake]*sandwich_structs.StateGuildMember),
+			Members:   make(map[discord.Snowflake]sandwich_structs.StateGuildMember),
 		}
 
 		ss.guildMembersMu.Lock()
@@ -321,7 +316,9 @@ func (ss *SandwichState) SetGuildMember(ctx *StateCtx, guildID discord.Snowflake
 	guildMembers.Members[guildMember.User.ID] = ss.GuildMemberToState(guildMember)
 	guildMembers.MembersMu.Unlock()
 
-	ss.SetUser(ctx, guildMember.User)
+	if guildMember.User != nil {
+		ss.SetUser(ctx, *guildMember.User)
+	}
 }
 
 // RemoveGuildMember removes a guildMember from the cache.
@@ -340,7 +337,7 @@ func (ss *SandwichState) RemoveGuildMember(guildID discord.Snowflake, guildMembe
 }
 
 // GetAllGuildMembers returns all guildMembers of a specific guild from the cache.
-func (ss *SandwichState) GetAllGuildMembers(guildID discord.Snowflake) (guildMembersList []*discord.GuildMember, ok bool) {
+func (ss *SandwichState) GetAllGuildMembers(guildID discord.Snowflake) (guildMembersList []discord.GuildMember, ok bool) {
 	ss.guildMembersMu.RLock()
 	guildMembers, ok := ss.GuildMembers[guildID]
 	ss.guildMembersMu.RUnlock()
@@ -371,8 +368,8 @@ func (ss *SandwichState) RemoveAllGuildMembers(guildID discord.Snowflake) {
 //
 
 // RoleFromState converts the structs.StateRole into a discord.Role, for use within the application.
-func (ss *SandwichState) RoleFromState(guildState *sandwich_structs.StateRole) (guild *discord.Role) {
-	return &discord.Role{
+func (ss *SandwichState) RoleFromState(guildState sandwich_structs.StateRole) discord.Role {
+	return discord.Role{
 		ID:           guildState.ID,
 		Name:         guildState.Name,
 		Color:        guildState.Color,
@@ -388,8 +385,8 @@ func (ss *SandwichState) RoleFromState(guildState *sandwich_structs.StateRole) (
 }
 
 // RoleFromState converts from discord.Role to structs.StateRole, for storing in cache.
-func (ss *SandwichState) RoleToState(guild *discord.Role) (guildState *sandwich_structs.StateRole) {
-	return &sandwich_structs.StateRole{
+func (ss *SandwichState) RoleToState(guild discord.Role) sandwich_structs.StateRole {
+	return sandwich_structs.StateRole{
 		ID:           guild.ID,
 		Name:         guild.Name,
 		Color:        guild.Color,
@@ -406,7 +403,7 @@ func (ss *SandwichState) RoleToState(guild *discord.Role) (guildState *sandwich_
 
 // GetGuildRole returns the role with the same ID from the cache.
 // Returns a boolean to signify a match or not.
-func (ss *SandwichState) GetGuildRole(guildID discord.Snowflake, roleID discord.Snowflake) (role *discord.Role, ok bool) {
+func (ss *SandwichState) GetGuildRole(guildID discord.Snowflake, roleID discord.Snowflake) (role discord.Role, ok bool) {
 	ss.guildRolesMu.RLock()
 	stateGuildRoles, ok := ss.GuildRoles[roleID]
 	ss.guildRolesMu.RUnlock()
@@ -429,7 +426,7 @@ func (ss *SandwichState) GetGuildRole(guildID discord.Snowflake, roleID discord.
 }
 
 // SetGuildRole creates or updates a role entry in the cache.
-func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, role *discord.Role) {
+func (ss *SandwichState) SetGuildRole(ctx StateCtx, guildID discord.Snowflake, role discord.Role) {
 	ss.guildRolesMu.RLock()
 	guildRoles, ok := ss.GuildRoles[guildID]
 	ss.guildRolesMu.RUnlock()
@@ -437,7 +434,7 @@ func (ss *SandwichState) SetGuildRole(ctx *StateCtx, guildID discord.Snowflake, 
 	if !ok {
 		guildRoles = &sandwich_structs.StateGuildRoles{
 			RolesMu: sync.RWMutex{},
-			Roles:   make(map[discord.Snowflake]*sandwich_structs.StateRole),
+			Roles:   make(map[discord.Snowflake]sandwich_structs.StateRole),
 		}
 
 		ss.guildRolesMu.Lock()
@@ -466,7 +463,7 @@ func (ss *SandwichState) RemoveGuildRole(guildID discord.Snowflake, roleID disco
 }
 
 // GetAllGuildRoles returns all guildRoles of a specific guild from the cache.
-func (ss *SandwichState) GetAllGuildRoles(guildID discord.Snowflake) (guildRolesList []*discord.Role, ok bool) {
+func (ss *SandwichState) GetAllGuildRoles(guildID discord.Snowflake) (guildRolesList []discord.Role, ok bool) {
 	ss.guildRolesMu.RLock()
 	guildRoles, ok := ss.GuildRoles[guildID]
 	ss.guildRolesMu.RUnlock()
@@ -497,26 +494,26 @@ func (ss *SandwichState) RemoveAllGuildRoles(guildID discord.Snowflake) {
 //
 
 // EmojiFromState converts the structs.StateEmoji into a discord.Emoji, for use within the application.
-func (ss *SandwichState) EmojiFromState(guildState *sandwich_structs.StateEmoji) (guild *discord.Emoji) {
-	return &discord.Emoji{
-		ID:    guildState.ID,
-		Name:  guildState.Name,
-		Roles: guildState.Roles,
+func (ss *SandwichState) EmojiFromState(emojiState sandwich_structs.StateEmoji) discord.Emoji {
+	return discord.Emoji{
+		ID:    emojiState.ID,
+		Name:  emojiState.Name,
+		Roles: emojiState.Roles,
 		User: &discord.User{
-			ID: guildState.UserID,
+			ID: emojiState.UserID,
 		},
-		RequireColons: guildState.RequireColons,
-		Managed:       guildState.Managed,
-		Animated:      guildState.Animated,
-		Available:     guildState.Available,
+		RequireColons: emojiState.RequireColons,
+		Managed:       emojiState.Managed,
+		Animated:      emojiState.Animated,
+		Available:     emojiState.Available,
 	}
 }
 
 // EmojiFromState converts from discord.Emoji to structs.StateEmoji, for storing in cache.
 // This does not add the user to the cache.
 // This will not populate the user object from cache, it will be an empty object with only an ID.
-func (ss *SandwichState) EmojiToState(emoji *discord.Emoji) (guildState *sandwich_structs.StateEmoji) {
-	guildState = &sandwich_structs.StateEmoji{
+func (ss *SandwichState) EmojiToState(emoji discord.Emoji) sandwich_structs.StateEmoji {
+	emojiState := sandwich_structs.StateEmoji{
 		ID:            emoji.ID,
 		Name:          emoji.Name,
 		Roles:         emoji.Roles,
@@ -527,15 +524,15 @@ func (ss *SandwichState) EmojiToState(emoji *discord.Emoji) (guildState *sandwic
 	}
 
 	if emoji.User != nil {
-		guildState.UserID = emoji.User.ID
+		emojiState.UserID = emoji.User.ID
 	}
 
-	return guildState
+	return emojiState
 }
 
 // GetGuildEmoji returns the emoji with the same ID from the cache. Populated user field from cache.
 // Returns a boolean to signify a match or not.
-func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discord.Snowflake) (guildEmoji *discord.Emoji, ok bool) {
+func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discord.Snowflake) (guildEmoji discord.Emoji, ok bool) {
 	ss.guildEmojisMu.RLock()
 	guildEmojis, ok := ss.GuildEmojis[guildID]
 	ss.guildEmojisMu.RUnlock()
@@ -556,14 +553,14 @@ func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discor
 
 	user, ok := ss.GetUser(guildEmoji.User.ID)
 	if ok {
-		guildEmoji.User = user
+		guildEmoji.User = &user
 	}
 
 	return
 }
 
 // SetGuildEmoji creates or updates a emoji entry in the cache. Adds user in user object to cache.
-func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake, emoji *discord.Emoji) {
+func (ss *SandwichState) SetGuildEmoji(ctx StateCtx, guildID discord.Snowflake, emoji discord.Emoji) {
 	ss.guildEmojisMu.RLock()
 	guildEmojis, ok := ss.GuildEmojis[guildID]
 	ss.guildEmojisMu.RUnlock()
@@ -571,7 +568,7 @@ func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake,
 	if !ok {
 		guildEmojis = &sandwich_structs.StateGuildEmojis{
 			EmojisMu: sync.RWMutex{},
-			Emojis:   make(map[discord.Snowflake]*sandwich_structs.StateEmoji),
+			Emojis:   make(map[discord.Snowflake]sandwich_structs.StateEmoji),
 		}
 
 		ss.guildEmojisMu.Lock()
@@ -584,7 +581,7 @@ func (ss *SandwichState) SetGuildEmoji(ctx *StateCtx, guildID discord.Snowflake,
 	guildEmojis.EmojisMu.Unlock()
 
 	if emoji.User != nil {
-		ss.SetUser(ctx, emoji.User)
+		ss.SetUser(ctx, *emoji.User)
 	}
 }
 
@@ -604,7 +601,7 @@ func (ss *SandwichState) RemoveGuildEmoji(guildID discord.Snowflake, emojiID dis
 }
 
 // GetAllGuildEmojis returns all guildEmojis on a specific guild from the cache.
-func (ss *SandwichState) GetAllGuildEmojis(guildID discord.Snowflake) (guildEmojisList []*discord.Emoji, ok bool) {
+func (ss *SandwichState) GetAllGuildEmojis(guildID discord.Snowflake) (guildEmojisList []discord.Emoji, ok bool) {
 	ss.guildEmojisMu.RLock()
 	guildEmojis, ok := ss.GuildEmojis[guildID]
 	ss.guildEmojisMu.RUnlock()
@@ -635,8 +632,8 @@ func (ss *SandwichState) RemoveAllGuildEmojis(guildID discord.Snowflake) {
 //
 
 // UserFromState converts the structs.StateUser into a discord.User, for use within the application.
-func (ss *SandwichState) UserFromState(userState *sandwich_structs.StateUser) (user *discord.User) {
-	return &discord.User{
+func (ss *SandwichState) UserFromState(userState sandwich_structs.StateUser) discord.User {
+	return discord.User{
 		ID:            userState.ID,
 		Username:      userState.Username,
 		Discriminator: userState.Discriminator,
@@ -658,8 +655,8 @@ func (ss *SandwichState) UserFromState(userState *sandwich_structs.StateUser) (u
 }
 
 // UserFromState converts from discord.User to structs.StateUser, for storing in cache.
-func (ss *SandwichState) UserToState(user *discord.User) (userState *sandwich_structs.StateUser) {
-	return &sandwich_structs.StateUser{
+func (ss *SandwichState) UserToState(user discord.User) sandwich_structs.StateUser {
+	return sandwich_structs.StateUser{
 		ID:            user.ID,
 		Username:      user.Username,
 		Discriminator: user.Discriminator,
@@ -682,7 +679,7 @@ func (ss *SandwichState) UserToState(user *discord.User) (userState *sandwich_st
 
 // GetUser returns the user with the same ID from the cache.
 // Returns a boolean to signify a match or not.
-func (ss *SandwichState) GetUser(userID discord.Snowflake) (user *discord.User, ok bool) {
+func (ss *SandwichState) GetUser(userID discord.Snowflake) (user discord.User, ok bool) {
 	ss.usersMu.RLock()
 	stateUser, ok := ss.Users[userID]
 	ss.usersMu.RUnlock()
@@ -697,7 +694,7 @@ func (ss *SandwichState) GetUser(userID discord.Snowflake) (user *discord.User, 
 }
 
 // SetUser creates or updates a user entry in the cache.
-func (ss *SandwichState) SetUser(ctx *StateCtx, user *discord.User) {
+func (ss *SandwichState) SetUser(ctx StateCtx, user discord.User) {
 	// We will always cache the user of the bot that receives this event.
 	if !ctx.CacheUsers && user.ID != ctx.Manager.User.ID {
 		return
@@ -721,13 +718,13 @@ func (ss *SandwichState) RemoveUser(userID discord.Snowflake) {
 
 // ChannelFromState converts the structs.StateChannel into a discord.Channel, for use within the application.
 // This will not populate the recipient user object from cache.
-func (ss *SandwichState) ChannelFromState(guildChannelState *sandwich_structs.StateChannel) (guildChannel *discord.Channel) {
-	guildChannel = &discord.Channel{
+func (ss *SandwichState) ChannelFromState(guildChannelState sandwich_structs.StateChannel) discord.Channel {
+	guildChannel := discord.Channel{
 		ID:                         guildChannelState.ID,
 		Type:                       guildChannelState.Type,
 		GuildID:                    guildChannelState.GuildID,
 		Position:                   guildChannelState.Position,
-		PermissionOverwrites:       make([]*discord.ChannelOverwrite, 0, len(guildChannelState.PermissionOverwrites)),
+		PermissionOverwrites:       make([]discord.ChannelOverwrite, 0, len(guildChannelState.PermissionOverwrites)),
 		Name:                       guildChannelState.Name,
 		Topic:                      guildChannelState.Topic,
 		NSFW:                       guildChannelState.NSFW,
@@ -735,7 +732,7 @@ func (ss *SandwichState) ChannelFromState(guildChannelState *sandwich_structs.St
 		Bitrate:                    guildChannelState.Bitrate,
 		UserLimit:                  guildChannelState.UserLimit,
 		RateLimitPerUser:           guildChannelState.RateLimitPerUser,
-		Recipients:                 make([]*discord.User, 0, len(guildChannelState.Recipients)),
+		Recipients:                 make([]discord.User, 0, len(guildChannelState.Recipients)),
 		Icon:                       guildChannelState.Icon,
 		OwnerID:                    guildChannelState.OwnerID,
 		ApplicationID:              guildChannelState.ApplicationID,
@@ -753,11 +750,11 @@ func (ss *SandwichState) ChannelFromState(guildChannelState *sandwich_structs.St
 
 	for _, permissionOverride := range guildChannelState.PermissionOverwrites {
 		permissionOverride := permissionOverride
-		guildChannel.PermissionOverwrites = append(guildChannel.PermissionOverwrites, &permissionOverride)
+		guildChannel.PermissionOverwrites = append(guildChannel.PermissionOverwrites, permissionOverride)
 	}
 
 	for _, recipientID := range guildChannelState.Recipients {
-		guildChannel.Recipients = append(guildChannel.Recipients, &discord.User{
+		guildChannel.Recipients = append(guildChannel.Recipients, discord.User{
 			ID: recipientID,
 		})
 	}
@@ -767,8 +764,8 @@ func (ss *SandwichState) ChannelFromState(guildChannelState *sandwich_structs.St
 
 // ChannelFromState converts from discord.Channel to structs.StateChannel, for storing in cache.
 // This does not add the recipients to the cache.
-func (ss *SandwichState) ChannelToState(guildChannel *discord.Channel) (guildChannelState *sandwich_structs.StateChannel) {
-	guildChannelState = &sandwich_structs.StateChannel{
+func (ss *SandwichState) ChannelToState(guildChannel discord.Channel) sandwich_structs.StateChannel {
+	guildChannelState := sandwich_structs.StateChannel{
 		ID:                   guildChannel.ID,
 		Type:                 guildChannel.Type,
 		GuildID:              guildChannel.GuildID,
@@ -802,7 +799,7 @@ func (ss *SandwichState) ChannelToState(guildChannel *discord.Channel) (guildCha
 
 	for _, permissionOverride := range guildChannel.PermissionOverwrites {
 		permissionOverride := permissionOverride
-		guildChannelState.PermissionOverwrites = append(guildChannelState.PermissionOverwrites, *permissionOverride)
+		guildChannelState.PermissionOverwrites = append(guildChannelState.PermissionOverwrites, permissionOverride)
 	}
 
 	for _, recipient := range guildChannel.Recipients {
@@ -814,7 +811,7 @@ func (ss *SandwichState) ChannelToState(guildChannel *discord.Channel) (guildCha
 
 // GetGuildChannel returns the channel with the same ID from the cache.
 // Returns a boolean to signify a match or not.
-func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelID discord.Snowflake) (guildChannel *discord.Channel, ok bool) {
+func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelID discord.Snowflake) (guildChannel discord.Channel, ok bool) {
 	var guildID discord.Snowflake
 
 	if guildIDPtr != nil {
@@ -841,7 +838,7 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 
 	guildChannel = ss.ChannelFromState(stateGuildChannel)
 
-	newRecipients := make([]*discord.User, 0, len(guildChannel.Recipients))
+	newRecipients := make([]discord.User, 0, len(guildChannel.Recipients))
 
 	for _, recipient := range guildChannel.Recipients {
 		recipientUser, ok := ss.GetUser(recipient.ID)
@@ -858,7 +855,7 @@ func (ss *SandwichState) GetGuildChannel(guildIDPtr *discord.Snowflake, channelI
 }
 
 // SetGuildChannel creates or updates a channel entry in the cache.
-func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snowflake, channel *discord.Channel) {
+func (ss *SandwichState) SetGuildChannel(ctx StateCtx, guildIDPtr *discord.Snowflake, channel discord.Channel) {
 	var guildID discord.Snowflake
 
 	if guildIDPtr != nil {
@@ -874,7 +871,7 @@ func (ss *SandwichState) SetGuildChannel(ctx *StateCtx, guildIDPtr *discord.Snow
 	if !ok {
 		guildChannels = &sandwich_structs.StateGuildChannels{
 			ChannelsMu: sync.RWMutex{},
-			Channels:   make(map[discord.Snowflake]*sandwich_structs.StateChannel),
+			Channels:   make(map[discord.Snowflake]sandwich_structs.StateChannel),
 		}
 
 		ss.guildChannelsMu.Lock()
@@ -917,7 +914,7 @@ func (ss *SandwichState) RemoveGuildChannel(guildIDPtr *discord.Snowflake, chann
 }
 
 // GetAllGuildChannels returns all guildChannels of a specific guild from the cache.
-func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildChannelsList []*discord.Channel, ok bool) {
+func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildChannelsList []discord.Channel, ok bool) {
 	ss.guildChannelsMu.RLock()
 	guildChannels, ok := ss.GuildChannels[guildID]
 	ss.guildChannelsMu.RUnlock()
@@ -944,18 +941,18 @@ func (ss *SandwichState) RemoveAllGuildChannels(guildID discord.Snowflake) {
 }
 
 // GetDMChannel returns the DM channel of a user.
-func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discord.Channel, ok bool) {
+func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel discord.Channel, ok bool) {
 	ss.dmChannelsMu.RLock()
 	dmChannel, ok := ss.dmChannels[userID]
 	ss.dmChannelsMu.RUnlock()
 
-	if !ok || int64(dmChannel.ExpiresAt) < time.Now().Unix() {
+	if !ok || dmChannel.Channel == nil || int64(dmChannel.ExpiresAt) < time.Now().Unix() {
 		ok = false
 
 		return
 	}
 
-	channel = dmChannel.Channel
+	channel = *dmChannel.Channel
 	dmChannel.ExpiresAt = discord.Int64(time.Now().Add(memberDMExpiration).Unix())
 
 	ss.dmChannelsMu.Lock()
@@ -966,9 +963,9 @@ func (ss *SandwichState) GetDMChannel(userID discord.Snowflake) (channel *discor
 }
 
 // AddDMChannel adds a DM channel to a user.
-func (ss *SandwichState) AddDMChannel(userID discord.Snowflake, channel *discord.Channel) {
-	dmChannel := &sandwich_structs.StateDMChannel{
-		Channel:   channel,
+func (ss *SandwichState) AddDMChannel(userID discord.Snowflake, channel discord.Channel) {
+	dmChannel := sandwich_structs.StateDMChannel{
+		Channel:   &channel,
 		ExpiresAt: discord.Int64(time.Now().Add(memberDMExpiration).Unix()),
 	}
 
@@ -1005,7 +1002,7 @@ func (ss *SandwichState) GetUserMutualGuilds(userID discord.Snowflake) (guildIDs
 }
 
 // AddUserMutualGuild adds a mutual guild to a user.
-func (ss *SandwichState) AddUserMutualGuild(ctx *StateCtx, userID discord.Snowflake, guildID discord.Snowflake) {
+func (ss *SandwichState) AddUserMutualGuild(ctx StateCtx, userID discord.Snowflake, guildID discord.Snowflake) {
 	if !ctx.StoreMutuals {
 		return
 	}
@@ -1049,14 +1046,14 @@ func (ss *SandwichState) RemoveUserMutualGuild(userID discord.Snowflake, guildID
 // VoiceState Operations
 //
 
-func (ss *SandwichState) VoiceStateFromState(guildID discord.Snowflake, userID discord.Snowflake, voiceStateState *sandwich_structs.StateVoiceState) (voiceState *discord.VoiceState) {
+func (ss *SandwichState) VoiceStateFromState(guildID discord.Snowflake, userID discord.Snowflake, voiceStateState sandwich_structs.StateVoiceState) discord.VoiceState {
 	guildMember, _ := ss.GetGuildMember(guildID, userID)
 
-	return &discord.VoiceState{
+	return discord.VoiceState{
 		GuildID:   &guildID,
 		ChannelID: voiceStateState.ChannelID,
 		UserID:    userID,
-		Member:    guildMember,
+		Member:    &guildMember,
 		SessionID: voiceStateState.SessionID,
 		Deaf:      voiceStateState.Deaf,
 		Mute:      voiceStateState.Mute,
@@ -1067,8 +1064,8 @@ func (ss *SandwichState) VoiceStateFromState(guildID discord.Snowflake, userID d
 	}
 }
 
-func (ss *SandwichState) VoiceStateToState(voiceState *discord.VoiceState) (voiceStateState *sandwich_structs.StateVoiceState) {
-	return &sandwich_structs.StateVoiceState{
+func (ss *SandwichState) VoiceStateToState(voiceState *discord.VoiceState) sandwich_structs.StateVoiceState {
+	return sandwich_structs.StateVoiceState{
 		ChannelID: voiceState.ChannelID,
 		SessionID: voiceState.SessionID,
 		Deaf:      voiceState.Deaf,
@@ -1080,7 +1077,7 @@ func (ss *SandwichState) VoiceStateToState(voiceState *discord.VoiceState) (voic
 	}
 }
 
-func (ss *SandwichState) GetVoiceState(guildID discord.Snowflake, userID discord.Snowflake) (voiceState *discord.VoiceState, ok bool) {
+func (ss *SandwichState) GetVoiceState(guildID discord.Snowflake, userID discord.Snowflake) (voiceState discord.VoiceState, ok bool) {
 	ss.guildVoiceStatesMu.RLock()
 	guildVoiceStates, ok := ss.GuildVoiceStates[guildID]
 	ss.guildVoiceStatesMu.RUnlock()
@@ -1102,7 +1099,7 @@ func (ss *SandwichState) GetVoiceState(guildID discord.Snowflake, userID discord
 	return
 }
 
-func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.VoiceState) {
+func (ss *SandwichState) UpdateVoiceState(ctx StateCtx, voiceState discord.VoiceState) {
 	if voiceState.GuildID == nil {
 		return
 	}
@@ -1114,7 +1111,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 	if !ok {
 		guildVoiceStates = &sandwich_structs.StateGuildVoiceStates{
 			VoiceStatesMu: sync.RWMutex{},
-			VoiceStates:   make(map[discord.Snowflake]*sandwich_structs.StateVoiceState),
+			VoiceStates:   make(map[discord.Snowflake]sandwich_structs.StateVoiceState),
 		}
 
 		ss.guildVoiceStatesMu.Lock()
@@ -1122,7 +1119,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 		ss.guildVoiceStatesMu.Unlock()
 	}
 
-	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
+	beforeVoiceState, beforeVoiceStateOk := ctx.Sandwich.State.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
 
 	guildVoiceStates.VoiceStatesMu.Lock()
 	if voiceState.ChannelID == 0 {
@@ -1134,13 +1131,13 @@ func (ss *SandwichState) UpdateVoiceState(ctx *StateCtx, voiceState discord.Voic
 	guildVoiceStates.VoiceStatesMu.Unlock()
 
 	if voiceState.Member != nil {
-		ss.SetGuildMember(ctx, *voiceState.GuildID, voiceState.Member)
+		ss.SetGuildMember(ctx, *voiceState.GuildID, *voiceState.Member)
 	}
 
 	// Update channel counts
 
-	if beforeVoiceState == nil || beforeVoiceState.ChannelID != voiceState.ChannelID {
-		if beforeVoiceState != nil {
+	if !beforeVoiceStateOk || beforeVoiceState.ChannelID != voiceState.ChannelID {
+		if !beforeVoiceStateOk {
 			voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
 			if ok {
 				voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*beforeVoiceState.GuildID, voiceChannel.ID)

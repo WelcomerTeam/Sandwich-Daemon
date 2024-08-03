@@ -11,13 +11,13 @@ type BaseRestResponse struct {
 }
 
 type StatusEndpointResponse struct {
-	Uptime   int                      `json:"uptime"`
-	Managers []*StatusEndpointManager `json:"managers"`
+	Uptime   int                     `json:"uptime"`
+	Managers []StatusEndpointManager `json:"managers"`
 }
 
 type StatusEndpointManager struct {
-	DisplayName string                      `json:"display_name"`
-	ShardGroups []*StatusEndpointShardGroup `json:"shard_groups"`
+	DisplayName string                     `json:"display_name"`
+	ShardGroups []StatusEndpointShardGroup `json:"shard_groups"`
 }
 
 type StatusEndpointShardGroup struct {

@@ -71,27 +71,27 @@ type RequestGuildChunkRequest struct {
 
 type GuildRolesResponse struct {
 	BaseResponse
-	GuildRoles map[int64]*discord.Role
+	GuildRoles map[int64]discord.Role
 }
 
 type ChannelsResponse struct {
 	BaseResponse
-	GuildChannels map[int64]*discord.Channel
+	GuildChannels map[int64]discord.Channel
 }
 
 type EmojisResponse struct {
 	BaseResponse
-	GuildEmojis map[int64]*discord.Emoji
+	GuildEmojis map[int64]discord.Emoji
 }
 
 type GuildMembersResponse struct {
 	BaseResponse
-	GuildMembers map[int64]*discord.GuildMember
+	GuildMembers map[int64]discord.GuildMember
 }
 
 type GuildsResponse struct {
 	BaseResponse
-	Guilds   map[int64]*discord.Guild
+	Guilds   map[int64]discord.Guild
 	GuildIDs []int64
 }
 

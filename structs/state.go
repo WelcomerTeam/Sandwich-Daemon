@@ -30,31 +30,31 @@ type StateMutualGuilds struct {
 type StateGuildMembers struct {
 	MembersMu sync.RWMutex `json:"-"`
 
-	Members map[discord.Snowflake]*StateGuildMember `json:"members"`
+	Members map[discord.Snowflake]StateGuildMember `json:"members"`
 }
 
 type StateGuildRoles struct {
 	RolesMu sync.RWMutex `json:"-"`
 
-	Roles map[discord.Snowflake]*StateRole `json:"roles"`
+	Roles map[discord.Snowflake]StateRole `json:"roles"`
 }
 
 type StateGuildEmojis struct {
 	EmojisMu sync.RWMutex `json:"-"`
 
-	Emojis map[discord.Snowflake]*StateEmoji `json:"emoji"`
+	Emojis map[discord.Snowflake]StateEmoji `json:"emoji"`
 }
 
 type StateGuildChannels struct {
 	ChannelsMu sync.RWMutex `json:"-"`
 
-	Channels map[discord.Snowflake]*StateChannel `json:"channels"`
+	Channels map[discord.Snowflake]StateChannel `json:"channels"`
 }
 
 type StateGuildVoiceStates struct {
 	VoiceStatesMu sync.RWMutex `json:"-"`
 
-	VoiceStates map[discord.Snowflake]*StateVoiceState `json:"voice_states"`
+	VoiceStates map[discord.Snowflake]StateVoiceState `json:"voice_states"`
 }
 
 type StateGuild struct {
@@ -97,15 +97,15 @@ type StateGuild struct {
 	Description   string `json:"description"`
 	Banner        string `json:"banner"`
 
-	PremiumTier               *discord.PremiumTier        `json:"premium_tier,omitempty"`
-	PremiumSubscriptionCount  int32                       `json:"premium_subscription_count"`
-	PreferredLocale           string                      `json:"preferred_locale"`
-	PublicUpdatesChannelID    *discord.Snowflake          `json:"public_updates_channel_id,omitempty"`
-	MaxVideoChannelUsers      int32                       `json:"max_video_channel_users"`
-	ApproximateMemberCount    int32                       `json:"approximate_member_count"`
-	ApproximatePresenceCount  int32                       `json:"approximate_presence_count"`
-	NSFWLevel                 *discord.GuildNSFWLevelType `json:"nsfw_level"`
-	PremiumProgressBarEnabled bool                        `json:"premium_progress_bar_enabled"`
+	PremiumTier               *discord.PremiumTier       `json:"premium_tier,omitempty"`
+	PremiumSubscriptionCount  int32                      `json:"premium_subscription_count"`
+	PreferredLocale           string                     `json:"preferred_locale"`
+	PublicUpdatesChannelID    *discord.Snowflake         `json:"public_updates_channel_id,omitempty"`
+	MaxVideoChannelUsers      int32                      `json:"max_video_channel_users"`
+	ApproximateMemberCount    int32                      `json:"approximate_member_count"`
+	ApproximatePresenceCount  int32                      `json:"approximate_presence_count"`
+	NSFWLevel                 discord.GuildNSFWLevelType `json:"nsfw_level"`
+	PremiumProgressBarEnabled bool                       `json:"premium_progress_bar_enabled"`
 
 	RoleIDs    []discord.Snowflake `json:"role_ids"`
 	EmojiIDs   []discord.Snowflake `json:"emoji_ids"`

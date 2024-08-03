@@ -70,7 +70,7 @@ type Sandwich struct {
 	StartTime time.Time      `json:"start_time" yaml:"start_time"`
 
 	configurationMu sync.RWMutex
-	Configuration   *SandwichConfiguration `json:"configuration" yaml:"configuration"`
+	Configuration   SandwichConfiguration `json:"configuration" yaml:"configuration"`
 
 	Options SandwichOptions `json:"options" yaml:"options"`
 
@@ -111,7 +111,7 @@ type Sandwich struct {
 	sentPool sync.Pool
 
 	guildChunksMu sync.RWMutex
-	guildChunks   map[discord.Snowflake]*GuildChunks
+	guildChunks   map[discord.Snowflake]GuildChunks
 }
 
 // SandwichConfiguration represents the configuration file.
@@ -139,7 +139,7 @@ type SandwichConfiguration struct {
 
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
-	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
+	Managers []ManagerConfiguration `json:"managers" yaml:"managers"`
 }
 
 // SandwichOptions represents any options passable when creating the sandwich service.
@@ -185,7 +185,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		ConfigurationLocation: options.ConfigurationLocation,
 
 		configurationMu: sync.RWMutex{},
-		Configuration:   &SandwichConfiguration{},
+		Configuration:   SandwichConfiguration{},
 
 		Options: options,
 
@@ -223,7 +223,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		},
 
 		guildChunksMu: sync.RWMutex{},
-		guildChunks:   make(map[discord.Snowflake]*GuildChunks),
+		guildChunks:   make(map[discord.Snowflake]GuildChunks),
 	}
 
 	sg.ctx, sg.cancel = context.WithCancel(context.Background())
@@ -247,7 +247,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 }
 
 // LoadConfiguration handles loading the configuration file.
-func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfiguration, err error) {
+func (sg *Sandwich) LoadConfiguration(path string) (configuration SandwichConfiguration, err error) {
 	sg.Logger.Debug().
 		Str("path", path).
 		Msg("Loading configuration")
@@ -263,9 +263,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 		return configuration, ErrReadConfigurationFailure
 	}
 
-	configuration = &SandwichConfiguration{}
-
-	err = yaml.Unmarshal(file, configuration)
+	err = yaml.Unmarshal(file, &configuration)
 	if err != nil {
 		return configuration, ErrLoadConfigurationFailure
 	}
@@ -274,7 +272,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 }
 
 // SaveConfiguration handles saving the configuration file.
-func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path string) error {
+func (sg *Sandwich) SaveConfiguration(configuration SandwichConfiguration, path string) error {
 	sg.Logger.Debug().Msg("Saving configuration")
 
 	data, err := yaml.Marshal(configuration)
@@ -287,7 +285,10 @@ func (sg *Sandwich) SaveConfiguration(configuration *SandwichConfiguration, path
 		return fmt.Errorf("failed to write configuration to file: %w", err)
 	}
 
-	_ = sg.PublishGlobalEvent(sandwich_structs.SandwichEventConfigurationReload, nil)
+	err = sg.PublishGlobalEvent(sandwich_structs.SandwichEventConfigurationReload, nil)
+	if err != nil {
+		sg.Logger.Error().Err(err).Msg("Failed to publish global event")
+	}
 
 	return nil
 }
@@ -549,9 +550,7 @@ func (sg *Sandwich) cacheEjector() {
 		}
 		sg.State.guildsMu.RUnlock()
 
-		ctx := &StateCtx{
-			Stateless: true,
-		}
+		ctx := StateCtx{Stateless: true}
 
 		for _, guildID := range ejectedGuilds {
 			sg.State.RemoveGuild(ctx, guildID)
