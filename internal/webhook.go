@@ -28,7 +28,7 @@ func (sg *Sandwich) PublishSimpleWebhook(title string, description string, foote
 	now := time.Now().UTC()
 
 	sg.PublishWebhook(discord.WebhookMessageParams{
-		Embeds: []*discord.Embed{
+		Embeds: []discord.Embed{
 			{
 				Title:       title,
 				Description: description,
@@ -65,7 +65,10 @@ func (sg *Sandwich) SendWebhook(webhookURL string, message discord.WebhookMessag
 		return -1, fmt.Errorf("failed to marshal webhook message: %w", err)
 	}
 
-	_ = sg.webhookBuckets.CreateWaitForBucket(webhookURL, WebhookRateLimitLimit, WebhookRateLimitDuration)
+	err = sg.webhookBuckets.CreateWaitForBucket(webhookURL, WebhookRateLimitLimit, WebhookRateLimitDuration)
+	if err != nil {
+		sg.Logger.Warn().Err(err).Str("url", webhookURL).Msg("Failed to create webhook bucket")
+	}
 
 	_, status, err = sg.Client.Fetch(sg.ctx, "POST", webhookURL, bytes.NewBuffer(res), map[string]string{
 		"Content-Type": "application/json",

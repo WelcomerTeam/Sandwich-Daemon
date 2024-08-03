@@ -11,7 +11,7 @@ import (
 // discord.* -> gRPC Converters.
 
 // Converts discord.User to gRPC counterpart.
-func UserToGRPC(user *discord.User) (sandwichUser *User, err error) {
+func UserToGRPC(user discord.User) (sandwichUser *User, err error) {
 	userJSON, err := json.Marshal(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal from discord.User: %w", err)
@@ -28,7 +28,7 @@ func UserToGRPC(user *discord.User) (sandwichUser *User, err error) {
 }
 
 // Converts discord.Guild to gRPC counterpart.
-func GuildToGRPC(guild *discord.Guild) (sandwichGuild *Guild, err error) {
+func GuildToGRPC(guild discord.Guild) (sandwichGuild *Guild, err error) {
 	guildJSON, err := json.Marshal(guild)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal from discord.Guild: %w", err)
@@ -45,7 +45,7 @@ func GuildToGRPC(guild *discord.Guild) (sandwichGuild *Guild, err error) {
 }
 
 // Converts discord.Channel to gRPC counterpart.
-func ChannelToGRPC(channel *discord.Channel) (sandwichChannel *Channel, err error) {
+func ChannelToGRPC(channel discord.Channel) (sandwichChannel *Channel, err error) {
 	channelJSON, err := json.Marshal(channel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal from discord.Channel: %w", err)
@@ -62,7 +62,7 @@ func ChannelToGRPC(channel *discord.Channel) (sandwichChannel *Channel, err erro
 }
 
 // Converts discord.Emoji to gRPC counterpart.
-func EmojiToGRPC(emoji *discord.Emoji) (sandwichEmoji *Emoji, err error) {
+func EmojiToGRPC(emoji discord.Emoji) (sandwichEmoji *Emoji, err error) {
 	emojiJSON, err := json.Marshal(emoji)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal from discord.Emoji: %w", err)
@@ -79,7 +79,7 @@ func EmojiToGRPC(emoji *discord.Emoji) (sandwichEmoji *Emoji, err error) {
 }
 
 // Converts discord.GuildMember to gRPC counterpart.
-func GuildMemberToGRPC(guildMember *discord.GuildMember) (sandwichGuildMember *GuildMember, err error) {
+func GuildMemberToGRPC(guildMember discord.GuildMember) (sandwichGuildMember *GuildMember, err error) {
 	guildMemberJSON, err := json.Marshal(guildMember)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal from discord.GuildMember: %w", err)
@@ -96,7 +96,7 @@ func GuildMemberToGRPC(guildMember *discord.GuildMember) (sandwichGuildMember *G
 }
 
 // Converts discord.Role to gRPC counterpart.
-func RoleToGRPC(role *discord.Role) (sandwichRole *Role, err error) {
+func RoleToGRPC(role discord.Role) (sandwichRole *Role, err error) {
 	guildRoleJSON, err := json.Marshal(role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal from discord.Role: %w", err)
@@ -115,15 +115,14 @@ func RoleToGRPC(role *discord.Role) (sandwichRole *Role, err error) {
 // gRPC -> discord.* Converters.
 
 // Converts gRPC to discord.User counterpart.
-func GRPCToUser(sandwichUser *User) (user *discord.User, err error) {
+func GRPCToUser(sandwichUser *User) (user discord.User, err error) {
 	userJSON, err := protojson.Marshal(sandwichUser)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal from pb.User: %w", err)
+		err = fmt.Errorf("failed to marshal from pb.User: %w", err)
+		return
 	}
 
-	user = &discord.User{}
-
-	err = json.Unmarshal(userJSON, user)
+	err = json.Unmarshal(userJSON, &user)
 	if err != nil {
 		return user, fmt.Errorf("failed to unmarshal to discord.User: %w", err)
 	}
@@ -132,15 +131,14 @@ func GRPCToUser(sandwichUser *User) (user *discord.User, err error) {
 }
 
 // Converts gRPC to discord.Guild counterpart.
-func GRPCToGuild(sandwichGuild *Guild) (guild *discord.Guild, err error) {
+func GRPCToGuild(sandwichGuild *Guild) (guild discord.Guild, err error) {
 	guildJSON, err := protojson.Marshal(sandwichGuild)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal from pb.Guild: %w", err)
+		err = fmt.Errorf("failed to marshal from pb.Guild: %w", err)
+		return
 	}
 
-	guild = &discord.Guild{}
-
-	err = json.Unmarshal(guildJSON, guild)
+	err = json.Unmarshal(guildJSON, &guild)
 	if err != nil {
 		return guild, fmt.Errorf("failed to unmarshal to discord.Guild: %w", err)
 	}
@@ -149,15 +147,14 @@ func GRPCToGuild(sandwichGuild *Guild) (guild *discord.Guild, err error) {
 }
 
 // Converts gRPC to discord.Channel counterpart.
-func GRPCToChannel(sandwichChannel *Channel) (channel *discord.Channel, err error) {
+func GRPCToChannel(sandwichChannel *Channel) (channel discord.Channel, err error) {
 	channelJSON, err := protojson.Marshal(sandwichChannel)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal from pb.Channel: %w", err)
+		err = fmt.Errorf("failed to marshal from pb.Channel: %w", err)
+		return
 	}
 
-	channel = &discord.Channel{}
-
-	err = json.Unmarshal(channelJSON, channel)
+	err = json.Unmarshal(channelJSON, &channel)
 	if err != nil {
 		return channel, fmt.Errorf("failed to unmarshal to discord.Channel: %w", err)
 	}
@@ -166,15 +163,14 @@ func GRPCToChannel(sandwichChannel *Channel) (channel *discord.Channel, err erro
 }
 
 // Converts gRPC to discord.Emoji counterpart.
-func GRPCToEmoji(sandwichEmoji *Emoji) (emoji *discord.Emoji, err error) {
+func GRPCToEmoji(sandwichEmoji *Emoji) (emoji discord.Emoji, err error) {
 	emojiJSON, err := protojson.Marshal(sandwichEmoji)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal from pb.Emoji: %w", err)
+		err = fmt.Errorf("failed to marshal from pb.Emoji: %w", err)
+		return
 	}
 
-	emoji = &discord.Emoji{}
-
-	err = json.Unmarshal(emojiJSON, emoji)
+	err = json.Unmarshal(emojiJSON, &emoji)
 	if err != nil {
 		return emoji, fmt.Errorf("failed to unmarshal to discord.Emoji: %w", err)
 	}
@@ -183,15 +179,14 @@ func GRPCToEmoji(sandwichEmoji *Emoji) (emoji *discord.Emoji, err error) {
 }
 
 // Converts gRPC to discord.GuildMember counterpart.
-func GRPCToGuildMember(sandwichGuildMember *GuildMember) (guildMember *discord.GuildMember, err error) {
+func GRPCToGuildMember(sandwichGuildMember *GuildMember) (guildMember discord.GuildMember, err error) {
 	guildMemberJSON, err := protojson.Marshal(sandwichGuildMember)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal from pb.GuildMember: %w", err)
+		err = fmt.Errorf("failed to marshal from pb.GuildMember: %w", err)
+		return
 	}
 
-	guildMember = &discord.GuildMember{}
-
-	err = json.Unmarshal(guildMemberJSON, guildMember)
+	err = json.Unmarshal(guildMemberJSON, &guildMember)
 	if err != nil {
 		return guildMember, fmt.Errorf("failed to unmarshal to discord.GuildMember: %w", err)
 	}
@@ -200,15 +195,14 @@ func GRPCToGuildMember(sandwichGuildMember *GuildMember) (guildMember *discord.G
 }
 
 // Converts gRPC to discord.Role counterpart.
-func GRPCToRole(sandwichRole *Role) (role *discord.Role, err error) {
+func GRPCToRole(sandwichRole *Role) (role discord.Role, err error) {
 	guildRoleJSON, err := protojson.Marshal(sandwichRole)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal from pb.Role: %w", err)
+		err = fmt.Errorf("failed to marshal from pb.Role: %w", err)
+		return
 	}
 
-	role = &discord.Role{}
-
-	err = json.Unmarshal(guildRoleJSON, role)
+	err = json.Unmarshal(guildRoleJSON, &role)
 	if err != nil {
 		return role, fmt.Errorf("failed to unmarshal to discord.Role: %w", err)
 	}

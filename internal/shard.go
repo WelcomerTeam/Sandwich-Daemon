@@ -94,7 +94,6 @@ type Shard struct {
 	statusMu sync.RWMutex
 	Status   sandwich_structs.ShardStatus `json:"status"`
 
-	channelMu sync.RWMutex
 	MessageCh chan discord.GatewayPayload `json:"-"`
 	ErrorCh   chan error                  `json:"-"`
 
@@ -145,7 +144,8 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		statusMu: sync.RWMutex{},
 		Status:   sandwich_structs.ShardStatusIdle,
 
-		channelMu: sync.RWMutex{},
+		MessageCh: make(chan discord.GatewayPayload, MessageChannelBuffer),
+		ErrorCh:   make(chan error, 1),
 
 		Sequence:  &atomic.Int32{},
 		SessionID: &atomic.String{},
@@ -232,14 +232,17 @@ readyConsumer:
 
 	defer func() {
 		if err != nil && sh.hasWsConn() {
-			sh.CloseWS(websocket.StatusNormalClosure)
+			err = sh.CloseWS(websocket.StatusNormalClosure)
+			if err != nil {
+				sh.Logger.Debug().Err(err).Msg("Failed to close websocket")
+			}
 		}
 	}()
 
 	gatewayURL := gatewayURL.String()
 
 	if !sh.hasWsConn() {
-		errorCh, messageCh, err := sh.FeedWebsocket(sh.ctx, gatewayURL, nil)
+		err := sh.FeedWebsocket(sh.ctx, gatewayURL, nil, sh.ErrorCh, sh.MessageCh)
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to dial gateway")
 
@@ -258,11 +261,6 @@ readyConsumer:
 
 			return err
 		}
-
-		sh.channelMu.Lock()
-		sh.ErrorCh = errorCh
-		sh.MessageCh = messageCh
-		sh.channelMu.Unlock()
 	} else {
 		sh.Logger.Info().Msg("Reusing websocket connection")
 	}
@@ -359,16 +357,8 @@ readyConsumer:
 
 	sh.Logger.Trace().Msg("Waiting for first event")
 
-	sh.channelMu.RLock()
-	defer sh.channelMu.RUnlock()
-
-	sh.channelMu.RLock()
-	errorCh := sh.ErrorCh
-	messageCh := sh.MessageCh
-	sh.channelMu.RUnlock()
-
 	select {
-	case err = <-errorCh:
+	case err = <-sh.ErrorCh:
 		sh.Logger.Error().Err(err).Msg("Encountered error whilst connecting")
 
 		go sh.Sandwich.PublishSimpleWebhook(
@@ -385,10 +375,10 @@ readyConsumer:
 		)
 
 		return err
-	case msg = <-messageCh:
+	case msg = <-sh.MessageCh:
 		sh.Logger.Debug().Msgf("Received first event %d %s", msg.Op, msg.Type)
 
-		messageCh <- msg
+		sh.MessageCh <- msg
 	case <-t.C:
 	}
 
@@ -564,16 +554,12 @@ func (sh *Shard) Listen(ctx context.Context) error {
 
 // FeedWebsocket reads websocket events and feeds them through a channel.
 func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
-	opts *websocket.DialOptions,
-) (errorCh chan error, messageCh chan discord.GatewayPayload, err error) {
-	messageCh = make(chan discord.GatewayPayload, MessageChannelBuffer)
-	errorCh = make(chan error, 1)
-
+	opts *websocket.DialOptions, errorCh chan error, messageCh chan discord.GatewayPayload) (err error) {
 	conn, _, err := websocket.Dial(ctx, u, opts)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to dial websocket")
 
-		return errorCh, messageCh, fmt.Errorf("failed to connect to websocket: %w", err)
+		return fmt.Errorf("failed to connect to websocket: %w", err)
 	}
 
 	conn.SetReadLimit(WebsocketReadLimit)
@@ -636,7 +622,7 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 		}
 	}()
 
-	return errorCh, messageCh, nil
+	return nil
 }
 
 // Identify sends the identify packet to discord.
@@ -662,7 +648,7 @@ func (sh *Shard) Identify(ctx context.Context) error {
 
 	return sh.SendEvent(ctx, discord.GatewayOpIdentify, discord.Identify{
 		Token: token,
-		Properties: &discord.IdentifyProperties{
+		Properties: discord.IdentifyProperties{
 			OS:      runtime.GOOS,
 			Browser: "Sandwich " + VERSION,
 			Device:  "Sandwich " + VERSION,
@@ -754,15 +740,10 @@ func (sh *Shard) decodeContent(msg discord.GatewayPayload, out interface{}) erro
 
 // readMessage fills the shard msg buffer from a websocket message.
 func (sh *Shard) readMessage() (msg discord.GatewayPayload, err error) {
-	sh.channelMu.RLock()
-	errorCh := sh.ErrorCh
-	messageCh := sh.MessageCh
-	sh.channelMu.RUnlock()
-
 	select {
-	case err = <-errorCh:
+	case err = <-sh.ErrorCh:
 		return msg, err
-	case msg = <-messageCh:
+	case msg = <-sh.MessageCh:
 		return msg, nil
 	}
 }
@@ -904,7 +885,10 @@ func (sh *Shard) ChunkAllGuilds() {
 	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Started chunking all guilds")
 
 	for _, guildID := range guilds {
-		sh.ChunkGuild(guildID, false)
+		err := sh.ChunkGuild(guildID, false)
+		if err != nil {
+			sh.Logger.Error().Err(err).Int64("guild_id", int64(guildID)).Msg("Failed to chunk guild")
+		}
 	}
 
 	sh.Logger.Info().Int("guilds", len(guilds)).Msg("Finished chunking all guilds")
@@ -917,7 +901,7 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	sh.Sandwich.guildChunksMu.RUnlock()
 
 	if !ok {
-		guildChunk = &GuildChunks{
+		guildChunk = GuildChunks{
 			Complete:        *atomic.NewBool(false),
 			ChunkingChannel: make(chan GuildChunkPartial),
 			StartedAt:       *atomic.NewTime(time.Time{}),
@@ -1045,7 +1029,10 @@ func (sh *Shard) SetStatus(status sandwich_structs.ShardStatus) {
 		Status:     sh.Status,
 	})
 
-	_ = sh.Manager.Sandwich.PublishGlobalEvent(sandwich_structs.SandwichEventShardStatusUpdate, json.RawMessage(payload))
+	err := sh.Manager.Sandwich.PublishGlobalEvent(sandwich_structs.SandwichEventShardStatusUpdate, json.RawMessage(payload))
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to publish shard status update")
+	}
 }
 
 // GetStatus returns the status of a ShardGroup.

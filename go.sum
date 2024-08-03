@@ -8,6 +8,12 @@ github.com/WelcomerTeam/Discord v0.0.0-20240801215105-f6f3b4a7b778 h1:i8LpzkQ6h+
 github.com/WelcomerTeam/Discord v0.0.0-20240801215105-f6f3b4a7b778/go.mod h1:A3Pg/wPoP5r7TYMflf0dUVnBOoTi/liKFx/dFVFPfM8=
 github.com/WelcomerTeam/Discord v0.0.0-20240803075929-7044b3a4a7bc h1:zwgvR4I0YFzCqudXZ3K6XXPfU+iUB5D+00Tp0HHUj3g=
 github.com/WelcomerTeam/Discord v0.0.0-20240803075929-7044b3a4a7bc/go.mod h1:A3Pg/wPoP5r7TYMflf0dUVnBOoTi/liKFx/dFVFPfM8=
+github.com/WelcomerTeam/Discord v0.0.0-20240803084018-662d308af3bb h1:yO+CE0Pkcm1HkBjVOB6jfY6eTcRY1dcj9e3NGoUsxD4=
+github.com/WelcomerTeam/Discord v0.0.0-20240803084018-662d308af3bb/go.mod h1:A3Pg/wPoP5r7TYMflf0dUVnBOoTi/liKFx/dFVFPfM8=
+github.com/WelcomerTeam/Discord v0.0.0-20240803084738-0ebe45f5f11f h1:9y/uYZf3D4p3wU9eDtMEwFzBjbo5A9fMBv743IZMR30=
+github.com/WelcomerTeam/Discord v0.0.0-20240803084738-0ebe45f5f11f/go.mod h1:A3Pg/wPoP5r7TYMflf0dUVnBOoTi/liKFx/dFVFPfM8=
+github.com/WelcomerTeam/Discord v0.0.0-20240803085640-b6f35c76cb0c h1:aj/N2TqmiZPZI3SSkwUQWVR5KS66WRYLinCKVx7q1pw=
+github.com/WelcomerTeam/Discord v0.0.0-20240803085640-b6f35c76cb0c/go.mod h1:A3Pg/wPoP5r7TYMflf0dUVnBOoTi/liKFx/dFVFPfM8=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15 h1:i3H4TzA9QZVoguPhdc7QJCM+zW4CeZwKZMSw6GLQEHI=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15/go.mod h1:4oemQ7XEqKAc1DTtFpWugoE9K5RLjt7iH0emiFXnL/A=
 github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904 h1:WV4Ok6b0/kgczuLAgGTNtLVOB5JIqdfzJzgOpdlDM8Q=

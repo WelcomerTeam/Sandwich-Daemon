@@ -261,7 +261,10 @@ func (sg *ShardGroup) SetStatus(status sandwich_structs.ShardGroupStatus) {
 		Status:     sg.Status,
 	})
 
-	_ = sg.Manager.Sandwich.PublishGlobalEvent(sandwich_structs.SandwichEventShardGroupStatusUpdate, json.RawMessage(payload))
+	err := sg.Manager.Sandwich.PublishGlobalEvent(sandwich_structs.SandwichEventShardGroupStatusUpdate, json.RawMessage(payload))
+	if err != nil {
+		sg.Logger.Error().Err(err).Msg("Failed to publish status update")
+	}
 }
 
 // GetStatus returns the status of a ShardGroup.
