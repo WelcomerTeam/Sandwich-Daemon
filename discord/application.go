@@ -5,7 +5,7 @@ import "encoding/json"
 // application.go represents the application object and integrations.
 
 // ApplicationTeamMemberState represents the state of a member in a team.
-type ApplicationTeamMemberState uint8
+type ApplicationTeamMemberState uint16
 
 const (
 	ApplicationTeamMemberStateInvited ApplicationTeamMemberState = 1 + iota
@@ -13,7 +13,7 @@ const (
 )
 
 // ApplicationCommandType represents the different types of application command.
-type ApplicationCommandType uint8
+type ApplicationCommandType uint16
 
 const (
 	ApplicationCommandTypeChatInput ApplicationCommandType = 1 + iota
@@ -22,7 +22,7 @@ const (
 )
 
 // ApplicationCommandOptionType represents the different types of options.
-type ApplicationCommandOptionType uint8
+type ApplicationCommandOptionType uint16
 
 const (
 	ApplicationCommandOptionTypeSubCommand ApplicationCommandOptionType = 1 + iota
@@ -39,7 +39,7 @@ const (
 )
 
 // ApplicationCommandPermissionType represents the target for a command permission.
-type ApplicationCommandPermissionType uint8
+type ApplicationCommandPermissionType uint16
 
 const (
 	ApplicationCommandPermissionTypeRole ApplicationCommandPermissionType = 1 + iota
@@ -56,7 +56,7 @@ const (
 )
 
 // IntegrationExpireBehavior represents the integration expiration.
-type IntegrationExpireBehavior uint8
+type IntegrationExpireBehavior uint16
 
 const (
 	IntegrationExpireBehaviorRemoveRole IntegrationExpireBehavior = iota
@@ -87,44 +87,44 @@ type Application struct {
 
 // ApplicationTeam represents the team of an application.
 type ApplicationTeam struct {
-	Icon        string                   `json:"icon,omitempty"`
-	Name        string                   `json:"name"`
-	Members     []*ApplicationTeamMember `json:"members"`
-	ID          Snowflake                `json:"id"`
-	OwnerUserID Snowflake                `json:"owner_user_id"`
+	Icon        string                  `json:"icon,omitempty"`
+	Name        string                  `json:"name"`
+	Members     []ApplicationTeamMember `json:"members"`
+	ID          Snowflake               `json:"id"`
+	OwnerUserID Snowflake               `json:"owner_user_id"`
 }
 
 // ApplicationTeamMembers represents a member of a team.
 type ApplicationTeamMember struct {
-	User            User                        `json:"user"`
-	MembershipState *ApplicationTeamMemberState `json:"membership_state"`
-	Permissions     StringList                  `json:"permissions"`
-	TeamID          Snowflake                   `json:"team_id"`
+	User            User                       `json:"user"`
+	MembershipState ApplicationTeamMemberState `json:"membership_state"`
+	Permissions     StringList                 `json:"permissions"`
+	TeamID          Snowflake                  `json:"team_id"`
 }
 
 // ApplicationCommand represents an application's command.
 type ApplicationCommand struct {
-	DefaultMemberPermission  *Int64                      `json:"default_member_permissions,omitempty"`
-	Type                     *ApplicationCommandType     `json:"type,omitempty"`
-	ApplicationID            *Snowflake                  `json:"application_id,omitempty"`
-	GuildID                  *Snowflake                  `json:"guild_id,omitempty"`
-	NameLocalizations        map[string]string           `json:"name_localizations,omitempty"`
-	DescriptionLocalizations map[string]string           `json:"description_localizations,omitempty"`
-	ID                       *Snowflake                  `json:"id,omitempty"`
-	DMPermission             *bool                       `json:"dm_permission,omitempty"`
-	DefaultPermission        *bool                       `json:"default_permission,omitempty"`
-	Name                     string                      `json:"name"`
-	Description              string                      `json:"description,omitempty"`
-	Options                  []*ApplicationCommandOption `json:"options,omitempty"`
-	Version                  Int64                       `json:"version,omitempty"`
+	DefaultMemberPermission  *Int64                     `json:"default_member_permissions,omitempty"`
+	Type                     *ApplicationCommandType    `json:"type,omitempty"`
+	ApplicationID            *Snowflake                 `json:"application_id,omitempty"`
+	GuildID                  *Snowflake                 `json:"guild_id,omitempty"`
+	NameLocalizations        map[string]string          `json:"name_localizations,omitempty"`
+	DescriptionLocalizations map[string]string          `json:"description_localizations,omitempty"`
+	ID                       *Snowflake                 `json:"id,omitempty"`
+	DMPermission             *bool                      `json:"dm_permission,omitempty"`
+	DefaultPermission        *bool                      `json:"default_permission,omitempty"`
+	Name                     string                     `json:"name"`
+	Description              string                     `json:"description,omitempty"`
+	Options                  []ApplicationCommandOption `json:"options,omitempty"`
+	Version                  Int64                      `json:"version,omitempty"`
 }
 
 // GuildApplicationCommandPermissions represent a guilds application permissions.
 type GuildApplicationCommandPermissions struct {
-	Permissions   []*ApplicationCommandPermissions `json:"permissions"`
-	ID            Snowflake                        `json:"id"`
-	ApplicationID Snowflake                        `json:"application_id"`
-	GuildID       Snowflake                        `json:"guild_id"`
+	Permissions   []ApplicationCommandPermissions `json:"permissions"`
+	ID            Snowflake                       `json:"id"`
+	ApplicationID Snowflake                       `json:"application_id"`
+	GuildID       Snowflake                       `json:"guild_id"`
 }
 
 // ApplicationCommandPermissions represents the rules for enabling or disabling a command.
@@ -136,20 +136,20 @@ type ApplicationCommandPermissions struct {
 
 // ApplicationCommandOption represents the options for an application command.
 type ApplicationCommandOption struct {
-	MinValue                 *int32                            `json:"min_value,omitempty"`
-	Autocomplete             *bool                             `json:"autocomplete,omitempty"`
-	NameLocalizations        map[string]string                 `json:"name_localizations,omitempty"`
-	MaxLength                *int32                            `json:"max_length,omitempty"`
-	DescriptionLocalizations map[string]string                 `json:"description_localizations,omitempty"`
-	MinLength                *int32                            `json:"min_length,omitempty"`
-	MaxValue                 *int32                            `json:"max_value,omitempty"`
-	Description              string                            `json:"description,omitempty"`
-	Name                     string                            `json:"name"`
-	ChannelTypes             []ChannelType                     `json:"channel_types,omitempty"`
-	Options                  []*ApplicationCommandOption       `json:"options,omitempty"`
-	Choices                  []*ApplicationCommandOptionChoice `json:"choices,omitempty"`
-	Required                 bool                              `json:"required,omitempty"`
-	Type                     ApplicationCommandOptionType      `json:"type"`
+	MinValue                 *int32                           `json:"min_value,omitempty"`
+	Autocomplete             *bool                            `json:"autocomplete,omitempty"`
+	NameLocalizations        map[string]string                `json:"name_localizations,omitempty"`
+	MaxLength                *int32                           `json:"max_length,omitempty"`
+	DescriptionLocalizations map[string]string                `json:"description_localizations,omitempty"`
+	MinLength                *int32                           `json:"min_length,omitempty"`
+	MaxValue                 *int32                           `json:"max_value,omitempty"`
+	Description              string                           `json:"description,omitempty"`
+	Name                     string                           `json:"name"`
+	ChannelTypes             []ChannelType                    `json:"channel_types,omitempty"`
+	Options                  []ApplicationCommandOption       `json:"options,omitempty"`
+	Choices                  []ApplicationCommandOptionChoice `json:"choices,omitempty"`
+	Required                 bool                             `json:"required,omitempty"`
+	Type                     ApplicationCommandOptionType     `json:"type"`
 }
 
 // ApplicationCommandOptionChoice represents the different choices.

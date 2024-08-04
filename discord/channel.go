@@ -1,9 +1,15 @@
 package discord
 
+import (
+	"bytes"
+	"fmt"
+	"strconv"
+)
+
 // channel.go contains the information relating to channels
 
 // ChannelType represents a channel's type.
-type ChannelType uint8
+type ChannelType uint16
 
 const (
 	ChannelTypeGuildText ChannelType = iota
@@ -23,7 +29,7 @@ const (
 )
 
 // VideoQualityMode represents the quality of the video.
-type VideoQualityMode uint8
+type VideoQualityMode uint16
 
 const (
 	VideoQualityModeAuto VideoQualityMode = 1 + iota
@@ -31,7 +37,7 @@ const (
 )
 
 // StageChannelPrivacyLevel represents the privacy level of a stage channel.
-type StageChannelPrivacyLevel uint8
+type StageChannelPrivacyLevel uint16
 
 const (
 	StageChannelPrivacyLevelPublic StageChannelPrivacyLevel = 1 + iota
@@ -77,7 +83,38 @@ type ChannelOverwrite struct {
 }
 
 // ChannelOverrideType represents the target of a channel override.
-type ChannelOverrideType uint8
+type ChannelOverrideType Int64
+
+func (in *ChannelOverrideType) UnmarshalJSON(b []byte) error {
+	if !bytes.Equal(b, null) {
+		// Discord will pass ChannelOverrideType as a string if it is in an audit log.
+		if b[0] == '"' {
+			i, err := strconv.ParseInt(string(b[1:len(b)-1]), 10, 64)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal json: %v", err)
+			}
+
+			*in = ChannelOverrideType(i)
+		} else {
+			i, err := strconv.ParseInt(string(b), 10, 64)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal json: %v", err)
+			}
+
+			*in = ChannelOverrideType(i)
+		}
+	}
+
+	return nil
+}
+
+func (in ChannelOverrideType) MarshalJSON() ([]byte, error) {
+	return int64ToStringBytes(int64(in)), nil
+}
+
+func (in ChannelOverrideType) String() string {
+	return strconv.FormatInt(int64(in), 10)
+}
 
 const (
 	ChannelOverrideTypeRole ChannelOverrideType = iota
@@ -103,12 +140,12 @@ type ThreadMember struct {
 
 // StageInstance represents a stage channel instance.
 type StageInstance struct {
-	PrivacyLabel         *StageChannelPrivacyLevel `json:"privacy_level"`
-	Topic                string                    `json:"topic"`
-	ID                   Snowflake                 `json:"id"`
-	GuildID              Snowflake                 `json:"guild_id"`
-	ChannelID            Snowflake                 `json:"channel_id"`
-	DiscoverableDisabled bool                      `json:"discoverable_disabled"`
+	PrivacyLabel         StageChannelPrivacyLevel `json:"privacy_level"`
+	Topic                string                   `json:"topic"`
+	ID                   Snowflake                `json:"id"`
+	GuildID              Snowflake                `json:"guild_id"`
+	ChannelID            Snowflake                `json:"channel_id"`
+	DiscoverableDisabled bool                     `json:"discoverable_disabled"`
 }
 
 // FollowedChannel represents a followed channel.

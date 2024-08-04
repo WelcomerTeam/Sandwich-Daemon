@@ -22,7 +22,7 @@ const (
 )
 
 // MFALevel represents a guild's MFA level.
-type MFALevel uint8
+type MFALevel uint16
 
 // MFA levels.
 const (
@@ -31,7 +31,7 @@ const (
 )
 
 // VerificationLevel represents a guild's verification level.
-type VerificationLevel uint8
+type VerificationLevel uint16
 
 const (
 	VerificationLevelNone VerificationLevel = iota
@@ -56,7 +56,7 @@ const (
 )
 
 // PremiumTier represents the current boosting tier of a guild.
-type PremiumTier uint8
+type PremiumTier uint16
 
 const (
 	PremiumTierNone PremiumTier = iota
@@ -66,7 +66,7 @@ const (
 )
 
 // GuildNSFWLevelType represents the level of the guild.
-type GuildNSFWLevelType uint8
+type GuildNSFWLevelType uint16
 
 const (
 	GuildNSFWLevelTypDefault GuildNSFWLevelType = iota
@@ -79,7 +79,7 @@ const (
 type Guild struct {
 	JoinedAt                    Timestamp                  `json:"joined_at"`
 	WidgetChannelID             *Snowflake                 `json:"widget_channel_id,omitempty"`
-	NSFWLevel                   *GuildNSFWLevelType        `json:"nsfw_level"`
+	NSFWLevel                   GuildNSFWLevelType         `json:"nsfw_level"`
 	PublicUpdatesChannelID      *Snowflake                 `json:"public_updates_channel_id,omitempty"`
 	PremiumTier                 *PremiumTier               `json:"premium_tier,omitempty"`
 	RulesChannelID              *Snowflake                 `json:"rules_channel_id,omitempty"`
@@ -173,13 +173,13 @@ type VoiceState struct {
 // GuildBan represents a ban entry.
 type GuildBan struct {
 	GuildID *Snowflake `json:"guild_id,omitempty"`
-	User    *User      `json:"user"`
+	User    User       `json:"user"`
 	Reason  string
 }
 
 // GuildPruneParam represents the arguments for a guild prune.
 type GuildPruneParam struct {
-	Days              *int32       `json:"days,omitempty"`
-	IncludeRoles      []*Snowflake `json:"include_roles"`
-	ComputePruneCount bool         `json:"compute_prune_count"`
+	Days              *int32      `json:"days,omitempty"`
+	IncludeRoles      []Snowflake `json:"include_roles"`
+	ComputePruneCount bool        `json:"compute_prune_count"`
 }

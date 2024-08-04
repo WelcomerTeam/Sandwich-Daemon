@@ -27,7 +27,7 @@ type Embed struct {
 	Description string          `json:"description,omitempty"`
 	URL         string          `json:"url,omitempty"`
 	Title       string          `json:"title,omitempty"`
-	Fields      []*EmbedField   `json:"fields,omitempty"`
+	Fields      EmbedFieldList  `json:"fields,omitempty"`
 	Color       int32           `json:"color,omitempty"`
 }
 
@@ -101,7 +101,7 @@ func (e *Embed) SetAuthor(author *EmbedAuthor) *Embed {
 	return e
 }
 
-func (e *Embed) AddField(field *EmbedField) *Embed {
+func (e *Embed) AddField(field EmbedField) *Embed {
 	e.Fields = append(e.Fields, field)
 
 	return e

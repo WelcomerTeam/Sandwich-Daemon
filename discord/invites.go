@@ -3,7 +3,7 @@ package discord
 // invites.go contains all structures for invites.
 
 // InviteTargetType represents the type of an invites target.
-type InviteTargetType uint8
+type InviteTargetType uint16
 
 const (
 	InviteTargetTypeStream InviteTargetType = 1 + iota
@@ -11,7 +11,7 @@ const (
 )
 
 // EventStatus represents the status of an event.
-type EventStatus uint8
+type EventStatus uint16
 
 const (
 	EventStatusScheduled EventStatus = 1 + iota
@@ -21,7 +21,7 @@ const (
 )
 
 // ScheduledEntityType represents the type of event.
-type ScheduledEntityType uint8
+type ScheduledEntityType uint16
 
 const (
 	ScheduledEntityTypeStage ScheduledEntityType = 1 + iota
@@ -53,29 +53,29 @@ type Invite struct {
 
 // InviteStageInstance represents the structure of an invite stage instance.
 type InviteStageInstance struct {
-	Topic            string         `json:"topic"`
-	Members          []*GuildMember `json:"members"`
-	ParticipantCount int32          `json:"participant_count"`
-	SpeakerCount     int32          `json:"speaker_count"`
+	Topic            string          `json:"topic"`
+	Members          GuildMemberList `json:"members"`
+	ParticipantCount int32           `json:"participant_count"`
+	SpeakerCount     int32           `json:"speaker_count"`
 }
 
 // ScheduledEvent represents an scheduled event.
 type ScheduledEvent struct {
-	Status             *EventStatus              `json:"status"`
-	EntityType         *ScheduledEntityType      `json:"entity_type"`
-	ChannelID          *Snowflake                `json:"channel_id,omitempty"`
-	CreatorID          *Snowflake                `json:"creator_id,omitempty"`
-	Creator            *User                     `json:"creator,omitempty"`
-	EntityMetadata     *EventMetadata            `json:"entity_metadata,omitempty"`
-	EntityID           *Snowflake                `json:"entity_id,omitempty"`
-	PrivacyLevel       *StageChannelPrivacyLevel `json:"privacy_level"`
-	ScheduledStartTime Timestamp                 `json:"scheduled_start_time"`
-	ScheduledEndTime   *Timestamp                `json:"scheduled_end_time"`
-	Description        string                    `json:"description,omitempty"`
-	Name               string                    `json:"name"`
-	ID                 Snowflake                 `json:"id"`
-	GuildID            Snowflake                 `json:"guild_id"`
-	UserCount          int32                     `json:"user_count,omitempty"`
+	Status             EventStatus              `json:"status"`
+	EntityType         ScheduledEntityType      `json:"entity_type"`
+	ChannelID          *Snowflake               `json:"channel_id,omitempty"`
+	CreatorID          *Snowflake               `json:"creator_id,omitempty"`
+	Creator            *User                    `json:"creator,omitempty"`
+	EntityMetadata     *EventMetadata           `json:"entity_metadata,omitempty"`
+	EntityID           *Snowflake               `json:"entity_id,omitempty"`
+	PrivacyLevel       StageChannelPrivacyLevel `json:"privacy_level"`
+	ScheduledStartTime Timestamp                `json:"scheduled_start_time"`
+	ScheduledEndTime   *Timestamp               `json:"scheduled_end_time"`
+	Description        string                   `json:"description,omitempty"`
+	Name               string                   `json:"name"`
+	ID                 Snowflake                `json:"id"`
+	GuildID            Snowflake                `json:"guild_id"`
+	UserCount          int32                    `json:"user_count,omitempty"`
 }
 
 // EventMetadata contains extra information about a scheduled event.

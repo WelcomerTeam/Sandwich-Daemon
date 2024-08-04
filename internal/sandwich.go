@@ -35,7 +35,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.14.7-antiraid"
+const VERSION = "1.16-antiraid"
 
 const (
 	PermissionsDefault = 0o744
@@ -74,7 +74,7 @@ type Sandwich struct {
 	StartTime time.Time      `json:"start_time" yaml:"start_time"`
 
 	configurationMu sync.RWMutex
-	Configuration   *SandwichConfiguration `json:"configuration" yaml:"configuration"`
+	Configuration   SandwichConfiguration `json:"configuration" yaml:"configuration"`
 
 	Options SandwichOptions `json:"options" yaml:"options"`
 
@@ -109,7 +109,7 @@ type Sandwich struct {
 	// SentPayload pool
 	sentPool sync.Pool
 
-	guildChunks *csmap.CsMap[discord.Snowflake, *GuildChunks]
+	guildChunks *csmap.CsMap[discord.Snowflake, GuildChunks]
 }
 
 // SandwichConfiguration represents the configuration file.
@@ -137,7 +137,7 @@ type SandwichConfiguration struct {
 
 	Webhooks []string `json:"webhooks" yaml:"webhooks"`
 
-	Managers []*ManagerConfiguration `json:"managers" yaml:"managers"`
+	Managers []ManagerConfiguration `json:"managers" yaml:"managers"`
 }
 
 // SandwichOptions represents any options passable when creating the sandwich service.
@@ -186,7 +186,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		ConfigurationLocation: options.ConfigurationLocation,
 
 		configurationMu: sync.RWMutex{},
-		Configuration:   &SandwichConfiguration{},
+		Configuration:   SandwichConfiguration{},
 
 		Options: options,
 
@@ -223,7 +223,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		},
 
 		guildChunks: csmap.Create(
-			csmap.WithSize[discord.Snowflake, *GuildChunks](50),
+			csmap.WithSize[discord.Snowflake, GuildChunks](50),
 		),
 	}
 
@@ -248,7 +248,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 }
 
 // LoadConfiguration handles loading the configuration file.
-func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfiguration, err error) {
+func (sg *Sandwich) LoadConfiguration(path string) (configuration SandwichConfiguration, err error) {
 	sg.Logger.Debug().
 		Str("path", path).
 		Msg("Loading configuration")
@@ -264,9 +264,7 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration *SandwichConfi
 		return configuration, ErrReadConfigurationFailure
 	}
 
-	configuration = &SandwichConfiguration{}
-
-	err = yaml.Unmarshal(file, configuration)
+	err = yaml.Unmarshal(file, &configuration)
 	if err != nil {
 		return configuration, ErrLoadConfigurationFailure
 	}
@@ -376,7 +374,7 @@ func (sg *Sandwich) startManagers() {
 			)
 		}
 
-		manager := sg.NewManager(managerConfiguration)
+		manager := sg.NewManager(&managerConfiguration)
 
 		sg.Managers.Store(managerConfiguration.Identifier, manager)
 
@@ -505,6 +503,10 @@ func (sg *Sandwich) setupHTTP() error {
 	return nil
 }
 
+var cacheEjectorStateCtx = StateCtx{
+	Stateless: true,
+}
+
 func (sg *Sandwich) cacheEjector() {
 	t := time.NewTicker(cacheEjectorInterval)
 
@@ -528,19 +530,15 @@ func (sg *Sandwich) cacheEjector() {
 
 		ejectedGuilds := make([]discord.Snowflake, 0)
 
-		sg.State.Guilds.Range(func(guildID discord.Snowflake, guild *discord.Guild) bool {
+		sg.State.Guilds.Range(func(guildID discord.Snowflake, guild discord.Guild) bool {
 			if val, ok := allGuildIDs[guildID]; !val || !ok {
 				ejectedGuilds = append(ejectedGuilds, guildID)
 			}
 			return false
 		})
 
-		ctx := &StateCtx{
-			Stateless: true,
-		}
-
 		for _, guildID := range ejectedGuilds {
-			sg.State.RemoveGuild(ctx, guildID)
+			sg.State.RemoveGuild(cacheEjectorStateCtx, guildID)
 		}
 
 		ejectedDedupes := make([]string, 0)

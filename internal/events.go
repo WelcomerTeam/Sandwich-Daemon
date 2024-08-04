@@ -24,7 +24,7 @@ type EventDispatchData struct {
 var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error)
 
 // List of handlers for dispatch events.
-var dispatchHandlers = make(map[string]func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error))
+var dispatchHandlers = make(map[string]func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error))
 
 func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 	err := GatewayDispatch(ctx, sh, msg, trace)
@@ -95,7 +95,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 		trace.Store("state", discord.Int64(time.Now().Unix()))
 	}
 
-	result, continuable, err := StateDispatch(&StateCtx{
+	result, continuable, err := StateDispatch(StateCtx{
 		context:      ctx,
 		Shard:        sh,
 		CacheUsers:   cacheUsers,
@@ -145,7 +145,7 @@ func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context
 	gatewayHandlers[op] = handler
 }
 
-func registerDispatch(eventType string, handler func(ctx *StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error)) {
+func registerDispatch(eventType string, handler func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error)) {
 	dispatchHandlers[eventType] = handler
 }
 
@@ -163,7 +163,7 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 }
 
 // StateDispatch handles selecting the proper state handler and executing it.
-func StateDispatch(ctx *StateCtx,
+func StateDispatch(ctx StateCtx,
 	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace,
 ) (result EventDispatchData, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {

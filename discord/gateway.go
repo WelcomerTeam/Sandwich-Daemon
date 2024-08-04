@@ -6,7 +6,7 @@ import "encoding/json"
 // all events and structures we send to
 
 // GatewayOp represents the operation codes of a gateway message.
-type GatewayOp uint8
+type GatewayOp uint16
 
 const (
 	GatewayOpDispatch GatewayOp = iota
@@ -82,13 +82,13 @@ type SentPayload struct {
 
 // Identify represents the initial handshake with the gateway.
 type Identify struct {
-	Properties     *IdentifyProperties `json:"properties"`
-	Presence       *UpdateStatus       `json:"presence,omitempty"`
-	Token          string              `json:"token"`
-	Shard          [2]int32            `json:"shard,omitempty"`
-	LargeThreshold int32               `json:"large_threshold"`
-	Intents        int32               `json:"intents"`
-	Compress       bool                `json:"compress"`
+	Properties     IdentifyProperties `json:"properties"`
+	Presence       *UpdateStatus      `json:"presence,omitempty"`
+	Token          string             `json:"token"`
+	Shard          [2]int32           `json:"shard,omitempty"`
+	LargeThreshold int32              `json:"large_threshold"`
+	Intents        int32              `json:"intents"`
+	Compress       bool               `json:"compress"`
 }
 
 // IdentifyProperties are the extra properties sent in the identify packet.
@@ -110,18 +110,18 @@ type Heartbeat int
 
 // Request guild members requests members for a guild.
 type RequestGuildMembers struct {
-	Query     string      `json:"query"`
-	Nonce     string      `json:"nonce"`
-	UserIDs   []Snowflake `json:"user_ids"`
-	GuildID   Snowflake   `json:"guild_id"`
-	Limit     int32       `json:"limit"`
-	Presences bool        `json:"presences"`
+	Query     string        `json:"query"`
+	Nonce     string        `json:"nonce"`
+	UserIDs   SnowflakeList `json:"user_ids"`
+	GuildID   Snowflake     `json:"guild_id"`
+	Limit     int32         `json:"limit"`
+	Presences bool          `json:"presences"`
 }
 
 // Update Presence updates a client's presence.
 type UpdateStatus struct {
-	Status     string      `json:"status"`
-	Activities []*Activity `json:"activities,omitempty"`
-	Since      int32       `json:"since,omitempty"`
-	AFK        bool        `json:"afk"`
+	Status     string       `json:"status"`
+	Activities ActivityList `json:"activities,omitempty"`
+	Since      int32        `json:"since,omitempty"`
+	AFK        bool         `json:"afk"`
 }

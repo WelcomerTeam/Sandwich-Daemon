@@ -5,7 +5,7 @@ import "encoding/json"
 // webhook.go represents all structures to create a webhook and interact with it.
 
 // WebhookType is the type of webhook.
-type WebhookType uint8
+type WebhookType uint16
 
 // Webhook type.
 const (

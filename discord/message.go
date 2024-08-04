@@ -3,7 +3,7 @@ package discord
 // message.go contains the structure that represents a discord message.
 
 // MessageType represents the type of message that has been sent.
-type MessageType uint8
+type MessageType uint16
 
 const (
 	MessageTypeDefault MessageType = iota
@@ -56,7 +56,7 @@ const (
 )
 
 // MessageActivityType represents the type of message activity.
-type MessageActivityType uint8
+type MessageActivityType uint16
 
 const (
 	MessageActivityTypeJoin MessageActivityType = 1 + iota
@@ -67,42 +67,42 @@ const (
 
 // Message represents a message on discord.
 type Message struct {
-	Timestamp         Timestamp                `json:"timestamp"`
-	EditedTimestamp   Timestamp                `json:"edited_timestamp"`
-	Author            *User                    `json:"author"`
-	WebhookID         *Snowflake               `json:"webhook_id,omitempty"`
-	Member            *GuildMember             `json:"member,omitempty"`
-	GuildID           *Snowflake               `json:"guild_id,omitempty"`
-	Thread            *Channel                 `json:"thread,omitempty"`
-	Interaction       *MessageInteraction      `json:"interaction,omitempty"`
-	ReferencedMessage *Message                 `json:"referenced_message,omitempty"`
-	Flags             *MessageFlags            `json:"flags,omitempty"`
-	Application       *Application             `json:"application,omitempty"`
-	Activity          *MessageActivity         `json:"activity,omitempty"`
-	Content           string                   `json:"content"`
-	Embeds            []*Embed                 `json:"embeds"`
-	MentionRoles      []*Snowflake             `json:"mention_roles"`
-	Reactions         []*MessageReaction       `json:"reactions"`
-	StickerItems      []*MessageSticker        `json:"sticker_items,omitempty"`
-	Attachments       []*MessageAttachment     `json:"attachments"`
-	Components        []*InteractionComponent  `json:"components,omitempty"`
-	MentionChannels   []*MessageChannelMention `json:"mention_channels,omitempty"`
-	Mentions          []*User                  `json:"mentions"`
-	MessageReference  []*MessageReference      `json:"message_referenced,omitempty"`
-	ID                Snowflake                `json:"id"`
-	ChannelID         Snowflake                `json:"channel_id"`
-	MentionEveryone   bool                     `json:"mention_everyone"`
-	TTS               bool                     `json:"tts"`
-	Type              MessageType              `json:"type"`
-	Pinned            bool                     `json:"pinned"`
+	Timestamp         Timestamp               `json:"timestamp"`
+	EditedTimestamp   Timestamp               `json:"edited_timestamp"`
+	Author            User                    `json:"author"`
+	WebhookID         *Snowflake              `json:"webhook_id,omitempty"`
+	Member            *GuildMember            `json:"member,omitempty"`
+	GuildID           *Snowflake              `json:"guild_id,omitempty"`
+	Thread            *Channel                `json:"thread,omitempty"`
+	Interaction       *MessageInteraction     `json:"interaction,omitempty"`
+	ReferencedMessage *Message                `json:"referenced_message,omitempty"`
+	Flags             *MessageFlags           `json:"flags,omitempty"`
+	Application       *Application            `json:"application,omitempty"`
+	Activity          *MessageActivity        `json:"activity,omitempty"`
+	Content           string                  `json:"content"`
+	Embeds            []Embed                 `json:"embeds"`
+	MentionRoles      []Snowflake             `json:"mention_roles"`
+	Reactions         []MessageReaction       `json:"reactions"`
+	StickerItems      []MessageSticker        `json:"sticker_items,omitempty"`
+	Attachments       []MessageAttachment     `json:"attachments"`
+	Components        []InteractionComponent  `json:"components,omitempty"`
+	MentionChannels   []MessageChannelMention `json:"mention_channels,omitempty"`
+	Mentions          []User                  `json:"mentions"`
+	MessageReference  []MessageReference      `json:"message_referenced,omitempty"`
+	ID                Snowflake               `json:"id"`
+	ChannelID         Snowflake               `json:"channel_id"`
+	MentionEveryone   bool                    `json:"mention_everyone"`
+	TTS               bool                    `json:"tts"`
+	Type              MessageType             `json:"type"`
+	Pinned            bool                    `json:"pinned"`
 }
 
 // MessageInteraction represents an executed interaction.
 type MessageInteraction struct {
-	User User             `json:"user"`
-	Type *InteractionType `json:"type"`
-	Name string           `json:"name"`
-	ID   Snowflake        `json:"id"`
+	User User            `json:"user"`
+	Type InteractionType `json:"type"`
+	Name string          `json:"name"`
+	ID   Snowflake       `json:"id"`
 }
 
 // MessageChannelMention represents a mentioned channel.

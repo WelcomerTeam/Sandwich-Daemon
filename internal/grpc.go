@@ -195,10 +195,10 @@ func (grpc *routeSandwichServer) FetchUsers(ctx context.Context, request *pb.Fet
 				// TODO: Refactor to use Discord session.
 				// user.DMChannelID = &resp.ID
 
-				grpc.sg.State.SetUser(&StateCtx{CacheUsers: true}, user)
+				grpc.sg.State.SetUser(StateCtx{CacheUsers: true}, user)
 			}
 
-			grpcUser, err := pb.UserToGRPC(user)
+			grpcUser, err := pb.UserToGRPC(&user)
 			if err == nil {
 				response.Users[int64(user.ID)] = grpcUser
 			} else {
@@ -239,7 +239,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 		for _, channelID := range request.ChannelIDs {
 			guildChannel, cacheHit := grpc.sg.State.GetGuildChannel((*discord.Snowflake)(&request.GuildID), discord.Snowflake(channelID))
 			if cacheHit {
-				grpcChannel, err := pb.ChannelToGRPC(guildChannel)
+				grpcChannel, err := pb.ChannelToGRPC(&guildChannel)
 				if err == nil {
 					response.GuildChannels[int64(guildChannel.ID)] = grpcChannel
 				} else {
@@ -261,7 +261,7 @@ func (grpc *routeSandwichServer) FetchGuildChannels(ctx context.Context, request
 
 		for _, guildChannel := range guildChannels {
 			if !hasQuery || requestMatch(request.Query, guildChannel.Name, guildChannel.ID.String()) {
-				grpcChannel, err := pb.ChannelToGRPC(guildChannel)
+				grpcChannel, err := pb.ChannelToGRPC(&guildChannel)
 				if err == nil {
 					response.GuildChannels[int64(guildChannel.ID)] = grpcChannel
 				} else {
@@ -301,7 +301,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 		for _, emojiID := range request.EmojiIDs {
 			guildEmoji, cacheHit := grpc.sg.State.GetGuildEmoji(discord.Snowflake(request.GuildID), discord.Snowflake(emojiID))
 			if cacheHit {
-				grpcEmoji, err := pb.EmojiToGRPC(guildEmoji)
+				grpcEmoji, err := pb.EmojiToGRPC(&guildEmoji)
 				if err == nil {
 					response.GuildEmojis[int64(guildEmoji.ID)] = grpcEmoji
 				} else {
@@ -323,7 +323,7 @@ func (grpc *routeSandwichServer) FetchGuildEmojis(ctx context.Context, request *
 
 		for _, guildEmoji := range guildEmojis {
 			if !hasQuery || requestMatch(request.Query, guildEmoji.Name, guildEmoji.ID.String()) {
-				grpcEmoji, err := pb.EmojiToGRPC(guildEmoji)
+				grpcEmoji, err := pb.EmojiToGRPC(&guildEmoji)
 				if err == nil {
 					response.GuildEmojis[int64(guildEmoji.ID)] = grpcEmoji
 				} else {
@@ -379,7 +379,7 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 		for _, GuildMemberID := range request.UserIDs {
 			guildMember, cacheHit := grpc.sg.State.GetGuildMember(discord.Snowflake(request.GuildID), discord.Snowflake(GuildMemberID))
 			if cacheHit {
-				grpcGuildMember, err := pb.GuildMemberToGRPC(guildMember)
+				grpcGuildMember, err := pb.GuildMemberToGRPC(&guildMember)
 				if err == nil {
 					response.GuildMembers[int64(guildMember.User.ID)] = grpcGuildMember
 				} else {
@@ -400,8 +400,8 @@ func (grpc *routeSandwichServer) FetchGuildMembers(ctx context.Context, request 
 		request.Query = norm.NFKD.String(request.Query)
 
 		for _, guildMember := range guildGuildMembers {
-			if !hasQuery || guildMemberMatch(request.Query, guildMember) {
-				grpcGuildMember, err := pb.GuildMemberToGRPC(guildMember)
+			if !hasQuery || guildMemberMatch(request.Query, &guildMember) {
+				grpcGuildMember, err := pb.GuildMemberToGRPC(&guildMember)
 				if err == nil {
 					response.GuildMembers[int64(guildMember.User.ID)] = grpcGuildMember
 				} else {
@@ -444,7 +444,7 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 		for _, guildID := range request.GuildIDs {
 			guild, cacheHit := grpc.sg.State.GetGuild(discord.Snowflake(guildID))
 			if cacheHit {
-				grpcGuild, err := pb.GuildToGRPC(guild)
+				grpcGuild, err := pb.GuildToGRPC(&guild)
 				if err == nil {
 					response.Guilds[int64(guild.ID)] = grpcGuild
 				} else {
@@ -463,9 +463,9 @@ func (grpc *routeSandwichServer) FetchGuild(ctx context.Context, request *pb.Fet
 
 		request.Query = norm.NFKD.String(request.Query)
 
-		grpc.sg.State.Guilds.Range(func(key discord.Snowflake, guild *discord.Guild) bool {
+		grpc.sg.State.Guilds.Range(func(key discord.Snowflake, guild discord.Guild) bool {
 			if requestMatch(request.Query, guild.Name, guild.ID.String()) {
-				grpcGuild, err := pb.GuildToGRPC(guild)
+				grpcGuild, err := pb.GuildToGRPC(&guild)
 				if err == nil {
 					response.Guilds[int64(guild.ID)] = grpcGuild
 				} else {
@@ -506,7 +506,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 		for _, roleID := range request.RoleIDs {
 			guildRole, cacheHit := grpc.sg.State.GetGuildRole(discord.Snowflake(request.GuildID), discord.Snowflake(roleID))
 			if cacheHit {
-				grpcRole, err := pb.RoleToGRPC(guildRole)
+				grpcRole, err := pb.RoleToGRPC(&guildRole)
 				if err == nil {
 					response.GuildRoles[int64(guildRole.ID)] = grpcRole
 				} else {
@@ -528,7 +528,7 @@ func (grpc *routeSandwichServer) FetchGuildRoles(ctx context.Context, request *p
 
 		for _, guildRole := range guildRoles {
 			if !hasQuery || requestMatch(request.Query, guildRole.Name, guildRole.ID.String()) {
-				grpcRole, err := pb.RoleToGRPC(guildRole)
+				grpcRole, err := pb.RoleToGRPC(&guildRole)
 				if err == nil {
 					response.GuildRoles[int64(guildRole.ID)] = grpcRole
 				} else {
@@ -569,7 +569,7 @@ func (grpc *routeSandwichServer) FetchMutualGuilds(ctx context.Context, request 
 		if request.Expand {
 			guild, cacheHit := grpc.sg.State.GetGuild(guildID)
 			if cacheHit {
-				grpcGuild, err := pb.GuildToGRPC(guild)
+				grpcGuild, err := pb.GuildToGRPC(&guild)
 				if err == nil {
 					response.Guilds[int64(guildID)] = grpcGuild
 				} else {
@@ -697,7 +697,7 @@ func (grpc *routeSandwichServer) WhereIsGuild(ctx context.Context, request *pb.W
 
 					guildMember_sandwich, ok := shard.Sandwich.State.GetGuildMember(discord.Snowflake(request.GuildID), shard.Manager.User.ID)
 					if ok {
-						guildMember, err = pb.GuildMemberToGRPC(guildMember_sandwich)
+						guildMember, err = pb.GuildMemberToGRPC(&guildMember_sandwich)
 						if err != nil {
 							grpc.sg.Logger.Error().Err(err).Int("guild_id", int(request.GuildID)).Int64("user_id", int64(shard.Manager.User.ID)).Msg("Failed to convert guild member to GRPC")
 						}

@@ -2,7 +2,7 @@ package discord
 
 const AuditLogReasonHeader = "X-Audit-Log-Reason"
 
-type AuditLogActionType uint8
+type AuditLogActionType uint16
 
 const (
 	AuditLogActionGuildUpdate AuditLogActionType = 1
@@ -155,7 +155,7 @@ type AuditLogEntry struct {
 	UserID     *Snowflake         `json:"user_id,omitempty"`
 	Options    *AuditLogOptions   `json:"options,omitempty"`
 	Reason     string             `json:"reason,omitempty"`
-	Changes    []*AuditLogChanges `json:"changes,omitempty"`
+	Changes    []AuditLogChanges  `json:"changes,omitempty"`
 	ID         Snowflake          `json:"id"`
 	ActionType AuditLogActionType `json:"action_type"`
 }
@@ -172,7 +172,7 @@ type AuditLogOptions struct {
 	MessageID        *Snowflake           `json:"message_id,omitempty"`
 	Type             *ChannelOverrideType `json:"type,omitempty"`
 	RoleName         string               `json:"role_name,omitempty"`
-	Count            int32                `json:"count,omitempty"`
+	Count            Int64                `json:"count,omitempty"`
 	DeleteMemberDays int32                `json:"delete_member_days,omitempty"`
 	MembersRemoved   int32                `json:"members_removed,omitempty"`
 }

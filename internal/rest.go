@@ -357,8 +357,8 @@ func (sg *Sandwich) LogoutEndpoint(ctx *fasthttp.RequestCtx) {
 
 // /api/status: Returns managers, shardgroups and shard status.
 func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
-	managers := make([]*sandwich_structs.StatusEndpointManager, 0, sg.Managers.Count())
-	unsortedManagers := make(map[string]*sandwich_structs.StatusEndpointManager)
+	managers := make([]sandwich_structs.StatusEndpointManager, 0, sg.Managers.Count())
+	unsortedManagers := make(map[string]sandwich_structs.StatusEndpointManager)
 
 	manager := gotils_strconv.B2S(ctx.QueryArgs().Peek("manager"))
 
@@ -370,7 +370,7 @@ func (sg *Sandwich) StatusEndpoint(ctx *fasthttp.RequestCtx) {
 				keyName := manager.Configuration.FriendlyName + ":" + manager.Configuration.Identifier
 				manager.configurationMu.RUnlock()
 
-				unsortedManagers[keyName] = &sandwich_structs.StatusEndpointManager{
+				unsortedManagers[keyName] = sandwich_structs.StatusEndpointManager{
 					DisplayName: friendlyName,
 					ShardGroups: getManagerShardGroupStatus(manager),
 				}
@@ -561,10 +561,9 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
-			userData := *user
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
-				Data: userData,
+				Data: user,
 			})
 		} else {
 			// Read request body as a user
@@ -581,7 +580,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				return
 			}
 
-			sg.State.Users.Store(user.ID, *sg.State.UserToState(&user))
+			sg.State.Users.Store(user.ID, sg.State.UserToState(user))
 		}
 	case "guild_channels":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
@@ -629,7 +628,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			sg.Logger.Info().Any("channel", ch).Any("guildId", idInt64).Msg("Setting guild channels")
 
 			snowflake := discord.Snowflake(idInt64)
-			sg.State.SetGuildChannel(NewFakeCtx(mg), &snowflake, &ch)
+			sg.State.SetGuildChannel(NewFakeCtx(mg), &snowflake, ch)
 		}
 	case "channels":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
@@ -698,7 +697,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			sg.Logger.Info().Any("channel", ch).Msg("Setting channel")
 
-			sg.State.SetChannelDynamic(NewFakeCtx(mg), &ch)
+			sg.State.SetChannelDynamic(NewFakeCtx(mg), ch)
 		}
 	case "members":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
@@ -749,7 +748,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
-				Data: *member,
+				Data: member,
 			})
 		} else {
 			// Read request body as a member
@@ -771,7 +770,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			sg.State.SetGuildMember(
 				NewFakeCtx(mg),
 				discord.Snowflake(guildIdInt64),
-				&member,
+				member,
 			)
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
@@ -805,7 +804,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
-				Data: *guild,
+				Data: guild,
 			})
 		} else {
 			// Read request body as a guild
@@ -834,7 +833,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			fakeCtx := NewFakeCtx(mg)
 			fakeCtx.Shard = sh // Required for proper SetGuild
-			sg.State.SetGuild(fakeCtx, &guild)
+			sg.State.SetGuild(fakeCtx, guild)
 
 			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 				Ok:   true,
@@ -889,7 +888,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_structs.StatusEndpointShardGroup) {
+func getManagerShardGroupStatus(manager *Manager) (shardGroups []sandwich_structs.StatusEndpointShardGroup) {
 	sortedShardGroupIDs := make([]int, 0)
 
 	manager.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
@@ -913,7 +912,7 @@ func getManagerShardGroupStatus(manager *Manager) (shardGroups []*sandwich_struc
 			continue
 		}
 
-		statusShardGroup := &sandwich_structs.StatusEndpointShardGroup{
+		statusShardGroup := sandwich_structs.StatusEndpointShardGroup{
 			ShardGroupID: shardGroup.ID,
 			Shards:       make([][6]int, 0, shardGroup.Shards.Count()),
 			Status:       shardGroup.Status,
@@ -1001,7 +1000,7 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 
 	sg.configurationMu.Lock()
 	sandwichConfiguration.Managers = sg.Configuration.Managers
-	sg.Configuration = &sandwichConfiguration
+	sg.Configuration = sandwichConfiguration
 	sg.configurationMu.Unlock()
 
 	err = sg.SaveConfiguration(&sandwichConfiguration, sg.ConfigurationLocation)
@@ -1122,13 +1121,13 @@ func (sg *Sandwich) ManagerCreateEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.Managers.Store(createManagerArguments.Identifier, manager)
 
 	sg.configurationMu.Lock()
-	sg.Configuration.Managers = append(sg.Configuration.Managers, &defaultConfiguration)
+	sg.Configuration.Managers = append(sg.Configuration.Managers, defaultConfiguration)
 	sg.configurationMu.Unlock()
 
 	sg.configurationMu.RLock()
 	defer sg.configurationMu.RUnlock()
 
-	err = sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
+	err = sg.SaveConfiguration(&sg.Configuration, sg.ConfigurationLocation)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -1236,7 +1235,7 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.configurationMu.Lock()
 	defer sg.configurationMu.Unlock()
 
-	managers := make([]*ManagerConfiguration, 0)
+	managers := make([]ManagerConfiguration, 0)
 
 	for _, manager := range sg.Configuration.Managers {
 		if manager.Identifier != managerConfiguration.Identifier {
@@ -1244,11 +1243,11 @@ func (sg *Sandwich) ManagerUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	managers = append(managers, &managerConfiguration)
+	managers = append(managers, managerConfiguration)
 
 	sg.Configuration.Managers = managers
 
-	err = sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
+	err = sg.SaveConfiguration(&sg.Configuration, sg.ConfigurationLocation)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
@@ -1333,7 +1332,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 	sg.configurationMu.Lock()
 	defer sg.configurationMu.Unlock()
 
-	managers := make([]*ManagerConfiguration, 0)
+	managers := make([]ManagerConfiguration, 0)
 
 	for _, manager := range sg.Configuration.Managers {
 		if manager.Identifier != managerName {
@@ -1343,7 +1342,7 @@ func (sg *Sandwich) ManagerDeleteEndpoint(ctx *fasthttp.RequestCtx) {
 
 	sg.Configuration.Managers = managers
 
-	err := sg.SaveConfiguration(sg.Configuration, sg.ConfigurationLocation)
+	err := sg.SaveConfiguration(&sg.Configuration, sg.ConfigurationLocation)
 	if err != nil {
 		writeResponse(ctx, fasthttp.StatusInternalServerError, sandwich_structs.BaseRestResponse{
 			Ok:    false,
