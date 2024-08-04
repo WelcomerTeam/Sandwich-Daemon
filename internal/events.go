@@ -14,17 +14,24 @@ import (
 	"github.com/savsgio/gotils/strings"
 )
 
-// EventDispatchData represents the data returned by an event handler after processing state etc.
-type EventDispatchData struct {
-	Extra map[string]json.RawMessage
-	Data  json.RawMessage
+// Used as a key for virtual shard dispatches etc., must be set for all events
+type EventDispatchIdentifier struct {
+	GuildID        *discord.Snowflake
+	GloballyRouted bool // Whether or not the event should be globally routed
+}
+
+// EventDispatch represents the data returned by an event handler after processing state etc.
+type EventDispatch struct {
+	Extra                   map[string]json.RawMessage
+	Data                    json.RawMessage
+	EventDispatchIdentifier *EventDispatchIdentifier
 }
 
 // List of handlers for gateway events.
 var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error)
 
 // List of handlers for dispatch events.
-var dispatchHandlers = make(map[string]func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error))
+var dispatchHandlers = make(map[string]func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error))
 
 func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
 	err := GatewayDispatch(ctx, sh, msg, trace)
@@ -111,6 +118,13 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 		return err
 	}
 
+	if result.EventDispatchIdentifier == nil {
+		sh.Logger.Error().Str("type", msg.Type).Str("data", gotils_strconv.B2S(msg.Data)).Msg("EventDispatchIdentifier is nil")
+		result.EventDispatchIdentifier = &EventDispatchIdentifier{
+			GloballyRouted: true, // Ensure they are globally routed for now
+		}
+	}
+
 	sh.ShardGroup.floodgateMu.RLock()
 	floodgate := sh.ShardGroup.floodgate
 	sh.ShardGroup.floodgateMu.RUnlock()
@@ -145,7 +159,7 @@ func registerGatewayEvent(op discord.GatewayOp, handler func(ctx context.Context
 	gatewayHandlers[op] = handler
 }
 
-func registerDispatch(eventType string, handler func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error)) {
+func registerDispatch(eventType string, handler func(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error)) {
 	dispatchHandlers[eventType] = handler
 }
 
@@ -165,7 +179,7 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx StateCtx,
 	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace,
-) (result EventDispatchData, ok bool, err error) {
+) (result EventDispatch, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
 		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
 

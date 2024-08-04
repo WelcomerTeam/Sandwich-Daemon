@@ -13,7 +13,7 @@ import (
 // OnReady handles the READY event.
 // It will go and mark guilds as unavailable and go through
 // any GUILD_CREATE events for the next few seconds.
-func OnReady(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnReady(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var readyPayload discord.Ready
@@ -90,10 +90,12 @@ ready:
 		ctx.Shard.ChunkAllGuilds()
 	}
 
+	result.EventDispatchIdentifier = &EventDispatchIdentifier{}
+
 	return result, false, nil
 }
 
-func OnResumed(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnResumed(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	select {
@@ -105,12 +107,13 @@ func OnResumed(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.
 
 	ctx.SetStatus(sandwich_structs.ShardStatusReady)
 
-	return EventDispatchData{
-		Data: msg.Data,
+	return EventDispatch{
+		Data:                    msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{},
 	}, true, nil
 }
 
-func OnGuildCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildCreatePayload discord.GuildCreate
 
 	err = ctx.decodeContent(msg, &guildCreatePayload)
@@ -136,13 +139,16 @@ func OnGuildCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildCreatePayload.ID,
+		},
 	}, true, nil
 }
 
-func OnGuildMembersChunk(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildMembersChunk(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var guildMembersChunkPayload discord.GuildMembersChunk
@@ -172,8 +178,11 @@ func OnGuildMembersChunk(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 
 	if !ok {
 		// We don't need to care further
-		return EventDispatchData{
+		return EventDispatch{
 			Data: msg.Data,
+			EventDispatchIdentifier: &EventDispatchIdentifier{
+				GuildID: &guildMembersChunkPayload.GuildID,
+			},
 		}, true, nil
 	}
 
@@ -203,12 +212,15 @@ func OnGuildMembersChunk(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 		}
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildMembersChunkPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnChannelCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnChannelCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var channelCreatePayload discord.ChannelCreate
 
 	err = ctx.decodeContent(msg, &channelCreatePayload)
@@ -220,12 +232,15 @@ func OnChannelCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	ctx.Sandwich.State.SetGuildChannel(ctx, channelCreatePayload.GuildID, discord.Channel(channelCreatePayload))
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: channelCreatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnChannelUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnChannelUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var channelUpdatePayload discord.ChannelUpdate
 
 	err = ctx.decodeContent(msg, &channelUpdatePayload)
@@ -245,13 +260,16 @@ func OnChannelUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: channelUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnChannelDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnChannelDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var channelDeletePayload discord.ChannelDelete
 
 	err = ctx.decodeContent(msg, &channelDeletePayload)
@@ -271,13 +289,16 @@ func OnChannelDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: channelDeletePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnChannelPinsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnChannelPinsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var channelPinsUpdatePayload discord.ChannelPinsUpdate
 
 	err = ctx.decodeContent(msg, &channelPinsUpdatePayload)
@@ -287,12 +308,15 @@ func OnChannelPinsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, channelPinsUpdatePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &channelPinsUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnThreadUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnThreadUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var threadUpdatePayload discord.ThreadUpdate
@@ -311,13 +335,16 @@ func OnThreadUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_str
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: threadUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildAuditLogEntryCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildAuditLogEntryCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var threadMembersUpdatePayload discord.GuildAuditLogEntryCreate
@@ -327,12 +354,15 @@ func OnGuildAuditLogEntryCreate(ctx StateCtx, msg discord.GatewayPayload, trace 
 		return result, false, err
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &threadMembersUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildUpdatePayload discord.GuildUpdate
 
 	err = ctx.decodeContent(msg, &guildUpdatePayload)
@@ -383,20 +413,26 @@ func OnGuildUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildUpdatePayload.ID,
+		},
 	}, true, nil
 }
 
-func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildDeletePayload discord.GuildDelete
 
 	err = ctx.decodeContent(msg, &guildDeletePayload)
 	if err != nil {
 		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_DELETE payload")
-		return EventDispatchData{
+		return EventDispatch{
 			Data: msg.Data,
+			EventDispatchIdentifier: &EventDispatchIdentifier{
+				GuildID: &guildDeletePayload.ID,
+			},
 		}, true, nil
 	}
 
@@ -419,18 +455,24 @@ func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 
 	// We still need to dispatch the event to the producers
 	if err != nil {
-		return EventDispatchData{
+		return EventDispatch{
 			Data: msg.Data,
+			EventDispatchIdentifier: &EventDispatchIdentifier{
+				GuildID: &guildDeletePayload.ID,
+			},
 		}, true, nil
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildDeletePayload.ID,
+		},
 	}, true, nil
 }
 
-func OnGuildBanAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildBanAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildBanAddPayload discord.GuildBanAdd
 
 	err = ctx.decodeContent(msg, &guildBanAddPayload)
@@ -440,12 +482,15 @@ func OnGuildBanAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, *guildBanAddPayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: guildBanAddPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildBanRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildBanRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildBanRemovePayload discord.GuildBanRemove
 
 	err = ctx.decodeContent(msg, &guildBanRemovePayload)
@@ -455,12 +500,15 @@ func OnGuildBanRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, *guildBanRemovePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: guildBanRemovePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildEmojisUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildEmojisUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildEmojisUpdatePayload discord.GuildEmojisUpdate
 
 	err = ctx.decodeContent(msg, &guildEmojisUpdatePayload)
@@ -485,13 +533,16 @@ func OnGuildEmojisUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildEmojisUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildStickersUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildStickersUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildStickersUpdatePayload discord.GuildStickersUpdate
 
 	err = ctx.decodeContent(msg, &guildStickersUpdatePayload)
@@ -521,13 +572,16 @@ func OnGuildStickersUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandw
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildStickersUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildIntegrationsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildIntegrationsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildIntegrationsUpdatePayload discord.GuildIntegrationsUpdate
 
 	err = ctx.decodeContent(msg, &guildIntegrationsUpdatePayload)
@@ -537,12 +591,15 @@ func OnGuildIntegrationsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace s
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildIntegrationsUpdatePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildIntegrationsUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildMemberAddPayload discord.GuildMemberAdd
 
 	err = ctx.decodeContent(msg, &guildMemberAddPayload)
@@ -573,12 +630,15 @@ func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 		ctx.Sandwich.State.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, *guildMemberAddPayload.GuildID)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: guildMemberAddPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildMemberRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildMemberRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildMemberRemovePayload discord.GuildMemberRemove
 
 	err = ctx.decodeContent(msg, &guildMemberRemovePayload)
@@ -614,13 +674,16 @@ func OnGuildMemberRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildMemberRemovePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildMemberUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildMemberUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildMemberUpdatePayload discord.GuildMemberUpdate
 
 	err = ctx.decodeContent(msg, &guildMemberUpdatePayload)
@@ -642,13 +705,16 @@ func OnGuildMemberUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: guildMemberUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildRoleCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildRoleCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildRoleCreatePayload discord.GuildRoleCreate
 
 	err = ctx.decodeContent(msg, &guildRoleCreatePayload)
@@ -660,12 +726,15 @@ func OnGuildRoleCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 
 	ctx.Sandwich.State.SetGuildRole(*guildRoleCreatePayload.GuildID, discord.Role(guildRoleCreatePayload))
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: guildRoleCreatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildRoleUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildRoleUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildRoleUpdatePayload discord.GuildRoleUpdate
 
 	err = ctx.decodeContent(msg, &guildRoleUpdatePayload)
@@ -687,13 +756,16 @@ func OnGuildRoleUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: guildRoleUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnGuildRoleDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnGuildRoleDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var guildRoleDeletePayload discord.GuildRoleDelete
 
 	err = ctx.decodeContent(msg, &guildRoleDeletePayload)
@@ -705,12 +777,15 @@ func OnGuildRoleDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 
 	ctx.Sandwich.State.RemoveGuildRole(guildRoleDeletePayload.GuildID, guildRoleDeletePayload.RoleID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &guildRoleDeletePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnInviteCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnInviteCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var inviteCreatePayload discord.InviteCreate
 
 	err = ctx.decodeContent(msg, &inviteCreatePayload)
@@ -722,12 +797,15 @@ func OnInviteCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_str
 		defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteCreatePayload.GuildID)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: inviteCreatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnInviteDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnInviteDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var inviteDeletePayload discord.InviteDelete
 
 	err = ctx.decodeContent(msg, &inviteDeletePayload)
@@ -739,12 +817,15 @@ func OnInviteDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_str
 		defer ctx.SafeOnGuildDispatchEvent(msg.Type, inviteDeletePayload.GuildID)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: inviteDeletePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageCreatePayload discord.MessageCreate
 
 	err = ctx.decodeContent(msg, &messageCreatePayload)
@@ -754,12 +835,15 @@ func OnMessageCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageCreatePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: messageCreatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageUpdatePayload discord.MessageUpdate
 
 	err = ctx.decodeContent(msg, &messageUpdatePayload)
@@ -769,12 +853,15 @@ func OnMessageUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageUpdatePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: messageUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageDeletePayload discord.MessageDelete
 
 	err = ctx.decodeContent(msg, &messageDeletePayload)
@@ -784,12 +871,15 @@ func OnMessageDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageDeletePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: messageDeletePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageDeleteBulk(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageDeleteBulk(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageDeleteBulkPayload discord.MessageDeleteBulk
 
 	err = ctx.decodeContent(msg, &messageDeleteBulkPayload)
@@ -799,12 +889,15 @@ func OnMessageDeleteBulk(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageDeleteBulkPayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: messageDeleteBulkPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageReactionAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageReactionAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageReactionAddPayload discord.MessageReactionAdd
 
 	err = ctx.decodeContent(msg, &messageReactionAddPayload)
@@ -814,12 +907,15 @@ func OnMessageReactionAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwi
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, messageReactionAddPayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &messageReactionAddPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageReactionRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageReactionRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageReactionRemovePayload discord.MessageReactionRemove
 
 	err = ctx.decodeContent(msg, &messageReactionRemovePayload)
@@ -829,12 +925,15 @@ func OnMessageReactionRemove(ctx StateCtx, msg discord.GatewayPayload, trace san
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageReactionRemovePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: messageReactionRemovePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageReactionRemoveAll(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageReactionRemoveAll(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageReactionRemoveAllPayload discord.MessageReactionRemoveAll
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveAllPayload)
@@ -844,12 +943,15 @@ func OnMessageReactionRemoveAll(ctx StateCtx, msg discord.GatewayPayload, trace 
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, messageReactionRemoveAllPayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &messageReactionRemoveAllPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnMessageReactionRemoveEmoji(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnMessageReactionRemoveEmoji(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var messageReactionRemoveEmojiPayload discord.MessageReactionRemoveEmoji
 
 	err = ctx.decodeContent(msg, &messageReactionRemoveEmojiPayload)
@@ -859,12 +961,15 @@ func OnMessageReactionRemoveEmoji(ctx StateCtx, msg discord.GatewayPayload, trac
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageReactionRemoveEmojiPayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: messageReactionRemoveEmojiPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnPresenceUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnPresenceUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var presenceUpdatePayload discord.PresenceUpdate
 
 	err = ctx.decodeContent(msg, &presenceUpdatePayload)
@@ -874,12 +979,15 @@ func OnPresenceUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, presenceUpdatePayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: &presenceUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnTypingStart(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnTypingStart(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var typingStartPayload discord.TypingStart
 
 	err = ctx.decodeContent(msg, &typingStartPayload)
@@ -889,12 +997,15 @@ func OnTypingStart(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, typingStartPayload.GuildID)
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: typingStartPayload.GuildID,
+		},
 	}, true, nil
 }
 
-func OnUserUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnUserUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var userUpdatePayload discord.UserUpdate
@@ -913,13 +1024,16 @@ func OnUserUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_struc
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GloballyRouted: true, // No Guild ID is available for routing *user* (not member) updates, send to all shards
+		},
 	}, true, nil
 }
 
-func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	var voiceStateUpdatePayload discord.VoiceStateUpdate
 
 	err = ctx.decodeContent(msg, &voiceStateUpdatePayload)
@@ -942,17 +1056,33 @@ func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich
 		return result, ok, fmt.Errorf("failed to marshal extras: %w", err)
 	}
 
-	return EventDispatchData{
+	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: voiceStateUpdatePayload.GuildID,
+		},
 	}, true, nil
 }
 
-func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatchData, ok bool, err error) {
+func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	return EventDispatchData{
+	var guildId *struct {
+		GuildID *discord.Snowflake `json:"guild_id"`
+	}
+
+	err = ctx.decodeContent(msg, &guildId)
+
+	if err != nil {
+		return result, false, err
+	}
+
+	return EventDispatch{
 		Data: msg.Data,
+		EventDispatchIdentifier: &EventDispatchIdentifier{
+			GuildID: guildId.GuildID,
+		},
 	}, true, nil
 }
 
