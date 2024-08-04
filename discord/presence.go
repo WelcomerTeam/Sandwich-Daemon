@@ -42,14 +42,14 @@ type Activity struct {
 	Assets        *Assets       `json:"assets,omitempty"`
 	Secrets       *Secrets      `json:"secrets,omitempty"`
 	Flags         *ActivityFlag `json:"flags,omitempty"`
-	Name          string        `json:"name"`
 	URL           *string       `json:"url,omitempty"`
 	Details       *string       `json:"details,omitempty"`
-	State         string        `json:"state"`
-	Type          ActivityType  `json:"type"`
 	Instance      *bool         `json:"instance,omitempty"`
 	CreatedAt     *int64        `json:"created_at,omitempty"`
 	Emoji         *Emoji        `json:"emoji,omitempty"`
+	Name          string        `json:"name"`
+	State         string        `json:"state"`
+	Type          ActivityType  `json:"type"`
 }
 
 // Timestamps represents the starting and ending timestamp of an activity.

@@ -54,19 +54,18 @@ const (
 
 // Shard represents the shard object.
 type Shard struct {
-	ctx    context.Context
-	cancel func()
+	Logger zerolog.Logger `json:"-"`
 
 	RoutineDeadSignal   deadlock.DeadSignal `json:"-"`
 	HeartbeatDeadSignal deadlock.DeadSignal `json:"-"`
+
+	ctx    context.Context
+	cancel func()
 
 	Start            *atomic.Time  `json:"start"`
 	Init             *atomic.Time  `json:"init"`
 	RetriesRemaining *atomic.Int32 `json:"-"`
 
-	Logger zerolog.Logger `json:"-"`
-
-	ShardID          int32          `json:"shard_id"`
 	ResumeGatewayURL *atomic.String `json:"resume_gateway_url"`
 	ConnectionURL    *atomic.String `json:"connection_url"`
 
@@ -78,11 +77,7 @@ type Shard struct {
 	LastHeartbeatAck  *atomic.Time `json:"-"`
 	LastHeartbeatSent *atomic.Time `json:"-"`
 
-	Heartbeater       *time.Ticker  `json:"-"`
-	HeartbeatInterval time.Duration `json:"-"`
-
-	// Duration since last heartbeat Ack before reconnecting.
-	HeartbeatFailureInterval time.Duration `json:"-"`
+	Heartbeater *time.Ticker `json:"-"`
 
 	// Map of guilds that are currently unavailable.
 	Unavailable *csmap.CsMap[discord.Snowflake, struct{}] `json:"unavailable"`
@@ -93,26 +88,34 @@ type Shard struct {
 	// Stores a local list of all guilds in the shard.
 	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
 
-	statusMu sync.RWMutex
-	Status   sandwich_structs.ShardStatus `json:"status"`
-
 	MessageCh chan discord.GatewayPayload `json:"-"`
 	ErrorCh   chan error                  `json:"-"`
 
 	Sequence  *atomic.Int32  `json:"-"`
 	SessionID *atomic.String `json:"-"`
 
-	wsConnMu sync.RWMutex
-	wsConn   *websocket.Conn
+	wsConn *websocket.Conn
 
 	wsRatelimit *limiter.DurationLimiter
 
 	ready chan void
 
-	IsReady bool
+	metadata          *sandwich_structs.SandwichMetadata `json:"-"`
+	HeartbeatInterval time.Duration                      `json:"-"`
+
+	// Duration since last heartbeat Ack before reconnecting.
+	HeartbeatFailureInterval time.Duration `json:"-"`
+
+	statusMu sync.RWMutex
+
+	wsConnMu sync.RWMutex
 
 	metadataMu sync.RWMutex
-	metadata   *sandwich_structs.SandwichMetadata `json:"-"`
+
+	ShardID int32                        `json:"shard_id"`
+	Status  sandwich_structs.ShardStatus `json:"status"`
+
+	IsReady bool
 }
 
 // NewShard creates a new shard object.

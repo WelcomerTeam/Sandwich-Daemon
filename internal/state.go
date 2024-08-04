@@ -9,13 +9,12 @@ import (
 )
 
 type StateCtx struct {
+	context context.Context
+	*Shard
 	CacheUsers   bool
 	CacheMembers bool
 	Stateless    bool
 	StoreMutuals bool
-
-	context context.Context
-	*Shard
 }
 
 func NewFakeCtx(mg *Manager) StateCtx {
@@ -912,7 +911,6 @@ type StateGuildVoiceStates struct {
 }
 
 type StateUser struct {
-	discord.User
-
 	LastUpdated time.Time `json:"__sandwich_last_updated,omitempty"`
+	discord.User
 }

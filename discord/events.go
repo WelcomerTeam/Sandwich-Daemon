@@ -12,13 +12,13 @@ type Hello struct {
 
 // Ready represents when the client has completed the initial handshake.
 type Ready struct {
-	Application      Application          `json:"application"`
-	User             User                 `json:"user"`
 	SessionID        string               `json:"session_id"`
+	ResumeGatewayUrl string               `json:"resume_gateway_url"`
 	Guilds           UnavailableGuildList `json:"guilds"`
 	Shard            []int32              `json:"shard,omitempty"`
+	Application      Application          `json:"application"`
+	User             User                 `json:"user"`
 	Version          int32                `json:"v"`
-	ResumeGatewayUrl string               `json:"resume_gateway_url"`
 }
 
 // Resumed represents the response to a resume event.
@@ -88,8 +88,8 @@ type ThreadMembersUpdate struct {
 
 // GuildAuditLogEntryCreate represents when a guild audit log entry is created.
 type GuildAuditLogEntryCreate struct {
-	GuildID Snowflake `json:"guild_id"`
 	AuditLogEntry
+	GuildID Snowflake `json:"guild_id"`
 }
 
 // GuildCreate represents a guild create event.
@@ -204,26 +204,26 @@ type MessageDeleteBulk struct {
 // MessageReactionAdd represents a message reaction add event.
 type MessageReactionAdd struct {
 	Member          *GuildMember `json:"member,omitempty"`
+	MessageAuthorID *Snowflake   `json:"message_author_id,omitempty"`
+	BurstColors     StringList   `json:"burst_colors,omitempty"`
 	Emoji           Emoji        `json:"emoji"`
 	UserID          Snowflake    `json:"user_id"`
 	ChannelID       Snowflake    `json:"channel_id"`
 	MessageID       Snowflake    `json:"message_id"`
 	GuildID         Snowflake    `json:"guild_id,omitempty"`
-	MessageAuthorID *Snowflake   `json:"message_author_id,omitempty"`
-	Burst           bool         `json:"burst"`
-	BurstColors     StringList   `json:"burst_colors,omitempty"`
 	Type            ReactionType `json:"type"`
+	Burst           bool         `json:"burst"`
 }
 
 // MessageReactionRemove represents a message reaction remove event.
 type MessageReactionRemove struct {
+	GuildID   *Snowflake   `json:"guild_id,omitempty"`
 	Emoji     Emoji        `json:"emoji"`
-	Burst     bool         `json:"burst"`
 	Type      ReactionType `json:"type"`
 	UserID    Snowflake    `json:"user_id"`
 	ChannelID Snowflake    `json:"channel_id"`
 	MessageID Snowflake    `json:"message_id"`
-	GuildID   *Snowflake   `json:"guild_id,omitempty"`
+	Burst     bool         `json:"burst"`
 }
 
 // MessageReactionRemoveAll represents a message reaction remove all event.
@@ -243,10 +243,10 @@ type MessageReactionRemoveEmoji struct {
 
 // PresenceUpdate represents a presence update event.
 type PresenceUpdate struct {
-	User         User           `json:"user"`
 	ClientStatus ClientStatus   `json:"client_status"`
 	Status       PresenceStatus `json:"status"`
 	Activities   ActivityList   `json:"activities"`
+	User         User           `json:"user"`
 	GuildID      Snowflake      `json:"guild_id"`
 }
 

@@ -61,21 +61,21 @@ type InviteStageInstance struct {
 
 // ScheduledEvent represents an scheduled event.
 type ScheduledEvent struct {
-	Status             EventStatus              `json:"status"`
-	EntityType         ScheduledEntityType      `json:"entity_type"`
 	ChannelID          *Snowflake               `json:"channel_id,omitempty"`
 	CreatorID          *Snowflake               `json:"creator_id,omitempty"`
 	Creator            *User                    `json:"creator,omitempty"`
 	EntityMetadata     *EventMetadata           `json:"entity_metadata,omitempty"`
 	EntityID           *Snowflake               `json:"entity_id,omitempty"`
-	PrivacyLevel       StageChannelPrivacyLevel `json:"privacy_level"`
-	ScheduledStartTime Timestamp                `json:"scheduled_start_time"`
 	ScheduledEndTime   *Timestamp               `json:"scheduled_end_time"`
+	ScheduledStartTime Timestamp                `json:"scheduled_start_time"`
 	Description        string                   `json:"description,omitempty"`
 	Name               string                   `json:"name"`
 	ID                 Snowflake                `json:"id"`
 	GuildID            Snowflake                `json:"guild_id"`
 	UserCount          int32                    `json:"user_count,omitempty"`
+	Status             EventStatus              `json:"status"`
+	EntityType         ScheduledEntityType      `json:"entity_type"`
+	PrivacyLevel       StageChannelPrivacyLevel `json:"privacy_level"`
 }
 
 // EventMetadata contains extra information about a scheduled event.
@@ -85,8 +85,8 @@ type EventMetadata struct {
 
 // ScheduledEventUser represents a user subscribed to an event.
 type ScheduledEventUser struct {
-	User    User         `json:"user"`
 	Member  *GuildMember `json:"member,omitempty"`
+	User    User         `json:"user"`
 	EventID Snowflake    `json:"guild_scheduled_event_id"`
 }
 

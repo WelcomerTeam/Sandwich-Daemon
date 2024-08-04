@@ -6,39 +6,40 @@ import "github.com/WelcomerTeam/Sandwich-Daemon/discord"
 type BaseResponse struct {
 	Version string `json:"version"`
 
-	Ok    bool   `json:"ok"`
 	Error string `json:"error"`
+
+	Ok bool `json:"ok"`
 }
 
 // Requests.
 
 type FetchGuildRequest struct {
-	GuildIDs []int64
 	Query    string
+	GuildIDs []int64
 }
 
 type FetchGuildRolesRequest struct {
-	GuildID int64
-	RoleIDs []int64
 	Query   string
+	RoleIDs []int64
+	GuildID int64
 }
 
 type FetchGuildChannelsRequest struct {
-	GuildID    int64
-	ChannelIDs []int64
 	Query      string
+	ChannelIDs []int64
+	GuildID    int64
 }
 
 type FetchGuildEmojisRequest struct {
-	GuildID  int64
-	EmojiIDs []int64
 	Query    string
+	EmojiIDs []int64
+	GuildID  int64
 }
 
 type FetchGuildMembersRequest struct {
-	GuildID int64
-	UserIDs []int64
 	Query   string
+	UserIDs []int64
+	GuildID int64
 }
 
 type FetchMutualGuildsRequest struct {
@@ -56,11 +57,11 @@ type FetchConsumerConfigurationRequest struct {
 
 type SendWebsocketMessageRequest struct {
 	Manager    string
+	Data       []byte
 	ShardGroup int
 	Shard      int
 
 	GatewayOPCode int64
-	Data          []byte
 }
 
 type RequestGuildChunkRequest struct {
@@ -70,23 +71,23 @@ type RequestGuildChunkRequest struct {
 // Responses.
 
 type GuildRolesResponse struct {
-	BaseResponse
 	GuildRoles map[int64]*discord.Role
+	BaseResponse
 }
 
 type ChannelsResponse struct {
-	BaseResponse
 	GuildChannels map[int64]*discord.Channel
+	BaseResponse
 }
 
 type EmojisResponse struct {
-	BaseResponse
 	GuildEmojis map[int64]*discord.Emoji
+	BaseResponse
 }
 
 type GuildMembersResponse struct {
-	BaseResponse
 	GuildMembers map[int64]*discord.GuildMember
+	BaseResponse
 }
 
 type GuildsResponse struct {
@@ -96,8 +97,8 @@ type GuildsResponse struct {
 }
 
 type GuildResponse struct {
-	BaseResponse
 	Guild *discord.Guild
+	BaseResponse
 }
 
 type WhereIsGuildResponse struct {
@@ -106,10 +107,10 @@ type WhereIsGuildResponse struct {
 }
 
 type WhereIsGuildLocation struct {
+	GuildMember *discord.GuildMember
 	Manager     string
 	ShardGroup  int
 	ShardID     int
-	GuildMember *discord.GuildMember
 }
 
 type FetchConsumerConfigurationResponse struct {

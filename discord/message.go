@@ -67,9 +67,6 @@ const (
 
 // Message represents a message on discord.
 type Message struct {
-	Timestamp         Timestamp               `json:"timestamp"`
-	EditedTimestamp   Timestamp               `json:"edited_timestamp"`
-	Author            User                    `json:"author"`
 	WebhookID         *Snowflake              `json:"webhook_id,omitempty"`
 	Member            *GuildMember            `json:"member,omitempty"`
 	GuildID           *Snowflake              `json:"guild_id,omitempty"`
@@ -79,6 +76,8 @@ type Message struct {
 	Flags             *MessageFlags           `json:"flags,omitempty"`
 	Application       *Application            `json:"application,omitempty"`
 	Activity          *MessageActivity        `json:"activity,omitempty"`
+	Timestamp         Timestamp               `json:"timestamp"`
+	EditedTimestamp   Timestamp               `json:"edited_timestamp"`
 	Content           string                  `json:"content"`
 	Embeds            []Embed                 `json:"embeds"`
 	MentionRoles      []Snowflake             `json:"mention_roles"`
@@ -89,20 +88,21 @@ type Message struct {
 	MentionChannels   []MessageChannelMention `json:"mention_channels,omitempty"`
 	Mentions          []User                  `json:"mentions"`
 	MessageReference  []MessageReference      `json:"message_referenced,omitempty"`
+	Author            User                    `json:"author"`
 	ID                Snowflake               `json:"id"`
 	ChannelID         Snowflake               `json:"channel_id"`
+	Type              MessageType             `json:"type"`
 	MentionEveryone   bool                    `json:"mention_everyone"`
 	TTS               bool                    `json:"tts"`
-	Type              MessageType             `json:"type"`
 	Pinned            bool                    `json:"pinned"`
 }
 
 // MessageInteraction represents an executed interaction.
 type MessageInteraction struct {
-	User User            `json:"user"`
-	Type InteractionType `json:"type"`
 	Name string          `json:"name"`
+	User User            `json:"user"`
 	ID   Snowflake       `json:"id"`
+	Type InteractionType `json:"type"`
 }
 
 // MessageChannelMention represents a mentioned channel.
@@ -123,8 +123,8 @@ type MessageReference struct {
 
 // MessageReaction represents a reaction to a message on discord.
 type MessageReaction struct {
-	Emoji        Emoji                       `json:"emoji"`
 	BurstColors  []string                    `json:"burst_colors"`
+	Emoji        Emoji                       `json:"emoji"`
 	CountDetails MessageReactionCountDetails `json:"count_details"`
 	Count        int32                       `json:"count"`
 	BurstCount   int32                       `json:"burst_count"`

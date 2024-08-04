@@ -5,14 +5,14 @@ import (
 )
 
 type BaseRestResponse struct {
-	Ok    bool        `json:"ok"`
 	Data  interface{} `json:"data,omitempty"`
 	Error string      `json:"error,omitempty"`
+	Ok    bool        `json:"ok"`
 }
 
 type StatusEndpointResponse struct {
-	Uptime   int                     `json:"uptime"`
 	Managers []StatusEndpointManager `json:"managers"`
+	Uptime   int                     `json:"uptime"`
 }
 
 type StatusEndpointManager struct {
@@ -21,14 +21,14 @@ type StatusEndpointManager struct {
 }
 
 type StatusEndpointShardGroup struct {
-	ShardGroupID int32 `json:"id"`
 
 	// ShardID, Status, Latency (in milliseconds), Guilds, Uptime (in seconds), Total Uptime (in seconds)
 	Shards [][6]int `json:"shards"`
 
-	Status ShardGroupStatus `json:"status"`
+	Uptime       int   `json:"uptime"`
+	ShardGroupID int32 `json:"id"`
 
-	Uptime int `json:"uptime"`
+	Status ShardGroupStatus `json:"status"`
 }
 
 type UserResponse struct {
@@ -43,20 +43,20 @@ type DashboardGetResponse struct {
 
 type CreateManagerShardGroupArguments struct {
 	ShardIDs    string `json:"shard_ids"`
+	Identifier  string `json:"identifier"`
 	ShardCount  int32  `json:"shard_count"`
 	AutoSharded bool   `json:"auto_sharded"`
-	Identifier  string `json:"identifier"`
 }
 
 type SandwichConsumerConfiguration struct {
-	Version     string                                  `json:"v"`
 	Identifiers map[string]ManagerConsumerConfiguration `json:"identifiers"`
+	Version     string                                  `json:"v"`
 }
 
 type ManagerConsumerConfiguration struct {
 	Token string            `json:"token"`
-	ID    discord.Snowflake `json:"id"`
 	User  discord.User      `json:"user"`
+	ID    discord.Snowflake `json:"id"`
 }
 
 type CreateManagerArguments struct {

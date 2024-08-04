@@ -63,22 +63,19 @@ var gatewayURL = url.URL{
 }
 
 type Sandwich struct {
-	sync.Mutex
+	Logger zerolog.Logger `json:"-"`
 
-	ConfigurationLocation string `json:"configuration_location"`
+	// ReceivedPayload pool
+	receivedPool sync.Pool
+	// SentPayload pool
+	sentPool sync.Pool
+
+	gatewayLimiter limiter.DurationLimiter
+
+	StartTime time.Time `json:"start_time" yaml:"start_time"`
 
 	ctx    context.Context
 	cancel func()
-
-	Logger    zerolog.Logger `json:"-"`
-	StartTime time.Time      `json:"start_time" yaml:"start_time"`
-
-	configurationMu sync.RWMutex
-	Configuration   SandwichConfiguration `json:"configuration" yaml:"configuration"`
-
-	Options SandwichOptions `json:"options" yaml:"options"`
-
-	gatewayLimiter limiter.DurationLimiter
 
 	ProducerClient *MQClient `json:"-"`
 
@@ -104,27 +101,30 @@ type Sandwich struct {
 	RouterHandler fasthttp.RequestHandler `json:"-"`
 	DistHandler   fasthttp.RequestHandler `json:"-"`
 
-	// ReceivedPayload pool
-	receivedPool sync.Pool
-	// SentPayload pool
-	sentPool sync.Pool
-
 	guildChunks *csmap.CsMap[discord.Snowflake, GuildChunks]
+
+	ConfigurationLocation string `json:"configuration_location"`
+
+	Options SandwichOptions `json:"options" yaml:"options"`
+
+	Configuration SandwichConfiguration `json:"configuration" yaml:"configuration"`
+
+	configurationMu sync.RWMutex
+	sync.Mutex
 }
 
 // SandwichConfiguration represents the configuration file.
 type SandwichConfiguration struct {
 	Identify struct {
+		Headers map[string]string `json:"headers" yaml:"headers"`
 		// URL allows for variables:
 		// {shard_id}, {shard_count}, {token} {token_hash}, {max_concurrency}
 		URL string `json:"url" yaml:"url"`
-
-		Headers map[string]string `json:"headers" yaml:"headers"`
 	} `json:"identify" yaml:"identify"`
 
 	Producer struct {
-		Type          string                 `json:"type" yaml:"type"`
 		Configuration map[string]interface{} `json:"configuration" yaml:"configuration"`
+		Type          string                 `json:"type" yaml:"type"`
 	} `json:"producer" yaml:"producer"`
 
 	HTTP struct {
@@ -159,23 +159,23 @@ type SandwichOptions struct {
 }
 
 type GuildChunks struct {
+	StartedAt   atomic.Time
+	CompletedAt atomic.Time
+
+	// Channel for receiving when chunks have been received.
+	ChunkingChannel chan *discord.GuildMembersChunk
+
 	// Only used for partials, stores number of chunks recieved
 	ChunkCount atomic.Int32
 
 	// Indicates if all chunks have been received.
 	Complete atomic.Bool
-
-	// Channel for receiving when chunks have been received.
-	ChunkingChannel chan *discord.GuildMembersChunk
-
-	StartedAt   atomic.Time
-	CompletedAt atomic.Time
 }
 
 type GuildChunkPartial struct {
+	Nonce      string
 	ChunkIndex int32
 	ChunkCount int32
-	Nonce      string
 }
 
 // NewSandwich creates the application state and initializes it.

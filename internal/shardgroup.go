@@ -18,24 +18,17 @@ import (
 
 // ShardGroup represents a group of shards.
 type ShardGroup struct {
+	Logger zerolog.Logger `json:"-"`
+
 	Error *atomic.String `json:"error"`
 
-	Manager *Manager       `json:"-"`
-	Logger  zerolog.Logger `json:"-"`
+	Manager *Manager `json:"-"`
 
 	Start *atomic.Time `json:"start"`
 
 	WaitingFor *atomic.Int32 `json:"-"`
 
-	userMu sync.RWMutex  `json:"-"`
-	User   *discord.User `json:"user"`
-
-	ID int32 `json:"id"`
-
-	ShardCount int32 `json:"shard_count"`
-
-	shardIdsMu sync.RWMutex `json:"-"`
-	ShardIDs   []int32      `json:"shard_ids"`
+	User *discord.User `json:"user"`
 
 	Shards *csmap.CsMap[int32, *Shard] `json:"shards"`
 
@@ -43,13 +36,25 @@ type ShardGroup struct {
 
 	ReadyWait *sync.WaitGroup `json:"-"`
 
-	statusMu sync.RWMutex                      `json:"-"`
-	Status   sandwich_structs.ShardGroupStatus `json:"status"`
+	ShardIDs []int32 `json:"shard_ids"`
+
+	userMu sync.RWMutex `json:"-"`
+
+	shardIdsMu sync.RWMutex `json:"-"`
+
+	statusMu sync.RWMutex `json:"-"`
 
 	// Used to override when events can be processed.
 	// Used to orchestrate scaling of shardgroups.
 	floodgateMu sync.RWMutex
-	floodgate   bool
+
+	ID int32 `json:"id"`
+
+	ShardCount int32 `json:"shard_count"`
+
+	Status sandwich_structs.ShardGroupStatus `json:"status"`
+
+	floodgate bool
 }
 
 // NewShardGroup creates a new shardgroup.

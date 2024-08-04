@@ -30,17 +30,22 @@ func init() {
 
 // chatServer enables broadcasting to a set of subscribers.
 type chatServer struct {
-	// the expected token
-	expectedToken string
 
 	// sandwich state
 	manager *Manager
+
+	subscribers map[[2]int32][]*subscriber
+	// the expected token
+	expectedToken string
 
 	// external address (used for resuming)
 	externalAddress string
 
 	// address
 	address string
+
+	// serveMux routes the various endpoints to the appropriate handler.
+	serveMux http.ServeMux
 
 	// defaultWriteDelay
 	defaultWriteDelay int64
@@ -52,11 +57,7 @@ type chatServer struct {
 	// Defaults to 100000.
 	subscriberMessageBuffer int
 
-	// serveMux routes the various endpoints to the appropriate handler.
-	serveMux http.ServeMux
-
 	subscribersMu sync.RWMutex
-	subscribers   map[[2]int32][]*subscriber
 }
 
 // newChatServer constructs a chatServer with the defaults.
@@ -71,14 +72,14 @@ func newChatServer() *chatServer {
 }
 
 type message struct {
-	// What raw bytes to send, this bypasses seq additions etc.
-	rawBytes []byte
 	// What message to send, note that sequence will be automatically set
 	message *structs.SandwichPayload
-	// close code, if set will close the connection
-	closeCode websocket.StatusCode
 	// close string, will be sent on close
 	closeString string
+	// What raw bytes to send, this bypasses seq additions etc.
+	rawBytes []byte
+	// close code, if set will close the connection
+	closeCode websocket.StatusCode
 }
 
 // subscriber represents a subscriber.
@@ -87,17 +88,17 @@ type message struct {
 type subscriber struct {
 	c              *websocket.Conn
 	cancelFunc     context.CancelFunc
-	sessionId      string
-	shard          [2]int32
 	sh             *Shard
-	up             bool
-	resumed        bool
-	moving         bool
-	seq            int32
-	writeDelay     int64
 	reader         chan *structs.SandwichPayload
 	writer         chan *message
 	writeHeartbeat chan void
+	sessionId      string
+	writeDelay     int64
+	shard          [2]int32
+	seq            int32
+	up             bool
+	resumed        bool
+	moving         bool
 }
 
 // invalidSession closes the connection with the given reason.

@@ -14,11 +14,9 @@ import (
 
 // Client represents the REST client.
 type Client struct {
-	mu sync.Mutex
+	HTTP *http.Client
 
 	Token string
-
-	HTTP *http.Client
 
 	// We will manually add the API version
 	APIVersion string
@@ -27,6 +25,7 @@ type Client struct {
 	URLHost   string
 	URLScheme string
 	UserAgent string
+	mu        sync.Mutex
 }
 
 // NewClient makes a new client.

@@ -77,22 +77,21 @@ const (
 
 // Guild represents a guild on discord.
 type Guild struct {
-	JoinedAt                    Timestamp                  `json:"joined_at"`
 	WidgetChannelID             *Snowflake                 `json:"widget_channel_id,omitempty"`
-	NSFWLevel                   GuildNSFWLevelType         `json:"nsfw_level"`
 	PublicUpdatesChannelID      *Snowflake                 `json:"public_updates_channel_id,omitempty"`
 	PremiumTier                 *PremiumTier               `json:"premium_tier,omitempty"`
 	RulesChannelID              *Snowflake                 `json:"rules_channel_id,omitempty"`
 	SystemChannelFlags          *SystemChannelFlags        `json:"system_channel_flags,omitempty"`
-	OwnerID                     Snowflake                  `json:"owner_id"`
 	Permissions                 *Int64                     `json:"permissions,omitempty"`
 	SystemChannelID             *Snowflake                 `json:"system_channel_id,omitempty"`
 	AFKChannelID                *Snowflake                 `json:"afk_channel_id,omitempty"`
 	ApplicationID               *Snowflake                 `json:"application_id,omitempty"`
+	Icon                        *string                    `json:"icon"`
+	WidgetEnabled               *bool                      `json:"widget_enabled,omitempty"`
+	JoinedAt                    Timestamp                  `json:"joined_at"`
 	Description                 string                     `json:"description"`
 	PreferredLocale             string                     `json:"preferred_locale"`
 	Name                        string                     `json:"name"`
-	Icon                        *string                    `json:"icon"`
 	IconHash                    string                     `json:"icon_hash,omitempty"`
 	Banner                      string                     `json:"banner,omitempty"`
 	VanityURLCode               string                     `json:"vanity_url_code"`
@@ -110,6 +109,7 @@ type Guild struct {
 	Members                     GuildMemberList            `json:"members"`
 	Channels                    ChannelList                `json:"channels"`
 	Threads                     ChannelList                `json:"threads"`
+	OwnerID                     Snowflake                  `json:"owner_id"`
 	ID                          Snowflake                  `json:"id"`
 	ExplicitContentFilter       ExplicitContentFilterLevel `json:"explicit_content_filter"`
 	DefaultMessageNotifications MessageNotificationLevel   `json:"default_message_notifications"`
@@ -121,11 +121,11 @@ type Guild struct {
 	PremiumSubscriptionCount    int32                      `json:"premium_subscription_count"`
 	ApproximatePresenceCount    int32                      `json:"approximate_presence_count"`
 	MaxVideoChannelUsers        int32                      `json:"max_video_channel_users"`
-	Unavailable                 bool                       `json:"unavailable"`
-	WidgetEnabled               *bool                      `json:"widget_enabled,omitempty"`
+	NSFWLevel                   GuildNSFWLevelType         `json:"nsfw_level"`
 	VerificationLevel           VerificationLevel          `json:"verification_level"`
-	Large                       bool                       `json:"large"`
 	MFALevel                    MFALevel                   `json:"mfa_level"`
+	Unavailable                 bool                       `json:"unavailable"`
+	Large                       bool                       `json:"large"`
 	Owner                       bool                       `json:"owner"`
 	PremiumProgressBarEnabled   bool                       `json:"premium_progress_bar_enabled"`
 }
@@ -140,14 +140,14 @@ type UnavailableGuild struct {
 type GuildMember struct {
 	User                       *User         `json:"user,omitempty"`
 	GuildID                    *Snowflake    `json:"guild_id,omitempty"`
-	Permissions                Int64         `json:"permissions"`
-	Flags                      int           `json:"flags"`
+	CommunicationDisabledUntil *string       `json:"communication_disabled_until,omitempty"`
 	Nick                       string        `json:"nick,omitempty"`
 	Avatar                     string        `json:"avatar,omitempty"`
 	PremiumSince               string        `json:"premium_since,omitempty"`
-	CommunicationDisabledUntil *string       `json:"communication_disabled_until,omitempty"`
 	JoinedAt                   Timestamp     `json:"joined_at,omitempty"`
 	Roles                      SnowflakeList `json:"roles"`
+	Permissions                Int64         `json:"permissions"`
+	Flags                      int           `json:"flags"`
 	Deaf                       bool          `json:"deaf"`
 	Mute                       bool          `json:"mute"`
 	Pending                    bool          `json:"pending"`
@@ -173,8 +173,8 @@ type VoiceState struct {
 // GuildBan represents a ban entry.
 type GuildBan struct {
 	GuildID *Snowflake `json:"guild_id,omitempty"`
-	User    User       `json:"user"`
 	Reason  string
+	User    User `json:"user"`
 }
 
 // GuildPruneParam represents the arguments for a guild prune.

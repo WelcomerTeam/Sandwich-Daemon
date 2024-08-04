@@ -48,20 +48,19 @@ const (
 type Channel struct {
 	OwnerID                    *Snowflake           `json:"owner_id,omitempty"`
 	GuildID                    *Snowflake           `json:"guild_id,omitempty"`
-	Permissions                Int64                `json:"permissions"`
 	ThreadMember               *ThreadMember        `json:"member,omitempty"`
 	ThreadMetadata             *ThreadMetadata      `json:"thread_metadata,omitempty"`
-	VideoQualityMode           VideoQualityMode     `json:"video_quality_mode"`
 	LastPinTimestamp           *Timestamp           `json:"last_pin_timestamp"`
 	ParentID                   *Snowflake           `json:"parent_id,omitempty"`
 	ApplicationID              *Snowflake           `json:"application_id,omitempty"`
+	LastMessageID              *string              `json:"last_message_id"`
 	RTCRegion                  string               `json:"rtc_region"`
 	Topic                      string               `json:"topic"`
 	Icon                       string               `json:"icon"`
 	Name                       string               `json:"name"`
-	LastMessageID              *string              `json:"last_message_id"`
 	PermissionOverwrites       ChannelOverwriteList `json:"permission_overwrites"`
 	Recipients                 UserList             `json:"recipients"`
+	Permissions                Int64                `json:"permissions"`
 	ID                         Snowflake            `json:"id"`
 	UserLimit                  int32                `json:"user_limit"`
 	Bitrate                    int32                `json:"bitrate"`
@@ -70,8 +69,9 @@ type Channel struct {
 	RateLimitPerUser           int32                `json:"rate_limit_per_user"`
 	Position                   int32                `json:"position"`
 	DefaultAutoArchiveDuration int32                `json:"default_auto_archive_duration"`
-	NSFW                       bool                 `json:"nsfw"`
+	VideoQualityMode           VideoQualityMode     `json:"video_quality_mode"`
 	Type                       ChannelType          `json:"type"`
+	NSFW                       bool                 `json:"nsfw"`
 }
 
 // ChannelOverwrite represents a permission overwrite for a channel.
@@ -140,11 +140,11 @@ type ThreadMember struct {
 
 // StageInstance represents a stage channel instance.
 type StageInstance struct {
-	PrivacyLabel         StageChannelPrivacyLevel `json:"privacy_level"`
 	Topic                string                   `json:"topic"`
 	ID                   Snowflake                `json:"id"`
 	GuildID              Snowflake                `json:"guild_id"`
 	ChannelID            Snowflake                `json:"channel_id"`
+	PrivacyLabel         StageChannelPrivacyLevel `json:"privacy_level"`
 	DiscoverableDisabled bool                     `json:"discoverable_disabled"`
 }
 

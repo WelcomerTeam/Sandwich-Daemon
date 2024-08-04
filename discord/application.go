@@ -96,10 +96,10 @@ type ApplicationTeam struct {
 
 // ApplicationTeamMembers represents a member of a team.
 type ApplicationTeamMember struct {
-	User            User                       `json:"user"`
-	MembershipState ApplicationTeamMemberState `json:"membership_state"`
 	Permissions     StringList                 `json:"permissions"`
+	User            User                       `json:"user"`
 	TeamID          Snowflake                  `json:"team_id"`
+	MembershipState ApplicationTeamMemberState `json:"membership_state"`
 }
 
 // ApplicationCommand represents an application's command.

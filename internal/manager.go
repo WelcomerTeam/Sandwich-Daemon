@@ -36,50 +36,62 @@ const (
 
 // Manager represents a single application.
 type Manager struct {
-	ctx    context.Context
+	Logger zerolog.Logger `json:"-"`
+
+	ctx context.Context
+
+	ProducerClient MQClient `json:"-"`
+
 	cancel func()
 
 	Error *atomic.String `json:"error" yaml:"error"`
 
 	Identifier *atomic.String `json:"-"`
 
-	Sandwich *Sandwich      `json:"-"`
-	Logger   zerolog.Logger `json:"-"`
-
-	configurationMu sync.RWMutex
-	Configuration   *ManagerConfiguration `json:"configuration" yaml:"configuration"`
-
-	gatewayMu sync.RWMutex
-	Gateway   discord.GatewayBotResponse `json:"gateway" yaml:"gateway"`
+	Sandwich      *Sandwich             `json:"-"`
+	Configuration *ManagerConfiguration `json:"configuration" yaml:"configuration"`
 
 	ShardGroups *csmap.CsMap[int32, *ShardGroup] `json:"shard_groups" yaml:"shard_groups"`
 
-	ProducerClient MQClient `json:"-"`
-
-	clientMu sync.Mutex
-	Client   *Client `json:"-"`
+	Client *Client `json:"-"`
 
 	UserID *atomic.Int64 `json:"id"`
 
-	userMu sync.RWMutex
-	User   discord.User `json:"user"`
-
 	shardGroupCounter *atomic.Int32
 
+	metadata       *sandwich_structs.SandwichMetadata
+	eventBlacklist []string
+
+	produceBlacklist []string
+
+	Gateway discord.GatewayBotResponse `json:"gateway" yaml:"gateway"`
+
+	User discord.User `json:"user"`
+
+	configurationMu sync.RWMutex
+
+	gatewayMu sync.RWMutex
+
+	userMu sync.RWMutex
+
 	eventBlacklistMu sync.RWMutex
-	eventBlacklist   []string
 
 	produceBlacklistMu sync.RWMutex
-	produceBlacklist   []string
-
-	noShards int32
 
 	metadataMu sync.RWMutex
-	metadata   *sandwich_structs.SandwichMetadata
+
+	clientMu sync.Mutex
+
+	noShards int32
 }
 
 // ManagerConfiguration represents the configuration for the manager.
 type ManagerConfiguration struct {
+	Sharding struct {
+		ShardIDs    string `json:"shard_ids" yaml:"shard_ids"`
+		ShardCount  int32  `json:"shard_count" yaml:"shard_count"`
+		AutoSharded bool   `json:"auto_sharded" yaml:"auto_sharded"`
+	} `json:"sharding" yaml:"sharding"`
 	// Unique name that will be referenced internally
 	Identifier string `json:"identifier" yaml:"identifier"`
 	// Non-unique name that is sent to consumers.
@@ -87,9 +99,18 @@ type ManagerConfiguration struct {
 
 	FriendlyName string `json:"friendly_name" yaml:"friendly_name"`
 
-	Token        string `json:"token" yaml:"token"`
-	AutoStart    bool   `json:"auto_start" yaml:"auto_start"`
-	DisableTrace bool   `json:"disable_trace" yaml:"disable_trace"`
+	Token string `json:"token" yaml:"token"`
+
+	Events struct {
+		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist"`
+		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist"`
+	} `json:"events" yaml:"events"`
+
+	Messaging struct {
+		ClientName      string `json:"client_name" yaml:"client_name"`
+		ChannelName     string `json:"channel_name" yaml:"channel_name"`
+		UseRandomSuffix bool   `json:"use_random_suffix" yaml:"use_random_suffix"`
+	} `json:"messaging" yaml:"messaging"`
 
 	// Bot specific configuration
 	Bot struct {
@@ -105,22 +126,8 @@ type ManagerConfiguration struct {
 		// TODO: Flexible caching
 	} `json:"caching" yaml:"caching"`
 
-	Events struct {
-		EventBlacklist   []string `json:"event_blacklist" yaml:"event_blacklist"`
-		ProduceBlacklist []string `json:"produce_blacklist" yaml:"produce_blacklist"`
-	} `json:"events" yaml:"events"`
-
-	Messaging struct {
-		ClientName      string `json:"client_name" yaml:"client_name"`
-		ChannelName     string `json:"channel_name" yaml:"channel_name"`
-		UseRandomSuffix bool   `json:"use_random_suffix" yaml:"use_random_suffix"`
-	} `json:"messaging" yaml:"messaging"`
-
-	Sharding struct {
-		AutoSharded bool   `json:"auto_sharded" yaml:"auto_sharded"`
-		ShardCount  int32  `json:"shard_count" yaml:"shard_count"`
-		ShardIDs    string `json:"shard_ids" yaml:"shard_ids"`
-	} `json:"sharding" yaml:"sharding"`
+	AutoStart    bool `json:"auto_start" yaml:"auto_start"`
+	DisableTrace bool `json:"disable_trace" yaml:"disable_trace"`
 }
 
 // NewManager creates a new manager.
