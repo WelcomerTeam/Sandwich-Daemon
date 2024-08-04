@@ -23,8 +23,8 @@ type EventDispatchIdentifier struct {
 // EventDispatch represents the data returned by an event handler after processing state etc.
 type EventDispatch struct {
 	Extra                   map[string]json.RawMessage
-	Data                    json.RawMessage
 	EventDispatchIdentifier *EventDispatchIdentifier
+	Data                    json.RawMessage
 }
 
 // List of handlers for gateway events.

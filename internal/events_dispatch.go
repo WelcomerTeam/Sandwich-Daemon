@@ -1068,7 +1068,7 @@ func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich
 func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
 
-	var guildId *struct {
+	var guildId struct {
 		GuildID *discord.Snowflake `json:"guild_id"`
 	}
 
@@ -1081,7 +1081,8 @@ func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 	return EventDispatch{
 		Data: msg.Data,
 		EventDispatchIdentifier: &EventDispatchIdentifier{
-			GuildID: guildId.GuildID,
+			GuildID:        guildId.GuildID,
+			GloballyRouted: guildId.GuildID == nil,
 		},
 	}, true, nil
 }
