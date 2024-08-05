@@ -119,6 +119,9 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	}
 
 	initialShard := sg.Shards[sg.ShardIDs[0]]
+	if initialShard == nil {
+		panic("initialShard is nil")
+	}
 
 	sg.SetStatus(sandwich_structs.ShardGroupStatusConnecting)
 

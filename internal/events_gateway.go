@@ -128,13 +128,23 @@ func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload, 
 	sh.LastHeartbeatSent.Store(now)
 	sh.LastHeartbeatAck.Store(now)
 
+	sh.Logger.Debug().
+		Int32("interval", hello.HeartbeatInterval).
+		Msg("Received HELLO event from discord")
+
+	if hello.HeartbeatInterval <= 0 {
+		sh.Logger.Error().
+			Int32("interval", hello.HeartbeatInterval).
+			Str("event_type", msg.Type).
+			Str("event_data", string(msg.Data)).
+			Msg("Invalid heartbeat interval")
+
+		return ErrInvalidHeartbeatInterval
+	}
+
 	sh.HeartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
-
-	sh.Logger.Debug().
-		Dur("interval", sh.HeartbeatInterval).
-		Msg("Received HELLO event from discord")
 
 	return nil
 }

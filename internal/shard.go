@@ -275,9 +275,9 @@ readyConsumer:
 		return err
 	}
 
-	var helloResponse discord.Hello
+	var hello discord.Hello
 
-	err = sh.decodeContent(msg, &helloResponse)
+	err = sh.decodeContent(msg, &hello)
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,17 @@ readyConsumer:
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
-	sh.HeartbeatInterval = time.Duration(helloResponse.HeartbeatInterval) * time.Millisecond
+	if hello.HeartbeatInterval <= 0 {
+		sh.Logger.Error().
+			Int32("interval", hello.HeartbeatInterval).
+			Str("event_type", msg.Type).
+			Str("event_data", string(msg.Data)).
+			Msg("Invalid heartbeat interval")
+
+		return ErrInvalidHeartbeatInterval
+	}
+
+	sh.HeartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
@@ -477,7 +487,7 @@ func (sh *Shard) Listen(ctx context.Context) error {
 
 			var closeError *websocket.CloseError
 
-			if errors.As(err, &closeError) {
+			if errors.As(err, &closeError) && closeError != nil {
 				// If possible, we will check the close error to determine if we can continue
 				switch closeError.Code {
 				case discord.CloseNotAuthenticated, // Not authenticated
@@ -918,11 +928,17 @@ func (sh *Shard) ChunkGuild(guildID discord.Snowflake, alwaysChunk bool) error {
 	guildChunk.Complete.Store(false)
 	guildChunk.StartedAt.Store(time.Now())
 
+	var memberCount int
+
 	sh.Sandwich.State.guildMembersMu.RLock()
-	sh.Sandwich.State.GuildMembers[guildID].MembersMu.RLock()
-	memberCount := len(sh.Sandwich.State.GuildMembers[guildID].Members)
-	sh.Sandwich.State.GuildMembers[guildID].MembersMu.RUnlock()
+	guildMembers, ok := sh.Sandwich.State.GuildMembers[guildID]
 	sh.Sandwich.State.guildMembersMu.RUnlock()
+
+	if ok {
+		guildMembers.MembersMu.RLock()
+		memberCount = len(guildMembers.Members)
+		guildMembers.MembersMu.RUnlock()
+	}
 
 	sh.Sandwich.State.guildsMu.RLock()
 	guild := sh.Sandwich.State.Guilds[guildID]

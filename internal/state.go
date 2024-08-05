@@ -551,9 +551,11 @@ func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discor
 
 	guildEmoji = ss.EmojiFromState(stateGuildEmoji)
 
-	user, ok := ss.GetUser(guildEmoji.User.ID)
-	if ok {
-		guildEmoji.User = &user
+	if guildEmoji.User != nil {
+		user, ok := ss.GetUser(guildEmoji.User.ID)
+		if ok {
+			guildEmoji.User = &user
+		}
 	}
 
 	return
