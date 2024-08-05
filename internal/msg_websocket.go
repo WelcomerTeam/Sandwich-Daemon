@@ -494,13 +494,13 @@ func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 			return
 		case msg := <-s.reader:
 			// Send to discord directly
-			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v", s.shard[0], msg)
-
-			// Just send the event to discord for now
+			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v %s", s.shard[0], msg, string(msg.Data))
 
 			// Try finding guild_id
 			var shardId = s.shard[0]
 			if s.shard[1] != cs.manager.noShards {
+				cs.manager.Sandwich.Logger.Info().Msgf("Shard %d is not using global shard count, remapping to real shard for read message %v", s.shard[0], msg)
+
 				var guildId struct {
 					GuildID discord.Snowflake `json:"guild_id"`
 				}
@@ -513,6 +513,7 @@ func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 				}
 
 				shardId = int32(cs.manager.GetShardIdOfGuild(guildId.GuildID, cs.manager.noShards))
+				cs.manager.Sandwich.Logger.Info().Msgf("Remapped shard id %d to %d", s.shard[0], shardId)
 			}
 
 			// Find the shard corresponding to the guild_id

@@ -59,7 +59,7 @@ async def on_ready():
     await asyncio.sleep(2)
     for g in client.guilds:
         print(f"Connected to {g.name}")
-        #await g.chunk()
+        await g.chunk()
 
 @client.command()
 async def ping(ctx):

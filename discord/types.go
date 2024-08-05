@@ -20,12 +20,21 @@ type Snowflake int64
 
 func (s *Snowflake) UnmarshalJSON(b []byte) error {
 	if !bytes.Equal(b, null) {
-		i, err := strconv.ParseInt(string(b[1:len(b)-1]), 10, 64)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal json: %v", err)
-		}
+		if b[0] == '"' && len(b) >= 2 {
+			i, err := strconv.ParseInt(string(b[1:len(b)-1]), 10, 64)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal json: %v", err)
+			}
 
-		*s = Snowflake(i)
+			*s = Snowflake(i)
+		} else {
+			i, err := strconv.ParseInt(string(b), 10, 64)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal json: %v", err)
+			}
+
+			*s = Snowflake(i)
+		}
 	} else {
 		*s = 0
 	}
@@ -52,7 +61,7 @@ func (s Snowflake) Time() time.Time {
 type Int64 int64
 
 func (in *Int64) UnmarshalJSON(b []byte) error {
-	if b[0] == '"' {
+	if b[0] == '"' && len(b) >= 2 {
 		i, err := strconv.ParseInt(string(b[1:len(b)-1]), 10, 64)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal json: %v", err)
