@@ -748,10 +748,8 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 			if msgShardId != shard[0] {
 				continue // Skip if the remapped shard id is not the same
 			}
-		} else {
-			if subShard[0] != shard[0] {
-				continue // Skip if the shard id is not the same
-			}
+		} else if subShard[0] != shard[0] {
+			continue // Skip if the shard id is not the same
 		}
 
 		for _, s := range sub {

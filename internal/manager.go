@@ -343,10 +343,6 @@ func (mg *Manager) RoutePayloadToConsumer(payload *sandwich_structs.SandwichPayl
 		return nil
 	}
 
-	if mg.Configuration.VirtualShards.Count == 0 {
-		return fmt.Errorf("virtual shards are enabled but count is 0")
-	}
-
 	if payload.EventDispatchIdentifier == nil {
 		return fmt.Errorf("eventDispatchIdentifier is nil and cannot be remapped")
 	}
