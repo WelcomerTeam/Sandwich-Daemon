@@ -455,27 +455,12 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	var shards int
-	var err error
-	mg.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
-		if shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusClosed ||
-			shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusClosing ||
-			shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusConnecting ||
-			shardGroup.GetStatus() == sandwich_structs.ShardGroupStatusErroring {
-			err = errors.New("ShardGroup not ready")
-			return true
-		}
-
-		shards += shardGroup.Shards.Count()
-		return false
-	})
-
-	if err != nil {
+	if !mg.AllReady() {
 		ctx.Response.Header.Set("Retry-After", "7")
 		ctx.Response.Header.Set("x-ratelimit-scope", "shared")
 		writeResponse(ctx, fasthttp.StatusTooManyRequests, sandwich_structs.BaseRestResponse{
 			Ok:    false,
-			Error: err.Error(),
+			Error: "{\"error\":\"Manager not yet ready to accept connections\"}",
 		})
 		return
 	}
@@ -502,8 +487,15 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 	}
 
 	gateway.URL = externalAddress
-	gateway.SessionStartLimit.MaxConcurrency = int32(shards/2) + 1 // To ensure we dont get hammered, only allow half the shards (rounded up)
-	gateway.SessionStartLimit.Remaining = 1000                     // Sandwich doesnt have a rate limit
+	gateway.SessionStartLimit.Remaining = 1000 // Sandwich doesnt have a rate limit
+
+	if mg.Configuration.Rest.GetGatewayBot.MaxConcurrency > 0 {
+		gateway.SessionStartLimit.MaxConcurrency = mg.Configuration.Rest.GetGatewayBot.MaxConcurrency
+	} else {
+		gateway.SessionStartLimit.MaxConcurrency = int32(mg.ConsumerShardCount()/2) + 1 // Default: To ensure we dont get hammered, only allow half the shards (rounded up)
+	}
+
+	gateway.Shards = mg.ConsumerShardCount()
 
 	// Write raw, as discord libraries dont support sandwich_structs.BaseRestResponse
 	writeResponse(ctx, fasthttp.StatusOK, gateway)

@@ -506,7 +506,9 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 					)
 				}
 
-				sh.ErrorCh <- err
+				if err != nil {
+					sh.ErrorCh <- err
+				}
 
 				return
 			}

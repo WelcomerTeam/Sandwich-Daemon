@@ -34,8 +34,6 @@ type ShardGroup struct {
 
 	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
 
-	ReadyWait *sync.WaitGroup `json:"-"`
-
 	ShardIDs []int32 `json:"shard_ids"`
 
 	userMu sync.RWMutex `json:"-"`
@@ -55,6 +53,8 @@ type ShardGroup struct {
 	Status sandwich_structs.ShardGroupStatus `json:"status"`
 
 	floodgate bool
+
+	allShardsReady atomic.Bool
 }
 
 // NewShardGroup creates a new shardgroup.
@@ -220,6 +220,7 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 		sg.shardIdsMu.RUnlock()
 
 		sg.Logger.Info().Msg("All shards are now ready")
+		sg.allShardsReady.Store(true)
 
 		sg.Manager.ShardGroups.Range(func(shardGroupID int32, shardGroup *ShardGroup) bool {
 			if shardGroupID != sg.ID {

@@ -69,7 +69,13 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 		packet.Trace.Store("publish", discord.Int64(time.Now().Unix()))
 	}
 
-	err := sh.Manager.ProducerClient.Publish(
+	err := sh.Manager.RoutePayloadToConsumer(packet)
+
+	if err != nil {
+		return fmt.Errorf("publishEvent RoutePayloadToConsumer: %w", err)
+	}
+
+	err = sh.Manager.ProducerClient.Publish(
 		ctx,
 		packet,
 		channelName,

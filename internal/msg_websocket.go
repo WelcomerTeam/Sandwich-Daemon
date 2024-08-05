@@ -88,7 +88,6 @@ type message struct {
 type subscriber struct {
 	c              *websocket.Conn
 	cancelFunc     context.CancelFunc
-	sh             *Shard
 	reader         chan *structs.SandwichPayload
 	writer         chan *message
 	writeHeartbeat chan void
@@ -120,35 +119,20 @@ func (cs *chatServer) invalidSession(s *subscriber, reason string, resumable boo
 	}
 }
 
-func (cs *chatServer) getShard(shard [2]int32) *Shard {
-	var shardRes *Shard
-	cs.manager.ShardGroups.Range(func(k int32, sg *ShardGroup) bool {
-		sg.Shards.Range(func(i int32, sh *Shard) bool {
-			if sh.ShardID == shard[0] {
-				shardRes = sh
-				return true
-			}
-			return false
-		})
-
-		return shardRes != nil
-	})
-
-	return shardRes
-}
-
 func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
-	s.sh.WaitForReady()
-
 	// Get all guilds
 	unavailableGuilds := []*discord.UnavailableGuild{}
-	s.sh.Guilds.Range(func(id discord.Snowflake, v struct{}) bool {
-		unavailableGuilds = append(unavailableGuilds, &discord.UnavailableGuild{
-			ID:          id,
-			Unavailable: true,
-		})
+
+	cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, _ discord.Guild) bool {
+		shardId := int32(cs.manager.GetShardIdOfGuild(id, cs.manager.ConsumerShardCount()))
+		if shardId == s.shard[0] {
+			unavailableGuilds = append(unavailableGuilds, &discord.UnavailableGuild{
+				ID:          id,
+				Unavailable: false,
+			})
+		}
 		return false
 	})
 
@@ -190,14 +174,7 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 	}
 
 	// Next dispatch guilds
-	s.sh.Guilds.Range(func(id discord.Snowflake, _ struct{}) bool {
-		guild, ok := cs.manager.Sandwich.State.GetGuild(id)
-
-		if !ok {
-			cs.manager.Sandwich.Logger.Warn().Msgf("[WS] Failed to find guild %d for dispatching. This is normal for first connect", id)
-			return false
-		}
-
+	cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, guild discord.Guild) bool {
 		if guild.AFKChannelID == nil {
 			guild.AFKChannelID = &guild.ID
 		}
@@ -332,24 +309,36 @@ func (cs *chatServer) identifyClient(done chan void, s *subscriber) (oldSess *su
 					return nil, fmt.Errorf("failed to unmarshal identify packet: %w", err)
 				}
 
+				if len(identify.Shard) != 2 {
+					return nil, errors.New("invalid shard")
+				}
+
 				identify.Token = strings.Replace(identify.Token, "Bot ", "", 1)
 
-				if identify.Token == cs.expectedToken {
-					s.sessionId = randomHex(12)
-
-					// dpy workaround
-					if identify.Shard[1] == 0 {
-						identify.Shard[1] = cs.manager.noShards
-					}
-
-					s.shard = identify.Shard
-					s.up = true
-
-					cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now identified with created session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
-					return nil, nil
-				} else {
+				if identify.Token != cs.expectedToken {
 					return nil, errors.New("invalid token")
 				}
+
+				s.sessionId = randomHex(12)
+
+				csc := cs.manager.ConsumerShardCount() // Get the consumer shard count to avoid unneeded casts
+
+				// dpy workaround
+				if identify.Shard[1] == 0 {
+					identify.Shard[1] = csc
+				}
+
+				if identify.Shard[1] > csc {
+					return nil, fmt.Errorf("invalid shard count: %d > %d", identify.Shard[1], csc)
+				} else if identify.Shard[0] > csc {
+					return nil, fmt.Errorf("invalid shard id: %d > %d", identify.Shard[0], csc)
+				}
+
+				s.shard = identify.Shard
+				s.up = true
+
+				cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now identified with created session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
+				return nil, nil
 			} else if packet.Op == discord.GatewayOpResume {
 				var resume struct {
 					Token     string `json:"token"`
@@ -464,6 +453,23 @@ func (cs *chatServer) readMessages(done chan void, s *subscriber) {
 	}
 }
 
+func (cs *chatServer) getShard(shardId int32) *Shard {
+	var shardRes *Shard
+	cs.manager.ShardGroups.Range(func(k int32, sg *ShardGroup) bool {
+		sg.Shards.Range(func(i int32, sh *Shard) bool {
+			if sh.ShardID == shardId {
+				shardRes = sh
+				return true
+			}
+			return false
+		})
+
+		return shardRes != nil
+	})
+
+	return shardRes
+}
+
 // handleReadMessages handles messages from reader
 func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 	for {
@@ -474,13 +480,35 @@ func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 			// Send to discord directly
 			cs.manager.Sandwich.Logger.Debug().Msgf("[WS] Shard %d got/found packet: %v", s.shard[0], msg)
 
-			if s.sh == nil {
-				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d is nil", s.shard[0])
-				return
+			// Just send the event to discord for now
+
+			// Try finding guild_id
+			var shardId = s.shard[0]
+			if cs.manager.Configuration.VirtualShards.Enabled {
+				var guildId struct {
+					GuildID discord.Snowflake `json:"guild_id"`
+				}
+
+				err := sandwichjson.Unmarshal(msg.Data, &guildId)
+
+				if err != nil {
+					cs.manager.Sandwich.Logger.Info().Msgf("No guild_id found in recieved packet %s", msg.Data)
+				}
+
+				if guildId.GuildID != 0 {
+					shardId = int32(cs.manager.GetShardIdOfGuild(guildId.GuildID, cs.manager.noShards))
+				}
 			}
 
-			// Just send the event to discord for now
-			err := s.sh.SendEvent(s.sh.ctx, msg.Op, msg.Data)
+			// Find the shard corresponding to the guild_id
+			s := cs.getShard(shardId)
+
+			if s == nil {
+				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d not found", shardId)
+				continue
+			}
+
+			err := s.SendEvent(s.ctx, msg.Op, msg.Data)
 
 			if err != nil {
 				cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to send event: %s", err.Error())
@@ -579,6 +607,11 @@ func (cs *chatServer) writeMessages(done chan void, s *subscriber) {
 // It uses CloseRead to keep reading from the connection to process control
 // messages and cancel the context if the connection drops.
 func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, writeDelay int64) error {
+	if !cs.manager.AllReady() {
+		http.Error(w, "{\"error\":\"Manager is not yet ready to accept connections\"}", http.StatusServiceUnavailable)
+		return errors.New("manager is not yet ready to accept connections")
+	}
+
 	var c *websocket.Conn
 	s := &subscriber{
 		reader:         make(chan *structs.SandwichPayload, cs.subscriberMessageBuffer),
@@ -650,14 +683,6 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		time.Sleep(1 * time.Minute)
 		cs.deleteSubscriber(s)
 	}()
-
-	s.sh = cs.getShard(s.shard)
-
-	if s.sh == nil {
-		cs.manager.Sandwich.Logger.Error().Msgf("[WS] Shard %d is nil", s.shard[0])
-		cs.invalidSession(s, "Shard is nil", true)
-		return errors.New("shard is nil")
-	}
 
 	// SAFETY: There should be no other reader at this point, so start up handleReadMessages
 	go cs.handleReadMessages(handleReadMessagesDone, s)

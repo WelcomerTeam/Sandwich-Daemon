@@ -128,6 +128,18 @@ type ManagerConfiguration struct {
 
 	AutoStart    bool `json:"auto_start" yaml:"auto_start"`
 	DisableTrace bool `json:"disable_trace" yaml:"disable_trace"`
+
+	VirtualShards struct {
+		Enabled bool  `json:"enabled" yaml:"enabled"`
+		Count   int32 `json:"count" yaml:"count"`       // Number of virtual shards to use
+		DmShard int   `json:"dm_shard" yaml:"dm_shard"` // Shard to use for DMs and non identifiable events
+	} `json:"virtual_shards" yaml:"virtual_shards"`
+
+	Rest struct {
+		GetGatewayBot struct {
+			MaxConcurrency int32 `json:"max_concurrency" yaml:"max_concurrency"` // How many requests to allow in the custom get gateway bot impl
+		}
+	}
 }
 
 // NewManager creates a new manager.
@@ -290,6 +302,67 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 	mg.ShardGroups.Store(shardGroupID, sg)
 
 	return sg
+}
+
+// AllReady, returns whether all shard groups are ready
+func (mg *Manager) AllReady() bool {
+	var isReady bool = true
+	mg.ShardGroups.Range(func(shardGroupID int32, sg *ShardGroup) bool {
+		if !sg.allShardsReady.Load() {
+			isReady = false
+			return true // Stop iteration
+		}
+
+		return false
+	})
+
+	return isReady
+}
+
+// ConsumerShardCount returns the number of shards from a consumer view
+//
+// If virtual shards is disabled, this will return the actual shard count.
+// If virtual shards is enabled, this will return the virtual shard count.
+func (mg *Manager) ConsumerShardCount() int32 {
+	if mg.Configuration.VirtualShards.Enabled {
+		return mg.Configuration.VirtualShards.Count
+	}
+
+	return mg.noShards
+}
+
+// GetShardIdOfGuild returns the shard id of a guild
+func (mg *Manager) GetShardIdOfGuild(guildID discord.Snowflake, shardCount int32) int64 {
+	return (int64(guildID) >> 22) % int64(shardCount)
+}
+
+// RoutePayloadToConsumer routes a SandwichPayload to its corresponding consumer modifying the payload itself
+func (mg *Manager) RoutePayloadToConsumer(payload *sandwich_structs.SandwichPayload) error {
+	if !mg.Configuration.VirtualShards.Enabled {
+		// No need to remap, return
+		return nil
+	}
+
+	if mg.Configuration.VirtualShards.Count == 0 {
+		return fmt.Errorf("virtual shards are enabled but count is 0")
+	}
+
+	if payload.EventDispatchIdentifier == nil {
+		return fmt.Errorf("eventDispatchIdentifier is nil and cannot be remapped")
+	}
+
+	if payload.EventDispatchIdentifier.GloballyRouted {
+		// Remap shard to empty
+		payload.Metadata.Shard = [3]int32{}
+	} else if payload.EventDispatchIdentifier.GuildID != nil && *payload.EventDispatchIdentifier.GuildID != 0 {
+		virtualShardId := mg.GetShardIdOfGuild(*payload.EventDispatchIdentifier.GuildID, mg.Configuration.VirtualShards.Count)
+		payload.Metadata.Shard = [3]int32{0, int32(virtualShardId), int32(mg.Configuration.VirtualShards.Count)}
+	} else {
+		// Not globally routed + no guild id means it's a DM
+		payload.Metadata.Shard = [3]int32{0, int32(mg.Configuration.VirtualShards.DmShard), int32(mg.Configuration.VirtualShards.Count)}
+	}
+
+	return nil
 }
 
 // PublishEvent sends an event to consumers.

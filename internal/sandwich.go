@@ -35,7 +35,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.16-antiraid"
+const VERSION = "1.16.1-antiraid"
 
 const (
 	PermissionsDefault = 0o744
@@ -267,6 +267,16 @@ func (sg *Sandwich) LoadConfiguration(path string) (configuration SandwichConfig
 	err = yaml.Unmarshal(file, &configuration)
 	if err != nil {
 		return configuration, ErrLoadConfigurationFailure
+	}
+
+	for _, mc := range configuration.Managers {
+		if mc.Identifier == "" {
+			return configuration, fmt.Errorf("manager does not have an identifier: %w", ErrLoadConfigurationFailure)
+		}
+
+		if mc.VirtualShards.Enabled && mc.VirtualShards.Count == 0 {
+			return configuration, fmt.Errorf("manager %s has virtual shards enabled but shard count is 0: %w", mc.Identifier, ErrLoadConfigurationFailure)
+		}
 	}
 
 	return configuration, nil

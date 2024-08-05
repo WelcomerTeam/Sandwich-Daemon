@@ -8,6 +8,13 @@ producer:
     address: 127.0.0.1:4222
     channel: sandwich
     cluster: cluster
+# If using websockets, use the below
+#producer:
+#    type: websocket
+#    configuration:
+#        address: 127.0.0.1:3600
+#        expectedtoken: TOKENHERE
+#        defaultwritedelay: 0
 http:
   oauth:
     clientid: ""

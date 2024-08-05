@@ -90,7 +90,7 @@ ready:
 		ctx.Shard.ChunkAllGuilds()
 	}
 
-	result.EventDispatchIdentifier = &EventDispatchIdentifier{}
+	result.EventDispatchIdentifier = &sandwich_structs.EventDispatchIdentifier{}
 
 	return result, false, nil
 }
@@ -109,7 +109,7 @@ func OnResumed(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.
 
 	return EventDispatch{
 		Data:                    msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{},
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{},
 	}, true, nil
 }
 
@@ -142,7 +142,7 @@ func OnGuildCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildCreatePayload.ID,
 		},
 	}, true, nil
@@ -180,7 +180,7 @@ func OnGuildMembersChunk(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 		// We don't need to care further
 		return EventDispatch{
 			Data: msg.Data,
-			EventDispatchIdentifier: &EventDispatchIdentifier{
+			EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 				GuildID: &guildMembersChunkPayload.GuildID,
 			},
 		}, true, nil
@@ -214,7 +214,7 @@ func OnGuildMembersChunk(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildMembersChunkPayload.GuildID,
 		},
 	}, true, nil
@@ -234,7 +234,7 @@ func OnChannelCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: channelCreatePayload.GuildID,
 		},
 	}, true, nil
@@ -263,7 +263,7 @@ func OnChannelUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: channelUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -292,7 +292,7 @@ func OnChannelDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: channelDeletePayload.GuildID,
 		},
 	}, true, nil
@@ -310,7 +310,7 @@ func OnChannelPinsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &channelPinsUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -338,7 +338,7 @@ func OnThreadUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_str
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: threadUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -356,7 +356,7 @@ func OnGuildAuditLogEntryCreate(ctx StateCtx, msg discord.GatewayPayload, trace 
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &threadMembersUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -416,7 +416,7 @@ func OnGuildUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildUpdatePayload.ID,
 		},
 	}, true, nil
@@ -430,7 +430,7 @@ func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 		ctx.Logger.Error().Err(err).Msg("Failed to decode GUILD_DELETE payload")
 		return EventDispatch{
 			Data: msg.Data,
-			EventDispatchIdentifier: &EventDispatchIdentifier{
+			EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 				GuildID: &guildDeletePayload.ID,
 			},
 		}, true, nil
@@ -457,7 +457,7 @@ func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 	if err != nil {
 		return EventDispatch{
 			Data: msg.Data,
-			EventDispatchIdentifier: &EventDispatchIdentifier{
+			EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 				GuildID: &guildDeletePayload.ID,
 			},
 		}, true, nil
@@ -466,7 +466,7 @@ func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildDeletePayload.ID,
 		},
 	}, true, nil
@@ -484,7 +484,7 @@ func OnGuildBanAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: guildBanAddPayload.GuildID,
 		},
 	}, true, nil
@@ -502,7 +502,7 @@ func OnGuildBanRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: guildBanRemovePayload.GuildID,
 		},
 	}, true, nil
@@ -536,7 +536,7 @@ func OnGuildEmojisUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildEmojisUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -575,7 +575,7 @@ func OnGuildStickersUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandw
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildStickersUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -593,7 +593,7 @@ func OnGuildIntegrationsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace s
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildIntegrationsUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -632,7 +632,7 @@ func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: guildMemberAddPayload.GuildID,
 		},
 	}, true, nil
@@ -677,7 +677,7 @@ func OnGuildMemberRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildMemberRemovePayload.GuildID,
 		},
 	}, true, nil
@@ -708,7 +708,7 @@ func OnGuildMemberUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: guildMemberUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -728,7 +728,7 @@ func OnGuildRoleCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: guildRoleCreatePayload.GuildID,
 		},
 	}, true, nil
@@ -759,7 +759,7 @@ func OnGuildRoleUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: guildRoleUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -779,7 +779,7 @@ func OnGuildRoleDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &guildRoleDeletePayload.GuildID,
 		},
 	}, true, nil
@@ -799,7 +799,7 @@ func OnInviteCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_str
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: inviteCreatePayload.GuildID,
 		},
 	}, true, nil
@@ -819,7 +819,7 @@ func OnInviteDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_str
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: inviteDeletePayload.GuildID,
 		},
 	}, true, nil
@@ -835,9 +835,10 @@ func OnMessageCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageCreatePayload.GuildID)
 
+	// If no guild id, we know its a dm event anyways
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageCreatePayload.GuildID,
 		},
 	}, true, nil
@@ -853,9 +854,10 @@ func OnMessageUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageUpdatePayload.GuildID)
 
+	// If no guild id, we know its a dm event anyways
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -871,9 +873,10 @@ func OnMessageDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageDeletePayload.GuildID)
 
+	// If no guild id, we know its a dm event anyways
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageDeletePayload.GuildID,
 		},
 	}, true, nil
@@ -889,9 +892,10 @@ func OnMessageDeleteBulk(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, messageDeleteBulkPayload.GuildID)
 
+	// If no guild id, we know its a dm event anyways
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageDeleteBulkPayload.GuildID,
 		},
 	}, true, nil
@@ -909,7 +913,7 @@ func OnMessageReactionAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwi
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &messageReactionAddPayload.GuildID,
 		},
 	}, true, nil
@@ -927,7 +931,7 @@ func OnMessageReactionRemove(ctx StateCtx, msg discord.GatewayPayload, trace san
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageReactionRemovePayload.GuildID,
 		},
 	}, true, nil
@@ -945,7 +949,7 @@ func OnMessageReactionRemoveAll(ctx StateCtx, msg discord.GatewayPayload, trace 
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &messageReactionRemoveAllPayload.GuildID,
 		},
 	}, true, nil
@@ -963,7 +967,7 @@ func OnMessageReactionRemoveEmoji(ctx StateCtx, msg discord.GatewayPayload, trac
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageReactionRemoveEmojiPayload.GuildID,
 		},
 	}, true, nil
@@ -981,7 +985,7 @@ func OnPresenceUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &presenceUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -999,7 +1003,7 @@ func OnTypingStart(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: typingStartPayload.GuildID,
 		},
 	}, true, nil
@@ -1027,7 +1031,7 @@ func OnUserUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_struc
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GloballyRouted: true, // No Guild ID is available for routing *user* (not member) updates, send to all shards
 		},
 	}, true, nil
@@ -1059,7 +1063,7 @@ func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich
 	return EventDispatch{
 		Data:  msg.Data,
 		Extra: extra,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: voiceStateUpdatePayload.GuildID,
 		},
 	}, true, nil
@@ -1080,7 +1084,7 @@ func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 
 	return EventDispatch{
 		Data: msg.Data,
-		EventDispatchIdentifier: &EventDispatchIdentifier{
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID:        guildId.GuildID,
 			GloballyRouted: guildId.GuildID == nil,
 		},

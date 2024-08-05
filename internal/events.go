@@ -14,16 +14,10 @@ import (
 	"github.com/savsgio/gotils/strings"
 )
 
-// Used as a key for virtual shard dispatches etc., must be set for all events
-type EventDispatchIdentifier struct {
-	GuildID        *discord.Snowflake
-	GloballyRouted bool // Whether or not the event should be globally routed
-}
-
 // EventDispatch represents the data returned by an event handler after processing state etc.
 type EventDispatch struct {
 	Extra                   map[string]json.RawMessage
-	EventDispatchIdentifier *EventDispatchIdentifier
+	EventDispatchIdentifier *sandwich_structs.EventDispatchIdentifier
 	Data                    json.RawMessage
 }
 
@@ -120,7 +114,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 
 	if result.EventDispatchIdentifier == nil {
 		sh.Logger.Error().Str("type", msg.Type).Str("data", gotils_strconv.B2S(msg.Data)).Msg("EventDispatchIdentifier is nil")
-		result.EventDispatchIdentifier = &EventDispatchIdentifier{
+		result.EventDispatchIdentifier = &sandwich_structs.EventDispatchIdentifier{
 			GloballyRouted: true, // Ensure they are globally routed for now
 		}
 	}
@@ -142,14 +136,13 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	}
 
 	packet := &sandwich_structs.SandwichPayload{
-		Op:       msg.Op,
-		Sequence: msg.Sequence,
-		Type:     msg.Type,
-		Data:     result.Data,
-		Extra: csmap.Create(
-			csmap.WithSize[string, json.RawMessage](uint64(len(result.Extra))),
-		),
-		Trace: trace,
+		Op:                      msg.Op,
+		Sequence:                msg.Sequence,
+		Type:                    msg.Type,
+		Data:                    result.Data,
+		Extra:                   result.Extra,
+		Trace:                   trace,
+		EventDispatchIdentifier: result.EventDispatchIdentifier,
 	}
 
 	return sh.PublishEvent(ctx, packet)

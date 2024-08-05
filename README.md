@@ -49,3 +49,24 @@ Any extra data that sandwich includes will be under the keys `__extra, __sandwic
     "__sandwich_trace": null
   }
   ```
+
+## Virtual/Synthetic Sharding
+
+In many cases, it is desirable to have a fixed number of consumers that does *not* vary with Discords shard count. This can lead to improved scaling etc. Also, using a fixed number of consumers solves the problem of resharding across consumers as only Sandwich needs to be resharded versus all consumers and allows better control over how many guilds are on each shard. While this is possible directly through Discord, doing so may constitute API abuse and at the very least uses up the identity limit. 
+
+To solve this, Sandwich provides a feature called Virtual Sharding which allows setting a fixed number of virtual shards. When using Sandwich's Get Gateway Bot (or otherwise setting the virtual shard count on your bot), Sandwich remaps all events to virtual shards using the ``guild_id`` as identifier and ``(guild_id >> 22) % virtual_shard_count`` as the virtual shard ID. 
+
+### Send Events
+
+**Note that the below only applies when using msg_websockets as that is the only messaging system that supports Send Events in Sandwich**
+
+Regarding send events, here are the semantics for the currently supported ones:
+- ``Request Guild Members`` (chunking) will remap the ``guild_id`` to its real shard ID transparently. This means that all guild chunks will be dispatched correctly back to its virtual shard
+
+When using virtual sharding, the following limitations apply:
+
+- ``Update Presence`` is not supported when using virtual shards
+- Shard group id will always be ``0`` when using virtual shards
+
+Planned features that are not implemented yet
+- ``Update Voice State`` (can be dispatched from the real shard through the ``guild_id`` identifier)

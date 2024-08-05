@@ -19,14 +19,21 @@ type SandwichMetadata struct {
 
 type SandwichTrace = *csmap.CsMap[string, discord.Int64]
 
+// Used as a key for virtual shard dispatches etc., must be set for all events
+type EventDispatchIdentifier struct {
+	GuildID        *discord.Snowflake
+	GloballyRouted bool // Whether or not the event should be globally routed
+}
+
 // SandwichPayload represents the data that is sent to consumers.
 type SandwichPayload struct {
-	Extra    *csmap.CsMap[string, json.RawMessage] `json:"__extra,omitempty"`
-	Metadata *SandwichMetadata                     `json:"__sandwich"`
-	Trace    SandwichTrace                         `json:"__sandwich_trace"`
-	Type     string                                `json:"t"`
+	Extra    map[string]json.RawMessage `json:"__extra,omitempty"`
+	Metadata *SandwichMetadata          `json:"__sandwich"`
+	Trace    SandwichTrace              `json:"__sandwich_trace"`
+	Type     string                     `json:"t"`
 
-	Data     json.RawMessage   `json:"d"`
-	Sequence int32             `json:"s"`
-	Op       discord.GatewayOp `json:"op"`
+	Data                    json.RawMessage          `json:"d"`
+	Sequence                int32                    `json:"s"`
+	Op                      discord.GatewayOp        `json:"op"`
+	EventDispatchIdentifier *EventDispatchIdentifier `json:"-"`
 }
