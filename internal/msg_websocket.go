@@ -740,7 +740,7 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 	defer cs.subscribersMu.RUnlock()
 
 	for subShard, sub := range cs.subscribers {
-		if subShard[1] != shard[1] {
+		if subShard[1] != shard[1] && msg.EventDispatchIdentifier.GuildID != nil {
 			// Shard count used by subscriber is not the same as the shard count used by the message
 			// We need to remap the shard id based on the subscriber's shard id
 			msgShardId := cs.manager.GetShardIdOfGuild(*msg.EventDispatchIdentifier.GuildID, subShard[1])
