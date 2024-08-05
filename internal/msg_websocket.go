@@ -484,7 +484,7 @@ func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 
 			// Try finding guild_id
 			var shardId = s.shard[0]
-			if cs.manager.Configuration.VirtualShards.Enabled {
+			if s.shard[1] != cs.manager.noShards {
 				var guildId struct {
 					GuildID discord.Snowflake `json:"guild_id"`
 				}
