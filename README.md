@@ -50,6 +50,10 @@ Any extra data that sandwich includes will be under the keys `__extra, __sandwic
   }
   ```
 
+## Websocket support
+
+This fork of Sandwich Daemon includes support for the `msg_websockets` messaging system.
+
 ## Virtual/Synthetic Sharding
 
 In many cases, it is desirable to have a fixed number of consumers that does *not* vary with Discords shard count. This can lead to improved scaling etc. Also, using a fixed number of consumers solves the problem of resharding across consumers as only Sandwich needs to be resharded versus all consumers and allows better control over how many guilds are on each shard. While this is possible directly through Discord, doing so may constitute API abuse and at the very least uses up the identity limit. 

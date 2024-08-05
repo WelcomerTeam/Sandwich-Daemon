@@ -491,13 +491,12 @@ func (cs *chatServer) handleReadMessages(done chan void, s *subscriber) {
 
 				err := sandwichjson.Unmarshal(msg.Data, &guildId)
 
-				if err != nil {
+				if err != nil || guildId.GuildID == 0 {
 					cs.manager.Sandwich.Logger.Info().Msgf("No guild_id found in recieved packet %s", msg.Data)
+					continue
 				}
 
-				if guildId.GuildID != 0 {
-					shardId = int32(cs.manager.GetShardIdOfGuild(guildId.GuildID, cs.manager.noShards))
-				}
+				shardId = int32(cs.manager.GetShardIdOfGuild(guildId.GuildID, cs.manager.noShards))
 			}
 
 			// Find the shard corresponding to the guild_id
@@ -740,21 +739,31 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 	cs.subscribersMu.RLock()
 	defer cs.subscribersMu.RUnlock()
 
-	shardSubs, ok := cs.subscribers[shard]
+	for subShard, sub := range cs.subscribers {
+		if subShard[1] != shard[1] {
+			// Shard count used by subscriber is not the same as the shard count used by the message
+			// We need to remap the shard id based on the subscriber's shard id
+			msgShardId := cs.manager.GetShardIdOfGuild(*msg.EventDispatchIdentifier.GuildID, subShard[1])
 
-	if !ok {
-		return
-	}
-
-	for _, s := range shardSubs {
-		if !s.up {
-			continue
+			if msgShardId != shard[0] {
+				continue // Skip if the remapped shard id is not the same
+			}
+		} else {
+			if subShard[0] != shard[0] {
+				continue // Skip if the shard id is not the same
+			}
 		}
 
-		cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Shard %d is now publishing message to %d subscribers", shard[0], len(shardSubs))
+		for _, s := range sub {
+			if !s.up {
+				continue
+			}
 
-		s.writer <- &message{
-			message: msg,
+			cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Shard %d is now publishing message to %d subscribers", shard[0], len(sub))
+
+			s.writer <- &message{
+				message: msg,
+			}
 		}
 	}
 }
