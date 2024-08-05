@@ -89,7 +89,7 @@ type subscriber struct {
 	c              *websocket.Conn
 	cancelFunc     context.CancelFunc
 	reader         chan *structs.SandwichPayload
-	writer         chan *message
+	writer         chan message
 	writeHeartbeat chan void
 	sessionId      string
 	writeDelay     int64
@@ -105,13 +105,13 @@ func (cs *chatServer) invalidSession(s *subscriber, reason string, resumable boo
 	cs.manager.Sandwich.Logger.Error().Msgf("[WS] Invalid session: %s, is resumable: %v", reason, resumable)
 
 	if resumable {
-		s.writer <- &message{
+		s.writer <- message{
 			rawBytes:    []byte(`{"op":9,"d":true}`),
 			closeCode:   websocket.StatusCode(4000),
 			closeString: "Invalid Session",
 		}
 	} else {
-		s.writer <- &message{
+		s.writer <- message{
 			rawBytes:    []byte(`{"op":9,"d":false}`),
 			closeCode:   websocket.StatusCode(4000),
 			closeString: "Invalid Session",
@@ -123,12 +123,12 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
 	// Get all guilds
-	unavailableGuilds := []*discord.UnavailableGuild{}
+	unavailableGuilds := make([]discord.UnavailableGuild, 0)
 
 	cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, _ discord.Guild) bool {
 		shardId := int32(cs.manager.GetShardIdOfGuild(id, cs.manager.ConsumerShardCount()))
 		if shardId == s.shard[0] {
-			unavailableGuilds = append(unavailableGuilds, &discord.UnavailableGuild{
+			unavailableGuilds = append(unavailableGuilds, discord.UnavailableGuild{
 				ID:          id,
 				Unavailable: false,
 			})
@@ -165,7 +165,7 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Dispatching ready to shard %d", s.shard[0])
 
-	s.writer <- &message{
+	s.writer <- message{
 		message: &structs.SandwichPayload{
 			Op:   discord.GatewayOpDispatch,
 			Data: serializedReadyPayload,
@@ -186,7 +186,7 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 			return false
 		}
 
-		s.writer <- &message{
+		s.writer <- message{
 			message: &structs.SandwichPayload{
 				Op:   discord.GatewayOpDispatch,
 				Data: serializedGuild,
@@ -283,7 +283,7 @@ func (cs *chatServer) publishHandler(w http.ResponseWriter, r *http.Request) {
 func (cs *chatServer) identifyClient(done chan void, s *subscriber) (oldSess *subscriber, err error) {
 	// Before adding the subscriber for external access, send the initial hello payload and wait for identify
 	// If the client does not identify within 5 seconds, close the connection
-	s.writer <- &message{
+	s.writer <- message{
 		rawBytes: []byte(`{"op":10,"d":{"heartbeat_interval":41250}}`),
 	}
 
@@ -614,7 +614,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	var c *websocket.Conn
 	s := &subscriber{
 		reader:         make(chan *structs.SandwichPayload, cs.subscriberMessageBuffer),
-		writer:         make(chan *message, cs.subscriberMessageBuffer),
+		writer:         make(chan message, cs.subscriberMessageBuffer),
 		writeHeartbeat: make(chan void, cs.subscriberMessageBuffer),
 		writeDelay:     writeDelay,
 	}
@@ -714,7 +714,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 		cs.dispatchInitial(dispatchInitialDone, s)
 	} else {
 		// Send a RESUMED event
-		s.writer <- &message{
+		s.writer <- message{
 			message: &structs.SandwichPayload{
 				Op:   discord.GatewayOpDispatch,
 				Data: []byte(`{}`),
@@ -761,7 +761,7 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 
 			cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Shard %d is now publishing message to %d subscribers", shard[0], len(sub))
 
-			s.writer <- &message{
+			s.writer <- message{
 				message: msg,
 			}
 		}
@@ -785,7 +785,7 @@ func (cs *chatServer) publishGlobal(msg *structs.SandwichPayload) {
 
 			cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Global is now publishing message to %d subscribers", len(shardSubs))
 
-			s.writer <- &message{
+			s.writer <- message{
 				message: msg,
 			}
 		}
@@ -931,7 +931,7 @@ func (mq *WebsocketClient) Publish(ctx context.Context, packet *structs.Sandwich
 			packet,
 		)
 	} else {
-		go mq.cs.publish(
+		mq.cs.publish(
 			[2]int32{packet.Metadata.Shard[1], packet.Metadata.Shard[2]},
 			packet,
 		)

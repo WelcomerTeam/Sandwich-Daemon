@@ -127,6 +127,7 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild discord.Guil
 		return
 	}
 
+	// Pre-allocate the list
 	guild.VoiceStates = make([]discord.VoiceState, 0, voiceStates.VoiceStates.Count())
 
 	voiceStates.VoiceStates.Range(func(_ discord.Snowflake, voiceState discord.VoiceState) bool {
@@ -330,6 +331,9 @@ func (ss *SandwichState) GetAllGuildMembers(guildID discord.Snowflake) (guildMem
 		return
 	}
 
+	// Pre-allocate the list
+	guildMembersList = make([]discord.GuildMember, 0, guildMembers.Members.Count())
+
 	guildMembers.Members.Range(func(_ discord.Snowflake, guildMember discord.GuildMember) bool {
 		guildMembersList = append(guildMembersList, guildMember)
 		return false
@@ -396,6 +400,9 @@ func (ss *SandwichState) GetAllGuildRoles(guildID discord.Snowflake) (guildRoles
 	if !ok {
 		return
 	}
+
+	// Pre-allocate the list
+	guildRolesList = make([]discord.Role, 0, guildRoles.Roles.Count())
 
 	guildRoles.Roles.Range(func(id discord.Snowflake, role discord.Role) bool {
 		if role.ID == 0 {
@@ -484,6 +491,9 @@ func (ss *SandwichState) GetAllGuildEmojis(guildID discord.Snowflake) (guildEmoj
 	if !ok {
 		return
 	}
+
+	// Pre-allocate the list
+	guildEmojisList = make([]discord.Emoji, 0, guildEmojis.Emojis.Count())
 
 	guildEmojis.Emojis.Range(func(_ discord.Snowflake, guildEmoji discord.Emoji) bool {
 		guildEmojisList = append(guildEmojisList, guildEmoji)
@@ -677,6 +687,9 @@ func (ss *SandwichState) GetAllGuildChannels(guildID discord.Snowflake) (guildCh
 		return
 	}
 
+	// Pre-allocate the list
+	guildChannelsList = make([]discord.Channel, 0, guildChannels.Channels.Count())
+
 	guildChannels.Channels.Range(func(_ discord.Snowflake, guildChannel discord.Channel) bool {
 		guildChannelsList = append(guildChannelsList, guildChannel)
 		return false
@@ -728,6 +741,9 @@ func (ss *SandwichState) GetUserMutualGuilds(userID discord.Snowflake) (guildIDs
 	if !ok {
 		return
 	}
+
+	// Pre-allocate the list
+	guildIDs = make([]discord.Snowflake, 0, mutualGuilds.Guilds.Count())
 
 	mutualGuilds.Guilds.Range(func(guildID discord.Snowflake, _ struct{}) bool {
 		guildIDs = append(guildIDs, guildID)
