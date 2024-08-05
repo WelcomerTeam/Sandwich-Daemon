@@ -123,10 +123,13 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
 	// Get all guilds
+	var guildIdShardIdMap = make(map[discord.Snowflake]int32)
+
 	unavailableGuilds := make([]discord.UnavailableGuild, 0)
 
 	cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, _ discord.Guild) bool {
 		shardId := int32(cs.manager.GetShardIdOfGuild(id, cs.manager.ConsumerShardCount()))
+		guildIdShardIdMap[id] = shardId // We need this when dispatching guilds
 		if shardId == s.shard[0] {
 			unavailableGuilds = append(unavailableGuilds, discord.UnavailableGuild{
 				ID:          id,
@@ -175,6 +178,17 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 
 	// Next dispatch guilds
 	cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, guild discord.Guild) bool {
+		shardId, ok := guildIdShardIdMap[id]
+
+		if !ok {
+			// Get shard id
+			shardId = int32(cs.manager.GetShardIdOfGuild(id, cs.manager.ConsumerShardCount()))
+		}
+
+		if shardId != s.shard[0] {
+			return false // Skip to next guild if the shard id is not the same
+		}
+
 		if guild.AFKChannelID == nil {
 			guild.AFKChannelID = &guild.ID
 		}
@@ -201,6 +215,8 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 			return false
 		}
 	})
+
+	cs.manager.Logger.Info().Msgf("[WS] Shard %d (initial state dispatched successfully)", s.shard[0])
 
 	return err
 }
