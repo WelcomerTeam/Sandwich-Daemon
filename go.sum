@@ -1,5 +1,7 @@
 github.com/WelcomerTeam/Discord v0.0.0-20240803085640-b6f35c76cb0c h1:aj/N2TqmiZPZI3SSkwUQWVR5KS66WRYLinCKVx7q1pw=
 github.com/WelcomerTeam/Discord v0.0.0-20240803085640-b6f35c76cb0c/go.mod h1:A3Pg/wPoP5r7TYMflf0dUVnBOoTi/liKFx/dFVFPfM8=
+github.com/WelcomerTeam/Discord v0.0.0-20240805191305-92c171f8d82f h1:vjL+ChHt47wfyrw/BIEt9jcK9yu/3SzrBDwiQU69qkY=
+github.com/WelcomerTeam/Discord v0.0.0-20240805191305-92c171f8d82f/go.mod h1:A3Pg/wPoP5r7TYMflf0dUVnBOoTi/liKFx/dFVFPfM8=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15 h1:i3H4TzA9QZVoguPhdc7QJCM+zW4CeZwKZMSw6GLQEHI=
 github.com/WelcomerTeam/RealRock v0.0.0-20220122233305-f97b8c8cbc15/go.mod h1:4oemQ7XEqKAc1DTtFpWugoE9K5RLjt7iH0emiFXnL/A=
 github.com/WelcomerTeam/czlib v0.0.0-20210907121728-d7ed7721c904 h1:WV4Ok6b0/kgczuLAgGTNtLVOB5JIqdfzJzgOpdlDM8Q=
