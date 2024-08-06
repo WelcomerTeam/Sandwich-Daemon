@@ -12,6 +12,9 @@ var ErrInvalidToken = errors.New("token passed is not valid")
 // ErrReconnect is used to distinguish if the shard simply wants to reconnect.
 var ErrReconnect = errors.New("reconnect is required")
 
+// ErrInvalidHeartbeatInterval is returned when the heartbeat interval is invalid.
+var ErrInvalidHeartbeatInterval = errors.New("heartbeat interval is invalid")
+
 var (
 	ErrInvalidManager    = errors.New("no manager with this name exists")
 	ErrInvalidShardGroup = errors.New("invalid shard group id specified")

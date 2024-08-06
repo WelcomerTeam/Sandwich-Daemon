@@ -35,7 +35,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.16.1-antiraid"
+const VERSION = "1.16.2-antiraid"
 
 const (
 	PermissionsDefault = 0o744

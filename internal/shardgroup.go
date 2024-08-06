@@ -130,6 +130,10 @@ func (sg *ShardGroup) Open() (ready chan bool, err error) {
 
 	initialShard, ok := sg.Shards.Load(sg.ShardIDs[0])
 
+	if initialShard == nil {
+		panic("initialShard is nil")
+	}
+
 	if !ok {
 		return nil, ErrNoShardPresent
 	}

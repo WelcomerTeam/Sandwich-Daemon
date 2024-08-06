@@ -331,9 +331,9 @@ readyConsumer:
 		return err
 	}
 
-	var helloResponse discord.Hello
+	var hello discord.Hello
 
-	err = sh.decodeContent(msg, &helloResponse)
+	err = sh.decodeContent(msg, &hello)
 	if err != nil {
 		return err
 	}
@@ -344,11 +344,18 @@ readyConsumer:
 	sh.LastHeartbeatAck.Store(now)
 	sh.LastHeartbeatSent.Store(now)
 
-	var hbIntervalWithJitter = int32(float32(helloResponse.HeartbeatInterval) * 0.9)
+	if hello.HeartbeatInterval <= 0 {
+		sh.Logger.Error().
+			Int32("interval", hello.HeartbeatInterval).
+			Str("event_type", msg.Type).
+			Str("event_data", string(msg.Data)).
+			Msg("Invalid heartbeat interval")
 
-	sh.HeartbeatInterval = time.Duration(hbIntervalWithJitter) * time.Millisecond
+		return ErrInvalidHeartbeatInterval
+	}
+
+	sh.HeartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
-
 	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
 	go sh.Heartbeat(sh.ctx)
@@ -545,7 +552,7 @@ func (sh *Shard) Listen(ctx context.Context) error {
 
 			var closeError *websocket.CloseError
 
-			if errors.As(err, &closeError) {
+			if errors.As(err, &closeError) && closeError != nil {
 				// If possible, we will check the close error to determine if we can continue
 				switch closeError.Code {
 				case discord.CloseNotAuthenticated, // Not authenticated

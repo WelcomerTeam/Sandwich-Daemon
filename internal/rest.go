@@ -286,7 +286,7 @@ func (sg *Sandwich) CallbackEndpoint(ctx *fasthttp.RequestCtx) {
 	client := sg.Configuration.HTTP.OAuth.Client(ctx, token)
 
 	resp, err := client.Get(discordUserMeEndpoint)
-	if err != nil {
+	if err != nil || resp == nil || resp.Body == nil {
 		sg.Logger.Error().Err(err).Msg("Failed to fetch user")
 
 		return

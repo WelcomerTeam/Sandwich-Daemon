@@ -56,7 +56,7 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 	}
 
 	res, err := c.HandleRequest(req, false)
-	if err != nil {
+	if err != nil || res == nil || res.Body == nil {
 		return nil, 0, err
 	}
 
@@ -108,7 +108,7 @@ func (c *Client) HandleRequest(req *http.Request, retry bool) (*http.Response, e
 	}
 
 	res, err := c.HTTP.Do(req)
-	if err != nil {
+	if err != nil || res == nil {
 		return res, fmt.Errorf("failed to do HTTP request: %w", err)
 	}
 
