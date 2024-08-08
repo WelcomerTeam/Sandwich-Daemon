@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"runtime"
 	"strconv"
 	"strings"
@@ -356,7 +357,6 @@ readyConsumer:
 
 	sh.HeartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
-	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
 
 	go sh.Heartbeat(sh.ctx)
 
@@ -460,6 +460,12 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 	sh.HeartbeatActive.Store(true)
 	sh.HeartbeatDeadSignal.Started()
 
+	// We will add jitter to the heartbeat to prevent all shards from sending at the same time.
+
+	hasJitter := true
+	heartbeatJitter := time.Duration(float64(sh.HeartbeatInterval.Milliseconds())*rand.Float64()) * time.Millisecond
+	sh.Heartbeater = time.NewTicker(heartbeatJitter)
+
 	defer func() {
 		sh.HeartbeatActive.Store(false)
 		sh.HeartbeatDeadSignal.Done()
@@ -472,6 +478,11 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-sh.Heartbeater.C:
+			if hasJitter {
+				sh.Heartbeater.Reset(sh.HeartbeatInterval)
+				hasJitter = false
+			}
+
 			seq := sh.Sequence.Load()
 
 			err := sh.SendEvent(ctx, discord.GatewayOpHeartbeat, seq)

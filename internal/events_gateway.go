@@ -138,7 +138,7 @@ func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload, 
 
 	sh.HeartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	sh.HeartbeatFailureInterval = sh.HeartbeatInterval * ShardMaxHeartbeatFailures
-	sh.Heartbeater = time.NewTicker(sh.HeartbeatInterval)
+	sh.Heartbeater.Reset(sh.HeartbeatInterval)
 	return nil
 }
 
