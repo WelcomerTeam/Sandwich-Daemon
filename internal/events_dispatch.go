@@ -1045,13 +1045,20 @@ func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich
 		return result, false, err
 	}
 
+	var guildID discord.Snowflake
+
 	if voiceStateUpdatePayload.GuildID != nil {
-		defer ctx.OnGuildDispatchEvent(msg.Type, *voiceStateUpdatePayload.GuildID)
+		guildID = *voiceStateUpdatePayload.GuildID
+		defer ctx.OnGuildDispatchEvent(msg.Type, guildID)
 	}
 
-	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(*voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID)
+	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(guildID, voiceStateUpdatePayload.UserID)
 
-	ctx.Sandwich.State.UpdateVoiceState(ctx, discord.VoiceState(voiceStateUpdatePayload))
+	if guildID.IsNil() {
+		ctx.Sandwich.State.RemoveVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
+	} else {
+		ctx.Sandwich.State.UpdateVoiceState(ctx, discord.VoiceState(voiceStateUpdatePayload))
+	}
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeVoiceState,

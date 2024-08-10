@@ -876,6 +876,34 @@ func (ss *SandwichState) UpdateVoiceState(ctx StateCtx, voiceState discord.Voice
 	}
 }
 
+func (ss *SandwichState) RemoveVoiceState(ctx StateCtx, guildID, userID discord.Snowflake) {
+	// Check presence of an existing voice state.
+
+	guildVoiceStates, ok := ss.GuildVoiceStates.Load(guildID)
+
+	if !ok {
+		return
+	}
+
+	stateVoiceState, ok := guildVoiceStates.VoiceStates.Load(userID)
+
+	if !ok {
+		return
+	}
+
+	// Remove voice state.
+	guildVoiceStates.VoiceStates.Delete(userID)
+
+	// Update channel counts.
+
+	voiceChannel, ok := ss.GetGuildChannel(&guildID, stateVoiceState.ChannelID)
+	if ok {
+		voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(guildID, voiceChannel.ID)
+
+		ss.SetGuildChannel(ctx, &guildID, voiceChannel)
+	}
+}
+
 func (ss *SandwichState) CountMembersForVoiceChannel(guildID discord.Snowflake, channelID discord.Snowflake) int32 {
 	guildVoiceStates, ok := ss.GuildVoiceStates.Load(guildID)
 

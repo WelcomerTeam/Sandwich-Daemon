@@ -85,6 +85,10 @@ type ChannelOverwrite struct {
 // ChannelOverrideType represents the target of a channel override.
 type ChannelOverrideType Int64
 
+func (in *ChannelOverrideType) IsNil() bool {
+	return *in == 0
+}
+
 func (in *ChannelOverrideType) UnmarshalJSON(b []byte) error {
 	if !bytes.Equal(b, null) {
 		// Discord will pass ChannelOverrideType as a string if it is in an audit log.
