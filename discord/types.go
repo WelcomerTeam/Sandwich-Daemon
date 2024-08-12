@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	MaxInt64        = 9007199254740991
 	DiscordCreation = 1420070400000
 )
 
@@ -90,6 +91,10 @@ func (in Int64) MarshalJSON() ([]byte, error) {
 
 func (in Int64) String() string {
 	return strconv.FormatInt(int64(in), 10)
+}
+
+func int64Bytes(i int64) []byte {
+	return []byte(strconv.FormatInt(i, 10))
 }
 
 func int64ToStringBytes(s int64) []byte {

@@ -113,7 +113,7 @@ func (in *ChannelOverrideType) UnmarshalJSON(b []byte) error {
 }
 
 func (in ChannelOverrideType) MarshalJSON() ([]byte, error) {
-	return int64ToStringBytes(int64(in)), nil
+	return int64Bytes(int64(in)), nil
 }
 
 func (in ChannelOverrideType) String() string {
