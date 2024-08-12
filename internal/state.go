@@ -174,6 +174,10 @@ func (ss *SandwichState) SetGuild(ctx StateCtx, guild discord.Guild) {
 	ctx.ShardGroup.Guilds[guild.ID] = true
 	ctx.ShardGroup.guildsMu.Unlock()
 
+	ctx.guildsMu.Lock()
+	ctx.Guilds[guild.ID] = true
+	ctx.guildsMu.Unlock()
+
 	ss.guildsMu.Lock()
 	ss.Guilds[guild.ID] = ss.GuildToState(guild)
 	ss.guildsMu.Unlock()

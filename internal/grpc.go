@@ -623,7 +623,10 @@ func (grpc *routeSandwichServer) chunkGuild(guildID discord.Snowflake, alwaysChu
 			shardGroup.shardsMu.RLock()
 			for _, shard := range shardGroup.Shards {
 				shard.guildsMu.RLock()
-				if _, ok := shard.Guilds[guildID]; ok {
+				_, ok := shard.Guilds[guildID]
+				shard.guildsMu.RUnlock()
+
+				if ok {
 					err = shard.ChunkGuild(guildID, alwaysChunk)
 					if err != nil {
 						return true, err
@@ -631,7 +634,6 @@ func (grpc *routeSandwichServer) chunkGuild(guildID discord.Snowflake, alwaysChu
 						return true, nil
 					}
 				}
-				shard.guildsMu.RUnlock()
 			}
 			shardGroup.shardsMu.RUnlock()
 		}

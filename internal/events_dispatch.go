@@ -523,6 +523,10 @@ func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 		ctx.ShardGroup.guildsMu.Lock()
 		delete(ctx.ShardGroup.Guilds, guildDeletePayload.ID)
 		ctx.ShardGroup.guildsMu.Unlock()
+
+		ctx.guildsMu.Lock()
+		delete(ctx.Guilds, guildDeletePayload.ID)
+		ctx.guildsMu.Unlock()
 	}
 
 	extra, err := makeExtra(map[string]interface{}{
