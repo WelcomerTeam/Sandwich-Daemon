@@ -97,6 +97,10 @@ func int64Bytes(i int64) []byte {
 	return []byte(strconv.FormatInt(i, 10))
 }
 
+func uint16Bytes(i uint16) []byte {
+	return []byte(strconv.Itoa(int(i)))
+}
+
 func int64ToStringBytes(s int64) []byte {
 	buf := make([]byte, 0, 24) // maxInt64JsonLength + 2
 

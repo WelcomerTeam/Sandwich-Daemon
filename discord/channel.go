@@ -83,7 +83,7 @@ type ChannelOverwrite struct {
 }
 
 // ChannelOverrideType represents the target of a channel override.
-type ChannelOverrideType Int64
+type ChannelOverrideType uint16
 
 func (in *ChannelOverrideType) IsNil() bool {
 	return *in == 0
@@ -113,7 +113,7 @@ func (in *ChannelOverrideType) UnmarshalJSON(b []byte) error {
 }
 
 func (in ChannelOverrideType) MarshalJSON() ([]byte, error) {
-	return int64Bytes(int64(in)), nil
+	return uint16Bytes(uint16(in)), nil
 }
 
 func (in ChannelOverrideType) String() string {
