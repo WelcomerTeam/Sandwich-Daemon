@@ -1125,7 +1125,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx StateCtx, voiceState discord.Voice
 		ss.guildVoiceStatesMu.Unlock()
 	}
 
-	beforeVoiceState, beforeVoiceStateOk := ctx.Sandwich.State.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
+	beforeVoiceState, _ := ctx.Sandwich.State.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
 
 	guildVoiceStates.VoiceStatesMu.Lock()
 	if voiceState.ChannelID == 0 {
@@ -1142,16 +1142,16 @@ func (ss *SandwichState) UpdateVoiceState(ctx StateCtx, voiceState discord.Voice
 
 	// Update channel counts
 
-	if !beforeVoiceStateOk || beforeVoiceState.ChannelID != voiceState.ChannelID {
-		if !beforeVoiceStateOk {
-			voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
-			if ok {
-				voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*beforeVoiceState.GuildID, voiceChannel.ID)
+	if !beforeVoiceState.ChannelID.IsNil() {
+		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
+		if ok {
+			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*beforeVoiceState.GuildID, voiceChannel.ID)
 
-				ctx.Sandwich.State.SetGuildChannel(ctx, beforeVoiceState.GuildID, voiceChannel)
-			}
+			ctx.Sandwich.State.SetGuildChannel(ctx, beforeVoiceState.GuildID, voiceChannel)
 		}
+	}
 
+	if !voiceState.ChannelID.IsNil() {
 		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, voiceState.ChannelID)
 		if ok {
 			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, voiceChannel.ID)
