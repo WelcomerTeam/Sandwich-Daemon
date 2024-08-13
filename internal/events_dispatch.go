@@ -1153,9 +1153,6 @@ func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich
 
 	if voiceStateUpdatePayload.GuildID != nil {
 		guildID = *voiceStateUpdatePayload.GuildID
-	}
-
-	if voiceStateUpdatePayload.GuildID != nil {
 		defer ctx.OnGuildDispatchEvent(msg.Type, *voiceStateUpdatePayload.GuildID)
 	}
 
