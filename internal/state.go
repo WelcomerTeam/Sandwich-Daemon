@@ -163,6 +163,7 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild discord.Guil
 func (ss *SandwichState) SetGuild(ctx StateCtx, guild discord.Guild) {
 	ctx.ShardGroup.Guilds.Store(guild.ID, struct{}{})
 	ss.Guilds.Store(guild.ID, guild)
+	ctx.Guilds.Store(guild.ID, struct{}{})
 
 	// Safety: there is guaranteed to be at least one role
 	for _, role := range guild.Roles {
@@ -203,7 +204,6 @@ func (ss *SandwichState) SetGuild(ctx StateCtx, guild discord.Guild) {
 		ss.SetGuildEmoji(ctx, guild.ID, emoji)
 	}
 
-	// Safety: there is guaranteed to be at least one member
 	for _, member := range guild.Members {
 		ss.SetGuildMember(ctx, guild.ID, member)
 	}
@@ -842,7 +842,7 @@ func (ss *SandwichState) UpdateVoiceState(ctx StateCtx, voiceState discord.Voice
 		guildVoiceStates, _ = ss.GuildVoiceStates.Load(*voiceState.GuildID)
 	}
 
-	beforeVoiceState, beforeVoiceStateOk := ss.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
+	beforeVoiceState, _ := ss.GetVoiceState(*voiceState.GuildID, voiceState.UserID)
 
 	if voiceState.ChannelID == 0 {
 		// Remove from voice states if leaving voice channel.
@@ -857,21 +857,21 @@ func (ss *SandwichState) UpdateVoiceState(ctx StateCtx, voiceState discord.Voice
 
 	// Update channel counts
 
-	if !beforeVoiceStateOk || beforeVoiceState.ChannelID != voiceState.ChannelID {
-		if !beforeVoiceStateOk {
-			voiceChannel, ok := ss.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
-			if ok {
-				voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*beforeVoiceState.GuildID, voiceChannel.ID)
+	if !beforeVoiceState.ChannelID.IsNil() {
+		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(beforeVoiceState.GuildID, beforeVoiceState.ChannelID)
+		if ok {
+			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*beforeVoiceState.GuildID, voiceChannel.ID)
 
-				ss.SetGuildChannel(ctx, beforeVoiceState.GuildID, voiceChannel)
-			}
+			ctx.Sandwich.State.SetGuildChannel(ctx, beforeVoiceState.GuildID, voiceChannel)
 		}
+	}
 
-		voiceChannel, ok := ss.GetGuildChannel(voiceState.GuildID, voiceState.ChannelID)
+	if !voiceState.ChannelID.IsNil() {
+		voiceChannel, ok := ctx.Sandwich.State.GetGuildChannel(voiceState.GuildID, voiceState.ChannelID)
 		if ok {
 			voiceChannel.MemberCount = ss.CountMembersForVoiceChannel(*voiceState.GuildID, voiceChannel.ID)
 
-			ss.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
+			ctx.Sandwich.State.SetGuildChannel(ctx, voiceState.GuildID, voiceChannel)
 		}
 	}
 }

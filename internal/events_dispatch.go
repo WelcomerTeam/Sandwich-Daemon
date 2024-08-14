@@ -447,6 +447,7 @@ func OnGuildDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 		// Dereferencing it locally ensures that if other managers are using it,
 		// it will stay.
 		ctx.ShardGroup.Guilds.Delete(guildDeletePayload.ID)
+		ctx.Guilds.Delete(guildDeletePayload.ID)
 	}
 
 	extra, err := makeExtra(map[string]interface{}{

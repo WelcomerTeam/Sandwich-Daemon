@@ -463,7 +463,7 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 	// We will add jitter to the heartbeat to prevent all shards from sending at the same time.
 
 	hasJitter := true
-	heartbeatJitter := time.Duration(float64(sh.HeartbeatInterval.Milliseconds())*rand.Float64()) * time.Millisecond
+	heartbeatJitter := time.Duration(rand.Int64N(sh.HeartbeatInterval.Milliseconds())+1) * time.Millisecond
 	sh.Heartbeater = time.NewTicker(heartbeatJitter)
 
 	defer func() {
