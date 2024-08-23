@@ -743,12 +743,12 @@ func OnGuildRoleUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 		return result, false, err
 	}
 
-	defer ctx.OnGuildDispatchEvent(msg.Type, *guildRoleUpdatePayload.GuildID)
+	defer ctx.OnGuildDispatchEvent(msg.Type, guildRoleUpdatePayload.GuildID)
 
 	beforeRole, _ := ctx.Sandwich.State.GetGuildRole(
-		*guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.ID)
+		guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
 
-	ctx.Sandwich.State.SetGuildRole(*guildRoleUpdatePayload.GuildID, discord.Role(guildRoleUpdatePayload))
+	ctx.Sandwich.State.SetGuildRole(guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeRole,
@@ -761,7 +761,7 @@ func OnGuildRoleUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_
 		Data:  msg.Data,
 		Extra: extra,
 		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
-			GuildID: guildRoleUpdatePayload.GuildID,
+			GuildID: &guildRoleUpdatePayload.GuildID,
 		},
 	}, true, nil
 }
