@@ -143,6 +143,8 @@ func main() {
 	if err != nil {
 		logger.Warn().Err(err).Msg("Exception whilst closing sandwich")
 	}
+
+	logger.Info().Msg("Sandwich closed due to signal")
 }
 
 func MustParseBool(str string) bool {

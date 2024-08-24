@@ -395,6 +395,12 @@ func (sg *Sandwich) startManagers() {
 			manager.Logger.Error().Err(err).Msg("Failed to initialize manager")
 
 			go sg.PublishSimpleWebhook("Failed to open manager", "`"+err.Error()+"`", "", EmbedColourDanger)
+
+			time.Sleep(5 * time.Second)
+
+			// Retry
+			sg.PublishSimpleWebhook("Retrying to open manager", "", "", EmbedColourWarning)
+			sg.startManagers() // Recursively retry
 		} else if managerConfiguration.AutoStart {
 			go manager.Open()
 		}
