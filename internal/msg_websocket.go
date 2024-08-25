@@ -758,6 +758,18 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 
 	for subShard, sub := range cs.subscribers {
 		if subShard[1] != shard[1] && msg.EventDispatchIdentifier.GuildID != nil {
+			if subShard[1] == 0 {
+				// 0 shards is impossible, close the connection
+				for _, s := range sub {
+					s.writer <- message{
+						rawBytes:    []byte(`{"op":9,"d":false}`),
+						closeCode:   websocket.StatusCode(4000),
+						closeString: "Invalid Session",
+					}
+				}
+				continue
+			}
+
 			// Shard count used by subscriber is not the same as the shard count used by the message
 			// We need to remap the shard id based on the subscriber's shard id
 			msgShardId := cs.manager.GetShardIdOfGuild(*msg.EventDispatchIdentifier.GuildID, subShard[1])
