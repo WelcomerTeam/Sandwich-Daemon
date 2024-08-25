@@ -333,7 +333,7 @@ func (mg *Manager) ConsumerShardCount() int32 {
 
 // GetShardIdOfGuild returns the shard id of a guild
 func (mg *Manager) GetShardIdOfGuild(guildID discord.Snowflake, shardCount int32) int32 {
-	if shardCount == 0 {
+	if shardCount <= 0 {
 		mg.Logger.Error().Msg("Shard count is 0, cannot calculate shard id")
 		return 0
 	}
