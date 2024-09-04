@@ -55,7 +55,7 @@ client = bot(command_prefix="!", intents=discord.Intents.all(), chunk_guilds_at_
 
 @client.event
 async def on_ready():
-    print(f"We have logged in as {client.user}")
+    print(f"We have logged in as {client.user}", len(client.guilds))
     await asyncio.sleep(2)
     for g in client.guilds:
         print(f"Connected to {g.name}")
