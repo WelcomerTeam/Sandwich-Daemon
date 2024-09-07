@@ -151,6 +151,11 @@ func (ss *SandwichState) GetGuild(guildID discord.Snowflake) (guild discord.Guil
 		return
 	}
 
+	// Fix AFK channel
+	if guild.AFKChannelID == nil {
+		guild.AFKChannelID = &guild.ID
+	}
+
 	guild.Members = members
 	ok = true
 

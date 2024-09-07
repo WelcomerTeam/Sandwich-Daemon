@@ -177,7 +177,7 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 	}
 
 	// Next dispatch guilds
-	cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, guild discord.Guild) bool {
+	cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, _ discord.Guild) bool {
 		shardId, ok := guildIdShardIdMap[id]
 
 		if !ok {
@@ -189,8 +189,11 @@ func (cs *chatServer) dispatchInitial(done chan void, s *subscriber) error {
 			return false // Skip to next guild if the shard id is not the same
 		}
 
-		if guild.AFKChannelID == nil {
-			guild.AFKChannelID = &guild.ID
+		guild, ok := cs.manager.Sandwich.State.GetGuild(id)
+
+		if !ok {
+			cs.manager.Sandwich.Logger.Error().Msgf("[WS] Failed to get guild: %d", id)
+			return false
 		}
 
 		serializedGuild, err := sandwichjson.Marshal(guild)
