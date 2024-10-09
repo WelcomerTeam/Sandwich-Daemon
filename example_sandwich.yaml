@@ -1,60 +1,75 @@
 identify:
-  url: "http://127.0.0.1:5000/identify"
-  headers:
-    TEST: TEST
+    url: ""
+    headers: {}
 producer:
-  type: stan
-  configuration:
-    address: 127.0.0.1:4222
-    channel: sandwich
-    cluster: cluster
-# If using websockets, use the below
-#producer:
-#    type: websocket
-#    configuration:
-#        address: 127.0.0.1:3600
-#        expectedtoken: TOKENHERE
-#        defaultwritedelay: 0
+    type: websocket
+    configuration:
+        address: 127.0.0.1:3600
+        expectedtoken: TOKENHERE 
+        defaultwritedelay: 0
 http:
-  oauth:
-    clientid: ""
-    clientsecret: ""
-    endpoint:
-      authurl: https://discord.com/api/oauth2/authorize?prompt=none
-      tokenurl: https://discord.com/api/oauth2/token
-    redirecturl: http://127.0.0.1:14999/callback
-    scopes:
-      - identify
-      - email
-  user_access:
-    - "143090142360371200"
+    oauth:
+        clientid: "1218522993425252424"
+        clientsecret: 
+        endpoint:
+            authurl: https://discord.com/api/oauth2/authorize?prompt=none
+            deviceauthurl: ""
+            tokenurl: https://discord.com/api/oauth2/token
+            authstyle: 0
+        redirecturl: https://splashtail-sandwich.antiraid.xyz/callback
+        scopes:
+            - identify
+            - email
+    user_access:
+        - "728871946456137770"
+        - "564164277251080208"
+        - "564164277251080208"
 webhooks:
+    - https://discord.com/api/v10/webhooks/1232171189351481376/FOOBAR
 managers:
-  - identifier: welcomer_beta
-    producer_identifier: welcomer
-    friendly_name: Welcomer Beta
-    token: TOKEN
-    auto_start: false
-    bot:
-      default_presence:
-        since: null
-        activities: []
-        status: ""
-        afk: false
-      intents: 32511
-      chunk_guilds_on_startup: false
-    caching:
-      cache_users: true
-      cache_members: true
-      store_mutuals: true
-    events:
-      event_blacklist: []
-      produce_blacklist: []
-    messaging:
-      client_name: welcomerBeta
-      channel_name: sandwich
-      use_random_suffix: true
-    sharding:
-      auto_sharded: false
-      shard_count: 4
-      shard_ids: "0-3"
+    - identifier: antiraid
+      virtual_shards:
+        enabled: true
+        count: 30
+        dm_shard: 0
+      producer_identifier: antiraid_producer
+      friendly_name: Anti Raid
+      token: TOKENHERE
+      auto_start: true
+      disable_trace: true
+      bot:
+        default_presence:
+            status: online
+            activities:
+                - timestamps: null
+                  applicationid: null
+                  party: null
+                  assets: null
+                  secrets: null
+                  flags: null
+                  name: Listening to development of Anti-Raid v6 | Shard {{shard_id}}
+                  url: null
+                  details: null
+                  state: Listening to development of Anti-Raid v6 | Shard {{shard_id}}
+                  type: 1
+                  instance: null
+                  createdat: null
+            since: 0
+            afk: false
+        intents: 20031103
+        chunk_guilds_on_startup: false
+      caching:
+        cache_users: true
+        cache_members: true
+        store_mutuals: true
+      events:
+        event_blacklist: []
+        produce_blacklist: []
+      messaging:
+        client_name: antiraid
+        channel_name: sandwich
+        use_random_suffix: true
+      sharding:
+        auto_sharded: true
+        shard_count: 0
+        shard_ids: ""
