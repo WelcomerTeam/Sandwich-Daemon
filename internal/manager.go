@@ -51,6 +51,8 @@ type Manager struct {
 	Sandwich      *Sandwich             `json:"-"`
 	Configuration *ManagerConfiguration `json:"configuration" yaml:"configuration"`
 
+	IsClosing bool `json:"-"`
+
 	ShardGroups *csmap.CsMap[int32, *ShardGroup] `json:"shard_groups" yaml:"shard_groups"`
 
 	Client *Client `json:"-"`
@@ -306,6 +308,10 @@ func (mg *Manager) Scale(shardIDs []int32, shardCount int32) (sg *ShardGroup) {
 
 // AllReady, returns whether all shard groups are ready
 func (mg *Manager) AllReady() bool {
+	if mg.ShardGroups.Count() == 0 || mg.IsClosing {
+		return false
+	}
+
 	var isReady bool = true
 	mg.ShardGroups.Range(func(shardGroupID int32, sg *ShardGroup) bool {
 		if !sg.allShardsReady.Load() {
@@ -496,6 +502,8 @@ func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
 
 func (mg *Manager) Close() {
 	mg.Logger.Info().Msg("Closing manager shardgroups")
+
+	mg.IsClosing = true
 
 	mg.ShardGroups.Range(func(key int32, sg *ShardGroup) bool {
 		sg.Close()
