@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,18 +15,18 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	"github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	"github.com/WelcomerTeam/czlib"
 	"nhooyr.io/websocket"
 )
 
 var (
 	heartbeatAck               = []byte(`{"op":11}`)
-	helloPayload               = []byte(`{"op":10,"d":{"heartbeat_interval":41250}}`)
+	helloPayload               = []byte(`{"op":10,"d":{"heartbeat_interval":45000}}`)
 	resumableInvalidSession    = []byte(`{"op":9,"d":true}`)
 	nonresumableInvalidSession = []byte(`{"op":9,"d":false}`)
 	invalidSessionOpCode       = websocket.StatusCode(4000)
-	heartbeatTimeout           = 60 * time.Second // Give it a minute to heartbeat
+	heartbeatTimeout           = 120 * time.Second // Give it 2 minutes to heartbeat
 	heartbeatCheckInterval     = 5 * time.Second
+	resumeTimeout              = 5 * time.Minute // Give 5 minutes to resume
 )
 
 func init() {
@@ -51,9 +50,6 @@ type chatServer struct {
 
 	// serveMux routes the various endpoints to the appropriate handler.
 	serveMux http.ServeMux
-
-	// defaultWriteDelay
-	defaultWriteDelay int64
 
 	// subscriberMessageBuffer controls the max number
 	// of messages that can be queued for a subscriber
@@ -97,13 +93,12 @@ type subscriber struct {
 	c                 *websocket.Conn
 	context           context.Context
 	cancelFunc        context.CancelFunc
-	reader            chan *structs.SandwichPayload
+	reader            chan structs.SandwichPayload
 	writeNormal       chan structs.SandwichPayload // Normal message channel
 	writeBytes        chan []byte                  // Bytes message channel
 	writeCloseMessage chan closeMessage            // Close message channel
 	writeHeartbeat    chan void
 	sessionId         string
-	writeDelay        int64
 	shard             [2]int32
 	seq               int32
 	meta              subscriberStatusMeta
@@ -156,7 +151,7 @@ func newSubscriberStatusMeta() subscriberStatusMeta {
 
 // invalidSession closes the connection with the given reason.
 func (cs *chatServer) invalidSession(s *subscriber, reason string, resumable bool) {
-	cs.manager.Sandwich.Logger.Error().Msgf("[WS] Invalid session: %s, is resumable: %v", reason, resumable)
+	cs.manager.Logger.Error().Msgf("[WS] Invalid session: %s, is resumable: %v", reason, resumable)
 
 	if resumable {
 		s.writeBytes <- resumableInvalidSession
@@ -287,28 +282,7 @@ func (cs *chatServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // subscribeHandler accepts the WebSocket connection and then subscribes
 // it to all future messages.
 func (cs *chatServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
-	// Check for special query params
-	//
-	// - writeDelay (int): the delay to write messages in microseconds
-	var writeDelay int64
-
-	wd := r.URL.Query().Get("writeDelay")
-
-	if wd != "" {
-		// Parse to int
-		delay, err := strconv.ParseInt(wd, 10, 64)
-
-		if err != nil {
-			http.Error(w, "Invalid writeDelay", http.StatusBadRequest)
-			return
-		}
-
-		writeDelay = delay
-	} else {
-		writeDelay = cs.defaultWriteDelay
-	}
-
-	cs.subscribe(r.Context(), w, r, writeDelay)
+	cs.subscribe(r.Context(), w, r)
 }
 
 // publishHandler reads the request body with a limit of 8192 bytes and then publishes
@@ -490,45 +464,20 @@ func (s *subscriber) readMessages() {
 		case <-s.context.Done():
 			return
 		default:
-			typ, ior, err := s.c.Read(s.context)
+			_, ior, err := s.c.Read(s.context)
 
 			if err != nil {
 				return
 			}
 
-			select {
-			case <-s.context.Done():
+			var payload structs.SandwichPayload
+
+			err = sandwichjson.Unmarshal(ior, &payload)
+
+			if err != nil {
+				s.cs.manager.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
+				s.cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
 				return
-			default:
-			}
-
-			var payload *structs.SandwichPayload
-			switch typ {
-			case websocket.MessageText:
-				err := sandwichjson.Unmarshal(ior, &payload)
-
-				if err != nil {
-					s.cs.manager.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
-					s.cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
-					return
-				}
-			case websocket.MessageBinary:
-				// ZLIB compressed message sigh
-				newReader, err := czlib.NewReader(bytes.NewReader(ior))
-
-				if err != nil {
-					s.cs.manager.Logger.Error().Msgf("[WS] Failed to decompress message: %s", err.Error())
-					s.cs.invalidSession(s, "failed to decompress message: "+err.Error(), true)
-					return
-				}
-
-				err = sandwichjson.UnmarshalReader(newReader, &payload)
-
-				if err != nil {
-					s.cs.manager.Logger.Error().Msgf("[WS] Failed to unmarshal packet: %s", err.Error())
-					s.cs.invalidSession(s, "failed to unmarshal packet: "+err.Error(), true)
-					return
-				}
 			}
 
 			if payload.Op == discord.GatewayOpHeartbeat {
@@ -672,10 +621,6 @@ func (s *subscriber) writeMessages() {
 			}
 		// Case 4: Heartbeat
 		case <-s.writeHeartbeat:
-			if s.writeDelay > 0 {
-				time.Sleep(time.Duration(s.writeDelay) * time.Microsecond)
-			}
-
 			err := s.c.Write(s.context, websocket.MessageText, heartbeatAck)
 
 			if err != nil {
@@ -700,7 +645,7 @@ func (s *subscriber) writeMessages() {
 //
 // It uses CloseRead to keep reading from the connection to process control
 // messages and cancel the context if the connection drops.
-func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, writeDelay int64) error {
+func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	if !cs.manager.AllReady() {
 		http.Error(w, "{\"error\":\"Manager is not yet ready to accept connections\"}", http.StatusServiceUnavailable)
 		return errors.New("manager is not yet ready to accept connections")
@@ -711,12 +656,11 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	var c *websocket.Conn
 	s := &subscriber{
 		cs:                cs,
-		reader:            make(chan *structs.SandwichPayload, cs.subscriberMessageBuffer),
+		reader:            make(chan structs.SandwichPayload, cs.subscriberMessageBuffer),
 		writeNormal:       make(chan structs.SandwichPayload, cs.subscriberMessageBuffer),
 		writeCloseMessage: make(chan closeMessage, cs.subscriberMessageBuffer),
 		writeBytes:        make(chan []byte, cs.subscriberMessageBuffer),
 		writeHeartbeat:    make(chan void, cs.subscriberMessageBuffer),
-		writeDelay:        writeDelay,
 		meta:              newSubscriberStatusMeta(),
 	}
 
@@ -746,7 +690,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	go s.readMessages()
 	go s.handleTimeoutWatchdog()
 
-	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now launched (reader+writer UP)", s.shard[0])
+	cs.manager.Logger.Info().Msgf("[WS] Shard %d is now launched (reader+writer UP)", s.shard[0])
 
 	// Now identifyClient
 	oldSess, err := s.identifyClient()
@@ -806,10 +750,10 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 	// Wait for the context to be cancelled
 	<-s.context.Done()
 
-	cs.manager.Sandwich.Logger.Info().Msgf("[WS] Shard %d is now disconnected. Giving one minute for resumes", s.shard[0])
+	cs.manager.Logger.Info().Msgf("[WS] Shard %d is now disconnected (but can be resumed)", s.shard[0])
 
 	// Give one minute for resumes
-	time.Sleep(1 * time.Minute)
+	time.Sleep(resumeTimeout)
 
 	if s.meta.status != subscriberStatusMoving {
 		s.close() // Close if not being moved
@@ -825,7 +769,7 @@ func (cs *chatServer) subscribe(ctx context.Context, w http.ResponseWriter, r *h
 // It never blocks and so messages to slow subscribers
 // are dropped.
 func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
-	cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Shard %d is now publishing message", shard[0])
+	cs.manager.Logger.Trace().Msgf("[WS] Shard %d is now publishing message", shard[0])
 
 	cs.subscribersMu.RLock()
 	defer cs.subscribersMu.RUnlock()
@@ -852,7 +796,7 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 		}
 
 		for _, s := range sub {
-			cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Shard %d is now publishing message to %d subscribers", shard[0], len(sub))
+			cs.manager.Logger.Trace().Msgf("[WS] Shard %d is now publishing message to %d subscribers", shard[0], len(sub))
 
 			s.writeNormal <- *msg
 		}
@@ -863,14 +807,14 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 // It never blocks and so messages to slow subscribers
 // are dropped.
 func (cs *chatServer) publishGlobal(msg *structs.SandwichPayload) {
-	cs.manager.Sandwich.Logger.Trace().Msg("[WS] Global is now publishing message")
+	cs.manager.Logger.Trace().Msg("[WS] Global is now publishing message")
 
 	cs.subscribersMu.RLock()
 	defer cs.subscribersMu.RUnlock()
 
 	for _, shardSubs := range cs.subscribers {
 		for _, s := range shardSubs {
-			cs.manager.Sandwich.Logger.Trace().Msgf("[WS] Global is now publishing message to %d subscribers", len(shardSubs))
+			cs.manager.Logger.Trace().Msgf("[WS] Global is now publishing message to %d subscribers", len(shardSubs))
 
 			s.writeNormal <- *msg
 		}
@@ -898,7 +842,6 @@ func (mq *WebsocketClient) Cluster() string {
 // address (string): the address to listen on
 // expectedToken (string): the expected token for identify
 // externalAddress (string): the external address to use for resuming, defaults to ws://address if unset
-// defaultWriteDelay (int): the default write delay in microseconds, defaults to 10
 func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, clientName string, args map[string]interface{}) error {
 	var ok bool
 
@@ -935,26 +878,6 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	mq.cs.address = address
 	mq.cs.externalAddress = externalAddress
 	s := &http.Server{Handler: mq.cs}
-
-	switch defaultWriteDelay := GetEntry(args, "DefaultWriteDelay").(type) {
-	case int:
-		mq.cs.defaultWriteDelay = int64(defaultWriteDelay)
-	case int64:
-		mq.cs.defaultWriteDelay = defaultWriteDelay
-	case float64:
-		mq.cs.defaultWriteDelay = int64(defaultWriteDelay)
-	case string:
-		delay, err := strconv.ParseInt(defaultWriteDelay, 10, 64)
-
-		if err != nil {
-			return errors.New("websocketMQ connect: failed to parse DefaultWriteDelay: " + err.Error())
-		}
-
-		mq.cs.defaultWriteDelay = delay
-	default:
-		manager.Logger.Warn().Msg("DefaultWriteDelay not set, defaulting to 10 microseconds")
-		mq.cs.defaultWriteDelay = 10
-	}
 
 	switch subscriberMessageBuffer := GetEntry(args, "SubscriberMessageBuffer").(type) {
 	case int:
