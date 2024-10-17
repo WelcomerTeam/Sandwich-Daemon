@@ -522,10 +522,7 @@ func OnGuildEmojisUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 	beforeEmojis, _ := ctx.Sandwich.State.GetAllGuildEmojis(guildEmojisUpdatePayload.GuildID)
 
 	ctx.Sandwich.State.RemoveAllGuildEmojis(guildEmojisUpdatePayload.GuildID)
-
-	for _, emoji := range guildEmojisUpdatePayload.Emojis {
-		ctx.Sandwich.State.SetGuildEmoji(ctx, guildEmojisUpdatePayload.GuildID, emoji)
-	}
+	ctx.Sandwich.State.SetGuildEmojis(ctx, guildEmojisUpdatePayload.GuildID, guildEmojisUpdatePayload.Emojis)
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeEmojis,

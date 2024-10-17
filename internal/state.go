@@ -40,7 +40,7 @@ type SandwichState struct {
 
 	GuildRoles *csmap.CsMap[discord.Snowflake, StateGuildRoles]
 
-	GuildEmojis *csmap.CsMap[discord.Snowflake, StateGuildEmojis]
+	GuildEmojis *csmap.CsMap[discord.Snowflake, []discord.Emoji]
 
 	Users *csmap.CsMap[discord.Snowflake, StateUser]
 
@@ -70,7 +70,7 @@ func NewSandwichState() *SandwichState {
 		),
 
 		GuildEmojis: csmap.Create(
-			csmap.WithSize[discord.Snowflake, StateGuildEmojis](50),
+			csmap.WithSize[discord.Snowflake, []discord.Emoji](50),
 		),
 
 		Users: csmap.Create(
@@ -192,22 +192,7 @@ func (ss *SandwichState) SetGuild(ctx StateCtx, guild discord.Guild) {
 		ss.SetGuildChannel(ctx, &guild.ID, channel)
 	}
 
-	// Set emoji default state
-	if len(guild.Emojis) == 0 {
-		_, ok := ss.GuildEmojis.Load(guild.ID)
-
-		if !ok {
-			ss.GuildEmojis.SetIfAbsent(guild.ID, StateGuildEmojis{
-				Emojis: csmap.Create(
-					csmap.WithSize[discord.Snowflake, discord.Emoji](0),
-				),
-			})
-		}
-	}
-
-	for _, emoji := range guild.Emojis {
-		ss.SetGuildEmoji(ctx, guild.ID, emoji)
-	}
+	ss.SetGuildEmojis(ctx, guild.ID, guild.Emojis)
 
 	for _, member := range guild.Members {
 		ss.SetGuildMember(ctx, guild.ID, member)
@@ -439,10 +424,12 @@ func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discor
 		return
 	}
 
-	guildEmoji, ok = guildEmojis.Emojis.Load(emojiID)
-
-	if !ok {
-		return
+	for _, emoji := range guildEmojis {
+		if emoji.ID == emojiID {
+			guildEmoji = emoji
+			ok = true
+			break
+		}
 	}
 
 	if guildEmoji.User != nil {
@@ -455,57 +442,22 @@ func (ss *SandwichState) GetGuildEmoji(guildID discord.Snowflake, emojiID discor
 	return
 }
 
-// SetGuildEmoji creates or updates a emoji entry in the cache. Adds user in user object to cache.
+// SetGuildEmoji sets the list of emoji entries in the cache. Adds user in user object to cache.
 //
 // fake-ctx-safe
-func (ss *SandwichState) SetGuildEmoji(ctx StateCtx, guildID discord.Snowflake, emoji discord.Emoji) {
-	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
+func (ss *SandwichState) SetGuildEmojis(ctx StateCtx, guildID discord.Snowflake, emojis []discord.Emoji) {
+	ss.GuildEmojis.Store(guildID, emojis)
 
-	if !ok {
-		ss.GuildEmojis.SetIfAbsent(guildID, StateGuildEmojis{
-			Emojis: csmap.Create(
-				csmap.WithSize[discord.Snowflake, discord.Emoji](50),
-			),
-		})
-
-		guildEmojis, _ = ss.GuildEmojis.Load(guildID)
+	for _, emoji := range emojis {
+		if emoji.User != nil {
+			ss.SetUser(ctx, *emoji.User)
+		}
 	}
-
-	guildEmojis.Emojis.Store(emoji.ID, emoji)
-
-	if emoji.User != nil {
-		ss.SetUser(ctx, *emoji.User)
-	}
-}
-
-// RemoveGuildEmoji removes a emoji from the cache.
-func (ss *SandwichState) RemoveGuildEmoji(guildID discord.Snowflake, emojiID discord.Snowflake) {
-	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
-
-	if !ok {
-		return
-	}
-
-	guildEmojis.Emojis.Delete(emojiID)
 }
 
 // GetAllGuildEmojis returns all guildEmojis on a specific guild from the cache.
 func (ss *SandwichState) GetAllGuildEmojis(guildID discord.Snowflake) (guildEmojisList []discord.Emoji, ok bool) {
-	guildEmojis, ok := ss.GuildEmojis.Load(guildID)
-
-	if !ok {
-		return
-	}
-
-	// Pre-allocate the list
-	guildEmojisList = make([]discord.Emoji, 0, guildEmojis.Emojis.Count())
-
-	guildEmojis.Emojis.Range(func(_ discord.Snowflake, guildEmoji discord.Emoji) bool {
-		guildEmojisList = append(guildEmojisList, guildEmoji)
-		return false
-	})
-
-	return
+	return ss.GuildEmojis.Load(guildID)
 }
 
 // RemoveGuildEmojis removes all guildEmojis of a specific guild from the cache.
@@ -945,10 +897,6 @@ type StateGuildMembers struct {
 
 type StateGuildRoles struct {
 	Roles *csmap.CsMap[discord.Snowflake, discord.Role] `json:"roles"`
-}
-
-type StateGuildEmojis struct {
-	Emojis *csmap.CsMap[discord.Snowflake, discord.Emoji] `json:"emoji"`
 }
 
 type StateGuildChannels struct {

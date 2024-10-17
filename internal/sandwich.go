@@ -604,8 +604,8 @@ func (sg *Sandwich) prometheusGatherer() {
 			return false
 		})
 
-		sg.State.GuildEmojis.Range(func(guildID discord.Snowflake, guildEmojis StateGuildEmojis) bool {
-			stateEmojis += guildEmojis.Emojis.Count()
+		sg.State.GuildEmojis.Range(func(guildID discord.Snowflake, guildEmojis []discord.Emoji) bool {
+			stateEmojis += len(guildEmojis)
 			return false
 		})
 
