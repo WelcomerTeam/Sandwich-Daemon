@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
@@ -55,6 +56,9 @@ const (
 // Shard represents the shard object.
 type Shard struct {
 	Logger zerolog.Logger `json:"-"`
+
+	RoutineDeadSignal   deadlock.DeadSignal `json:"-"`
+	HeartbeatDeadSignal deadlock.DeadSignal `json:"-"`
 
 	ctx    context.Context
 	cancel func()
@@ -119,6 +123,9 @@ type Shard struct {
 func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 	logger := sg.Logger.With().Int32("shardId", shardID).Logger()
 	sh = &Shard{
+		RoutineDeadSignal:   deadlock.DeadSignal{},
+		HeartbeatDeadSignal: deadlock.DeadSignal{},
+
 		RetriesRemaining: atomic.NewInt32(ShardConnectRetries),
 
 		Logger: logger,
@@ -202,6 +209,8 @@ func (sh *Shard) Open() {
 		}
 
 		select {
+		case <-sh.RoutineDeadSignal.Dead():
+			return
 		case <-sh.ctx.Done():
 			return
 		default:
@@ -242,6 +251,12 @@ readyConsumer:
 	default:
 		sh.cancel()
 	}
+
+	sh.RoutineDeadSignal.Close("CONNECT")
+	sh.RoutineDeadSignal.Revive()
+
+	sh.HeartbeatDeadSignal.Close("HB")
+	sh.HeartbeatDeadSignal.Revive()
 
 	sh.ctx, sh.cancel = context.WithCancel(sh.Manager.ctx)
 
@@ -443,6 +458,8 @@ readyConsumer:
 // Heartbeat maintains a heartbeat with discord.
 func (sh *Shard) Heartbeat(ctx context.Context) {
 	sh.HeartbeatActive.Store(true)
+	sh.HeartbeatDeadSignal.Started()
+
 	// We will add jitter to the heartbeat to prevent all shards from sending at the same time.
 
 	hasJitter := true
@@ -451,10 +468,13 @@ func (sh *Shard) Heartbeat(ctx context.Context) {
 
 	defer func() {
 		sh.HeartbeatActive.Store(false)
+		sh.HeartbeatDeadSignal.Done()
 	}()
 
 	for {
 		select {
+		case <-sh.HeartbeatDeadSignal.Dead():
+			return
 		case <-ctx.Done():
 			return
 		case <-sh.Heartbeater.C:
@@ -526,6 +546,8 @@ func (sh *Shard) Listen(ctx context.Context) error {
 
 	for {
 		select {
+		case <-sh.RoutineDeadSignal.Dead():
+			return nil
 		case <-ctx.Done():
 			return nil
 		default:
@@ -640,10 +662,15 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 	sh.wsConnMu.Unlock()
 
 	go func() {
+		sh.RoutineDeadSignal.Started()
+		defer sh.RoutineDeadSignal.Done()
+
 		for {
 			messageType, data, connectionErr := conn.Read(ctx)
 
 			select {
+			case <-sh.RoutineDeadSignal.Dead():
+				return
 			case <-ctx.Done():
 				return
 			default:
@@ -680,6 +707,8 @@ func (sh *Shard) FeedWebsocket(ctx context.Context, u string,
 			select {
 			case messageCh <- *msg:
 				continue
+			case <-sh.RoutineDeadSignal.Dead():
+				return
 			case <-ctx.Done():
 				return
 			}
@@ -854,6 +883,9 @@ func (sh *Shard) Close(code websocket.StatusCode, intermittentGwIssue bool) {
 
 	sh.SetStatus(sandwich_structs.ShardStatusClosing)
 
+	sh.RoutineDeadSignal.Close("CLOSE")
+	sh.RoutineDeadSignal.Revive()
+
 	if sh.ctx != nil {
 		sh.cancel()
 	}
@@ -912,6 +944,9 @@ func (sh *Shard) WaitForReady() {
 
 	defer t.Stop()
 
+	sh.RoutineDeadSignal.Started()
+	defer sh.RoutineDeadSignal.Done()
+
 	for {
 		if sh.IsReady {
 			return
@@ -919,6 +954,8 @@ func (sh *Shard) WaitForReady() {
 
 		select {
 		case <-sh.ready:
+		case <-sh.RoutineDeadSignal.Dead():
+			return
 		case <-t.C:
 			sh.Logger.Debug().
 				Dur("since", time.Now().UTC().Sub(since).Round(time.Second)).
