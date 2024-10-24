@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"runtime/debug"
 	"sync"
@@ -102,11 +103,13 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace 
 				Str("type", msg.Type).
 				Msg("Gateway sent unknown packet")
 		}
+
+		sh.Logger.Error().Err(err).Msg("Gateway dispatch failed")
 	}
 }
 
 // OnDispatch handles routing of discord event.
-func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
+func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			errorMessage, ok := r.(error)
@@ -227,12 +230,11 @@ func GatewayDispatch(ctx context.Context, sh *Shard,
 // StateDispatch handles selecting the proper state handler and executing it.
 func StateDispatch(ctx StateCtx, event discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
-		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
-
 		return f(ctx, event, trace)
 	}
 
-	ctx.Logger.Warn().Str("type", event.Type).Msg("No dispatch handler found")
+	j, _ := json.Marshal(event)
+	ctx.Logger.Warn().Str("event", string(j)).Msg("No dispatch handler found")
 
 	return result, false, ErrNoDispatchHandler
 }

@@ -33,7 +33,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.16.6"
+const VERSION = "1.17.0"
 
 const (
 	PermissionsDefault = 0o744
@@ -52,10 +52,11 @@ var baseURL = url.URL{
 	Host:   "discord.com",
 }
 
+var rawQuery = "v=9&encoding=json"
+
 var gatewayURL = url.URL{
-	Scheme:   "wss",
-	Host:     "gateway.discord.gg",
-	RawQuery: "v=9&encoding=json",
+	Scheme: "wss",
+	Host:   "gateway.discord.gg",
 }
 
 type Sandwich struct {
@@ -648,20 +649,6 @@ func (sg *Sandwich) prometheusGatherer() {
 		eventsInflight := sg.EventsInflight.Load()
 
 		eventsBuffer := 0
-
-		sg.managersMu.RLock()
-		for _, manager := range sg.Managers {
-			manager.shardGroupsMu.RLock()
-			for _, shardgroup := range manager.ShardGroups {
-				shardgroup.shardsMu.RLock()
-				for _, shard := range shardgroup.Shards {
-					eventsBuffer += len(shard.MessageCh)
-				}
-				shardgroup.shardsMu.RUnlock()
-			}
-			manager.shardGroupsMu.RUnlock()
-		}
-		sg.managersMu.RUnlock()
 
 		sandwichStateGuildCount.Set(float64(stateGuilds))
 		sandwichStateGuildMembersCount.Set(float64(stateMembers))
