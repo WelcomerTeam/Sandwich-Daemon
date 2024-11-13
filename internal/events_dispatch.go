@@ -52,13 +52,20 @@ func OnReady(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.Sa
 ready:
 	for {
 		select {
-		case <-ctx.ErrorCh:
+		case <-readyTimeout.C:
+			ctx.Logger.Info().Int("guilds", guildCreateEvents).Msg("Finished lazy loading guilds")
+			break ready
+		default:
+		}
+
+		msg, err := ctx.readMessage()
+		if err != nil {
 			if !errors.Is(err, context.Canceled) {
 				ctx.Logger.Error().Err(err).Msg("Encountered error during READY")
 			}
 
 			break ready
-		case msg := <-ctx.MessageCh:
+		} else {
 			if msg.Type == discord.DiscordEventGuildCreate {
 				guildCreateEvents++
 
@@ -69,9 +76,6 @@ ready:
 			if err != nil && !errors.Is(err, ErrNoDispatchHandler) {
 				ctx.Logger.Error().Err(err).Msg("Failed to dispatch event")
 			}
-		case <-readyTimeout.C:
-			ctx.Logger.Info().Int("guilds", guildCreateEvents).Msg("Finished lazy loading guilds")
-			break ready
 		}
 	}
 
@@ -97,6 +101,8 @@ ready:
 
 func OnResumed(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
 	defer ctx.OnDispatchEvent(msg.Type)
+
+	ctx.Logger.Info().Msg("Received READY payload")
 
 	select {
 	case ctx.ready <- void{}:
@@ -608,8 +614,7 @@ func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 	ddRemoveKey := createDedupeMemberRemoveKey(*guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
 	ddAddKey := createDedupeMemberAddKey(*guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID)
 
-	if !ctx.Sandwich.CheckDedupe(ddAddKey) {
-		ctx.Sandwich.AddDedupe(ddAddKey)
+	if !ctx.Sandwich.CheckAndAddDedupe(ddAddKey) {
 		ctx.Sandwich.RemoveDedupe(ddRemoveKey)
 
 		guild, ok := ctx.Sandwich.State.Guilds.Load(*guildMemberAddPayload.GuildID)
@@ -647,8 +652,7 @@ func OnGuildMemberRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 	ddRemoveKey := createDedupeMemberRemoveKey(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 	ddAddKey := createDedupeMemberAddKey(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 
-	if !ctx.Sandwich.CheckDedupe(ddRemoveKey) {
-		ctx.Sandwich.AddDedupe(ddRemoveKey)
+	if !ctx.Sandwich.CheckAndAddDedupe(ddRemoveKey) {
 		ctx.Sandwich.RemoveDedupe(ddAddKey)
 
 		guild, ok := ctx.Sandwich.State.Guilds.Load(guildMemberRemovePayload.GuildID)

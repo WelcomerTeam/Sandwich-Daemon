@@ -35,7 +35,7 @@ import (
 )
 
 // VERSION follows semantic versioning.
-const VERSION = "1.16.5-antiraid"
+const VERSION = "1.17.0-antiraid"
 
 const (
 	PermissionsDefault = 0o744
@@ -54,12 +54,10 @@ var baseURL = url.URL{
 	Host:   "discord.com",
 }
 
-var gatewayBaseQuery = "v=10&encoding=json"
-
+var rawQuery = "v=10&encoding=json"
 var gatewayURL = url.URL{
-	Scheme:   "wss",
-	Host:     "gateway.discord.gg",
-	RawQuery: gatewayBaseQuery,
+	Scheme: "wss",
+	Host:   "gateway.discord.gg",
 }
 
 type Sandwich struct {
@@ -627,19 +625,6 @@ func (sg *Sandwich) prometheusGatherer() {
 
 		eventsInflight := sg.EventsInflight.Load()
 
-		eventsBuffer := 0
-
-		sg.Managers.Range(func(key string, manager *Manager) bool {
-			manager.ShardGroups.Range(func(i int32, shardgroup *ShardGroup) bool {
-				shardgroup.Shards.Range(func(i int32, shard *Shard) bool {
-					eventsBuffer += len(shard.MessageCh)
-					return false
-				})
-				return false
-			})
-			return false
-		})
-
 		sandwichStateGuildCount.Set(float64(stateGuilds))
 		sandwichStateGuildMembersCount.Set(float64(stateMembers))
 		sandwichStateRoleCount.Set(float64(stateRoles))
@@ -649,7 +634,6 @@ func (sg *Sandwich) prometheusGatherer() {
 		sandwichStateVoiceStatesCount.Set(float64(stateVoiceStates))
 
 		sandwichEventInflightCount.Set(float64(eventsInflight))
-		sandwichEventBufferCount.Set(float64(eventsBuffer))
 
 		sg.Logger.Debug().
 			Int("guilds", stateGuilds).
@@ -660,7 +644,6 @@ func (sg *Sandwich) prometheusGatherer() {
 			Int("channels", stateChannels).
 			Int("voiceStates", stateVoiceStates).
 			Int32("eventsInflight", eventsInflight).
-			Int("eventsBuffer", eventsBuffer).
 			Msg("Updated prometheus gauges")
 	}
 }

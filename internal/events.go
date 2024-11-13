@@ -36,11 +36,13 @@ func (sh *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace 
 				Str("type", msg.Type).
 				Msg("Gateway sent unknown packet")
 		}
+
+		sh.Logger.Error().Err(err).Msg("Gateway dispatch failed")
 	}
 }
 
 // OnDispatch handles routing of discord event.
-func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
+func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			errorMessage, ok := r.(error)
@@ -174,8 +176,6 @@ func StateDispatch(ctx StateCtx,
 	event discord.GatewayPayload, trace sandwich_structs.SandwichTrace,
 ) (result EventDispatch, ok bool, err error) {
 	if f, ok := dispatchHandlers[event.Type]; ok {
-		ctx.Logger.Trace().Str("type", event.Type).Msg("State Dispatch")
-
 		return f(ctx, event, trace)
 	}
 

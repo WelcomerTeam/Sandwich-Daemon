@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
+	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"nhooyr.io/websocket"
 )
 
@@ -22,15 +22,13 @@ func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayloa
 		trace.Store("dispatch", discord.Int64(time.Now().Unix()))
 	}
 
-	go func(msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) {
-		sh.Sandwich.EventsInflight.Inc()
-		defer sh.Sandwich.EventsInflight.Dec()
+	sh.Sandwich.EventsInflight.Inc()
+	defer sh.Sandwich.EventsInflight.Dec()
 
-		err := sh.OnDispatch(ctx, msg, trace)
-		if err != nil && !errors.Is(err, ErrNoDispatchHandler) {
-			sh.Logger.Error().Err(err).Msg("State dispatch failed")
-		}
-	}(msg, trace)
+	err := sh.OnDispatch(ctx, msg, trace)
+	if err != nil && !errors.Is(err, ErrNoDispatchHandler) {
+		sh.Logger.Error().Err(err).Msg("State dispatch failed")
+	}
 
 	return nil
 }
@@ -76,7 +74,17 @@ func gatewayOpReconnect(ctx context.Context, sh *Shard, msg discord.GatewayPaylo
 }
 
 func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
-	var resumable = bytes.Equal(msg.Data, []byte("true"))
+	var resumable bool
+
+	sh.Logger.Warn().Str("data", string(msg.Data)).Msg("Received invalid session")
+
+	err := sandwichjson.Unmarshal(msg.Data, &resumable)
+	if err != nil {
+		sh.Logger.Error().Err(err).Msg("Failed to unmarshal invalid session")
+		return err
+	}
+
+	sh.Logger.Info().Bool("resumable", resumable).Msg("Invalid session received")
 
 	if !resumable {
 		sh.SessionID.Store("")
@@ -84,10 +92,8 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 		sh.ResumeGatewayURL.Store("")
 	}
 
-	sh.Logger.Warn().Bool("resumable", resumable).Str("d", string(msg.Data)).Msg("Received invalid session")
-
 	go sh.Sandwich.PublishSimpleWebhook(
-		"Received invalid session from gateway (resumable: "+strconv.FormatBool(resumable)+")",
+		"Received invalid session from gateway",
 		"",
 		fmt.Sprintf(
 			"Manager: %s ShardGroup: %d ShardID: %d/%d",
@@ -99,7 +105,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 		EmbedColourSandwich,
 	)
 
-	err := sh.Reconnect(WebsocketReconnectCloseCode)
+	err = sh.Reconnect(WebsocketReconnectCloseCode)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to reconnect")
 
