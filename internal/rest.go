@@ -36,6 +36,19 @@ var (
 	StatusCacheDuration = time.Second * 30
 )
 
+var (
+	ErrNoGuildIDPresent = errors.New("missing guild ID")
+	ErrNoUserIDPresent  = errors.New("missing user ID")
+	ErrNoQueryPresent   = errors.New("missing query")
+
+	ErrDuplicateManagerPresent = errors.New("duplicate manager identifier passed")
+	ErrNoManagerPresent        = errors.New("invalid manager identifier passed")
+	ErrNoShardGroupPresent     = errors.New("invalid shard group identifier passed")
+	ErrNoShardPresent          = errors.New("invalid shard ID passed")
+
+	ErrCacheMiss = errors.New("item not present in cache")
+)
+
 func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHandler fasthttp.RequestHandler) {
 	r := router.New()
 
@@ -190,7 +203,7 @@ func (sg *Sandwich) authenticateValue(ctx *fasthttp.RequestCtx) (store *session.
 	defer sg.configurationMu.RUnlock()
 
 	for _, userID := range sg.Configuration.HTTP.UserAccess {
-		if userID == user.ID.String() {
+		if userID == discord.Snowflake(user.ID).String() {
 			isAuthenticated = true
 
 			return
@@ -542,7 +555,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 
 		if ctx.IsGet() {
-			user, ok := sg.State.GetUser(discord.Snowflake(idInt64))
+			user, ok := sg.State.GetUser(discord.UserID(idInt64))
 
 			if !ok {
 				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -587,7 +600,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 
 		if ctx.IsGet() {
-			channels, ok := sg.State.GetAllGuildChannels(discord.Snowflake(idInt64))
+			channels, ok := sg.State.GetAllGuildChannels(discord.GuildID(idInt64))
 
 			if !ok {
 				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -619,8 +632,8 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			sg.Logger.Info().Any("channel", ch).Any("guildId", idInt64).Msg("Setting guild channels")
 
-			snowflake := discord.Snowflake(idInt64)
-			sg.State.SetGuildChannel(NewFakeCtx(mg), &snowflake, ch)
+			snowflake := discord.GuildID(idInt64)
+			sg.State.SetGuildChannel(NewFakeCtx(mg), snowflake, ch)
 		}
 	case "channels":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
@@ -637,7 +650,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 		if ctx.IsGet() {
 			guildIdHint := ctx.QueryArgs().Peek("guild_id")
 
-			var guildIdHintInt64 *discord.Snowflake
+			var guildIdHintInt64 *discord.GuildID
 
 			if len(guildIdHint) > 0 {
 				i, err := strconv.ParseInt(gotils_strconv.B2S(guildIdHint), 10, 64)
@@ -651,11 +664,11 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 					return
 				}
 
-				snow := discord.Snowflake(i)
+				snow := discord.GuildID(i)
 				guildIdHintInt64 = &snow
 			}
 
-			ch, ok := sg.State.GetChannel(guildIdHintInt64, discord.Snowflake(idInt64))
+			ch, ok := sg.State.GetChannel(guildIdHintInt64, discord.ChannelID(idInt64))
 
 			if !ok {
 				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -689,7 +702,13 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			sg.Logger.Info().Any("channel", ch).Msg("Setting channel")
 
-			sg.State.SetChannelDynamic(NewFakeCtx(mg), ch)
+			if ch.GuildID != nil && !ch.GuildID.IsNil() {
+				sg.State.SetGuildChannel(NewFakeCtx(mg), *ch.GuildID, ch)
+			} else if ch.Type == discord.ChannelTypeDM || ch.Type == discord.ChannelTypeGroupDM {
+				if len(ch.Recipients) > 0 {
+					sg.State.AddDMChannel(ch.Recipients[0].ID, ch)
+				}
+			}
 		}
 	case "members":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
@@ -725,7 +744,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 
 		if ctx.IsGet() {
-			member, ok := sg.State.GetGuildMember(discord.Snowflake(guildIdInt64), discord.Snowflake(idInt64))
+			member, ok := sg.State.GetGuildMember(discord.GuildID(guildIdInt64), discord.UserID(idInt64))
 
 			if !ok {
 				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -761,7 +780,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			sg.State.SetGuildMember(
 				NewFakeCtx(mg),
-				discord.Snowflake(guildIdInt64),
+				discord.GuildID(guildIdInt64),
 				member,
 			)
 
@@ -783,7 +802,7 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 		}
 
 		if ctx.IsGet() {
-			guild, ok := sg.State.GetGuild(discord.Snowflake(idInt64))
+			guild, ok := sg.State.GetGuild(discord.GuildID(idInt64))
 
 			if !ok {
 				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
@@ -856,8 +875,8 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			}
 
 			var found bool
-			var lookingForGuildId = discord.Snowflake(idInt64)
-			sh.Guilds.Range(func(guildId discord.Snowflake, _ struct{}) bool {
+			var lookingForGuildId = discord.GuildID(idInt64)
+			sh.Guilds.Range(func(guildId discord.GuildID, _ struct{}) bool {
 				if guildId == lookingForGuildId {
 					found = true
 					return true
@@ -1041,7 +1060,7 @@ func (sg *Sandwich) SandwichUpdateEndpoint(ctx *fasthttp.RequestCtx) {
 				Version:       VERSION,
 				Identifier:    manager.Identifier,
 				Application:   m.Identifier.Load(),
-				ApplicationID: discord.Snowflake(m.UserID.Load()),
+				ApplicationID: discord.ApplicationID(m.UserID.Load()),
 			}
 			m.metadataMu.Unlock()
 

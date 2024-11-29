@@ -6,12 +6,12 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 )
 
-func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) string {
-	return "MA:" + guildID.String() + ":" + memberID.String()
+func createDedupeMemberAddKey(guildID discord.GuildID, memberID discord.UserID) string {
+	return "MA:" + discord.Snowflake(guildID).String() + ":" + discord.Snowflake(memberID).String()
 }
 
-func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Snowflake) string {
-	return "MR:" + guildID.String() + ":" + memberID.String()
+func createDedupeMemberRemoveKey(guildID discord.GuildID, memberID discord.UserID) string {
+	return "MR:" + discord.Snowflake(guildID).String() + ":" + discord.Snowflake(memberID).String()
 }
 
 // AddDedupe creates a new dedupe.

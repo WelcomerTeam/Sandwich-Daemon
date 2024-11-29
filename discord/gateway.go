@@ -110,12 +110,12 @@ type Heartbeat int
 
 // Request guild members requests members for a guild.
 type RequestGuildMembers struct {
-	Query     string        `json:"query"`
-	Nonce     string        `json:"nonce"`
-	UserIDs   SnowflakeList `json:"user_ids"`
-	GuildID   Snowflake     `json:"guild_id"`
-	Limit     int32         `json:"limit"`
-	Presences bool          `json:"presences"`
+	Query     string     `json:"query"`
+	Nonce     string     `json:"nonce"`
+	UserIDs   UserIDList `json:"user_ids"`
+	GuildID   GuildID    `json:"guild_id"`
+	Limit     int32      `json:"limit"`
+	Presences bool       `json:"presences"`
 }
 
 // Update Presence updates a client's presence.

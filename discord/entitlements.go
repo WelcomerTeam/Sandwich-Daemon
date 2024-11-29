@@ -1,15 +1,15 @@
 package discord
 
 type Entitlement struct {
-	UserID         *Snowflake      `json:"user_id,omitempty"`
+	UserID         *UserID         `json:"user_id,omitempty"`
 	GiftCodeFlags  *GiftCodeFlags  `json:"gift_code_flags,omitempty"`
 	StartsAt       *Timestamp      `json:"starts_at,omitempty"`
 	EndsAt         *Timestamp      `json:"ends_at,omitempty"`
-	GuildID        *Snowflake      `json:"guild_id,omitempty"`
+	GuildID        *GuildID        `json:"guild_id,omitempty"`
 	SubscriptionID *Snowflake      `json:"subscription_id,omitempty"`
 	ID             Snowflake       `json:"id"`
 	SkuID          Snowflake       `json:"sku_id"`
-	ApplicationID  Snowflake       `json:"application_id"`
+	ApplicationID  ApplicationID   `json:"application_id"`
 	Type           EntitlementType `json:"type"`
 	Deleted        bool            `json:"deleted"`
 }

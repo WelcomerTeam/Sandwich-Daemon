@@ -80,13 +80,13 @@ type Shard struct {
 	Heartbeater *time.Ticker `json:"-"`
 
 	// Map of guilds that are currently unavailable.
-	Unavailable *csmap.CsMap[discord.Snowflake, struct{}] `json:"unavailable"`
+	Unavailable Cache[discord.GuildID, struct{}] `json:"unavailable"`
 
 	// Map of guilds that have were present in ready and not received yet.
-	Lazy *csmap.CsMap[discord.Snowflake, struct{}] `json:"lazy"`
+	Lazy Cache[discord.GuildID, struct{}] `json:"lazy"`
 
 	// Stores a local list of all guilds in the shard.
-	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
+	Guilds Cache[discord.GuildID, struct{}] `json:"guilds"`
 
 	Sequence  *atomic.Int32  `json:"-"`
 	SessionID *atomic.String `json:"-"`
@@ -138,17 +138,11 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 		LastHeartbeatAck:  &atomic.Time{},
 		LastHeartbeatSent: &atomic.Time{},
 
-		Unavailable: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](0),
-		),
+		Unavailable: NewCache[discord.GuildID, struct{}](0),
 
-		Lazy: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](0),
-		),
+		Lazy: NewCache[discord.GuildID, struct{}](0),
 
-		Guilds: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](0),
-		),
+		Guilds: NewCache[discord.GuildID, struct{}](0),
 
 		statusMu: sync.RWMutex{},
 		Status:   sandwich_structs.ShardStatusIdle,
@@ -171,7 +165,7 @@ func (sg *ShardGroup) NewShard(shardID int32) (sh *Shard) {
 			Version:       VERSION,
 			Identifier:    sg.Manager.Configuration.ProducerIdentifier,
 			Application:   sg.Manager.Identifier.Load(),
-			ApplicationID: discord.Snowflake(sg.Manager.UserID.Load()),
+			ApplicationID: discord.ApplicationID(sg.Manager.UserID.Load()),
 			Shard: [3]int32{
 				sg.ID,
 				shardID,
@@ -922,10 +916,10 @@ func (sh *Shard) Reconnect(code websocket.StatusCode) error {
 }
 
 func (sh *Shard) ChunkAllGuilds() {
-	guilds := make([]discord.Snowflake, sh.Guilds.Count())
+	guilds := make([]discord.GuildID, sh.Guilds.Count())
 	i := 0
 
-	sh.Guilds.Range(func(guildID discord.Snowflake, _ struct{}) bool {
+	sh.Guilds.Range(func(guildID discord.GuildID, _ struct{}) bool {
 		guilds[i] = guildID
 		i++
 		return false
@@ -945,7 +939,7 @@ func (sh *Shard) ChunkAllGuilds() {
 
 // ChunkGuilds chunks guilds to discord. It will wait for the operation to complete, or timeout.
 func (sh *Shard) ChunkGuild(
-	guildID discord.Snowflake,
+	guildID discord.GuildID,
 	alwaysChunk bool,
 	chunkReq *discord.RequestGuildMembers,
 ) (madeChunks bool, err error) {
@@ -969,10 +963,10 @@ func (sh *Shard) ChunkGuild(
 	var memberCount int
 	var needsChunking bool
 
-	gm, ok := sh.Sandwich.State.GuildMembers.Load(guildID)
+	gm, ok := sh.Sandwich.State.GuildMembers.Inner(guildID)
 
 	if ok {
-		memberCount = gm.Members.Count()
+		memberCount = gm.Count()
 	}
 
 	guild, ok := sh.Sandwich.State.Guilds.Load(guildID)
@@ -1061,16 +1055,16 @@ func (sh *Shard) ChunkGuild(
 
 // OnDispatchEvent is called during the dispatch event to call analytics.
 func (sh *Shard) OnDispatchEvent(eventType string) {
-	sh.OnGuildDispatchEvent(eventType, discord.Snowflake(0))
+	sh.OnGuildDispatchEvent(eventType, discord.GuildID(0))
 }
 
 // OnGuildDispatchEvent is called during the dispatch event to call analytics with a guild Id.
-func (sh *Shard) OnGuildDispatchEvent(eventType string, guildID discord.Snowflake) {
+func (sh *Shard) OnGuildDispatchEvent(eventType string, guildID discord.GuildID) {
 	sandwichDispatchEventCount.WithLabelValues(sh.Manager.Identifier.Load(), eventType).Inc()
 }
 
 // SafeOnGuildDispatchEvent takes a guildID pointer and does handle guild event count if nil.
-func (sh *Shard) SafeOnGuildDispatchEvent(eventType string, guildIDPtr *discord.Snowflake) {
+func (sh *Shard) SafeOnGuildDispatchEvent(eventType string, guildIDPtr *discord.GuildID) {
 	if guildIDPtr != nil {
 		sh.OnGuildDispatchEvent(eventType, *guildIDPtr)
 	} else {

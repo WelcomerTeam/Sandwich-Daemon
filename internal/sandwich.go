@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,7 +16,6 @@ import (
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
-	grpcServer "github.com/WelcomerTeam/Sandwich-Daemon/protobuf"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
@@ -28,9 +26,6 @@ import (
 	"github.com/valyala/fasthttp"
 	"go.uber.org/atomic"
 	"golang.org/x/oauth2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/reflection"
 	"gopkg.in/yaml.v3"
 )
 
@@ -99,7 +94,7 @@ type Sandwich struct {
 	RouterHandler fasthttp.RequestHandler `json:"-"`
 	DistHandler   fasthttp.RequestHandler `json:"-"`
 
-	guildChunks *csmap.CsMap[discord.Snowflake, GuildChunks]
+	guildChunks Cache[discord.GuildID, GuildChunks]
 
 	ConfigurationLocation string `json:"configuration_location"`
 
@@ -146,11 +141,6 @@ type SandwichOptions struct {
 
 	// BaseURL to send HTTP requests to. If empty, will use https://discord.com
 	BaseURL url.URL `json:"base_url" yaml:"base_url"`
-
-	GRPCNetwork            string `json:"grpc_network" yaml:"grpc_network"`
-	GRPCHost               string `json:"grpc_host" yaml:"grpc_host"`
-	GRPCCertFile           string `json:"grpc_cert_file" yaml:"grpc_cert_file"`
-	GRPCServerNameOverride string `json:"grpc_server_name_override" yaml:"grpc_server_name_override"`
 
 	HTTPHost    string `json:"http_host" yaml:"http_host"`
 	HTTPEnabled bool   `json:"http_enabled" yaml:"http_enabled"`
@@ -220,9 +210,7 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 			New: func() interface{} { return new(discord.SentPayload) },
 		},
 
-		guildChunks: csmap.Create(
-			csmap.WithSize[discord.Snowflake, GuildChunks](50),
-		),
+		guildChunks: NewCache[discord.GuildID, GuildChunks](50),
 	}
 
 	sg.ctx, sg.cancel = context.WithCancel(context.Background())
@@ -305,9 +293,6 @@ func (sg *Sandwich) Open() {
 	sg.Logger.Info().Msgf("Starting sandwich. Version %s", VERSION)
 
 	go sg.PublishSimpleWebhook("Starting sandwich", "", "Version "+VERSION, EmbedColourSandwich)
-
-	// Setup GRPC
-	go sg.setupGRPC()
 
 	// Setup Prometheus
 	go sg.setupPrometheus()
@@ -405,50 +390,6 @@ func (sg *Sandwich) startManagers() {
 	}
 }
 
-func (sg *Sandwich) setupGRPC() error {
-	network := sg.Options.GRPCNetwork
-	host := sg.Options.GRPCHost
-	certpath := sg.Options.GRPCCertFile
-	servernameoverride := sg.Options.GRPCServerNameOverride
-
-	var grpcOptions []grpc.ServerOption
-
-	if certpath != "" {
-		var creds credentials.TransportCredentials
-
-		creds, err := credentials.NewClientTLSFromFile(certpath, servernameoverride)
-		if err != nil {
-			sg.Logger.Error().Err(err).Msg("Failed to create new client TLS from file for gRPC")
-
-			return err
-		}
-
-		grpcOptions = append(grpcOptions, grpc.Creds(creds))
-	}
-
-	grpcListener := grpc.NewServer(grpcOptions...)
-	grpcServer.RegisterSandwichServer(grpcListener, sg.newSandwichServer())
-	reflection.Register(grpcListener)
-
-	listener, err := net.Listen(network, host)
-	if err != nil {
-		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to bind to host")
-
-		return err
-	}
-
-	sg.Logger.Info().Msgf("Serving gRPC at %s", host)
-
-	err = grpcListener.Serve(listener)
-	if err != nil {
-		sg.Logger.Error().Str("host", host).Err(err).Msg("Failed to serve gRPC server")
-
-		return fmt.Errorf("failed to server grpc: %w", err)
-	}
-
-	return nil
-}
-
 func (sg *Sandwich) setupPrometheus() error {
 	prometheus.MustRegister(sandwichEventCount)
 	prometheus.MustRegister(sandwichEventInflightCount)
@@ -528,11 +469,11 @@ func (sg *Sandwich) cacheEjector() {
 		now := time.Now().Unix()
 
 		// Guild Ejector
-		allGuildIDs := make(map[discord.Snowflake]bool)
+		allGuildIDs := make(map[discord.GuildID]bool)
 
 		sg.Managers.Range(func(key string, mg *Manager) bool {
 			mg.ShardGroups.Range(func(i int32, sg *ShardGroup) bool {
-				sg.Guilds.Range(func(guildID discord.Snowflake, _ struct{}) bool {
+				sg.Guilds.Range(func(guildID discord.GuildID, _ struct{}) bool {
 					allGuildIDs[guildID] = true
 					return false
 				})
@@ -542,9 +483,9 @@ func (sg *Sandwich) cacheEjector() {
 			return false
 		})
 
-		ejectedGuilds := make([]discord.Snowflake, 0)
+		ejectedGuilds := make([]discord.GuildID, 0)
 
-		sg.State.Guilds.Range(func(guildID discord.Snowflake, guild discord.Guild) bool {
+		sg.State.Guilds.Range(func(guildID discord.GuildID, guild discord.Guild) bool {
 			if val, ok := allGuildIDs[guildID]; !val || !ok {
 				ejectedGuilds = append(ejectedGuilds, guildID)
 			}
@@ -592,30 +533,30 @@ func (sg *Sandwich) prometheusGatherer() {
 		stateUsers := 0
 		stateVoiceStates := 0
 
-		sg.State.GuildMembers.Range(func(guildID discord.Snowflake, guildMembers StateGuildMembers) bool {
-			stateMembers += guildMembers.Members.Count()
+		sg.State.GuildMembers.Range(func(guildID discord.GuildID, guildMembers Cache[discord.UserID, discord.GuildMember]) bool {
+			stateMembers += guildMembers.Count()
 			return false
 		})
 
-		sg.State.GuildRoles.Range(func(guildID discord.Snowflake, guildRoles StateGuildRoles) bool {
-			stateRoles += guildRoles.Roles.Count()
+		sg.State.GuildRoles.Range(func(guildID discord.GuildID, guildRoles Cache[discord.RoleID, discord.Role]) bool {
+			stateRoles += guildRoles.Count()
 			return false
 		})
 
-		sg.State.GuildEmojis.Range(func(guildID discord.Snowflake, guildEmojis []discord.Emoji) bool {
+		sg.State.GuildEmojis.Range(func(guildID discord.GuildID, guildEmojis []discord.Emoji) bool {
 			stateEmojis += len(guildEmojis)
 			return false
 		})
 
-		sg.State.GuildChannels.Range(func(guildID discord.Snowflake, guildChannels StateGuildChannels) bool {
-			stateChannels += guildChannels.Channels.Count()
+		sg.State.GuildChannels.Range(func(guildID discord.GuildID, guildChannels Cache[discord.ChannelID, discord.Channel]) bool {
+			stateChannels += guildChannels.Count()
 			return false
 		})
 
 		stateUsers = sg.State.Users.Count()
 
-		sg.State.GuildVoiceStates.Range(func(guildID discord.Snowflake, guildVoiceStates StateGuildVoiceStates) bool {
-			stateVoiceStates += guildVoiceStates.VoiceStates.Count()
+		sg.State.GuildVoiceStates.Range(func(guildID discord.GuildID, guildVoiceStates Cache[discord.UserID, discord.VoiceState]) bool {
+			stateVoiceStates += guildVoiceStates.Count()
 			return false
 		})
 

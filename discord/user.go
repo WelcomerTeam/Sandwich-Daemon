@@ -46,7 +46,7 @@ const (
 
 // User represents a user on discord.
 type User struct {
-	DMChannelID      *Snowflake      `json:"dm_channel_id"`
+	DMChannelID      *ChannelID      `json:"dm_channel_id"`
 	Banner           string          `json:"banner,omitempty"`
 	GlobalName       string          `json:"global_name"`
 	Avatar           *string         `json:"avatar"`
@@ -55,7 +55,7 @@ type User struct {
 	Discriminator    string          `json:"discriminator"`
 	Locale           string          `json:"locale,omitempty"`
 	Email            string          `json:"email,omitempty"`
-	ID               Snowflake       `json:"id"`
+	ID               UserID          `json:"id"`
 	PremiumType      UserPremiumType `json:"premium_type"`
 	Flags            UserFlags       `json:"flags"`
 	AccentColor      int32           `json:"accent_color"`

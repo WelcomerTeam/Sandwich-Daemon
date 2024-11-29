@@ -236,7 +236,13 @@ func OnChannelCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, channelCreatePayload.GuildID)
 
-	ctx.Sandwich.State.SetGuildChannel(ctx, channelCreatePayload.GuildID, discord.Channel(channelCreatePayload))
+	if channelCreatePayload.GuildID != nil && !channelCreatePayload.GuildID.IsNil() {
+		ctx.Sandwich.State.SetGuildChannel(ctx, *channelCreatePayload.GuildID, discord.Channel(channelCreatePayload))
+	} else if channelCreatePayload.Type == discord.ChannelTypeDM || channelCreatePayload.Type == discord.ChannelTypeGroupDM {
+		if len(channelCreatePayload.Recipients) > 0 {
+			ctx.Sandwich.State.AddDMChannel(channelCreatePayload.Recipients[0].ID, discord.Channel(channelCreatePayload))
+		}
+	}
 
 	return EventDispatch{
 		Data: msg.Data,
@@ -256,8 +262,22 @@ func OnChannelUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, channelUpdatePayload.GuildID)
 
-	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(channelUpdatePayload.GuildID, channelUpdatePayload.ID)
-	ctx.Sandwich.State.SetGuildChannel(ctx, channelUpdatePayload.GuildID, discord.Channel(channelUpdatePayload))
+	var beforeChannel *discord.Channel
+
+	if channelUpdatePayload.GuildID != nil && !channelUpdatePayload.GuildID.IsNil() {
+		beforeChannelV, _ := ctx.Sandwich.State.GetGuildChannel(*channelUpdatePayload.GuildID, channelUpdatePayload.ID)
+		beforeChannel = &beforeChannelV
+
+		ctx.Sandwich.State.SetGuildChannel(ctx, *channelUpdatePayload.GuildID, discord.Channel(channelUpdatePayload))
+	} else if channelUpdatePayload.Type == discord.ChannelTypeDM || channelUpdatePayload.Type == discord.ChannelTypeGroupDM {
+		beforeChannelV, _ := ctx.Sandwich.State.GetDMChannel(channelUpdatePayload.ID)
+		beforeChannel = &beforeChannelV
+
+		ctx.Sandwich.State.UpdateDMChannelByChannelID(channelUpdatePayload.ID, func(channel StateDMChannel) StateDMChannel {
+			channel.Channel = discord.Channel(channelUpdatePayload)
+			return channel
+		})
+	}
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeChannel,
@@ -285,8 +305,19 @@ func OnChannelDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 
 	defer ctx.SafeOnGuildDispatchEvent(msg.Type, channelDeletePayload.GuildID)
 
-	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(channelDeletePayload.GuildID, channelDeletePayload.ID)
-	ctx.Sandwich.State.RemoveGuildChannel(channelDeletePayload.GuildID, channelDeletePayload.ID)
+	var beforeChannel *discord.Channel
+
+	if channelDeletePayload.GuildID != nil && !channelDeletePayload.GuildID.IsNil() {
+		beforeChannelV, _ := ctx.Sandwich.State.GetGuildChannel(*channelDeletePayload.GuildID, channelDeletePayload.ID)
+		beforeChannel = &beforeChannelV
+
+		ctx.Sandwich.State.RemoveGuildChannel(*channelDeletePayload.GuildID, channelDeletePayload.ID)
+	} else if channelDeletePayload.Type == discord.ChannelTypeDM || channelDeletePayload.Type == discord.ChannelTypeGroupDM {
+		beforeChannelV, _ := ctx.Sandwich.State.GetDMChannel(channelDeletePayload.ID)
+		beforeChannel = &beforeChannelV
+
+		ctx.Sandwich.State.RemoveDMChannelByChannelID(channelDeletePayload.ID)
+	}
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeChannel,
@@ -314,6 +345,18 @@ func OnChannelPinsUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, channelPinsUpdatePayload.GuildID)
 
+	if channelPinsUpdatePayload.GuildID.IsNil() {
+		ctx.Sandwich.State.UpdateDMChannelByChannelID(channelPinsUpdatePayload.ChannelID, func(channel StateDMChannel) StateDMChannel {
+			channel.Channel.LastPinTimestamp = &channelPinsUpdatePayload.LastPinTimestamp
+			return channel
+		})
+	} else {
+		ctx.Sandwich.State.UpdateGuildChannel(channelPinsUpdatePayload.GuildID, channelPinsUpdatePayload.ChannelID, func(channel discord.Channel) discord.Channel {
+			channel.LastPinTimestamp = &channelPinsUpdatePayload.LastPinTimestamp
+			return channel
+		})
+	}
+
 	return EventDispatch{
 		Data: msg.Data,
 		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
@@ -332,7 +375,13 @@ func OnThreadUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_str
 		return result, false, err
 	}
 
-	beforeChannel, _ := ctx.Sandwich.State.GetGuildChannel(threadUpdatePayload.GuildID, threadUpdatePayload.ID)
+	var beforeChannel *discord.Channel
+
+	// Only supports guilds anyways
+	if threadUpdatePayload.GuildID != nil && !threadUpdatePayload.GuildID.IsNil() {
+		beforeChannelV, _ := ctx.Sandwich.State.GetGuildChannel(*threadUpdatePayload.GuildID, threadUpdatePayload.ID)
+		beforeChannel = &beforeChannelV
+	}
 
 	extra, err := makeExtra(map[string]interface{}{
 		"before": beforeChannel,
@@ -1047,7 +1096,7 @@ func OnVoiceStateUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich
 		return result, false, err
 	}
 
-	var guildID discord.Snowflake
+	var guildID discord.GuildID
 
 	if voiceStateUpdatePayload.GuildID != nil {
 		guildID = *voiceStateUpdatePayload.GuildID
@@ -1082,7 +1131,7 @@ func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 	defer ctx.OnDispatchEvent(msg.Type)
 
 	var guildId struct {
-		GuildID *discord.Snowflake `json:"guild_id"`
+		GuildID *discord.GuildID `json:"guild_id"`
 	}
 
 	err = ctx.decodeContent(msg, &guildId)

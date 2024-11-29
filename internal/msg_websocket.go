@@ -178,11 +178,11 @@ func (s *subscriber) dispatchInitial() error {
 	s.cs.manager.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
 	// Get all guilds
-	var guildIdShardIdMap = make(map[discord.Snowflake]int32)
+	var guildIdShardIdMap = make(map[discord.GuildID]int32)
 
 	unavailableGuilds := make([]discord.UnavailableGuild, 0)
 
-	s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, _ discord.Guild) bool {
+	s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.GuildID, _ discord.Guild) bool {
 		shardId := int32(s.cs.manager.GetShardIdOfGuild(id, s.cs.manager.ConsumerShardCount()))
 		guildIdShardIdMap[id] = shardId // We need this when dispatching guilds
 		if shardId == s.shard[0] {
@@ -230,7 +230,7 @@ func (s *subscriber) dispatchInitial() error {
 	}
 
 	// Next dispatch guilds
-	s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.Snowflake, _ discord.Guild) bool {
+	s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.GuildID, _ discord.Guild) bool {
 		shardId, ok := guildIdShardIdMap[id]
 
 		if !ok {
@@ -532,7 +532,7 @@ func (s *subscriber) handleReadMessages() {
 				s.cs.manager.Logger.Info().Msgf("Shard %d is not using global shard count, remapping to real shard for read message %v", s.shard[0], msg)
 
 				var guildId struct {
-					GuildID discord.Snowflake `json:"guild_id"`
+					GuildID discord.GuildID `json:"guild_id"`
 				}
 
 				err := sandwichjson.Unmarshal(msg.Data, &guildId)

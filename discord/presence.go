@@ -36,20 +36,20 @@ const (
 
 // Activity represents an activity as sent as part of other packets.
 type Activity struct {
-	Timestamps    *Timestamps   `json:"timestamps,omitempty"`
-	ApplicationID *Snowflake    `json:"application_id,omitempty"`
-	Party         *Party        `json:"party,omitempty"`
-	Assets        *Assets       `json:"assets,omitempty"`
-	Secrets       *Secrets      `json:"secrets,omitempty"`
-	Flags         *ActivityFlag `json:"flags,omitempty"`
-	URL           *string       `json:"url,omitempty"`
-	Details       *string       `json:"details,omitempty"`
-	Instance      *bool         `json:"instance,omitempty"`
-	CreatedAt     *int64        `json:"created_at,omitempty"`
-	Emoji         *Emoji        `json:"emoji,omitempty"`
-	Name          string        `json:"name"`
-	State         string        `json:"state"`
-	Type          ActivityType  `json:"type"`
+	Timestamps    *Timestamps    `json:"timestamps,omitempty"`
+	ApplicationID *ApplicationID `json:"application_id,omitempty"`
+	Party         *Party         `json:"party,omitempty"`
+	Assets        *Assets        `json:"assets,omitempty"`
+	Secrets       *Secrets       `json:"secrets,omitempty"`
+	Flags         *ActivityFlag  `json:"flags,omitempty"`
+	URL           *string        `json:"url,omitempty"`
+	Details       *string        `json:"details,omitempty"`
+	Instance      *bool          `json:"instance,omitempty"`
+	CreatedAt     *int64         `json:"created_at,omitempty"`
+	Emoji         *Emoji         `json:"emoji,omitempty"`
+	Name          string         `json:"name"`
+	State         string         `json:"state"`
+	Type          ActivityType   `json:"type"`
 }
 
 // Timestamps represents the starting and ending timestamp of an activity.

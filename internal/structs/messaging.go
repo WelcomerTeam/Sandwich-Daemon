@@ -9,10 +9,10 @@ import (
 
 // SandwichMetadata represents the identification information that consumers will use.
 type SandwichMetadata struct {
-	Version       string            `json:"v"`
-	Identifier    string            `json:"i"`
-	Application   string            `json:"a"`
-	ApplicationID discord.Snowflake `json:"id"`
+	Version       string                `json:"v"`
+	Identifier    string                `json:"i"`
+	Application   string                `json:"a"`
+	ApplicationID discord.ApplicationID `json:"id"`
 	// ShardGroup ID, Shard ID, Shard Count
 	Shard [3]int32 `json:"s"`
 }
@@ -21,7 +21,7 @@ type SandwichTrace = *csmap.CsMap[string, discord.Int64]
 
 // Used as a key for virtual shard dispatches etc., must be set for all events
 type EventDispatchIdentifier struct {
-	GuildID        *discord.Snowflake
+	GuildID        *discord.GuildID
 	GloballyRouted bool // Whether or not the event should be globally routed
 }
 

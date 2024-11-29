@@ -41,7 +41,7 @@ type Invite struct {
 	TargetApplication        *Application         `json:"target_application"`
 	Guild                    *Guild               `json:"guild,omitempty"`
 	Channel                  *Channel             `json:"channel,omitempty"`
-	GuildID                  *Snowflake           `json:"guild_id,omitempty"`
+	GuildID                  *GuildID             `json:"guild_id,omitempty"`
 	Code                     string               `json:"code"`
 	ApproximateMemberCount   int32                `json:"approximate_member_count,omitempty"`
 	Uses                     int32                `json:"uses"`
@@ -61,8 +61,8 @@ type InviteStageInstance struct {
 
 // ScheduledEvent represents an scheduled event.
 type ScheduledEvent struct {
-	ChannelID          *Snowflake               `json:"channel_id,omitempty"`
-	CreatorID          *Snowflake               `json:"creator_id,omitempty"`
+	ChannelID          *ChannelID               `json:"channel_id,omitempty"`
+	CreatorID          *UserID                  `json:"creator_id,omitempty"`
 	Creator            *User                    `json:"creator,omitempty"`
 	EntityMetadata     *EventMetadata           `json:"entity_metadata,omitempty"`
 	EntityID           *Snowflake               `json:"entity_id,omitempty"`
@@ -70,8 +70,8 @@ type ScheduledEvent struct {
 	ScheduledStartTime Timestamp                `json:"scheduled_start_time"`
 	Description        string                   `json:"description,omitempty"`
 	Name               string                   `json:"name"`
-	ID                 Snowflake                `json:"id"`
-	GuildID            Snowflake                `json:"guild_id"`
+	ID                 ScheduledEventID         `json:"id"`
+	GuildID            GuildID                  `json:"guild_id"`
 	UserCount          int32                    `json:"user_count,omitempty"`
 	Status             EventStatus              `json:"status"`
 	EntityType         ScheduledEntityType      `json:"entity_type"`
@@ -85,9 +85,9 @@ type EventMetadata struct {
 
 // ScheduledEventUser represents a user subscribed to an event.
 type ScheduledEventUser struct {
-	Member  *GuildMember `json:"member,omitempty"`
-	User    User         `json:"user"`
-	EventID Snowflake    `json:"guild_scheduled_event_id"`
+	Member  *GuildMember     `json:"member,omitempty"`
+	User    User             `json:"user"`
+	EventID ScheduledEventID `json:"guild_scheduled_event_id"`
 }
 
 // InviteParams represents the params to create an invite.

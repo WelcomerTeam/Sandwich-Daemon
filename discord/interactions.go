@@ -96,15 +96,15 @@ type Interaction struct {
 	Message        *Message         `json:"message,omitempty"`
 	AppPermissions *Int64           `json:"app_permissions"`
 	Data           *InteractionData `json:"data,omitempty"`
-	GuildID        *Snowflake       `json:"guild_id,omitempty"`
-	ChannelID      *Snowflake       `json:"channel_id,omitempty"`
+	GuildID        *GuildID         `json:"guild_id,omitempty"`
+	ChannelID      *ChannelID       `json:"channel_id,omitempty"`
 	User           *User            `json:"user,omitempty"`
 	Token          string           `json:"token"`
 	Locale         string           `json:"locale,omitempty"`
 	GuildLocale    string           `json:"guild_locale,omitempty"`
 	Entitlements   []Entitlement    `json:"entitlements,omitempty"`
-	ID             Snowflake        `json:"id"`
-	ApplicationID  Snowflake        `json:"application_id"`
+	ID             InteractionID    `json:"id"`
+	ApplicationID  ApplicationID    `json:"application_id"`
 	Version        int32            `json:"version"`
 	Type           InteractionType  `json:"type"`
 }
@@ -125,7 +125,7 @@ type InteractionResponse struct {
 type InteractionData struct {
 	TargetID      *Snowflake                `json:"target_id,omitempty"`
 	Resolved      *InteractionResolvedData  `json:"resolved,omitempty"`
-	GuildID       *Snowflake                `json:"guild_id,omitempty"`
+	GuildID       *GuildID                  `json:"guild_id,omitempty"`
 	ComponentType *InteractionComponentType `json:"component_type,omitempty"`
 	Name          string                    `json:"name"`
 	CustomID      string                    `json:"custom_id,omitempty"`
@@ -133,7 +133,7 @@ type InteractionData struct {
 	Values        []ApplicationSelectOption `json:"values,omitempty"`
 	Components    []InteractionComponent    `json:"components,omitempty"`
 	Value         json.RawMessage           `json:"value,omitempty"`
-	ID            Snowflake                 `json:"id"`
+	ID            ApplicationCommandID      `json:"id"`
 	Type          ApplicationCommandType    `json:"type"`
 	Focused       bool                      `json:"focused,omitempty"`
 }
@@ -166,12 +166,12 @@ type InteractionDataOption struct {
 
 // InteractionResolvedData represents any extra payload data for an interaction.
 type InteractionResolvedData struct {
-	Users       map[Snowflake]User              `json:"users,omitempty"`
-	Members     map[Snowflake]GuildMember       `json:"members,omitempty"`
-	Roles       map[Snowflake]Role              `json:"roles,omitempty"`
-	Channels    map[Snowflake]Channel           `json:"channels,omitempty"`
-	Messages    map[Snowflake]Message           `json:"messages,omitempty"`
-	Attachments map[Snowflake]MessageAttachment `json:"attachments,omitempty"`
+	Users       map[UserID]User                    `json:"users,omitempty"`
+	Members     map[UserID]GuildMember             `json:"members,omitempty"`
+	Roles       map[RoleID]Role                    `json:"roles,omitempty"`
+	Channels    map[ChannelID]Channel              `json:"channels,omitempty"`
+	Messages    map[MessageID]Message              `json:"messages,omitempty"`
+	Attachments map[AttachmentID]MessageAttachment `json:"attachments,omitempty"`
 }
 
 // InteractionComponent represents the structure of a component.

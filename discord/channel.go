@@ -46,13 +46,13 @@ const (
 
 // Channel represents a Discord channel.
 type Channel struct {
-	OwnerID                    *Snowflake           `json:"owner_id,omitempty"`
-	GuildID                    *Snowflake           `json:"guild_id,omitempty"`
+	OwnerID                    *UserID              `json:"owner_id,omitempty"`
+	GuildID                    *GuildID             `json:"guild_id,omitempty"`
 	ThreadMember               *ThreadMember        `json:"member,omitempty"`
 	ThreadMetadata             *ThreadMetadata      `json:"thread_metadata,omitempty"`
 	LastPinTimestamp           *Timestamp           `json:"last_pin_timestamp"`
-	ParentID                   *Snowflake           `json:"parent_id,omitempty"`
-	ApplicationID              *Snowflake           `json:"application_id,omitempty"`
+	ParentID                   *ChannelID           `json:"parent_id,omitempty"`
+	ApplicationID              *ApplicationID       `json:"application_id,omitempty"`
 	LastMessageID              *string              `json:"last_message_id"`
 	RTCRegion                  string               `json:"rtc_region"`
 	Topic                      string               `json:"topic"`
@@ -61,7 +61,7 @@ type Channel struct {
 	PermissionOverwrites       ChannelOverwriteList `json:"permission_overwrites"`
 	Recipients                 UserList             `json:"recipients"`
 	Permissions                Int64                `json:"permissions"`
-	ID                         Snowflake            `json:"id"`
+	ID                         ChannelID            `json:"id"`
 	UserLimit                  int32                `json:"user_limit"`
 	Bitrate                    int32                `json:"bitrate"`
 	MessageCount               int32                `json:"message_count"`
@@ -135,9 +135,9 @@ type ThreadMetadata struct {
 
 // ThreadMember is used to indicate whether a user has joined a thread or not.
 type ThreadMember struct {
-	ID            *Snowflake `json:"id,omitempty"`
-	UserID        *Snowflake `json:"user_id,omitempty"`
-	GuildID       *Snowflake `json:"guild_id,omitempty"`
+	ID            *ChannelID `json:"id,omitempty"`
+	UserID        *UserID    `json:"user_id,omitempty"`
+	GuildID       *GuildID   `json:"guild_id,omitempty"`
 	JoinTimestamp Timestamp  `json:"join_timestamp"`
 	Flags         int32      `json:"flags"`
 }
@@ -145,23 +145,23 @@ type ThreadMember struct {
 // StageInstance represents a stage channel instance.
 type StageInstance struct {
 	Topic                string                   `json:"topic"`
-	ID                   Snowflake                `json:"id"`
-	GuildID              Snowflake                `json:"guild_id"`
-	ChannelID            Snowflake                `json:"channel_id"`
+	ID                   StageInstanceID          `json:"id"`
+	GuildID              GuildID                  `json:"guild_id"`
+	ChannelID            ChannelID                `json:"channel_id"`
 	PrivacyLabel         StageChannelPrivacyLevel `json:"privacy_level"`
 	DiscoverableDisabled bool                     `json:"discoverable_disabled"`
 }
 
 // FollowedChannel represents a followed channel.
 type FollowedChannel struct {
-	ChannelID Snowflake `json:"channel_id"`
-	WebhookID Snowflake `json:"webhook_id"`
+	ChannelID ChannelID `json:"channel_id"`
+	WebhookID WebhookID `json:"webhook_id"`
 }
 
 // ChannelPermissionsParams represents the arguments to modify guild channel permissions.
 type ChannelPermissionsParams struct {
-	ID              Snowflake `json:"id"`
+	ID              ChannelID `json:"id"`
 	Position        int32     `json:"position"`
 	LockPermissions bool      `json:"lock_permissions"`
-	ParentID        Snowflake `json:"parent_id"`
+	ParentID        ChannelID `json:"parent_id"`
 }

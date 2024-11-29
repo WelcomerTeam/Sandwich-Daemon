@@ -9,7 +9,6 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/net/context"
@@ -30,9 +29,9 @@ type ShardGroup struct {
 
 	User *discord.User `json:"user"`
 
-	Shards *csmap.CsMap[int32, *Shard] `json:"shards"`
+	Shards Cache[int32, *Shard] `json:"shards"`
 
-	Guilds *csmap.CsMap[discord.Snowflake, struct{}] `json:"guilds"`
+	Guilds Cache[discord.GuildID, struct{}] `json:"guilds"`
 
 	ShardIDs []int32 `json:"shard_ids"`
 
@@ -76,13 +75,9 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 		shardIdsMu: sync.RWMutex{},
 		ShardIDs:   shardIDs,
 
-		Shards: csmap.Create(
-			csmap.WithSize[int32, *Shard](1),
-		),
+		Shards: NewCache[int32, *Shard](1),
 
-		Guilds: csmap.Create(
-			csmap.WithSize[discord.Snowflake, struct{}](50),
-		),
+		Guilds: NewCache[discord.GuildID, struct{}](50),
 
 		statusMu: sync.RWMutex{},
 		Status:   sandwich_structs.ShardGroupStatusIdle,

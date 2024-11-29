@@ -15,15 +15,15 @@ const (
 
 // Webhook represents a webhook on discord.
 type Webhook struct {
-	GuildID       *Snowflake  `json:"guild_id,omitempty"`
-	ChannelID     *Snowflake  `json:"channel_id,omitempty"`
-	User          *User       `json:"user,omitempty"`
-	ApplicationID *Snowflake  `json:"application_id,omitempty"`
-	Name          string      `json:"name,omitempty"`
-	Avatar        string      `json:"avatar,omitempty"`
-	Token         string      `json:"token"`
-	ID            Snowflake   `json:"id"`
-	Type          WebhookType `json:"type"`
+	GuildID       *GuildID       `json:"guild_id,omitempty"`
+	ChannelID     *ChannelID     `json:"channel_id,omitempty"`
+	User          *User          `json:"user,omitempty"`
+	ApplicationID *ApplicationID `json:"application_id,omitempty"`
+	Name          string         `json:"name,omitempty"`
+	Avatar        string         `json:"avatar,omitempty"`
+	Token         string         `json:"token"`
+	ID            WebhookID      `json:"id"`
+	Type          WebhookType    `json:"type"`
 }
 
 // WebhookMessage represents the structure for sending a webhook message.

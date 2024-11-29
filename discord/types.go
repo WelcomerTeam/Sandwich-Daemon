@@ -23,7 +23,7 @@ func (s *Snowflake) IsNil() bool {
 	return *s == 0
 }
 
-func (s *Snowflake) UnmarshalJSON(b []byte) error {
+func toSnowflake(b []byte, s *Snowflake) error {
 	if !bytes.Equal(b, null) {
 		if b[0] == '"' && len(b) >= 2 {
 			i, err := strconv.ParseInt(string(b[1:len(b)-1]), 10, 64)
@@ -43,8 +43,11 @@ func (s *Snowflake) UnmarshalJSON(b []byte) error {
 	} else {
 		*s = 0
 	}
-
 	return nil
+}
+
+func (s *Snowflake) UnmarshalJSON(b []byte) error {
+	return toSnowflake(b, s)
 }
 
 func (s Snowflake) MarshalJSON() ([]byte, error) {
@@ -91,10 +94,6 @@ func (in Int64) MarshalJSON() ([]byte, error) {
 
 func (in Int64) String() string {
 	return strconv.FormatInt(int64(in), 10)
-}
-
-func int64Bytes(i int64) []byte {
-	return []byte(strconv.FormatInt(i, 10))
 }
 
 func uint16Bytes(i uint16) []byte {

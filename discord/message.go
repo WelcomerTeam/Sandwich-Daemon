@@ -67,9 +67,9 @@ const (
 
 // Message represents a message on discord.
 type Message struct {
-	WebhookID         *Snowflake              `json:"webhook_id,omitempty"`
+	WebhookID         *WebhookID              `json:"webhook_id,omitempty"`
 	Member            *GuildMember            `json:"member,omitempty"`
-	GuildID           *Snowflake              `json:"guild_id,omitempty"`
+	GuildID           *GuildID                `json:"guild_id,omitempty"`
 	Thread            *Channel                `json:"thread,omitempty"`
 	Interaction       *MessageInteraction     `json:"interaction,omitempty"`
 	ReferencedMessage *Message                `json:"referenced_message,omitempty"`
@@ -79,18 +79,18 @@ type Message struct {
 	Timestamp         Timestamp               `json:"timestamp"`
 	EditedTimestamp   Timestamp               `json:"edited_timestamp"`
 	Content           string                  `json:"content"`
-	Embeds            []Embed                 `json:"embeds"`
-	MentionRoles      []Snowflake             `json:"mention_roles"`
+	Embeds            EmbedList               `json:"embeds"`
+	MentionRoles      RoleIDList              `json:"mention_roles"`
 	Reactions         []MessageReaction       `json:"reactions"`
 	StickerItems      []MessageSticker        `json:"sticker_items,omitempty"`
 	Attachments       []MessageAttachment     `json:"attachments"`
 	Components        []InteractionComponent  `json:"components,omitempty"`
 	MentionChannels   []MessageChannelMention `json:"mention_channels,omitempty"`
-	Mentions          []User                  `json:"mentions"`
+	Mentions          UserList                `json:"mentions"`
 	MessageReference  []MessageReference      `json:"message_referenced,omitempty"`
 	Author            User                    `json:"author"`
-	ID                Snowflake               `json:"id"`
-	ChannelID         Snowflake               `json:"channel_id"`
+	ID                MessageID               `json:"id"`
+	ChannelID         ChannelID               `json:"channel_id"`
 	Type              MessageType             `json:"type"`
 	MentionEveryone   bool                    `json:"mention_everyone"`
 	TTS               bool                    `json:"tts"`
@@ -101,23 +101,23 @@ type Message struct {
 type MessageInteraction struct {
 	Name string          `json:"name"`
 	User User            `json:"user"`
-	ID   Snowflake       `json:"id"`
+	ID   InteractionID   `json:"id"`
 	Type InteractionType `json:"type"`
 }
 
 // MessageChannelMention represents a mentioned channel.
 type MessageChannelMention struct {
 	Name    string      `json:"name"`
-	ID      Snowflake   `json:"id"`
-	GuildID Snowflake   `json:"guild_id"`
+	ID      ChannelID   `json:"id"`
+	GuildID GuildID     `json:"guild_id"`
 	Type    ChannelType `json:"type"`
 }
 
 // MessageReference represents crossposted messages or replys.
 type MessageReference struct {
-	ID              *Snowflake `json:"message_id,omitempty"`
-	ChannelID       *Snowflake `json:"channel_id,omitempty"`
-	GuildID         *Snowflake `json:"guild_id,omitempty"`
+	ID              *MessageID `json:"message_id,omitempty"`
+	ChannelID       *ChannelID `json:"channel_id,omitempty"`
+	GuildID         *GuildID   `json:"guild_id,omitempty"`
 	FailIfNotExists bool       `json:"fail_if_not_exists"`
 }
 
@@ -142,21 +142,21 @@ type MessageReactionCountDetails struct {
 // MessageAllowedMentions is the structure of the allowed mentions entry.
 type MessageAllowedMentions struct {
 	Parse       []MessageAllowedMentionsType `json:"parse"`
-	Roles       []Snowflake                  `json:"roles"`
-	Users       []Snowflake                  `json:"users"`
+	Roles       []RoleID                     `json:"roles"`
+	Users       []UserID                     `json:"users"`
 	RepliedUser bool                         `json:"replied_user"`
 }
 
 // MessageAttachment represents a message attachment on discord.
 type MessageAttachment struct {
-	Filename  string    `json:"filename"`
-	URL       string    `json:"url"`
-	ProxyURL  string    `json:"proxy_url"`
-	ID        Snowflake `json:"id"`
-	Size      int32     `json:"size"`
-	Height    int32     `json:"height"`
-	Width     int32     `json:"width"`
-	Ephemeral bool      `json:"ephemeral"`
+	Filename  string       `json:"filename"`
+	URL       string       `json:"url"`
+	ProxyURL  string       `json:"proxy_url"`
+	ID        AttachmentID `json:"id"`
+	Size      int32        `json:"size"`
+	Height    int32        `json:"height"`
+	Width     int32        `json:"width"`
+	Ephemeral bool         `json:"ephemeral"`
 }
 
 // MessageActivity represents a message activity on discord.

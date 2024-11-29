@@ -33,11 +33,6 @@ func main() {
 	gatewayURL := flag.String("gatewayURL", os.Getenv("GATEWAY_URL"), "Websocket for discord gateway")
 	baseURL := flag.String("baseURL", os.Getenv("BASE_URL"), "BaseURL to send HTTP requests to. If empty, will use https://discord.com")
 
-	grpcNetwork := flag.String("grpcNetwork", os.Getenv("GRPC_NETWORK"), "GRPC network type. The network must be \"tcp\", \"tcp4\", \"tcp6\", \"unix\" or \"unixpacket\".")
-	grpcHost := flag.String("grpcHost", os.Getenv("GRPC_HOST"), "Host for GRPC.")
-	grpcCertFile := flag.String("grpcCertFile", os.Getenv("GRPC_CERT_FILE"), "Optional cert file to use.")
-	grpcServerNameOverride := flag.String("grpcServerNameOverride", os.Getenv("GRPC_SERVER_NAME_OVERRIDE"), "For testing only. If set to a non empty string, it will override the virtual host name of authority (e.g. :authority header field) in requests.")
-
 	httpHost := flag.String("httpHost", os.Getenv("HTTP_HOST"), "Host to use for internal dashboard.")
 	httpEnabled := flag.Bool("httpEnabled", MustParseBool(os.Getenv("HTTP_ENABLED")), "Enables the internal dashboard.")
 
@@ -105,14 +100,8 @@ func main() {
 	options := internal.SandwichOptions{
 		ConfigurationLocation: *configurationPath,
 		PrometheusAddress:     *prometheusAddress,
-
-		GRPCNetwork:            *grpcNetwork,
-		GRPCHost:               *grpcHost,
-		GRPCCertFile:           *grpcCertFile,
-		GRPCServerNameOverride: *grpcServerNameOverride,
-
-		HTTPHost:    *httpHost,
-		HTTPEnabled: *httpEnabled,
+		HTTPHost:              *httpHost,
+		HTTPEnabled:           *httpEnabled,
 	}
 
 	if confGatewayURL, err := url.Parse(*gatewayURL); err == nil {
