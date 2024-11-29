@@ -19,7 +19,6 @@ import (
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/WelcomerTeam/czlib"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"nhooyr.io/websocket"
@@ -517,13 +516,11 @@ func (sh *Shard) Listen(ctx context.Context) error {
 
 		msg, err := sh.readMessage()
 
-		var trace *csmap.CsMap[string, discord.Int64]
+		var trace map[string]discord.Int64
 		if !disableTrace {
-			trace = csmap.Create(
-				csmap.WithSize[string, discord.Int64](uint64(1)),
-			)
+			trace = make(map[string]discord.Int64)
 
-			trace.Store("receive", discord.Int64(time.Now().Unix()))
+			trace["receive"] = discord.Int64(time.Now().Unix())
 		}
 
 		if err == nil {

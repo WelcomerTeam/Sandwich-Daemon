@@ -9,7 +9,6 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
 	"github.com/savsgio/gotils/strings"
 )
@@ -90,12 +89,10 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 
 	if !disableTrace {
 		if trace == nil {
-			trace = csmap.Create(
-				csmap.WithSize[string, discord.Int64](uint64(1)),
-			)
+			trace = make(map[string]discord.Int64)
 		}
 
-		trace.Store("state", discord.Int64(time.Now().Unix()))
+		trace["state"] = discord.Int64(time.Now().Unix())
 	}
 
 	result, continuable, err := StateDispatch(StateCtx{

@@ -7,7 +7,6 @@ import (
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 type MQCloseShardReason int
@@ -61,12 +60,10 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 
 	if !disableTrace {
 		if packet.Trace == nil {
-			packet.Trace = csmap.Create(
-				csmap.WithSize[string, discord.Int64](uint64(1)),
-			)
+			packet.Trace = make(map[string]discord.Int64)
 		}
 
-		packet.Trace.Store("publish", discord.Int64(time.Now().Unix()))
+		packet.Trace["publish"] = discord.Int64(time.Now().Unix())
 	}
 
 	err := sh.Manager.RoutePayloadToConsumer(packet)

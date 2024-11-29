@@ -19,7 +19,7 @@ func gatewayOpDispatch(ctx context.Context, sh *Shard, msg discord.GatewayPayloa
 	sh.Sequence.Store(msg.Sequence)
 
 	if trace != nil {
-		trace.Store("dispatch", discord.Int64(time.Now().Unix()))
+		trace["dispatch"] = discord.Int64(time.Now().Unix())
 	}
 
 	sh.Sandwich.EventsInflight.Inc()

@@ -16,7 +16,6 @@ import (
 	limiter "github.com/WelcomerTeam/RealRock/limiter"
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
-	"github.com/WelcomerTeam/Sandwich-Daemon/sandwichjson"
 	"github.com/fasthttp/session/v2"
 	memory "github.com/fasthttp/session/v2/providers/memory"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
@@ -77,9 +76,6 @@ type Sandwich struct {
 	EventsInflight *atomic.Int32 `json:"-"`
 
 	Managers *csmap.CsMap[string, *Manager] `json:"managers" yaml:"managers"`
-
-	globalPool            *csmap.CsMap[int32, chan []byte]
-	globalPoolAccumulator *atomic.Int32
 
 	Dedupe *csmap.CsMap[string, int64]
 
@@ -183,11 +179,6 @@ func NewSandwich(logger io.Writer, options SandwichOptions) (sg *Sandwich, err e
 		Managers: csmap.Create(
 			csmap.WithSize[string, *Manager](10),
 		),
-
-		globalPool: csmap.Create(
-			csmap.WithSize[int32, chan []byte](10),
-		),
-		globalPoolAccumulator: atomic.NewInt32(0),
 
 		Dedupe: csmap.Create(
 			csmap.WithSize[string, int64](10),
@@ -310,18 +301,27 @@ func (sg *Sandwich) PublishGlobalEvent(eventType string, data json.RawMessage) e
 		Metadata: &sandwich_structs.SandwichMetadata{
 			Version: VERSION,
 		},
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
+			GloballyRouted: true,
+		},
 		Op:   discord.GatewayOpDispatch,
 		Type: eventType,
 		Data: data,
 	}
 
-	payload, err := sandwichjson.Marshal(packet)
-	if err != nil {
-		return fmt.Errorf("failed to marshal packet: %w", err)
-	}
+	sg.Managers.Range(func(key string, manager *Manager) bool {
+		err := manager.RoutePayloadToConsumer(packet)
 
-	sg.globalPool.Range(func(key int32, pool chan []byte) bool {
-		pool <- payload
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to route payload to consumer")
+		}
+
+		err = manager.ProducerClient.Publish(sg.ctx, packet, manager.Configuration.Messaging.ChannelName)
+
+		if err != nil {
+			sg.Logger.Error().Err(err).Msg("Failed to publish event")
+		}
+
 		return false
 	})
 

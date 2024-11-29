@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 // SandwichMetadata represents the identification information that consumers will use.
@@ -17,7 +16,7 @@ type SandwichMetadata struct {
 	Shard [3]int32 `json:"s"`
 }
 
-type SandwichTrace = *csmap.CsMap[string, discord.Int64]
+type SandwichTrace = map[string]discord.Int64
 
 // Used as a key for virtual shard dispatches etc., must be set for all events
 type EventDispatchIdentifier struct {
