@@ -666,12 +666,10 @@ func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 	if !ctx.Sandwich.CheckAndAddDedupe(ddAddKey) {
 		ctx.Sandwich.RemoveDedupe(ddRemoveKey)
 
-		guild, ok := ctx.Sandwich.State.Guilds.Load(*guildMemberAddPayload.GuildID)
-
-		if ok {
+		ctx.Sandwich.State.Guilds.Update(*guildMemberAddPayload.GuildID, func(guild discord.Guild) discord.Guild {
 			guild.MemberCount++
-			ctx.Sandwich.State.Guilds.SetIfPresent(*guildMemberAddPayload.GuildID, guild)
-		}
+			return guild
+		})
 	}
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, *guildMemberAddPayload.GuildID)
