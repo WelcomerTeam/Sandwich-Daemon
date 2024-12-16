@@ -668,7 +668,6 @@ func (sh *Shard) Resume(ctx context.Context) error {
 	sh.Manager.configurationMu.RUnlock()
 
 	sh.Logger.Debug().
-		Str("token", token).
 		Str("session_id", sh.SessionID.Load()).
 		Int32("sequence", sh.Sequence.Load()).
 		Msg("Sending resume")
@@ -753,10 +752,6 @@ func (sh *Shard) WriteJSON(ctx context.Context, op discord.GatewayOp, i interfac
 	sh.wsConnMu.RLock()
 	wsConn := sh.wsConn
 	sh.wsConnMu.RUnlock()
-
-	if op != discord.GatewayOpHeartbeat {
-		sh.Logger.Debug().Int("op", int(op)).Str("data", string(res)).Msg("Sending gateway event")
-	}
 
 	err = wsConn.Write(ctx, websocket.MessageText, res)
 	if err != nil {
