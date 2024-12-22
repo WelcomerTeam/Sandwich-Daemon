@@ -72,17 +72,14 @@ func (ss *SandwichState) GuildFromState(guildState sandwich_structs.StateGuild) 
 	}
 
 	for _, stageInstance := range guildState.StageInstances {
-		stageInstance := stageInstance
 		guild.StageInstances = append(guild.StageInstances, stageInstance)
 	}
 
 	for _, sticker := range guildState.Stickers {
-		sticker := sticker
 		guild.Stickers = append(guild.Stickers, sticker)
 	}
 
 	for _, scheduledEvent := range guildState.GuildScheduledEvents {
-		scheduledEvent := scheduledEvent
 		guild.GuildScheduledEvents = append(guild.GuildScheduledEvents, scheduledEvent)
 	}
 
@@ -755,7 +752,6 @@ func (ss *SandwichState) ChannelFromState(guildChannelState sandwich_structs.Sta
 	}
 
 	for _, permissionOverride := range guildChannelState.PermissionOverwrites {
-		permissionOverride := permissionOverride
 		guildChannel.PermissionOverwrites = append(guildChannel.PermissionOverwrites, permissionOverride)
 	}
 
@@ -804,7 +800,6 @@ func (ss *SandwichState) ChannelToState(guildChannel discord.Channel) sandwich_s
 	}
 
 	for _, permissionOverride := range guildChannel.PermissionOverwrites {
-		permissionOverride := permissionOverride
 		guildChannelState.PermissionOverwrites = append(guildChannelState.PermissionOverwrites, permissionOverride)
 	}
 
@@ -891,7 +886,6 @@ func (ss *SandwichState) SetGuildChannel(ctx StateCtx, guildIDPtr *discord.Snowf
 	guildChannels.Channels[channel.ID] = ss.ChannelToState(channel)
 
 	for _, recipient := range channel.Recipients {
-		recipient := recipient
 		ss.SetUser(ctx, recipient)
 	}
 }

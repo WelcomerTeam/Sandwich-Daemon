@@ -56,12 +56,14 @@ func TestReturnRangeInt32Invalid(t *testing.T) {
 func TestReplaceIfEmpty(t *testing.T) {
 	v := replaceIfEmpty("", "default")
 	expected := "default"
+
 	if v != expected {
 		t.Errorf("Expected %q, but got %q", expected, v)
 	}
 
 	v = replaceIfEmpty("value", "default")
 	expected = "value"
+
 	if v != expected {
 		t.Errorf("Expected %q, but got %q", expected, v)
 	}
@@ -86,6 +88,7 @@ func TestRandomHexZeroLength(t *testing.T) {
 func TestRandomHexNegativeLength(t *testing.T) {
 	length := -10
 	result := randomHex(length)
+
 	if len(result) != 0 {
 		t.Errorf("Expected length 0, but got %d", len(result))
 	}

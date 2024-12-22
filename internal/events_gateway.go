@@ -8,10 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coder/websocket"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
+	"github.com/coder/websocket"
 )
 
 const MagicDecimalBase = 10
@@ -80,6 +79,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 	err := json.Unmarshal(msg.Data, &resumable)
 	if err != nil {
 		sh.Logger.Error().Err(err).Msg("Failed to unmarshal invalid session")
+
 		return err
 	}
 

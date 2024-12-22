@@ -261,6 +261,7 @@ readyConsumer:
 	defer func() {
 		if err != nil {
 			sh.Logger.Error().Err(err).Msg("Failed to connect. Closing shard")
+
 			if sh.hasWsConn() {
 				err = sh.CloseWS(websocket.StatusNormalClosure)
 				if err != nil {
