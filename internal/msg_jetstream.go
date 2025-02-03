@@ -120,3 +120,7 @@ func (jetstreamMQ *JetStreamMQClient) CloseShard(shardID int32, reason MQCloseSh
 func (jetstreamMQ *JetStreamMQClient) Close() {
 	jetstreamMQ.isClosed = true
 }
+
+func (jetstreamMQ *JetStreamMQClient) StopSession(sessionID string) {
+	// No-op
+}

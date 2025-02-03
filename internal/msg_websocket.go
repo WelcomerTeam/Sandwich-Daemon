@@ -930,6 +930,9 @@ func (mq *WebsocketClient) CloseShard(shardID int32, reason MQCloseShardReason) 
 		return // No-op if the reason is a gateway reconnect
 	}
 
+	mq.cs.subscribersMu.RLock()
+	defer mq.cs.subscribersMu.RUnlock()
+
 	// Send RESUME for single shard
 	for _, shardSubs := range mq.cs.subscribers {
 		for _, s := range shardSubs {
@@ -942,6 +945,9 @@ func (mq *WebsocketClient) CloseShard(shardID int32, reason MQCloseShardReason) 
 }
 
 func (mq *WebsocketClient) Close() {
+	mq.cs.subscribersMu.RLock()
+	defer mq.cs.subscribersMu.RUnlock()
+
 	// Send RESUME to all shards
 	for _, shardSubs := range mq.cs.subscribers {
 		for _, s := range shardSubs {
@@ -952,4 +958,18 @@ func (mq *WebsocketClient) Close() {
 	}
 
 	mq.cs = nil
+}
+
+func (mq *WebsocketClient) StopSession(sessionID string) {
+	mq.cs.subscribersMu.RLock()
+	defer mq.cs.subscribersMu.RUnlock()
+
+	for _, shardSubs := range mq.cs.subscribers {
+		for _, s := range shardSubs {
+			if s.sessionId == sessionID {
+				mq.cs.invalidSession(s, "Session stopped", true)
+				mq.cs.deleteSubscriber(s)
+			}
+		}
+	}
 }

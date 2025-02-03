@@ -94,3 +94,7 @@ func (redisMQ *RedisMQClient) Close() {
 	redisMQ.redisClient.Close()
 	redisMQ.redisClient = nil
 }
+
+func (redisMQ *RedisMQClient) StopSession(sessionID string) {
+	// No-op
+}

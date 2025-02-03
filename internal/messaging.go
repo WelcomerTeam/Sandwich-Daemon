@@ -30,6 +30,9 @@ type MQClient interface {
 	// Close all connections for a specific shard, only supported by websocket producer
 	CloseShard(shardID int32, reason MQCloseShardReason)
 
+	// Stop a session id, only supported by websocket producer
+	StopSession(sessionID string)
+
 	// Close the connection
 	Close()
 }

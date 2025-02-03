@@ -83,6 +83,9 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r.POST("/api/manager/shardgroup", sg.requireDiscordAuthentication(sg.ShardGroupCreateEndpoint))
 	r.DELETE("/api/manager/shardgroup", sg.requireDiscordAuthentication(sg.ShardGroupStopEndpoint))
 
+	// Misc endpoints
+	r.POST("/api/create-chaos", sg.internalEndpoint(sg.CreateChaosEndpoint))
+
 	fs := fasthttp.FS{
 		IndexNames:     []string{"index.html"},
 		Root:           DistPath,
@@ -512,6 +515,35 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 
 	// Write raw, as discord libraries dont support sandwich_structs.BaseRestResponse
 	writeResponse(ctx, fasthttp.StatusOK, gateway)
+}
+
+// /{manager}/api/create-chaos?sessionId={}: Returns data from the sandwich state
+func (sg *Sandwich) CreateChaosEndpoint(ctx *fasthttp.RequestCtx) {
+	managerKey := ctx.UserValue("manager").(string)
+
+	mg, ok := sg.Managers.Load(managerKey)
+
+	if !ok {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Manager not found",
+		})
+
+		return
+	}
+
+	sessionId := ctx.QueryArgs().Peek("sessionId")
+
+	if len(sessionId) == 0 {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Missing sessionId",
+		})
+
+		return
+	}
+
+	mg.ProducerClient.StopSession(string(sessionId))
 }
 
 // /{manager}/api/state?col={collection}&id={id}: Returns data from the sandwich state

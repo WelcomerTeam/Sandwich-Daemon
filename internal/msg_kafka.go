@@ -107,3 +107,7 @@ func (kafkaMQ *KafkaMQClient) Close() {
 	kafkaMQ.KafkaClient.Close()
 	kafkaMQ.KafkaClient = nil
 }
+
+func (kafkaMQ *KafkaMQClient) StopSession(sessionID string) {
+	// No-op
+}
