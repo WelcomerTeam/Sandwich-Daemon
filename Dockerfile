@@ -12,10 +12,10 @@ COPY go.sum .
 RUN go mod tidy
 COPY . .
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 LD_LIBRARY_PATH='/usr/local/lib' \
-    go build -a --trimpath -o ./out/sandwich ./cmd/main.go
+    go build -a --trimpath -o ./out/sandwich ./main.go
 
 FROM alpine:3
-RUN apk add ca-certificates libc6-compat
+RUN apk add ca-certificates libc6-compat curl
 COPY --from=build_base /usr/local/lib /usr/local/lib
 COPY --from=build_base /tmp/sandwich-daemon/out/sandwich /app/sandwich
 COPY --from=build_base /tmp/sandwich-daemon/web/dist /web/dist
