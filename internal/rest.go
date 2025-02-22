@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
@@ -492,13 +493,17 @@ func (sg *Sandwich) GatewayEndpoint(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	externalAddress, ok = GetEntry(mg.Sandwich.Configuration.Producer.Configuration, "ExternalAddress").(string)
+	if os.Getenv("EXTERNAL_GATEWAY_ADDRESS") != "" {
+		externalAddress = os.Getenv("EXTERNAL_GATEWAY_ADDRESS")
+	} else {
+		externalAddress, ok = GetEntry(mg.Sandwich.Configuration.Producer.Configuration, "ExternalAddress").(string)
 
-	if !ok {
-		if !strings.HasPrefix(address, "ws") {
-			externalAddress = "ws://" + address
-		} else {
-			externalAddress = address
+		if !ok {
+			if !strings.HasPrefix(address, "ws") {
+				externalAddress = "ws://" + address
+			} else {
+				externalAddress = address
+			}
 		}
 	}
 
