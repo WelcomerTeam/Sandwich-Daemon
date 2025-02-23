@@ -19,6 +19,7 @@
 logs
 .env
 sandwich.yaml
+sandwich.docker.yaml
 assets/run_ar.sh
 *.fasthttp.br
 *.fasthttp.gz
