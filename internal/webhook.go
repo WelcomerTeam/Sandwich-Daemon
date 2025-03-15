@@ -24,7 +24,7 @@ const (
 )
 
 // PublishSimpleWebhook is a helper function for creating quicker webhook messages.
-func (sg *Sandwich) PublishSimpleWebhook(title string, description string, footer string, colour int32) {
+func (sg *Sandwich) PublishSimpleWebhook(title, description, footer string, colour int32) {
 	now := time.Now().UTC()
 
 	sg.PublishWebhook(discord.WebhookMessageParams{

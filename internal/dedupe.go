@@ -6,11 +6,11 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 )
 
-func createDedupeMemberAddKey(guildID discord.Snowflake, memberID discord.Snowflake) string {
+func createDedupeMemberAddKey(guildID, memberID discord.Snowflake) string {
 	return "MA:" + guildID.String() + ":" + memberID.String()
 }
 
-func createDedupeMemberRemoveKey(guildID discord.Snowflake, memberID discord.Snowflake) string {
+func createDedupeMemberRemoveKey(guildID, memberID discord.Snowflake) string {
 	return "MR:" + guildID.String() + ":" + memberID.String()
 }
 

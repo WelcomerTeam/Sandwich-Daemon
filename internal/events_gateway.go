@@ -114,7 +114,7 @@ func gatewayOpInvalidSession(ctx context.Context, sh *Shard, msg discord.Gateway
 }
 
 func gatewayOpHello(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error {
-	hello := discord.Hello{}
+	var hello discord.Hello
 
 	err := sh.decodeContent(msg, &hello)
 	if err != nil {

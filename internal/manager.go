@@ -288,7 +288,6 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 		channelName,
 		payload,
 	)
-
 	if err != nil {
 		return fmt.Errorf("publishEvent publish: %w", err)
 	}
@@ -297,7 +296,7 @@ func (mg *Manager) PublishEvent(ctx context.Context, eventType string, eventData
 }
 
 // WaitForIdentify blocks until a shard can identify.
-func (mg *Manager) WaitForIdentify(shardID int32, shardCount int32) error {
+func (mg *Manager) WaitForIdentify(shardID, shardCount int32) error {
 	mg.Sandwich.configurationMu.RLock()
 	identifyURL := mg.Sandwich.Configuration.Identify.URL
 	identifyHeaders := mg.Sandwich.Configuration.Identify.Headers

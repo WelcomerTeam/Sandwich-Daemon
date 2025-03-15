@@ -33,7 +33,7 @@ var (
 	StatusCacheDuration = time.Second * 30
 )
 
-func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHandler fasthttp.RequestHandler) {
+func (sg *Sandwich) NewRestRouter() (routerHandler, fsHandler fasthttp.RequestHandler) {
 	r := router.New()
 
 	// OAuth2

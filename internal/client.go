@@ -43,7 +43,7 @@ func NewClient(baseURL url.URL, token string) *Client {
 
 // Fetch returns the response. Passing any headers will be sent to the request however
 // Authorization will be overwrote.
-func (c *Client) Fetch(ctx context.Context, method string, url string,
+func (c *Client) Fetch(ctx context.Context, method, url string,
 	body io.Reader, headers map[string]string,
 ) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
@@ -72,7 +72,7 @@ func (c *Client) Fetch(ctx context.Context, method string, url string,
 
 // FetchJSON attempts to convert the response into a JSON structure. Passing any headers
 // will be sent to the request however Authorization will be overwrote.
-func (c *Client) FetchJSON(ctx context.Context, method string, url string, body io.Reader,
+func (c *Client) FetchJSON(ctx context.Context, method, url string, body io.Reader,
 	headers map[string]string, structure interface{},
 ) (int, error) {
 	responseBody, status, err := c.Fetch(ctx, method, url, body, headers)

@@ -12,13 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coder/websocket"
-
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/RealRock/deadlock"
 	"github.com/WelcomerTeam/RealRock/limiter"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/WelcomerTeam/czlib"
+	"github.com/coder/websocket"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 )

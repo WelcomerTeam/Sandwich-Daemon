@@ -67,7 +67,6 @@ func (sh *Shard) PublishEvent(ctx context.Context, packet *sandwich_structs.Sand
 		channelName,
 		payload,
 	)
-
 	if err != nil {
 		return fmt.Errorf("publishEvent publish: %w", err)
 	}

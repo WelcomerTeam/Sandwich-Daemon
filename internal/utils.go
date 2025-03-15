@@ -12,7 +12,7 @@ import (
 
 type void struct{}
 
-func replaceIfEmpty(v string, s string) string {
+func replaceIfEmpty(v, s string) string {
 	if v == "" {
 		return s
 	}

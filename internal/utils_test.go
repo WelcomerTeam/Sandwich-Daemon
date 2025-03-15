@@ -53,6 +53,7 @@ func TestReturnRangeInt32Invalid(t *testing.T) {
 		t.Errorf("Expected %v, but got %v", expected, result)
 	}
 }
+
 func TestReplaceIfEmpty(t *testing.T) {
 	v := replaceIfEmpty("", "default")
 	expected := "default"
@@ -93,6 +94,7 @@ func TestRandomHexNegativeLength(t *testing.T) {
 		t.Errorf("Expected length 0, but got %d", len(result))
 	}
 }
+
 func TestMakeExtra(t *testing.T) {
 	extra := map[string]interface{}{
 		"key1": "value1",
