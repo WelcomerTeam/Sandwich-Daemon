@@ -692,6 +692,13 @@ func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 			ctx.Sandwich.State.Guilds[*guildMemberAddPayload.GuildID] = guild
 		}
 		ctx.Sandwich.State.guildsMu.Unlock()
+	} else {
+		ctx.Logger.Info().
+			Int64("guild_id", int64(*guildMemberAddPayload.GuildID)).
+			Int64("user_id", int64(guildMemberAddPayload.User.ID)).
+			Msg("Deduped GUILD_MEMBER_ADD event")
+
+		return result, false, nil
 	}
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, *guildMemberAddPayload.GuildID)
@@ -729,6 +736,13 @@ func OnGuildMemberRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 			ctx.Sandwich.State.Guilds[guildMemberRemovePayload.GuildID] = guild
 		}
 		ctx.Sandwich.State.guildsMu.Unlock()
+	} else {
+		ctx.Logger.Info().
+			Int64("guild_id", int64(guildMemberRemovePayload.GuildID)).
+			Int64("user_id", int64(guildMemberRemovePayload.User.ID)).
+			Msg("Deduped GUILD_MEMBER_REMOVE event")
+
+		return result, false, nil
 	}
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberRemovePayload.GuildID)
