@@ -461,6 +461,51 @@ func OnGuildAuditLogEntryCreate(ctx StateCtx, msg discord.GatewayPayload, trace 
 	}, true, nil
 }
 
+func OnEntitlementCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	var entitlementCreatePayload discord.Entitlement
+
+	err = ctx.decodeContent(msg, &entitlementCreatePayload)
+	if err != nil {
+		return result, false, err
+	}
+
+	return sandwich_structs.StateResult{
+		Data: msg.Data,
+	}, true, nil
+}
+
+func OnEntitlementUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	var entitlementUpdatePayload discord.Entitlement
+
+	err = ctx.decodeContent(msg, &entitlementUpdatePayload)
+	if err != nil {
+		return result, false, err
+	}
+
+	return sandwich_structs.StateResult{
+		Data: msg.Data,
+	}, true, nil
+}
+
+func OnEntitlementDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	var entitlementUpdatePayload discord.Entitlement
+
+	err = ctx.decodeContent(msg, &entitlementUpdatePayload)
+	if err != nil {
+		return result, false, err
+	}
+
+	return sandwich_structs.StateResult{
+		Data: msg.Data,
+	}, true, nil
+}
+
 func OnGuildUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
 	var guildUpdatePayload discord.GuildUpdate
 
@@ -1249,6 +1294,14 @@ func OnGuildJoinRequestDelete(ctx StateCtx, msg discord.GatewayPayload, trace sa
 	}, true, nil
 }
 
+func OnPassthrough(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result sandwich_structs.StateResult, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	return sandwich_structs.StateResult{
+		Data: msg.Data,
+	}, true, nil
+}
+
 func init() {
 	registerDispatch(discord.DiscordEventReady, OnReady)
 	registerDispatch(discord.DiscordEventResumed, OnResumed)
@@ -1267,6 +1320,9 @@ func init() {
 	registerDispatch(discord.DiscordEventThreadMemberUpdate, OnThreadMemberUpdate)
 	registerDispatch(discord.DiscordEventThreadMembersUpdate, OnThreadMembersUpdate)
 	registerDispatch(discord.DiscordEventGuildAuditLogEntryCreate, OnGuildAuditLogEntryCreate)
+	registerDispatch(discord.DiscordEventEntitlementCreate, OnEntitlementCreate)
+	registerDispatch(discord.DiscordEventEntitlementUpdate, OnEntitlementUpdate)
+	registerDispatch(discord.DiscordEventEntitlementDelete, OnEntitlementDelete)
 	registerDispatch(discord.DiscordEventGuildCreate, OnGuildCreate)
 	registerDispatch(discord.DiscordEventGuildUpdate, OnGuildUpdate)
 	registerDispatch(discord.DiscordEventGuildDelete, OnGuildDelete)

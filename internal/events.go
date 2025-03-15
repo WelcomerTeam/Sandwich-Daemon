@@ -2,17 +2,21 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"os"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/structs"
 	"github.com/savsgio/gotils/strconv"
-	"github.com/savsgio/gotils/strings"
+	gotils_strconv "github.com/savsgio/gotils/strconv"
+	gotils_strings "github.com/savsgio/gotils/strings"
 )
+
+var AllowEventPassthrough = strings.ToLower(os.Getenv("ALLOW_EVENT_PASSTHROUGH")) == "true"
 
 // List of handlers for gateway events.
 var gatewayHandlers = make(map[discord.GatewayOp]func(ctx context.Context, sh *Shard, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) error)
@@ -141,7 +145,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	}
 
 	sh.Manager.eventBlacklistMu.RLock()
-	contains := strings.Include(sh.Manager.eventBlacklist, msg.Type)
+	contains := gotils_strings.Include(sh.Manager.eventBlacklist, msg.Type)
 	sh.Manager.eventBlacklistMu.RUnlock()
 
 	if contains {
@@ -180,7 +184,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	}
 
 	sh.Manager.produceBlacklistMu.RLock()
-	contains = strings.Include(sh.Manager.produceBlacklist, msg.Type)
+	contains = gotils_strings.Include(sh.Manager.produceBlacklist, msg.Type)
 	sh.Manager.produceBlacklistMu.RUnlock()
 
 	if contains {
@@ -233,8 +237,16 @@ func StateDispatch(ctx StateCtx, event discord.GatewayPayload, trace sandwich_st
 		return f(ctx, event, trace)
 	}
 
-	j, _ := json.Marshal(event)
-	ctx.Logger.Warn().Str("event", string(j)).Msg("No dispatch handler found")
+	ctx.Logger.Warn().
+		Str("type", event.Type).
+		Str("data", gotils_strconv.B2S(event.Data)).
+		Int32("seq", event.Sequence).
+		Int("op", int(event.Op)).
+		Msg("No dispatch handler found")
 
-	return result, false, ErrNoDispatchHandler
+	if AllowEventPassthrough {
+		return OnPassthrough(ctx, event, trace)
+	}
+
+	return result, true, ErrNoDispatchHandler
 }
