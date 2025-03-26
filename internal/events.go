@@ -10,7 +10,7 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
 	gotils_strconv "github.com/savsgio/gotils/strconv"
-	"github.com/savsgio/gotils/strings"
+	gotils_strings "github.com/savsgio/gotils/strings"
 )
 
 // EventDispatch represents the data returned by an event handler after processing state etc.
@@ -73,7 +73,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	}
 
 	sh.Manager.eventBlacklistMu.RLock()
-	contains := strings.Include(sh.Manager.eventBlacklist, msg.Type)
+	contains := gotils_strings.Include(sh.Manager.eventBlacklist, msg.Type)
 	sh.Manager.eventBlacklistMu.RUnlock()
 
 	if contains {
@@ -127,7 +127,7 @@ func (sh *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, tra
 	}
 
 	sh.Manager.produceBlacklistMu.RLock()
-	contains = strings.Include(sh.Manager.produceBlacklist, msg.Type)
+	contains = gotils_strings.Include(sh.Manager.produceBlacklist, msg.Type)
 	sh.Manager.produceBlacklistMu.RUnlock()
 
 	if contains {

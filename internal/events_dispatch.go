@@ -670,6 +670,13 @@ func OnGuildMemberAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_s
 			guild.MemberCount++
 			return guild
 		})
+	} else {
+		ctx.Logger.Info().
+			Int64("guild_id", int64(*guildMemberAddPayload.GuildID)).
+			Int64("user_id", int64(guildMemberAddPayload.User.ID)).
+			Msg("Deduped GUILD_MEMBER_ADD event")
+
+		return result, false, nil
 	}
 
 	defer ctx.OnGuildDispatchEvent(msg.Type, *guildMemberAddPayload.GuildID)
@@ -708,7 +715,15 @@ func OnGuildMemberRemove(ctx StateCtx, msg discord.GatewayPayload, trace sandwic
 			guild.MemberCount--
 			ctx.Sandwich.State.Guilds.SetIfPresent(guildMemberRemovePayload.GuildID, guild)
 		}
+	} else {
+		ctx.Logger.Info().
+			Int64("guild_id", int64(guildMemberRemovePayload.GuildID)).
+			Int64("user_id", int64(guildMemberRemovePayload.User.ID)).
+			Msg("Deduped GUILD_MEMBER_REMOVE event")
+
+		return result, false, nil
 	}
+
 	defer ctx.OnGuildDispatchEvent(msg.Type, guildMemberRemovePayload.GuildID)
 
 	guildMember, _ := ctx.Sandwich.State.GetGuildMember(guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
@@ -1147,6 +1162,63 @@ func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 	}, true, nil
 }
 
+func OnEntitlementCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	var entitlementCreatePayload discord.Entitlement
+
+	err = ctx.decodeContent(msg, &entitlementCreatePayload)
+	if err != nil {
+		return result, false, err
+	}
+
+	return EventDispatch{
+		Data: msg.Data,
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
+			GuildID:        entitlementCreatePayload.GuildID,
+			GloballyRouted: entitlementCreatePayload.GuildID == nil,
+		},
+	}, true, nil
+}
+
+func OnEntitlementUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	var entitlementUpdatePayload discord.Entitlement
+
+	err = ctx.decodeContent(msg, &entitlementUpdatePayload)
+	if err != nil {
+		return result, false, err
+	}
+
+	return EventDispatch{
+		Data: msg.Data,
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
+			GuildID:        entitlementUpdatePayload.GuildID,
+			GloballyRouted: entitlementUpdatePayload.GuildID == nil,
+		},
+	}, true, nil
+}
+
+func OnEntitlementDelete(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_structs.SandwichTrace) (result EventDispatch, ok bool, err error) {
+	defer ctx.OnDispatchEvent(msg.Type)
+
+	var entitlementUpdatePayload discord.Entitlement
+
+	err = ctx.decodeContent(msg, &entitlementUpdatePayload)
+	if err != nil {
+		return result, false, err
+	}
+
+	return EventDispatch{
+		Data: msg.Data,
+		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
+			GuildID:        entitlementUpdatePayload.GuildID,
+			GloballyRouted: entitlementUpdatePayload.GuildID == nil,
+		},
+	}, true, nil
+}
+
 func init() {
 	registerDispatch(discord.DiscordEventReady, OnReady)
 	registerDispatch(discord.DiscordEventResumed, OnResumed)
@@ -1185,4 +1257,7 @@ func init() {
 	registerDispatch(discord.DiscordEventTypingStart, OnTypingStart)
 	registerDispatch(discord.DiscordEventUserUpdate, OnUserUpdate)
 	registerDispatch(discord.DiscordEventVoiceStateUpdate, OnVoiceStateUpdate)
+	registerDispatch(discord.DiscordEventEntitlementCreate, OnEntitlementCreate)
+	registerDispatch(discord.DiscordEventEntitlementUpdate, OnEntitlementUpdate)
+	registerDispatch(discord.DiscordEventEntitlementDelete, OnEntitlementDelete)
 }
