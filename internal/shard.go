@@ -680,13 +680,11 @@ func (sh *Shard) Resume(ctx context.Context) error {
 }
 
 func (sh *Shard) fillInUpdateStatus(us *discord.UpdateStatus) *discord.UpdateStatus {
-	for _, activity := range us.Activities {
-		activity.Name = strings.ReplaceAll(activity.Name, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
-		activity.Name = strings.ReplaceAll(activity.Name, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
-		sh.Logger.Info().Str("activity_name", activity.Name).Msg("Activity name")
-		activity.State = strings.ReplaceAll(activity.State, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
-		activity.State = strings.ReplaceAll(activity.State, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
-
+	for i := range us.Activities {
+		us.Activities[i].Name = strings.ReplaceAll(us.Activities[i].Name, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
+		us.Activities[i].Name = strings.ReplaceAll(us.Activities[i].Name, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
+		us.Activities[i].State = strings.ReplaceAll(us.Activities[i].State, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
+		us.Activities[i].State = strings.ReplaceAll(us.Activities[i].State, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
 	}
 	return us
 }
