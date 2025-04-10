@@ -640,7 +640,7 @@ func (sh *Shard) Identify(ctx context.Context) error {
 
 	sh.Manager.configurationMu.RLock()
 	token := sh.Manager.Configuration.Token
-	presence := sh.fillInUpdateStatus(&sh.Manager.Configuration.Bot.DefaultPresence)
+	presence := sh.fillInUpdateStatus(sh.Manager.Configuration.Bot.DefaultPresence)
 	intents := sh.Manager.Configuration.Bot.Intents
 	sh.Manager.configurationMu.RUnlock()
 
@@ -656,7 +656,7 @@ func (sh *Shard) Identify(ctx context.Context) error {
 		Compress:       true,
 		LargeThreshold: GatewayLargeThreshold,
 		Shard:          [2]int32{sh.ShardID, sh.ShardGroup.ShardCount},
-		Presence:       presence,
+		Presence:       &presence,
 		Intents:        intents,
 	})
 }
@@ -679,7 +679,7 @@ func (sh *Shard) Resume(ctx context.Context) error {
 	})
 }
 
-func (sh *Shard) fillInUpdateStatus(us *discord.UpdateStatus) *discord.UpdateStatus {
+func (sh *Shard) fillInUpdateStatus(us discord.UpdateStatus) discord.UpdateStatus {
 	for i := range us.Activities {
 		us.Activities[i].Name = strings.ReplaceAll(us.Activities[i].Name, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
 		us.Activities[i].Name = strings.ReplaceAll(us.Activities[i].Name, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
@@ -689,7 +689,7 @@ func (sh *Shard) fillInUpdateStatus(us *discord.UpdateStatus) *discord.UpdateSta
 	return us
 }
 
-func (sh *Shard) UpdatePresence(ctx context.Context, us *discord.UpdateStatus) error {
+func (sh *Shard) UpdatePresence(ctx context.Context, us discord.UpdateStatus) error {
 	filledInStatus := sh.fillInUpdateStatus(us)
 	jsonStatusBytes, err := sandwichjson.Marshal(filledInStatus)
 
