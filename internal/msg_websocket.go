@@ -370,8 +370,8 @@ func (s *subscriber) identifyClient() (oldSess *subscriber, err error) {
 
 				csc := s.cs.manager.ConsumerShardCount() // Get the consumer shard count to avoid unneeded casts
 
-				// dpy workaround
-				if identify.Shard[1] == 0 {
+				// dpy/serenity workaround
+				if identify.Shard[1] <= 0 {
 					identify.Shard[1] = csc
 				}
 
@@ -400,6 +400,8 @@ func (s *subscriber) identifyClient() (oldSess *subscriber, err error) {
 				resume.Token = strings.Replace(resume.Token, "Bot ", "", 1)
 
 				if resume.Token == s.cs.expectedToken {
+					csc := s.cs.manager.ConsumerShardCount() // Get the consumer shard count to avoid unneeded casts
+
 					// Find session with same session id
 					s.cs.subscribersMu.RLock()
 					for _, shardSubs := range s.cs.subscribers {
@@ -408,6 +410,9 @@ func (s *subscriber) identifyClient() (oldSess *subscriber, err error) {
 								s.cs.manager.Logger.Info().Msgf("[WS] Shard %d is now identified with resumed session id %s [%s]", s.shard[0], s.sessionId, fmt.Sprint(s.shard))
 								s.seq = resume.Seq
 								s.shard = oldSess.shard
+								if s.shard[1] <= 0 {
+									s.shard[1] = csc // Ensure csc is set correctly on resume
+								}
 								s.cs.subscribersMu.RUnlock()
 								return oldSess, nil
 							}
@@ -779,7 +784,7 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 			if subShard[1] <= 0 {
 				// 0 shards is impossible, close the connection
 				for _, s := range sub {
-					cs.invalidSession(s, "Invalid Shard Count", false)
+					cs.invalidSession(s, fmt.Sprintf("Invalid Shard Count %s", subShard[1]), false)
 				}
 				continue
 			}
