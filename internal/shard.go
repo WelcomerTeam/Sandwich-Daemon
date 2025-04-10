@@ -683,8 +683,10 @@ func (sh *Shard) fillInUpdateStatus(us *discord.UpdateStatus) *discord.UpdateSta
 	for _, activity := range us.Activities {
 		activity.Name = strings.ReplaceAll(activity.Name, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
 		activity.Name = strings.ReplaceAll(activity.Name, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
+		sh.Logger.Info().Str("activity_name", activity.Name).Msg("Activity name")
 		activity.State = strings.ReplaceAll(activity.State, "{{shard_id}}", strconv.Itoa(int(sh.ShardID)))
 		activity.State = strings.ReplaceAll(activity.State, "{{shardgroup_id}}", strconv.Itoa(int(sh.ShardGroup.ID)))
+
 	}
 	return us
 }
