@@ -98,6 +98,13 @@ func (mg *Manager) NewShardGroup(shardGroupID int32, shardIDs []int32, shardCoun
 func (sg *ShardGroup) Open() (ready chan bool, err error) {
 	sg.Start.Store(time.Now().UTC())
 
+	sg.Manager.ShardGroups.Range(func(i int32, shardGroup *ShardGroup) bool {
+		if shardGroup.GetStatus() != sandwich_structs.ShardGroupStatusErroring && shardGroup.ID != sg.ID {
+			shardGroup.SetStatus(sandwich_structs.ShardGroupStatusMarkedForClosure)
+		}
+		return false
+	})
+
 	ready = make(chan bool, 1)
 
 	sg.Logger.Info().

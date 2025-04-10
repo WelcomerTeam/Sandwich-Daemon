@@ -784,7 +784,7 @@ func (cs *chatServer) publish(shard [2]int32, msg *structs.SandwichPayload) {
 			if subShard[1] <= 0 {
 				// 0 shards is impossible, close the connection
 				for _, s := range sub {
-					cs.invalidSession(s, fmt.Sprintf("Invalid Shard Count %s", subShard[1]), false)
+					cs.invalidSession(s, fmt.Sprintf("Invalid Shard Count %d", subShard[1]), false)
 				}
 				continue
 			}
