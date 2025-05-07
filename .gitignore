@@ -19,11 +19,6 @@
 logs
 .env
 sandwich.yaml
-*.fasthttp.br
-*.fasthttp.gz
 
-.DS_Store
 node_modules
-dist
-dist-ssr
 *.local
