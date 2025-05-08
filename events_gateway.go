@@ -23,6 +23,10 @@ func RegisterGatewayEvent(eventType discord.GatewayOp, handler GatewayHandler) {
 }
 
 func gatewayOpDispatch(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trace *Trace) error {
+	shard.sequence.Store(msg.Sequence)
+
+	trace.Set("dispatch", time.Now().UnixNano())
+
 	return shard.OnDispatch(ctx, msg, trace)
 }
 
@@ -88,7 +92,7 @@ func gatewayOpHello(_ context.Context, shard *Shard, msg discord.GatewayPayload,
 		return ErrShardInvalidHeartbeatInterval
 	}
 
-	heartbeatInterval := time.Duration(hello.HeartbeatInterval) * time.Second
+	heartbeatInterval := time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	shard.heartbeatInterval.Store(&heartbeatInterval)
 
 	heartbeatFailureInterval := heartbeatInterval * time.Duration(ShardMaxHeartbeatFailures)

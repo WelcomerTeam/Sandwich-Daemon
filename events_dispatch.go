@@ -928,11 +928,8 @@ func OnInviteDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *
 func OnMessageCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageCreatePayload discord.MessageCreate
 
-	println("ON MESSAGE CREATE", msg.Type)
-
 	err := unmarshalPayload(msg, &messageCreatePayload)
 	if err != nil {
-		println("ERROR", err)
 		return DispatchResult{nil, nil}, false, err
 	}
 
