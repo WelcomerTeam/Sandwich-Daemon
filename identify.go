@@ -34,7 +34,7 @@ type IdentifyViaBuckets struct {
 
 func NewIdentifyViaBuckets() *IdentifyViaBuckets {
 	return &IdentifyViaBuckets{
-		bucketStore: &bucketstore.BucketStore{},
+		bucketStore: bucketstore.NewBucketStore(),
 	}
 }
 
@@ -88,7 +88,7 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 
 	identifyURL := i.URL
 	identifyURL = strings.Replace(identifyURL, "{shard_id}", strconv.Itoa(int(shard.shardID)), 1)
-	identifyURL = strings.Replace(identifyURL, "{shard_count}", strconv.Itoa(int(shard.manager.configuration.Load().ShardCount)), 1)
+	identifyURL = strings.Replace(identifyURL, "{shard_count}", strconv.Itoa(int(shard.manager.shardCount.Load())), 1)
 	identifyURL = strings.Replace(identifyURL, "{token}", shard.manager.configuration.Load().BotToken, 1)
 	identifyURL = strings.Replace(identifyURL, "{token_hash}", tokenHash, 1)
 	identifyURL = strings.Replace(identifyURL, "{max_concurrency}", strconv.Itoa(int(shard.manager.gateway.Load().SessionStartLimit.MaxConcurrency)), 1)
