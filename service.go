@@ -74,26 +74,30 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 	}
 }
 
-func (s *Sandwich) Start(ctx context.Context) error {
-	if err := s.getConfig(ctx); err != nil {
+func (sandwich *Sandwich) Start(ctx context.Context) error {
+	sandwich.logger.Info("Starting Sandwich")
+
+	if err := sandwich.getConfig(ctx); err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
 	}
 
-	if s.client == nil {
-		s.client = http.DefaultClient
+	if sandwich.client == nil {
+		sandwich.client = http.DefaultClient
 	}
 
 	// TODO: setup GRPC
 	// TODO: setup Prometheus
 	// TODO: setup HTTP server
 
-	s.startManagers(ctx)
+	sandwich.startManagers(ctx)
 
 	return nil
 }
 
-func (s *Sandwich) Stop(ctx context.Context) error {
-	s.managers.Range(func(_ string, manager *Manager) bool {
+func (sandwich *Sandwich) Stop(ctx context.Context) error {
+	sandwich.logger.Info("Stopping Sandwich")
+
+	sandwich.managers.Range(func(_ string, manager *Manager) bool {
 		manager.Stop(ctx)
 
 		return true
@@ -102,13 +106,15 @@ func (s *Sandwich) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (s *Sandwich) getConfig(ctx context.Context) error {
-	config, err := s.configProvider.GetConfig(ctx)
+func (sandwich *Sandwich) getConfig(ctx context.Context) error {
+	sandwich.logger.Info("Getting config")
+
+	config, err := sandwich.configProvider.GetConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
 	}
 
-	s.config.Store(config)
+	sandwich.config.Store(config)
 
 	// TODO: broadcast config change
 
@@ -116,19 +122,25 @@ func (s *Sandwich) getConfig(ctx context.Context) error {
 }
 
 // startManagers starts all managers.
-func (s *Sandwich) startManagers(ctx context.Context) {
-	managers := s.config.Load().Managers
+func (sandwich *Sandwich) startManagers(ctx context.Context) {
+	sandwich.logger.Info("Starting managers")
+
+	managers := sandwich.config.Load().Managers
 
 	for _, managerConfig := range managers {
-		manager := NewManager(s, managerConfig)
-		s.managers.Store(managerConfig.ApplicationIdentifier, manager)
+		if err := sandwich.validateManagerConfig(managerConfig); err != nil {
+			sandwich.logger.Error("Failed to validate manager config", "error", err)
 
-		if err := s.validateManagerConfig(managerConfig); err != nil {
 			// TODO: set manager status to failed
 			continue
 		}
 
+		manager := NewManager(sandwich, managerConfig)
+		sandwich.managers.Store(managerConfig.ApplicationIdentifier, manager)
+
 		if err := manager.Initialize(ctx); err != nil {
+			sandwich.logger.Error("Failed to initialize manager", "error", err)
+
 			// TODO: set manager status to failed
 			continue
 		}
@@ -140,7 +152,7 @@ func (s *Sandwich) startManagers(ctx context.Context) {
 }
 
 // validateManagerConfig validates a manager configuration.
-func (s *Sandwich) validateManagerConfig(managerConfig *ManagerConfiguration) error {
+func (sandwich *Sandwich) validateManagerConfig(managerConfig *ManagerConfiguration) error {
 	if managerConfig.ApplicationIdentifier == "" {
 		return ErrManagerMissingIdentifier
 	}
@@ -149,7 +161,7 @@ func (s *Sandwich) validateManagerConfig(managerConfig *ManagerConfiguration) er
 		return ErrManagerMissingBotToken
 	}
 
-	if _, ok := s.managers.Load(managerConfig.ApplicationIdentifier); ok {
+	if _, ok := sandwich.managers.Load(managerConfig.ApplicationIdentifier); ok {
 		return ErrManagerIdentifierExists
 	}
 
