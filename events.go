@@ -50,14 +50,14 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 		}
 	}
 
-	result, continuable, err := p.dispatchProvider.Dispatch(ctx, shard, event, nil)
+	result, continuable, err := p.dispatchProvider.Dispatch(ctx, shard, event, trace)
 	if err != nil {
 		if !errors.Is(err, ErrNoDispatchHandler) {
 			return fmt.Errorf("failed to dispatch event: %w", err)
 		}
 	}
 
-	if continuable {
+	if !continuable {
 		return nil
 	}
 
