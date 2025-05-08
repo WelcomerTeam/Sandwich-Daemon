@@ -87,7 +87,7 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 		Trace: *trace,
 	}
 
-	packet.Trace["publish"] = time.Now().Unix()
+	packet.Trace.Set("publish", time.Now().UnixNano())
 
 	err = shard.manager.producer.Publish(ctx, shard, packet)
 	if err != nil {

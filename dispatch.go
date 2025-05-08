@@ -10,6 +10,10 @@ type DispatchHandler func(ctx context.Context, shard *Shard, msg discord.Gateway
 
 type Trace map[string]any
 
+func (t *Trace) Set(key string, value any) {
+	(*t)[key] = value
+}
+
 type Extra map[string]any
 
 type DispatchResult struct {
