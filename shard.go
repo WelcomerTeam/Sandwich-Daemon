@@ -29,7 +29,7 @@ var (
 
 	GatewayLargeThreshold = int32(100)
 
-	MemberChunkTimeout = time.Second
+	MemberChunkTimeout = time.Second * 3
 )
 
 var gatewayURL = url.URL{
@@ -224,13 +224,13 @@ readyConsumer:
 	shard.lastHeartbeatAck.Store(&now)
 	shard.lastHeartbeatSent.Store(&now)
 
-	heartbeatInterval := time.Duration(hello.HeartbeatInterval) * time.Second
+	heartbeatInterval := time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	shard.heartbeatInterval.Store(&heartbeatInterval)
 
 	heartbeatFailureInterval := heartbeatInterval * time.Duration(ShardMaxHeartbeatFailures)
 	shard.heartbeatFailureInterval.Store(&heartbeatFailureInterval)
 
-	shard.logger.Info("Shard is ready", "heartbeat_interval", heartbeatInterval.Seconds(), "heartbeat_failure_interval", heartbeatFailureInterval.Seconds())
+	shard.logger.Info("Shard is ready", "heartbeat_interval", heartbeatInterval.Milliseconds(), "heartbeat_failure_interval", heartbeatFailureInterval.Milliseconds())
 
 	go shard.heartbeat(ctx)
 
@@ -305,9 +305,12 @@ func (shard *Shard) Listen(ctx context.Context) error {
 
 		if err == nil {
 			trace := Trace{}
-			trace["receive"] = time.Now().Unix()
+			trace.Set("receive", time.Now().UnixNano())
 
-			shard.OnEvent(ctx, msg, &trace)
+			err = shard.OnEvent(ctx, msg, &trace)
+			if err != nil {
+				shard.logger.Error("Failed to handle event", "error", err)
+			}
 
 			continue
 		}
@@ -433,13 +436,18 @@ func (shard *Shard) waitForReady() error {
 }
 
 func (shard *Shard) heartbeat(ctx context.Context) {
+	shard.logger.Info("Shard is heartbeating")
+
 	shard.heartbeatActive.Store(true)
 	defer shard.heartbeatActive.Store(false)
 
 	// We will use a jitter to avoid the heartbeat interval from being the same for all shards.
 	hasJitter := true
 	heartbeatJitter := time.Millisecond * time.Duration(rand.Int64N(shard.heartbeatInterval.Load().Milliseconds()+1))
+
 	shard.heartbeater = time.NewTicker(heartbeatJitter)
+
+	shard.logger.Info("Shard is heartbeating", "heartbeat_jitter", int(heartbeatJitter.Milliseconds()))
 
 	for {
 		select {
@@ -450,7 +458,11 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 				hasJitter = false
 
 				shard.heartbeater.Reset(*shard.heartbeatInterval.Load())
+
+				shard.logger.Info("Shard is heartbeating", "heartbeat_interval", *shard.heartbeatInterval.Load())
 			}
+
+			shard.logger.Info("Sending heartbeat", "sequence", shard.sequence.Load())
 
 			err := shard.SendEvent(ctx, discord.GatewayOpHeartbeat, shard.sequence.Load())
 
@@ -598,8 +610,6 @@ func (shard *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, 
 			println(string(debug.Stack()))
 		}
 	}()
-
-	println("ON DISPATCH", msg.Type)
 
 	// Dispatch the event to the event provider.
 	err := shard.sandwich.eventProvider.Dispatch(ctx, shard, msg, trace)
