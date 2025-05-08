@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/WelcomerTeam/Discord/discord"
@@ -79,6 +80,8 @@ func (c ConfigProviderFromPath) GetConfig(_ context.Context) (*Configuration, er
 		return nil, fmt.Errorf("failed to unmarshal config file: %w", err)
 	}
 
+	slog.Info("Loaded config", "config", config)
+
 	return &config, nil
 }
 
@@ -87,6 +90,8 @@ func (c ConfigProviderFromPath) SaveConfig(_ context.Context, config *Configurat
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
+
+	slog.Info("Saving config", "config", config)
 
 	return os.WriteFile(c.path, data, 0o600)
 }
