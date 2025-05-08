@@ -39,6 +39,8 @@ func gatewayOpHeartbeat(ctx context.Context, shard *Shard, _ discord.GatewayPayl
 }
 
 func gatewayOpReconnect(ctx context.Context, shard *Shard, _ discord.GatewayPayload, _ *Trace) error {
+	shard.logger.Info("Shard has been requested to reconnect")
+
 	err := shard.reconnect(ctx, WebsocketReconnectCloseCode)
 	if err != nil {
 		return fmt.Errorf("failed to reconnect due to reconnect event: %w", err)
@@ -54,6 +56,8 @@ func gatewayOpInvalidSession(ctx context.Context, shard *Shard, msg discord.Gate
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal invalid session: %w", err)
 	}
+
+	shard.logger.Info("Shard has received an invalid session", "resumable", resumable)
 
 	if !resumable {
 		shard.sessionID.Store(nil)
