@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"net/url"
 	"runtime"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -63,13 +64,14 @@ type Shard struct {
 	sequence  *atomic.Int32
 	sessionID *atomic.Pointer[string]
 
-	websocketConn *atomic.Pointer[websocket.Conn]
+	websocketConn *websocket.Conn
 
 	websocketRatelimit *limiter.DurationLimiter
 
 	resumeGatewayURL *atomic.Pointer[string]
 
 	ready chan struct{}
+	error chan error
 }
 
 func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
@@ -100,7 +102,7 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 		sequence:  &atomic.Int32{},
 		sessionID: &atomic.Pointer[string]{},
 
-		websocketConn: &atomic.Pointer[websocket.Conn]{},
+		websocketConn: nil,
 
 		// We have a ratelimit of 120 messages per minutes we can send to the gateway.
 		// We subtract 2 to account for heartbeating.
@@ -109,6 +111,7 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 		resumeGatewayURL: &atomic.Pointer[string]{},
 
 		ready: make(chan struct{}, 1),
+		error: make(chan error, 1),
 	}
 
 	shard.retriesRemaining.Store(ShardConnectRetries)
@@ -127,6 +130,8 @@ func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 			if newValue <= 0 {
 				return fmt.Errorf("%w: %w", ErrShardConnectFailed, err)
 			}
+
+			shard.logger.Error("Failed to connect to shard", "error", err, "retries_remaining", newValue)
 		} else if err == nil {
 			break
 		}
@@ -136,18 +141,15 @@ func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 }
 
 func (shard *Shard) Connect(ctx context.Context) error {
+	shard.logger.Info("Shard is connecting")
+
+	// Empties the ready channel.
 readyConsumer:
 	for {
 		select {
 		case <-shard.ready:
+		default:
 			break readyConsumer
-		case <-ctx.Done():
-			err := ctx.Err()
-			if err != nil {
-				return fmt.Errorf("failed to connect to shard %d as context was done: %w", shard.shardID, err)
-			}
-
-			return nil
 		}
 	}
 
@@ -155,7 +157,7 @@ readyConsumer:
 
 	defer func() {
 		if err != nil {
-			if shard.websocketConn.Load() != nil {
+			if shard.websocketConn != nil {
 				shard.closeWS(ctx, websocket.StatusNormalClosure)
 			}
 		}
@@ -167,28 +169,40 @@ readyConsumer:
 	if resumeGatewayURL == nil || *resumeGatewayURL == "" {
 		websocketURL = gatewayURL.String()
 	} else {
+
 		websocketURL = *resumeGatewayURL
 	}
 
-	if shard.websocketConn.Load() != nil {
+	if shard.websocketConn != nil {
 		err = shard.closeWS(ctx, websocket.StatusNormalClosure)
 		if err != nil {
+			shard.logger.Error("Failed to close websocket", "error", err)
+
 			return fmt.Errorf("failed to close websocket: %w", err)
 		}
 	}
 
+	// We need to append the v10 and encoding=json to the URL.
+	websocketURL = websocketURL + "?v=10&encoding=json"
+
+	shard.logger.Info("Dialing websocket", "url", websocketURL)
+
 	conn, _, err := websocket.Dial(ctx, websocketURL, nil)
 	if err != nil {
+		shard.logger.Error("Failed to dial websocket", "error", err)
+
 		return fmt.Errorf("failed to dial websocket: %w", err)
 	}
 
 	conn.SetReadLimit(-1)
 
-	shard.websocketConn.Store(conn)
+	shard.websocketConn = conn
 
 	// Read the initial payload
 	payload, err := shard.read(ctx, conn)
 	if err != nil {
+		shard.logger.Error("Failed to read initial payload", "error", err)
+
 		return fmt.Errorf("failed to read initial payload: %w", err)
 	}
 
@@ -196,6 +210,8 @@ readyConsumer:
 
 	err = unmarshalPayload(payload, &hello)
 	if err != nil {
+		shard.logger.Error("Failed to unmarshal hello", "error", err)
+
 		return fmt.Errorf("failed to unmarshal hello: %w", err)
 	}
 
@@ -213,6 +229,8 @@ readyConsumer:
 
 	heartbeatFailureInterval := heartbeatInterval * time.Duration(ShardMaxHeartbeatFailures)
 	shard.heartbeatFailureInterval.Store(&heartbeatFailureInterval)
+
+	shard.logger.Info("Shard is ready", "heartbeat_interval", heartbeatInterval.Seconds(), "heartbeat_failure_interval", heartbeatFailureInterval.Seconds())
 
 	go shard.heartbeat(ctx)
 
@@ -235,21 +253,46 @@ readyConsumer:
 }
 
 func (shard *Shard) Start(ctx context.Context) error {
+	shard.logger.Info("Shard is starting")
+
 	for {
 		err := shard.Listen(ctx)
-		if errors.Is(err, context.Canceled) {
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+
+			shard.error <- err
+
+			var closeError websocket.CloseError
+
+			// If the status code is not recoverable, we need to return the error.
+			if ok := errors.As(err, &closeError); ok {
+				if !isStatusCodeRecoverable(closeError.Code) {
+					return err
+				}
+			}
+		}
+
+		select {
+		case <-ctx.Done():
 			return nil
+		default:
 		}
 	}
 }
 
 func (shard *Shard) Stop(ctx context.Context, code websocket.StatusCode) {
+	shard.logger.Info("Shard is stopping")
+
 	shard.manager.producer.Close()
 	shard.closeWS(ctx, code)
 }
 
 func (shard *Shard) Listen(ctx context.Context) error {
-	websocketConn := shard.websocketConn.Load()
+	shard.logger.Info("Shard is listening")
+
+	websocketConn := shard.websocketConn
 
 	for {
 		select {
@@ -278,22 +321,24 @@ func (shard *Shard) Listen(ctx context.Context) error {
 
 		if ok := errors.As(err, &closeError); ok {
 			if !isStatusCodeRecoverable(closeError.Code) {
+				shard.logger.Error("Shard received close event", "error", closeError)
+
 				return fmt.Errorf("shard %d received close event: %w", shard.shardID, closeError)
 			}
 		}
 
 		msgs, err := json.Marshal(msg)
 		if err != nil {
-			shard.logger.Error("Failed to marshal message", "shard_id", shard.shardID, "error", err)
+			shard.logger.Error("Failed to marshal message", "error", err)
 		}
 
-		shard.logger.Error("Shard received error", "shard_id", shard.shardID, "error", err, "message", string(msgs))
+		shard.logger.Error("Shard received error", "error", err, "message", string(msgs))
 
 		// If the websocket connection is the same as the one we're using, we need to reconnect.
-		if websocketConn == shard.websocketConn.Load() {
+		if websocketConn == shard.websocketConn {
 			err = shard.reconnect(ctx, websocket.StatusNormalClosure)
 			if err != nil {
-				shard.logger.Error("Failed to reconnect", "shard_id", shard.shardID, "error", err)
+				shard.logger.Error("Failed to reconnect", "error", err)
 
 				return err
 			}
@@ -315,6 +360,8 @@ func isStatusCodeRecoverable(code websocket.StatusCode) bool {
 }
 
 func (shard *Shard) reconnect(ctx context.Context, code websocket.StatusCode) error {
+	shard.logger.Info("Shard is reconnecting")
+
 	err := shard.closeWS(ctx, code)
 	if err != nil {
 		return fmt.Errorf("failed to close websocket: %w", err)
@@ -352,31 +399,35 @@ func (shard *Shard) reconnect(ctx context.Context, code websocket.StatusCode) er
 }
 
 func (shard *Shard) closeWS(_ context.Context, code websocket.StatusCode) error {
-	websocketConn := shard.websocketConn.Load()
+	shard.logger.Info("Shard is closing websocket")
+
+	websocketConn := shard.websocketConn
 	if websocketConn == nil {
 		return nil
 	}
 
 	err := websocketConn.Close(code, "")
 	if err != nil {
-		return fmt.Errorf("failed to close websocket: %w", err)
+		shard.logger.Error("Failed to close websocket", "error", err)
 	}
-
-	shard.websocketConn.Store(nil)
 
 	return nil
 }
 
-func (shard *Shard) waitForReady() {
+func (shard *Shard) waitForReady() error {
+	shard.logger.Info("Shard is waiting for ready")
+
 	since := time.Now()
 	ticker := time.NewTicker(time.Second * 15)
 
 	for {
 		select {
 		case <-shard.ready:
-			return
+			return nil
+		case err := <-shard.error:
+			return err
 		case <-ticker.C:
-			shard.logger.Error("Shard not ready", "shard_id", shard.shardID, "duration", time.Since(since))
+			shard.logger.Error("Shard not ready", "duration", time.Since(since))
 		}
 	}
 }
@@ -408,9 +459,9 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 
 			if err != nil || now.Sub(*shard.lastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
 				if err != nil {
-					shard.logger.Error("Heartbeat failed", "shard_id", shard.shardID, "error", err)
+					shard.logger.Error("Heartbeat failed", "error", err)
 				} else {
-					shard.logger.Error("Heartbeat failed", "shard_id", shard.shardID, "error", "timeout")
+					shard.logger.Error("Heartbeat failed", "error", "timeout")
 				}
 
 				return
@@ -420,14 +471,17 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 }
 
 func (shard *Shard) identify(ctx context.Context) error {
+	configuration := shard.manager.configuration.Load()
+	shardCount := shard.manager.shardCount.Load()
+
+	shard.logger.Info("Shard is identifying", "shard_id", shard.shardID, "shard_count", shardCount)
+
 	shard.manager.gatewaySessionStartLimitRemaining.Add(-1)
 
 	err := shard.waitForIdentify(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to wait for identify: %w", err)
 	}
-
-	configuration := shard.manager.configuration.Load()
 
 	return shard.SendEvent(ctx, discord.GatewayOpIdentify, discord.Identify{
 		Properties: discord.IdentifyProperties{
@@ -437,7 +491,7 @@ func (shard *Shard) identify(ctx context.Context) error {
 		},
 		Presence:       &configuration.DefaultPresence,
 		Token:          configuration.BotToken,
-		Shard:          [2]int32{shard.shardID, configuration.ShardCount},
+		Shard:          [2]int32{shard.shardID, shardCount},
 		LargeThreshold: GatewayLargeThreshold,
 		Intents:        configuration.Intents,
 		Compress:       true,
@@ -445,6 +499,8 @@ func (shard *Shard) identify(ctx context.Context) error {
 }
 
 func (shard *Shard) waitForIdentify(ctx context.Context) error {
+	shard.logger.Info("Shard is waiting for identify")
+
 	err := shard.sandwich.identifyProvider.Identify(ctx, shard)
 	if err != nil {
 		return fmt.Errorf("failed to identify: %w", err)
@@ -454,6 +510,8 @@ func (shard *Shard) waitForIdentify(ctx context.Context) error {
 }
 
 func (shard *Shard) resume(ctx context.Context) error {
+	shard.logger.Info("Shard is resuming")
+
 	configuration := shard.manager.configuration.Load()
 
 	return shard.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
@@ -475,7 +533,8 @@ func (shard *Shard) SendEvent(ctx context.Context, gatewayOp discord.GatewayOp, 
 func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data any) error {
 	defer func() {
 		if r := recover(); r != nil {
-			shard.logger.Error("Panic occurred", "shard_id", shard.shardID, "error", r)
+			shard.logger.Error("Panic occurred", "error", r)
+			println(string(debug.Stack()))
 		}
 	}()
 
@@ -489,7 +548,7 @@ func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data 
 		shard.websocketRatelimit.Lock()
 	}
 
-	err = shard.websocketConn.Load().Write(ctx, websocket.MessageText, payload)
+	err = shard.websocketConn.Write(ctx, websocket.MessageText, payload)
 	if err != nil {
 		return fmt.Errorf("failed to write payload: %w", err)
 	}
@@ -535,20 +594,25 @@ func (shard *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, tra
 func (shard *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace *Trace) error {
 	defer func() {
 		if r := recover(); r != nil {
-			shard.logger.Error("Panic occurred", "shard_id", shard.shardID, "error", r)
+			shard.logger.Error("Panic occurred", "error", r)
+			println(string(debug.Stack()))
 		}
 	}()
+
+	println("ON DISPATCH", msg.Type)
 
 	// Dispatch the event to the event provider.
 	err := shard.sandwich.eventProvider.Dispatch(ctx, shard, msg, trace)
 	if err != nil {
-		shard.logger.Error("Failed to dispatch event", "shard_id", shard.shardID, "error", err)
+		shard.logger.Error("Failed to dispatch event", "error", err)
 	}
 
 	return nil
 }
 
 func (shard *Shard) chunkAllGuilds(ctx context.Context) {
+	shard.logger.Info("Chunking all guilds")
+
 	guildIDs := make([]discord.Snowflake, 0)
 
 	shard.guilds.Range(func(key discord.Snowflake, _ bool) bool {
@@ -562,7 +626,7 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) {
 	for _, guildID := range guildIDs {
 		err := shard.chunkGuild(ctx, guildID, false)
 		if err != nil {
-			shard.logger.Error("Failed to chunk guild", "shard_id", shard.shardID, "error", err)
+			shard.logger.Error("Failed to chunk guild", "error", err)
 		}
 	}
 
@@ -570,6 +634,8 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) {
 }
 
 func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, always bool) error {
+	shard.logger.Info("Chunking guild", "guildID", guildID)
+
 	guildChunk, ok := shard.sandwich.guildChunks.Load(guildID)
 
 	if !ok {
@@ -645,6 +711,8 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 
 	now = time.Now()
 	guildChunk.completedAt.Store(&now)
+
+	shard.logger.Info("Chunked guild", "guildID", guildID)
 
 	return nil
 }
