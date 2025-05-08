@@ -71,15 +71,19 @@ func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 }
 
 // Initialize initializes the manager. This includes checking the gateway
-func (m *Manager) Initialize(ctx context.Context) error {
-	m.sandwich.gatewayLimiter.Lock()
+func (manager *Manager) Initialize(ctx context.Context) error {
+	manager.logger.Info("Initializing manager")
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discord.EndpointGateway, nil)
+	manager.sandwich.gatewayLimiter.Lock()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discord.EndpointGatewayBot, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := m.sandwich.client.Do(req)
+	req.Header.Set("Authorization", fmt.Sprintf("Bot %s", manager.configuration.Load().BotToken))
+
+	resp, err := manager.sandwich.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to do request: %w", err)
 	}
@@ -91,10 +95,10 @@ func (m *Manager) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to decode gateway bot response: %w", err)
 	}
 
-	m.gateway.Store(&gatewayBotResponse)
-	m.gatewaySessionStartLimitRemaining.Store(gatewayBotResponse.SessionStartLimit.Remaining)
+	manager.gateway.Store(&gatewayBotResponse)
+	manager.gatewaySessionStartLimitRemaining.Store(gatewayBotResponse.SessionStartLimit.Remaining)
 
-	configuration := m.configuration.Load()
+	configuration := manager.configuration.Load()
 
 	clientName := configuration.ClientName
 
@@ -103,29 +107,35 @@ func (m *Manager) Initialize(ctx context.Context) error {
 		clientName = fmt.Sprintf("%s-%s", clientName, randomHex(8))
 	}
 
-	producer, err := m.sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
+	producer, err := manager.sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
 	if err != nil {
 		return fmt.Errorf("failed to get producer: %w", err)
 	}
 
-	m.producer = producer
+	manager.producer = producer
 
 	return nil
 }
 
-func (m *Manager) Start(ctx context.Context) error {
-	configuration := m.configuration.Load()
+func (manager *Manager) Start(ctx context.Context) error {
+	manager.logger.Info("Starting manager")
 
-	shardIDs, shardCount := m.getInitialShardCount(
+	configuration := manager.configuration.Load()
+
+	shardIDs, shardCount := manager.getInitialShardCount(
 		configuration.ShardCount,
 		configuration.ShardIDs,
 		configuration.AutoSharded,
 	)
 
-	m.shardCount.Store(shardCount)
+	manager.logger.Info("Initializing shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
-	ready, err := m.startShards(ctx, shardIDs, shardCount)
+	manager.shardCount.Store(shardCount)
+
+	ready, err := manager.startShards(ctx, shardIDs, shardCount)
 	if err != nil {
+		manager.logger.Error("Failed to start shards", "error", err)
+
 		return fmt.Errorf("failed to start: %w", err)
 	}
 
@@ -134,28 +144,30 @@ func (m *Manager) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) Stop(ctx context.Context) error {
-	m.shards.Range(func(_ int32, shard *Shard) bool {
+func (manager *Manager) Stop(ctx context.Context) error {
+	manager.shards.Range(func(_ int32, shard *Shard) bool {
 		shard.Stop(ctx, websocket.StatusNormalClosure)
 
 		return true
 	})
 
-	m.producer.Close()
+	if manager.producer != nil {
+		manager.producer.Close()
+	}
 
 	return nil
 }
 
 // getInitialShardCount returns the shard IDs and shard count for the manager.
-func (m *Manager) getInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) ([]int32, int32) {
-	config := m.sandwich.config.Load()
+func (manager *Manager) getInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) ([]int32, int32) {
+	config := manager.sandwich.config.Load()
 
 	var shardCount int32
 
 	var shardIDs []int32
 
 	if autoSharded {
-		shardCount = m.gateway.Load().Shards
+		shardCount = manager.gateway.Load().Shards
 
 		if customShardIDs == "" {
 			for i := range shardCount {
@@ -166,7 +178,14 @@ func (m *Manager) getInitialShardCount(customShardCount int32, customShardIDs st
 		}
 	} else {
 		shardCount = customShardCount
-		shardIDs = returnRangeInt32(config.Sandwich.NodeCount, config.Sandwich.NodeID, customShardIDs, shardCount)
+
+		if customShardIDs == "" {
+			for i := range shardCount {
+				shardIDs = append(shardIDs, i)
+			}
+		} else {
+			shardIDs = returnRangeInt32(config.Sandwich.NodeCount, config.Sandwich.NodeID, customShardIDs, shardCount)
+		}
 	}
 
 	// If we have a node count, split the shards evenly across nodes
@@ -186,21 +205,25 @@ func (m *Manager) getInitialShardCount(customShardCount int32, customShardIDs st
 	return shardIDs, shardCount
 }
 
-func (m *Manager) startShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
+func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
+	manager.logger.Info("Starting shards", "shard_count", shardCount, "shard_ids", shardIDs)
+
 	ready = make(chan struct{})
 
 	now := time.Now()
-	m.startedAt.Store(&now)
+	manager.startedAt.Store(&now)
 
-	m.shardCount.Store(shardCount)
+	manager.shardCount.Store(shardCount)
 
 	// If we have no shards, we can't start the manager
 	if len(shardIDs) == 0 {
+		manager.logger.Error("No shards to start")
+
 		return ready, ErrManagerMissingShards
 	}
 
 	// Kill any shards that are already running
-	m.shards.Range(func(_ int32, shard *Shard) bool {
+	manager.shards.Range(func(_ int32, shard *Shard) bool {
 		shard.Stop(ctx, websocket.StatusNormalClosure)
 
 		return true
@@ -208,25 +231,35 @@ func (m *Manager) startShards(ctx context.Context, shardIDs []int32, shardCount 
 
 	// Create new shards
 	for _, shardID := range shardIDs {
-		shard := NewShard(m.sandwich, m, shardID)
-		m.shards.Store(shardID, shard)
+		shard := NewShard(manager.sandwich, manager, shardID)
+		manager.shards.Store(shardID, shard)
 	}
 
-	initialShard, ok := m.shards.Load(shardIDs[0])
+	initialShard, ok := manager.shards.Load(shardIDs[0])
 	if !ok {
 		panic("failed to load initial shard")
 	}
 
 	if err := initialShard.ConnectWithRetry(ctx); err != nil {
+		manager.logger.Error("Failed to connect to initial shard", "error", err)
+
 		return ready, fmt.Errorf("failed to connect to initial shard: %w", err)
 	}
 
 	go initialShard.Start(ctx)
 
+	if err := initialShard.waitForReady(); err != nil {
+		manager.logger.Error("Failed to wait for initial shard", "error", err)
+
+		return ready, fmt.Errorf("failed to wait for initial shard: %w", err)
+	}
+
+	manager.logger.Info("Initial shard connected", "shard_id", shardIDs[0])
+
 	openWg := sync.WaitGroup{}
 
 	for _, shardID := range shardIDs[1:] {
-		shard, ok := m.shards.Load(shardID)
+		shard, ok := manager.shards.Load(shardID)
 		if !ok {
 			panic("failed to load shard")
 		}
@@ -246,10 +279,17 @@ func (m *Manager) startShards(ctx context.Context, shardIDs []int32, shardCount 
 
 	openWg.Wait()
 
+	manager.logger.Info("All shards connected")
+
 	// All shards have now connected, but are not ready yet.
 
 	go func() {
-		m.shards.Range(func(_ int32, shard *Shard) bool {
+		manager.shards.Range(func(index int32, shard *Shard) bool {
+			// Skip the initial shard
+			if index == 0 {
+				return true
+			}
+
 			shard.waitForReady()
 
 			return true
