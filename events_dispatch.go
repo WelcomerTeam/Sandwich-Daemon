@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ReadyTimeout = 10 * time.Second
+	ReadyTimeout = 1 * time.Second
 )
 
 func onDispatchEvent(eventType string) {
@@ -19,6 +19,16 @@ func onDispatchEvent(eventType string) {
 
 func onGuildDispatchEvent(eventType string, guildID discord.Snowflake) {
 	// TODO
+}
+
+func safeOnGuildDispatchEvent(eventType string, guildID *discord.Snowflake) {
+	var guildIDValue discord.Snowflake
+
+	if guildID != nil {
+		guildIDValue = *guildID
+	}
+
+	onGuildDispatchEvent(eventType, guildIDValue)
 }
 
 // OnReady handles the READY event.
@@ -35,11 +45,15 @@ func OnReady(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trac
 
 	err := unmarshalPayload(msg, &readyPayload)
 	if err != nil {
+		shard.logger.Error("Failed to unmarshal ready payload", "error", err)
+
 		return DispatchResult{nil, nil}, false, err
 	}
 
 	err = unmarshalPayload(msg, &readyGatewayURL)
 	if err != nil {
+		shard.logger.Error("Failed to unmarshal ready gateway url", "error", err)
+
 		return DispatchResult{nil, nil}, false, err
 	}
 
@@ -59,6 +73,8 @@ func OnReady(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trac
 
 	readyTimeout := time.NewTicker(ReadyTimeout)
 
+	shard.logger.Info("Starting lazy loading guilds")
+
 ready:
 	for {
 		select {
@@ -69,7 +85,7 @@ ready:
 		default:
 		}
 
-		msg, err := shard.read(ctx, shard.websocketConn.Load())
+		msg, err := shard.read(ctx, shard.websocketConn)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) {
 				shard.logger.Error("Encountered error during READY", "error", err)
@@ -81,6 +97,8 @@ ready:
 		if msg.Type == discord.DiscordEventGuildCreate {
 			guildCreateEvents++
 
+			shard.logger.Info("Received GUILD_CREATE event", "guilds", guildCreateEvents)
+
 			readyTimeout.Reset(ReadyTimeout)
 		}
 
@@ -89,6 +107,10 @@ ready:
 			shard.logger.Error("Failed to dispatch event", "error", err)
 		}
 	}
+
+	shard.logger.Info("Finished lazy loading guilds", "guilds", guildCreateEvents)
+
+	shard.logger.Info("Shard is ready")
 
 	select {
 	case shard.ready <- struct{}{}:
@@ -109,7 +131,7 @@ ready:
 func OnResumed(_ context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
-	shard.logger.Info("Received READY payload")
+	shard.logger.Info("Shard has resumed")
 
 	select {
 	case shard.ready <- struct{}{}:
@@ -217,10 +239,6 @@ func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg discord.GatewayP
 
 	shard.logger.Debug("Chunked guild members", "memberCount", len(guildMembersChunkPayload.Members), "chunkIndex", guildMembersChunkPayload.ChunkIndex, "chunkCount", guildMembersChunkPayload.ChunkCount, "guildID", guildMembersChunkPayload.GuildID)
 
-	// ctx.Sandwich.guildChunksMu.RLock()
-	// guildChunk, exists := ctx.Sandwich.guildChunks[guildMembersChunkPayload.GuildID]
-	// ctx.Sandwich.guildChunksMu.RUnlock()
-
 	guildChunk, exists := shard.sandwich.guildChunks.Load(guildMembersChunkPayload.GuildID)
 
 	if !exists {
@@ -253,7 +271,7 @@ func OnChannelCreate(ctx context.Context, shard *Shard, msg discord.GatewayPaylo
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *channelCreatePayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, channelCreatePayload.GuildID)
 
 	shard.sandwich.stateProvider.SetGuildChannel(ctx, *channelCreatePayload.GuildID, discord.Channel(channelCreatePayload))
 
@@ -271,7 +289,7 @@ func OnChannelUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPaylo
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *channelUpdatePayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, channelUpdatePayload.GuildID)
 
 	beforeChannel, _ := shard.sandwich.stateProvider.GetGuildChannel(ctx, *channelUpdatePayload.GuildID, channelUpdatePayload.ID)
 	shard.sandwich.stateProvider.SetGuildChannel(ctx, *channelUpdatePayload.GuildID, discord.Channel(channelUpdatePayload))
@@ -292,7 +310,7 @@ func OnChannelDelete(ctx context.Context, shard *Shard, msg discord.GatewayPaylo
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *channelDeletePayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, channelDeletePayload.GuildID)
 
 	beforeChannel, _ := shard.sandwich.stateProvider.GetGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
 	shard.sandwich.stateProvider.RemoveGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
@@ -910,12 +928,15 @@ func OnInviteDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *
 func OnMessageCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageCreatePayload discord.MessageCreate
 
+	println("ON MESSAGE CREATE", msg.Type)
+
 	err := unmarshalPayload(msg, &messageCreatePayload)
 	if err != nil {
+		println("ERROR", err)
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *messageCreatePayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, messageCreatePayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -931,7 +952,7 @@ func OnMessageUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ 
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *messageUpdatePayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, messageUpdatePayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -947,7 +968,7 @@ func OnMessageDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ 
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *messageDeletePayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, messageDeletePayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -963,7 +984,7 @@ func OnMessageDeleteBulk(_ context.Context, _ *Shard, msg discord.GatewayPayload
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *messageDeleteBulkPayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, messageDeleteBulkPayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -995,7 +1016,7 @@ func OnMessageReactionRemove(_ context.Context, _ *Shard, msg discord.GatewayPay
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *messageReactionRemovePayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, messageReactionRemovePayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1027,7 +1048,7 @@ func OnMessageReactionRemoveEmoji(_ context.Context, _ *Shard, msg discord.Gatew
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *messageReactionRemoveEmojiPayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, messageReactionRemoveEmojiPayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1107,7 +1128,7 @@ func OnTypingStart(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *T
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onGuildDispatchEvent(msg.Type, *typingStartPayload.GuildID)
+	defer safeOnGuildDispatchEvent(msg.Type, typingStartPayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1143,11 +1164,12 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPa
 		return DispatchResult{nil, nil}, false, err
 	}
 
+	defer safeOnGuildDispatchEvent(msg.Type, voiceStateUpdatePayload.GuildID)
+
 	var guildID discord.Snowflake
 
 	if voiceStateUpdatePayload.GuildID != nil {
 		guildID = *voiceStateUpdatePayload.GuildID
-		defer onGuildDispatchEvent(msg.Type, *voiceStateUpdatePayload.GuildID)
 	}
 
 	beforeVoiceState, _ := shard.sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
