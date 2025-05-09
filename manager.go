@@ -114,6 +114,8 @@ func (manager *Manager) Initialize(ctx context.Context) error {
 
 	manager.producer = producer
 
+	manager.logger.Info("Manager initialized")
+
 	return nil
 }
 
