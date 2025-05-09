@@ -72,7 +72,7 @@ func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 
 // Initialize initializes the manager. This includes checking the gateway
 func (manager *Manager) Initialize(ctx context.Context) error {
-	manager.logger.Info("Initializing manager")
+	manager.logger.Debug("Initializing manager")
 
 	manager.sandwich.gatewayLimiter.Lock()
 
@@ -114,7 +114,7 @@ func (manager *Manager) Initialize(ctx context.Context) error {
 
 	manager.producer = producer
 
-	manager.logger.Info("Manager initialized")
+	manager.logger.Debug("Manager initialized")
 
 	return nil
 }
@@ -130,7 +130,7 @@ func (manager *Manager) Start(ctx context.Context) error {
 		configuration.AutoSharded,
 	)
 
-	manager.logger.Info("Initializing shards", "shard_count", shardCount, "shard_ids", shardIDs)
+	manager.logger.Debug("Initializing shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
 	manager.shardCount.Store(shardCount)
 
@@ -256,7 +256,7 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 		return ready, fmt.Errorf("failed to wait for initial shard: %w", err)
 	}
 
-	manager.logger.Info("Initial shard connected", "shard_id", shardIDs[0])
+	manager.logger.Debug("Initial shard connected", "shard_id", shardIDs[0])
 
 	openWg := sync.WaitGroup{}
 
@@ -281,7 +281,7 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 
 	openWg.Wait()
 
-	manager.logger.Info("All shards connected")
+	manager.logger.Debug("All shards connected")
 
 	// All shards have now connected, but are not ready yet.
 

@@ -119,7 +119,7 @@ func (sandwich *Sandwich) Stop(ctx context.Context) error {
 }
 
 func (sandwich *Sandwich) getConfig(ctx context.Context) error {
-	sandwich.logger.Info("Getting config")
+	sandwich.logger.Debug("Getting config")
 
 	config, err := sandwich.configProvider.GetConfig(ctx)
 	if err != nil {
@@ -135,7 +135,7 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 
 // startManagers starts all managers.
 func (sandwich *Sandwich) startManagers(ctx context.Context) {
-	sandwich.logger.Info("Starting managers")
+	sandwich.logger.Debug("Starting managers")
 
 	managers := sandwich.config.Load().Managers
 
