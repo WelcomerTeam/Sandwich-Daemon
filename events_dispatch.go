@@ -248,7 +248,7 @@ func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg discord.GatewayP
 	}
 
 	if guildChunk.complete.Load() {
-		shard.logger.Warn("Received guild member chunk, but there is no record in the GuildChunks map", "guildID", guildMembersChunkPayload.GuildID)
+		shard.logger.Warn("Received guild member chunk, but it is already complete", "guildID", guildMembersChunkPayload.GuildID)
 	}
 
 	select {
