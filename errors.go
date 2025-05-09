@@ -12,6 +12,7 @@ var (
 
 	ErrShardConnectFailed            = errors.New("shard connect failed")
 	ErrShardInvalidHeartbeatInterval = errors.New("shard invalid heartbeat interval")
+	ErrShardStopping                 = errors.New("shard stopping")
 
 	ErrNoGatewayHandler  = errors.New("no gateway handler found")
 	ErrNoDispatchHandler = errors.New("no dispatch handler found")

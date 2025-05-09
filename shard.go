@@ -71,6 +71,7 @@ type Shard struct {
 	resumeGatewayURL *atomic.Pointer[string]
 
 	ready chan struct{}
+	stop  chan struct{}
 	error chan error
 }
 
@@ -111,6 +112,7 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 		resumeGatewayURL: &atomic.Pointer[string]{},
 
 		ready: make(chan struct{}, 1),
+		stop:  make(chan struct{}, 1),
 		error: make(chan error, 1),
 	}
 
@@ -195,6 +197,7 @@ readyConsumer:
 
 	conn.SetReadLimit(-1)
 
+	// TODO: how can i improve this?
 	shard.websocketConn = conn
 
 	// Read the initial payload
@@ -257,7 +260,7 @@ func (shard *Shard) Start(ctx context.Context) error {
 	for {
 		err := shard.Listen(ctx)
 		if err != nil {
-			if errors.Is(err, context.Canceled) {
+			if errors.Is(err, context.Canceled) || errors.Is(err, ErrShardStopping) {
 				return nil
 			}
 
@@ -284,6 +287,8 @@ func (shard *Shard) Start(ctx context.Context) error {
 func (shard *Shard) Stop(ctx context.Context, code websocket.StatusCode) {
 	shard.logger.Debug("Shard is stopping")
 
+	shard.stop <- struct{}{}
+
 	shard.manager.producer.Close()
 	shard.closeWS(ctx, code)
 }
@@ -294,13 +299,15 @@ func (shard *Shard) Listen(ctx context.Context) error {
 	websocketConn := shard.websocketConn
 
 	for {
+		msg, err := shard.read(ctx, websocketConn)
+
 		select {
+		case <-shard.stop:
+			return ErrShardStopping
 		case <-ctx.Done():
 			return nil
 		default:
 		}
-
-		msg, err := shard.read(ctx, websocketConn)
 
 		if err == nil {
 			trace := Trace{}
@@ -443,7 +450,11 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 	hasJitter := true
 	heartbeatJitter := time.Millisecond * time.Duration(rand.Int64N(shard.heartbeatInterval.Load().Milliseconds()+1))
 
-	shard.heartbeater = time.NewTicker(heartbeatJitter)
+	if shard.heartbeater == nil {
+		shard.heartbeater = time.NewTicker(heartbeatJitter)
+	} else {
+		shard.heartbeater.Reset(heartbeatJitter)
+	}
 
 	shard.logger.Debug("Shard is heartbeating", "heartbeat_jitter", int(heartbeatJitter.Milliseconds()))
 
@@ -559,7 +570,7 @@ func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data 
 		shard.websocketRatelimit.Lock()
 	}
 
-	shard.logger.Info("Sending payload", string(payload))
+	shard.logger.Debug("Sending payload", "payload", string(payload))
 
 	err = shard.websocketConn.Write(ctx, websocket.MessageText, payload)
 	if err != nil {

@@ -16,6 +16,8 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 	sandwich "github.com/WelcomerTeam/Sandwich-Daemon"
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
+
+	_ "net/http/pprof"
 )
 
 // Replace this with whatever PUBSUB/implementation you want to use.
@@ -105,10 +107,8 @@ func main() {
 				return false
 			})
 
-			usersBuckets := 0
 			usersCount := 0
 			stateProvider.Users.Range(func(_ discord.Snowflake, value discord.User) (stop bool) {
-				usersBuckets++
 				usersCount++
 				return false
 			})
@@ -127,7 +127,7 @@ func main() {
 			slog.Info("Guild emojis", "buckets", guildEmojisBuckets, "count", guildEmojisCount)
 			slog.Info("Guild members", "buckets", guildMembersBuckets, "count", guildMembersCount)
 			slog.Info("User mutuals", "buckets", userMutualsBuckets, "count", userMutualsCount)
-			slog.Info("Users", "buckets", usersBuckets, "count", usersCount)
+			slog.Info("Users", "count", usersCount)
 			slog.Info("Voice states", "buckets", voiceStatesBuckets, "count", voiceStatesCount)
 			slog.Info("================")
 		}
