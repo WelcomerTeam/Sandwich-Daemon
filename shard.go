@@ -9,7 +9,6 @@ import (
 	"math/rand/v2"
 	"net/url"
 	"runtime"
-	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -545,8 +544,9 @@ func (shard *Shard) SendEvent(ctx context.Context, gatewayOp discord.GatewayOp, 
 func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data any) error {
 	defer func() {
 		if r := recover(); r != nil {
-			shard.logger.Error("Panic occurred", "error", r)
-			println(string(debug.Stack()))
+			if shard.sandwich.panicHandler != nil {
+				shard.sandwich.panicHandler(shard.sandwich, r)
+			}
 		}
 	}()
 
@@ -606,8 +606,9 @@ func (shard *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, tra
 func (shard *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace *Trace) error {
 	defer func() {
 		if r := recover(); r != nil {
-			shard.logger.Error("Panic occurred", "error", r)
-			println(string(debug.Stack()))
+			if shard.sandwich.panicHandler != nil {
+				shard.sandwich.panicHandler(shard.sandwich, r)
+			}
 		}
 	}()
 

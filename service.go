@@ -36,7 +36,11 @@ type Sandwich struct {
 	managers *syncmap.Map[string, *Manager]
 
 	guildChunks *csmap.CsMap[discord.Snowflake, *GuildChunk]
+
+	panicHandler PanicHandler
 }
+
+type PanicHandler func(sandwich *Sandwich, r any)
 
 type GuildChunk struct {
 	complete        *atomic.Bool
@@ -71,7 +75,15 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 		managers: &syncmap.Map[string, *Manager]{},
 
 		guildChunks: csmap.Create[discord.Snowflake, *GuildChunk](),
+
+		panicHandler: nil,
 	}
+}
+
+func (sandwich *Sandwich) WithPanicHandler(panicHandler PanicHandler) *Sandwich {
+	sandwich.panicHandler = panicHandler
+
+	return sandwich
 }
 
 func (sandwich *Sandwich) Start(ctx context.Context) error {
