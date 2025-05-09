@@ -108,8 +108,8 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 		websocketConn: nil,
 
 		// We have a ratelimit of 120 messages per minutes we can send to the gateway.
-		// We subtract 2 to account for heartbeating.
-		websocketRatelimit: limiter.NewDurationLimiter(120-2, time.Minute),
+		// We use less thn 120/minute to account for heartbeating.
+		websocketRatelimit: limiter.NewDurationLimiter(110, time.Minute),
 
 		resumeGatewayURL: &atomic.Pointer[string]{},
 
@@ -687,7 +687,7 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 }
 
 func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, always bool) error {
-	shard.logger.Info("Chunking guild", "guildID", guildID)
+	shard.logger.Debug("Chunking guild", "guildID", guildID)
 
 	guildChunk, ok := shard.sandwich.guildChunks.Load(guildID)
 
@@ -743,10 +743,10 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 				// Reset the timeout.
 				timeout.Reset(MemberChunkTimeout)
 
-				shard.logger.Info("Received chunk", "chunksReceived", chunksReceived, "totalChunks", totalChunks)
+				shard.logger.Debug("Received chunk", "chunksReceived", chunksReceived, "totalChunks", totalChunks)
 
 				if chunksReceived >= totalChunks {
-					shard.logger.Info("Received all chunks", "guildID", guildID)
+					shard.logger.Debug("Received all chunks", "guildID", guildID)
 
 					break guildChunkLoop
 				}
@@ -765,7 +765,7 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 	now = time.Now()
 	guildChunk.completedAt.Store(&now)
 
-	shard.logger.Info("Chunked guild", "guildID", guildID)
+	shard.logger.Debug("Chunked guild", "guildID", guildID)
 
 	return nil
 }
