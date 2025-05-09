@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -28,6 +29,10 @@ func (p *NullProducerProvider) GetProducer(ctx context.Context, managerIdentifie
 }
 
 func (p *NullProducer) Publish(ctx context.Context, shard *sandwich.Shard, payload sandwich.ProducedPayload) error {
+	traceStr, _ := json.Marshal(payload.Trace)
+
+	slog.Info("Publish", "type", payload.Type, "trace", string(traceStr))
+
 	return nil
 }
 
@@ -36,15 +41,24 @@ func (p *NullProducer) Close() error {
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe(":6060", nil)
+	}()
+
+	stateProvider := sandwich.NewStateProviderMemoryOptimized()
+
 	sandwich := sandwich.NewSandwich(
 		// Replace this with whatever logger you want to use. It must be slog compatible.
 		slog.Default(),
 
 		// Replace this with whatever config provider you want to use. This can be a file, from database, etc.
-		sandwich.NewConfigProviderFromPath("config.json"),
+		sandwich.NewConfigProviderFromPath("example_config.json"),
 
 		// Replace this with whatever HTTP client you want to use. This can be a proxy or your own implementation.
-		sandwich.NewProxyClient(http.DefaultClient, url.URL{}),
+		sandwich.NewProxyClient(*http.DefaultClient, url.URL{
+			Scheme: "https",
+			Host:   "discord.com",
+		}),
 
 		// If the builtin event handlers are not enough, you can implement your own.
 		// This can be used to include more events.
@@ -59,7 +73,7 @@ func main() {
 
 		// Replace this with whatever state provider you want to use. Sandwich includes a memory based
 		// state provider however you can implement your own.
-		sandwich.NewStateProviderMemory(),
+		stateProvider,
 	)
 
 	// TODO: GRPC, Prometheus, HTTP server configuration

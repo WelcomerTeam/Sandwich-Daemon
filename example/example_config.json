@@ -1,0 +1,33 @@
+{
+    "sandwich": {
+        "node_count": 1,
+        "node_id": 1
+    },
+    "managers": [
+        {
+            "application_identifier": "example-manager",
+            "producer_identifier": "example-producer",
+            "display_name": "Example Manager",
+            "client_name": "example-client",
+            "client_name_uses_random_suffix": false,
+            "bot_token": "example-bot-token",
+            "auto_start": true,
+            "default_presence": {
+                "status": "online",
+                "activities": [
+                    {
+                        "name": "Example Activity",
+                        "type": 0
+                    }
+                ]
+            },
+            "intents": 0,
+            "chunk_guilds_on_start": false,
+            "event_blacklist": [],
+            "produce_blacklist": [],
+            "auto_sharded": false,
+            "shard_count": 1,
+            "shard_ids": ""
+        }
+    ]
+}
