@@ -97,7 +97,7 @@ ready:
 		if msg.Type == discord.DiscordEventGuildCreate {
 			guildCreateEvents++
 
-			shard.logger.Info("Received GUILD_CREATE event", "guilds", guildCreateEvents)
+			shard.logger.Debug("Received GUILD_CREATE event", "guilds", guildCreateEvents)
 
 			readyTimeout.Reset(ReadyTimeout)
 		}
