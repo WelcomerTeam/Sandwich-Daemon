@@ -40,6 +40,8 @@ type Manager struct {
 	startedAt *atomic.Pointer[time.Time]
 
 	status *atomic.Pointer[ManagerStatus]
+
+	values map[string]any
 }
 
 func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
@@ -67,6 +69,8 @@ func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 		startedAt: &atomic.Pointer[time.Time]{},
 
 		status: &atomic.Pointer[ManagerStatus]{},
+
+		values: config.Values,
 	}
 
 	manager.configuration.Store(config)

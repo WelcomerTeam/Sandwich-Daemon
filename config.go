@@ -52,6 +52,8 @@ type ManagerConfiguration struct {
 	AutoSharded bool   `json:"auto_sharded"`
 	ShardCount  int32  `json:"shard_count"`
 	ShardIDs    string `json:"shard_ids"`
+
+	Values map[string]any `json:"values"`
 }
 
 type ConfigProvider interface {
