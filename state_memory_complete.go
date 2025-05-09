@@ -97,7 +97,7 @@ func (s *StateProviderMemory) GetGuildMembers(_ context.Context, guildID discord
 	return guildMembers, exists
 }
 
-func (s *StateProviderMemory) SetGuildMembers(_ context.Context, guildID discord.Snowflake, guildMembers []discord.GuildMember) {
+func (s *StateProviderMemory) SetGuildMembers(ctx context.Context, guildID discord.Snowflake, guildMembers []discord.GuildMember) {
 	guildMembersState, ok := s.guildMembers.Load(guildID)
 	if !ok {
 		guildMembersState = &syncmap.Map[discord.Snowflake, discord.GuildMember]{}
@@ -107,6 +107,10 @@ func (s *StateProviderMemory) SetGuildMembers(_ context.Context, guildID discord
 
 	for _, member := range guildMembers {
 		guildMembersState.Store(member.User.ID, member)
+
+		if member.User != nil {
+			s.SetUser(ctx, member.User.ID, *member.User)
+		}
 	}
 }
 
@@ -119,7 +123,7 @@ func (s *StateProviderMemory) GetGuildMember(_ context.Context, guildID, userID 
 	return members.Load(userID)
 }
 
-func (s *StateProviderMemory) SetGuildMember(_ context.Context, guildID discord.Snowflake, member discord.GuildMember) {
+func (s *StateProviderMemory) SetGuildMember(ctx context.Context, guildID discord.Snowflake, member discord.GuildMember) {
 	guildMembersState, ok := s.guildMembers.Load(guildID)
 	if !ok {
 		guildMembersState = &syncmap.Map[discord.Snowflake, discord.GuildMember]{}
@@ -128,6 +132,10 @@ func (s *StateProviderMemory) SetGuildMember(_ context.Context, guildID discord.
 	}
 
 	guildMembersState.Store(member.User.ID, member)
+
+	if member.User != nil {
+		s.SetUser(ctx, member.User.ID, *member.User)
+	}
 }
 
 func (s *StateProviderMemory) RemoveGuildMember(_ context.Context, guildID, userID discord.Snowflake) {
