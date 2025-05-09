@@ -54,3 +54,14 @@ func (m *Map[K, V]) Range(f func(key K, value V) bool) {
 		return f(key.(K), value.(V))
 	})
 }
+
+// Count returns the number of items in the map
+func (m *Map[K, V]) Count() int {
+	var count int
+	m.Range(func(_ K, _ V) bool {
+		count++
+		return true
+	})
+
+	return count
+}
