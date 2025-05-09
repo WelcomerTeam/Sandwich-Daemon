@@ -38,6 +38,8 @@ type Manager struct {
 	guilds *csmap.CsMap[discord.Snowflake, bool]
 
 	startedAt *atomic.Pointer[time.Time]
+
+	status *atomic.Pointer[ManagerStatus]
 }
 
 func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
@@ -63,11 +65,21 @@ func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 		guilds: csmap.Create[discord.Snowflake, bool](),
 
 		startedAt: &atomic.Pointer[time.Time]{},
+
+		status: &atomic.Pointer[ManagerStatus]{},
 	}
 
 	manager.configuration.Store(config)
 
+	manager.SetStatus(ManagerStatusIdle)
+
 	return manager
+}
+
+func (manager *Manager) SetStatus(status ManagerStatus) {
+	manager.status.Store(&status)
+
+	manager.logger.Info("Manager status updated", "status", status.String())
 }
 
 // Initialize initializes the manager. This includes checking the gateway
@@ -122,6 +134,8 @@ func (manager *Manager) Initialize(ctx context.Context) error {
 func (manager *Manager) Start(ctx context.Context) error {
 	manager.logger.Info("Starting manager")
 
+	manager.SetStatus(ManagerStatusStarting)
+
 	configuration := manager.configuration.Load()
 
 	shardIDs, shardCount := manager.getInitialShardCount(
@@ -138,15 +152,21 @@ func (manager *Manager) Start(ctx context.Context) error {
 	if err != nil {
 		manager.logger.Error("Failed to start shards", "error", err)
 
+		manager.SetStatus(ManagerStatusFailed)
+
 		return fmt.Errorf("failed to start: %w", err)
 	}
 
 	<-ready
 
+	manager.SetStatus(ManagerStatusReady)
+
 	return nil
 }
 
 func (manager *Manager) Stop(ctx context.Context) error {
+	manager.SetStatus(ManagerStatusStopping)
+
 	manager.shards.Range(func(_ int32, shard *Shard) bool {
 		shard.Stop(ctx, websocket.StatusNormalClosure)
 
@@ -156,6 +176,8 @@ func (manager *Manager) Stop(ctx context.Context) error {
 	if manager.producer != nil {
 		manager.producer.Close()
 	}
+
+	manager.SetStatus(ManagerStatusStopped)
 
 	return nil
 }
@@ -237,6 +259,8 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 		manager.shards.Store(shardID, shard)
 	}
 
+	manager.SetStatus(ManagerStatusConnecting)
+
 	initialShard, ok := manager.shards.Load(shardIDs[0])
 	if !ok {
 		panic("failed to load initial shard")
@@ -257,6 +281,8 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 	}
 
 	manager.logger.Debug("Initial shard connected", "shard_id", shardIDs[0])
+
+	manager.SetStatus(ManagerStatusConnected)
 
 	openWg := sync.WaitGroup{}
 
