@@ -73,6 +73,8 @@ type Shard struct {
 	ready chan struct{}
 	stop  chan struct{}
 	error chan error
+
+	status *atomic.Pointer[ShardStatus]
 }
 
 func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
@@ -114,6 +116,8 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 		ready: make(chan struct{}, 1),
 		stop:  make(chan struct{}, 1),
 		error: make(chan error, 1),
+
+		status: &atomic.Pointer[ShardStatus]{},
 	}
 
 	shard.retriesRemaining.Store(ShardConnectRetries)
@@ -124,12 +128,20 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 	return shard
 }
 
+func (shard *Shard) SetStatus(status ShardStatus) {
+	shard.status.Store(&status)
+
+	shard.logger.Info("Shard status updated", "status", status.String())
+}
+
 func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 	for {
 		err := shard.Connect(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			newValue := shard.retriesRemaining.Add(-1)
 			if newValue <= 0 {
+				shard.SetStatus(ShardStatusFailed)
+
 				return fmt.Errorf("%w: %w", ErrShardConnectFailed, err)
 			}
 
@@ -144,6 +156,8 @@ func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 
 func (shard *Shard) Connect(ctx context.Context) error {
 	shard.logger.Debug("Shard is connecting")
+
+	shard.SetStatus(ShardStatusConnecting)
 
 	// Empties the ready channel.
 readyConsumer:
@@ -251,6 +265,8 @@ readyConsumer:
 		}
 	}
 
+	shard.SetStatus(ShardStatusConnected)
+
 	return nil
 }
 
@@ -287,10 +303,14 @@ func (shard *Shard) Start(ctx context.Context) error {
 func (shard *Shard) Stop(ctx context.Context, code websocket.StatusCode) {
 	shard.logger.Debug("Shard is stopping")
 
+	shard.SetStatus(ShardStatusStopping)
+
 	shard.stop <- struct{}{}
 
 	shard.manager.producer.Close()
 	shard.closeWS(ctx, code)
+
+	shard.SetStatus(ShardStatusStopped)
 }
 
 func (shard *Shard) Listen(ctx context.Context) error {
@@ -431,6 +451,8 @@ func (shard *Shard) waitForReady() error {
 	for {
 		select {
 		case <-shard.ready:
+			shard.SetStatus(ShardStatusReady)
+
 			return nil
 		case err := <-shard.error:
 			return err
@@ -633,31 +655,39 @@ func (shard *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, 
 	return nil
 }
 
-func (shard *Shard) chunkAllGuilds(ctx context.Context) {
+func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 	shard.logger.Debug("Chunking all guilds")
 
-	guildIDs := make([]discord.Snowflake, 0)
+	done := make(chan struct{})
 
-	shard.guilds.Range(func(key discord.Snowflake, _ bool) bool {
-		guildIDs = append(guildIDs, key)
+	go func() {
+		guildIDs := make([]discord.Snowflake, 0)
 
-		return true
-	})
+		shard.guilds.Range(func(key discord.Snowflake, _ bool) bool {
+			guildIDs = append(guildIDs, key)
 
-	shard.logger.Debug("Chunking all guilds", "count", len(guildIDs))
+			return false
+		})
 
-	for _, guildID := range guildIDs {
-		err := shard.chunkGuild(ctx, guildID, false)
-		if err != nil {
-			shard.logger.Error("Failed to chunk guild", "error", err)
+		shard.logger.Debug("Chunking all guilds", "count", len(guildIDs))
+
+		for _, guildID := range guildIDs {
+			err := shard.chunkGuild(ctx, guildID, false)
+			if err != nil {
+				shard.logger.Error("Failed to chunk guild", "error", err)
+			}
 		}
-	}
 
-	shard.logger.Debug("Chunked all guilds")
+		shard.logger.Debug("Chunked all guilds")
+
+		close(done)
+	}()
+
+	return done
 }
 
 func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, always bool) error {
-	shard.logger.Debug("Chunking guild", "guildID", guildID)
+	shard.logger.Info("Chunking guild", "guildID", guildID)
 
 	guildChunk, ok := shard.sandwich.guildChunks.Load(guildID)
 
@@ -713,10 +743,10 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 				// Reset the timeout.
 				timeout.Reset(MemberChunkTimeout)
 
-				shard.logger.Debug("Received chunk", "chunksReceived", chunksReceived, "totalChunks", totalChunks)
+				shard.logger.Info("Received chunk", "chunksReceived", chunksReceived, "totalChunks", totalChunks)
 
 				if chunksReceived >= totalChunks {
-					shard.logger.Debug("Received all chunks", "guildID", guildID)
+					shard.logger.Info("Received all chunks", "guildID", guildID)
 
 					break guildChunkLoop
 				}
@@ -735,7 +765,7 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 	now = time.Now()
 	guildChunk.completedAt.Store(&now)
 
-	shard.logger.Debug("Chunked guild", "guildID", guildID)
+	shard.logger.Info("Chunked guild", "guildID", guildID)
 
 	return nil
 }
