@@ -57,7 +57,7 @@ func OnReady(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trac
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	shard.logger.Info("Received READY payload")
+	shard.logger.Debug("Received READY payload")
 
 	shard.sessionID.Store(&readyPayload.SessionID)
 	shard.resumeGatewayURL.Store(&readyGatewayURL.ReadyGatewayURL)
@@ -73,13 +73,13 @@ func OnReady(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trac
 
 	readyTimeout := time.NewTicker(ReadyTimeout)
 
-	shard.logger.Info("Starting lazy loading guilds")
+	shard.logger.Debug("Starting lazy loading guilds")
 
 ready:
 	for {
 		select {
 		case <-readyTimeout.C:
-			slog.Info("Finished lazy loading guilds", "guilds", guildCreateEvents)
+			slog.Debug("Finished lazy loading guilds", "guilds", guildCreateEvents)
 
 			break ready
 		default:
@@ -108,9 +108,9 @@ ready:
 		}
 	}
 
-	shard.logger.Info("Finished lazy loading guilds", "guilds", guildCreateEvents)
+	shard.logger.Debug("Finished lazy loading guilds", "guilds", guildCreateEvents)
 
-	shard.logger.Info("Shard is ready")
+	shard.logger.Debug("Shard is ready")
 
 	select {
 	case shard.ready <- struct{}{}:
@@ -131,7 +131,7 @@ ready:
 func OnResumed(_ context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
-	shard.logger.Info("Shard has resumed")
+	shard.logger.Debug("Shard has resumed")
 
 	select {
 	case shard.ready <- struct{}{}:
