@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -75,6 +76,8 @@ type Shard struct {
 	error chan error
 
 	status *atomic.Pointer[ShardStatus]
+
+	gatewayPayloadPool *sync.Pool
 }
 
 func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
@@ -118,6 +121,12 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 		error: make(chan error, 1),
 
 		status: &atomic.Pointer[ShardStatus]{},
+
+		gatewayPayloadPool: &sync.Pool{
+			New: func() any {
+				return &discord.GatewayPayload{}
+			},
+		},
 	}
 
 	shard.retriesRemaining.Store(ShardConnectRetries)
@@ -231,6 +240,8 @@ readyConsumer:
 		return fmt.Errorf("failed to unmarshal hello: %w", err)
 	}
 
+	shard.gatewayPayloadPool.Put(payload)
+
 	if hello.HeartbeatInterval <= 0 {
 		return ErrShardInvalidHeartbeatInterval
 	}
@@ -338,6 +349,8 @@ func (shard *Shard) Listen(ctx context.Context) error {
 				shard.logger.Error("Failed to handle event", "error", err)
 			}
 
+			shard.gatewayPayloadPool.Put(msg)
+
 			continue
 		}
 
@@ -360,6 +373,8 @@ func (shard *Shard) Listen(ctx context.Context) error {
 		if merr != nil {
 			shard.logger.Error("Failed to marshal message", "error", merr)
 		}
+
+		shard.gatewayPayloadPool.Put(msg)
 
 		shard.logger.Error("Shard received error", "error", err, "message", string(msgs))
 
@@ -602,42 +617,42 @@ func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data 
 	return nil
 }
 
-func (shard *Shard) read(ctx context.Context, websocketConn *websocket.Conn) (discord.GatewayPayload, error) {
+func (shard *Shard) read(ctx context.Context, websocketConn *websocket.Conn) (*discord.GatewayPayload, error) {
 	messageType, data, err := websocketConn.Read(ctx)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return discord.GatewayPayload{}, context.Canceled
+			return nil, context.Canceled
 		}
 
-		return discord.GatewayPayload{}, fmt.Errorf("failed to read message: %w", err)
+		return nil, fmt.Errorf("failed to read message: %w", err)
 	}
 
 	if messageType == websocket.MessageBinary {
 		data, err = czlib.Decompress(data)
 		if err != nil {
-			return discord.GatewayPayload{}, fmt.Errorf("failed to decompress payload: %w", err)
+			return nil, fmt.Errorf("failed to decompress payload: %w", err)
 		}
 	}
 
-	var payload discord.GatewayPayload
+	gatewayPayload := shard.gatewayPayloadPool.Get().(*discord.GatewayPayload)
 
-	err = json.Unmarshal(data, &payload)
+	err = json.Unmarshal(data, gatewayPayload)
 	if err != nil {
-		return discord.GatewayPayload{}, fmt.Errorf("failed to unmarshal payload: %w", err)
+		return gatewayPayload, fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	return payload, nil
+	return gatewayPayload, nil
 }
 
-func (shard *Shard) OnEvent(ctx context.Context, msg discord.GatewayPayload, trace *Trace) error {
+func (shard *Shard) OnEvent(ctx context.Context, msg *discord.GatewayPayload, trace *Trace) error {
 	if f, ok := gatewayEvents[msg.Op]; ok {
 		return f(ctx, shard, msg, trace)
 	}
 
-	return ErrNoGatewayHandler
+	return nil
 }
 
-func (shard *Shard) OnDispatch(ctx context.Context, msg discord.GatewayPayload, trace *Trace) error {
+func (shard *Shard) OnDispatch(ctx context.Context, msg *discord.GatewayPayload, trace *Trace) error {
 	defer func() {
 		if r := recover(); r != nil {
 			if shard.sandwich.panicHandler != nil {

@@ -70,7 +70,7 @@ func returnRangeInt32(nodeCount, nodeID int32, rangeString string, max int32) (r
 	return result
 }
 
-func unmarshalPayload(payload discord.GatewayPayload, out any) error {
+func unmarshalPayload(payload *discord.GatewayPayload, out any) error {
 	err := json.Unmarshal(payload.Data, out)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal payload: %w", err)

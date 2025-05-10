@@ -21,7 +21,7 @@ func NewBuiltinDispatchProvider(allowEventPassthrough bool) *BuiltinDispatchProv
 }
 
 // Dispatch dispatches an event to the appropriate handler.
-func (p *BuiltinDispatchProvider) Dispatch(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trace *Trace) (DispatchResult, bool, error) {
+func (p *BuiltinDispatchProvider) Dispatch(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) (DispatchResult, bool, error) {
 	if handler, ok := p.dispatchHandlers[msg.Type]; ok {
 		return handler(ctx, shard, msg, trace)
 	}

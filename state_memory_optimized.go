@@ -19,7 +19,7 @@ type StateProviderMemoryOptimized struct {
 	GuildRoles    *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]]
 	GuildEmojis   *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]]
 	VoiceStates   *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]]
-	Users         *csmap.CsMap[discord.Snowflake, discord.User]
+	Users         *csmap.CsMap[discord.Snowflake, StateUser]
 	UserMutuals   *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]]
 }
 
@@ -31,12 +31,12 @@ func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
 		GuildRoles:    csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]](),
 		GuildEmojis:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]](),
 		VoiceStates:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]](),
-		Users:         csmap.Create[discord.Snowflake, discord.User](),
+		Users:         csmap.Create[discord.Snowflake, StateUser](),
 		UserMutuals:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](),
 	}
 }
 
-func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID discord.Snowflake) (discord.Guild, bool) {
+func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID discord.Snowflake) (*discord.Guild, bool) {
 	guildState, guildExists := s.Guilds.Load(guildID)
 	guild := StateGuildToDiscord(guildState)
 
@@ -64,7 +64,7 @@ func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID disco
 		})
 	}
 
-	return guild, guildExists
+	return &guild, guildExists
 }
 
 func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID discord.Snowflake, guild discord.Guild) {
@@ -87,21 +87,22 @@ func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID dis
 	s.Guilds.Store(guildID, DiscordToStateGuild(guild))
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildMembers(_ context.Context, guildID discord.Snowflake) ([]discord.GuildMember, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildMembers(_ context.Context, guildID discord.Snowflake) ([]*discord.GuildMember, bool) {
 	guildMembersState, exists := s.GuildMembers.Load(guildID)
 	if !exists {
 		return nil, false
 	}
 
-	var guildMembers []discord.GuildMember
+	var guildMembers []*discord.GuildMember
 
 	guildMembersState.Range(func(_ discord.Snowflake, value StateGuildMember) bool {
-		guildMembers = append(guildMembers, StateGuildMemberToDiscord(value))
+		guildMember := StateGuildMemberToDiscord(value)
+		guildMembers = append(guildMembers, &guildMember)
 
 		return true
 	})
 
-	return guildMembers, exists
+	return guildMembers, true
 }
 
 func (s *StateProviderMemoryOptimized) SetGuildMembers(ctx context.Context, guildID discord.Snowflake, guildMembers []discord.GuildMember) {
@@ -121,18 +122,20 @@ func (s *StateProviderMemoryOptimized) SetGuildMembers(ctx context.Context, guil
 	}
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildMember(_ context.Context, guildID, userID discord.Snowflake) (discord.GuildMember, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildMember(_ context.Context, guildID, userID discord.Snowflake) (*discord.GuildMember, bool) {
 	members, ok := s.GuildMembers.Load(guildID)
 	if !ok {
-		return discord.GuildMember{}, false
+		return nil, false
 	}
 
 	member, ok := members.Load(userID)
 	if !ok {
-		return discord.GuildMember{}, false
+		return nil, false
 	}
 
-	return StateGuildMemberToDiscord(member), true
+	guildMember := StateGuildMemberToDiscord(member)
+
+	return &guildMember, true
 }
 
 func (s *StateProviderMemoryOptimized) SetGuildMember(ctx context.Context, guildID discord.Snowflake, member discord.GuildMember) {
@@ -159,16 +162,17 @@ func (s *StateProviderMemoryOptimized) RemoveGuildMember(_ context.Context, guil
 	guildMembersState.Delete(userID)
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildChannels(_ context.Context, guildID discord.Snowflake) ([]discord.Channel, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildChannels(_ context.Context, guildID discord.Snowflake) ([]*discord.Channel, bool) {
 	guildChannelsState, ok := s.GuildChannels.Load(guildID)
 	if !ok {
 		return nil, false
 	}
 
-	var guildChannels []discord.Channel
+	var guildChannels []*discord.Channel
 
 	guildChannelsState.Range(func(_ discord.Snowflake, value StateChannel) bool {
-		guildChannels = append(guildChannels, StateChannelToDiscord(value))
+		guildChannel := StateChannelToDiscord(value)
+		guildChannels = append(guildChannels, &guildChannel)
 
 		return true
 	})
@@ -189,18 +193,20 @@ func (s *StateProviderMemoryOptimized) SetGuildChannels(_ context.Context, guild
 	}
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildChannel(_ context.Context, guildID, channelID discord.Snowflake) (discord.Channel, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildChannel(_ context.Context, guildID, channelID discord.Snowflake) (*discord.Channel, bool) {
 	guildChannelsState, ok := s.GuildChannels.Load(guildID)
 	if !ok {
-		return discord.Channel{}, false
+		return nil, false
 	}
 
-	channel, ok := guildChannelsState.Load(channelID)
+	channelState, ok := guildChannelsState.Load(channelID)
 	if !ok {
-		return discord.Channel{}, false
+		return nil, false
 	}
 
-	return StateChannelToDiscord(channel), true
+	guildChannel := StateChannelToDiscord(channelState)
+
+	return &guildChannel, true
 }
 
 func (s *StateProviderMemoryOptimized) SetGuildChannel(_ context.Context, guildID discord.Snowflake, channel discord.Channel) {
@@ -223,16 +229,17 @@ func (s *StateProviderMemoryOptimized) RemoveGuildChannel(_ context.Context, gui
 	guildChannelsState.Delete(channelID)
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildRoles(_ context.Context, guildID discord.Snowflake) ([]discord.Role, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildRoles(_ context.Context, guildID discord.Snowflake) ([]*discord.Role, bool) {
 	guildRolesState, ok := s.GuildRoles.Load(guildID)
 	if !ok {
 		return nil, false
 	}
 
-	var guildRoles []discord.Role
+	var guildRoles []*discord.Role
 
 	guildRolesState.Range(func(_ discord.Snowflake, value StateRole) bool {
-		guildRoles = append(guildRoles, StateRoleToDiscord(value))
+		guildRole := StateRoleToDiscord(value)
+		guildRoles = append(guildRoles, &guildRole)
 
 		return true
 	})
@@ -253,18 +260,20 @@ func (s *StateProviderMemoryOptimized) SetGuildRoles(_ context.Context, guildID 
 	}
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildRole(_ context.Context, guildID, roleID discord.Snowflake) (discord.Role, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildRole(_ context.Context, guildID, roleID discord.Snowflake) (*discord.Role, bool) {
 	guildRolesState, ok := s.GuildRoles.Load(guildID)
 	if !ok {
-		return discord.Role{}, false
+		return nil, false
 	}
 
 	role, ok := guildRolesState.Load(roleID)
 	if !ok {
-		return discord.Role{}, false
+		return nil, false
 	}
 
-	return StateRoleToDiscord(role), true
+	guildRole := StateRoleToDiscord(role)
+
+	return &guildRole, true
 }
 
 func (s *StateProviderMemoryOptimized) SetGuildRole(_ context.Context, guildID discord.Snowflake, role discord.Role) {
@@ -287,16 +296,17 @@ func (s *StateProviderMemoryOptimized) RemoveGuildRole(_ context.Context, guildI
 	guildRolesState.Delete(roleID)
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildEmojis(_ context.Context, guildID discord.Snowflake) ([]discord.Emoji, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildEmojis(_ context.Context, guildID discord.Snowflake) ([]*discord.Emoji, bool) {
 	guildEmojisState, ok := s.GuildEmojis.Load(guildID)
 	if !ok {
 		return nil, false
 	}
 
-	var guildEmojis []discord.Emoji
+	var guildEmojis []*discord.Emoji
 
 	guildEmojisState.Range(func(_ discord.Snowflake, value StateEmoji) bool {
-		guildEmojis = append(guildEmojis, StateEmojiToDiscord(value))
+		guildEmoji := StateEmojiToDiscord(value)
+		guildEmojis = append(guildEmojis, &guildEmoji)
 
 		return true
 	})
@@ -317,18 +327,20 @@ func (s *StateProviderMemoryOptimized) SetGuildEmojis(_ context.Context, guildID
 	}
 }
 
-func (s *StateProviderMemoryOptimized) GetGuildEmoji(_ context.Context, guildID, emojiID discord.Snowflake) (discord.Emoji, bool) {
+func (s *StateProviderMemoryOptimized) GetGuildEmoji(_ context.Context, guildID, emojiID discord.Snowflake) (*discord.Emoji, bool) {
 	guildEmojisState, ok := s.GuildEmojis.Load(guildID)
 	if !ok {
-		return discord.Emoji{}, false
+		return nil, false
 	}
 
 	emoji, ok := guildEmojisState.Load(emojiID)
 	if !ok {
-		return discord.Emoji{}, false
+		return nil, false
 	}
 
-	return StateEmojiToDiscord(emoji), true
+	guildEmoji := StateEmojiToDiscord(emoji)
+
+	return &guildEmoji, true
 }
 
 func (s *StateProviderMemoryOptimized) SetGuildEmoji(_ context.Context, guildID discord.Snowflake, emoji discord.Emoji) {
@@ -351,16 +363,17 @@ func (s *StateProviderMemoryOptimized) RemoveGuildEmoji(_ context.Context, guild
 	guildEmojisState.Delete(emojiID)
 }
 
-func (s *StateProviderMemoryOptimized) GetVoiceStates(_ context.Context, guildID discord.Snowflake) ([]discord.VoiceState, bool) {
+func (s *StateProviderMemoryOptimized) GetVoiceStates(_ context.Context, guildID discord.Snowflake) ([]*discord.VoiceState, bool) {
 	voiceStatesState, ok := s.VoiceStates.Load(guildID)
 	if !ok {
 		return nil, false
 	}
 
-	var voiceStates []discord.VoiceState
+	var voiceStates []*discord.VoiceState
 
 	voiceStatesState.Range(func(_ discord.Snowflake, value StateVoiceState) bool {
-		voiceStates = append(voiceStates, StateVoiceStateToDiscord(value))
+		voiceState := StateVoiceStateToDiscord(value)
+		voiceStates = append(voiceStates, &voiceState)
 
 		return true
 	})
@@ -368,18 +381,20 @@ func (s *StateProviderMemoryOptimized) GetVoiceStates(_ context.Context, guildID
 	return voiceStates, true
 }
 
-func (s *StateProviderMemoryOptimized) GetVoiceState(_ context.Context, guildID, userID discord.Snowflake) (discord.VoiceState, bool) {
+func (s *StateProviderMemoryOptimized) GetVoiceState(_ context.Context, guildID, userID discord.Snowflake) (*discord.VoiceState, bool) {
 	voiceStatesState, ok := s.VoiceStates.Load(guildID)
 	if !ok {
-		return discord.VoiceState{}, false
+		return nil, false
 	}
 
-	voiceState, ok := voiceStatesState.Load(userID)
+	voiceStateState, ok := voiceStatesState.Load(userID)
 	if !ok {
-		return discord.VoiceState{}, false
+		return nil, false
 	}
 
-	return StateVoiceStateToDiscord(voiceState), true
+	voiceState := StateVoiceStateToDiscord(voiceStateState)
+
+	return &voiceState, true
 }
 
 func (s *StateProviderMemoryOptimized) SetVoiceState(_ context.Context, guildID discord.Snowflake, voiceState discord.VoiceState) {
@@ -402,14 +417,19 @@ func (s *StateProviderMemoryOptimized) RemoveVoiceState(_ context.Context, guild
 	voiceStatesState.Delete(userID)
 }
 
-func (s *StateProviderMemoryOptimized) GetUser(_ context.Context, userID discord.Snowflake) (discord.User, bool) {
-	user, ok := s.Users.Load(userID)
+func (s *StateProviderMemoryOptimized) GetUser(_ context.Context, userID discord.Snowflake) (*discord.User, bool) {
+	userState, ok := s.Users.Load(userID)
+	if !ok {
+		return nil, false
+	}
 
-	return user, ok
+	user := StateUserToDiscord(userState)
+
+	return &user, ok
 }
 
 func (s *StateProviderMemoryOptimized) SetUser(_ context.Context, userID discord.Snowflake, user discord.User) {
-	s.Users.Store(userID, user)
+	s.Users.Store(userID, DiscordToStateUser(user))
 }
 
 func (s *StateProviderMemoryOptimized) GetUserMutualGuilds(_ context.Context, userID discord.Snowflake) ([]discord.Snowflake, bool) {

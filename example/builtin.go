@@ -49,7 +49,7 @@ func (p *NullProducerProvider) GetProducer(ctx context.Context, managerIdentifie
 	return producer, nil
 }
 
-func (p *NullProducer) Publish(ctx context.Context, shard *sandwich.Shard, payload sandwich.ProducedPayload) error {
+func (p *NullProducer) Publish(ctx context.Context, shard *sandwich.Shard, payload *sandwich.ProducedPayload) error {
 	traceStr, _ := json.Marshal(payload.Trace)
 
 	p.counter.Add(1)
@@ -108,7 +108,7 @@ func main() {
 			})
 
 			usersCount := 0
-			stateProvider.Users.Range(func(_ discord.Snowflake, value discord.User) (stop bool) {
+			stateProvider.Users.Range(func(key discord.Snowflake, value sandwich.StateUser) (stop bool) {
 				usersCount++
 				return false
 			})

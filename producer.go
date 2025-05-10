@@ -7,6 +7,6 @@ type ProducerProvider interface {
 }
 
 type Producer interface {
-	Publish(ctx context.Context, shard *Shard, payload ProducedPayload) error
+	Publish(ctx context.Context, shard *Shard, payload *ProducedPayload) error
 	Close() error
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 )
 
-type DispatchHandler func(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trace *Trace) (result DispatchResult, ok bool, err error)
+type DispatchHandler func(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) (result DispatchResult, ok bool, err error)
 
 type Trace map[string]any
 
@@ -22,5 +22,5 @@ type DispatchResult struct {
 }
 
 type EventDispatchProvider interface {
-	Dispatch(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trace *Trace) (result DispatchResult, ok bool, err error)
+	Dispatch(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) (result DispatchResult, ok bool, err error)
 }
