@@ -157,8 +157,8 @@ func (shard *Shard) SetMetadata(configuration *ManagerConfiguration) {
 }
 
 func (shard *Shard) SetStatus(status ShardStatus) {
+	UpdateShardStatus(shard.manager.identifier, shard.shardID, status)
 	shard.status.Store(&status)
-
 	shard.logger.Info("Shard status updated", "status", status.String())
 }
 

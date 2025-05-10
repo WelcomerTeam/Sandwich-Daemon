@@ -19,6 +19,8 @@ import (
 type Manager struct {
 	logger *slog.Logger
 
+	identifier string
+
 	sandwich      *Sandwich
 	configuration *atomic.Pointer[ManagerConfiguration]
 
@@ -47,6 +49,8 @@ type Manager struct {
 func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 	manager := &Manager{
 		logger: s.logger.With("manager", config.ApplicationIdentifier),
+
+		identifier: config.ApplicationIdentifier,
 
 		sandwich:      s,
 		configuration: &atomic.Pointer[ManagerConfiguration]{},
@@ -81,8 +85,8 @@ func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 }
 
 func (manager *Manager) SetStatus(status ManagerStatus) {
+	UpdateManagerStatus(manager.identifier, status)
 	manager.status.Store(&status)
-
 	manager.logger.Info("Manager status updated", "status", status.String())
 }
 

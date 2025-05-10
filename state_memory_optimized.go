@@ -25,7 +25,7 @@ type StateProviderMemoryOptimized struct {
 }
 
 func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
-	return &StateProviderMemoryOptimized{
+	stateProvider := &StateProviderMemoryOptimized{
 		Guilds:        csmap.Create[discord.Snowflake, StateGuild](),
 		GuildMembers:  csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateGuildMember]](),
 		GuildChannels: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateChannel]](),
@@ -36,6 +36,73 @@ func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
 		Users:         csmap.Create[discord.Snowflake, StateUser](),
 		UserMutuals:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](),
 	}
+
+	go func() {
+		for {
+			stateProvider.UpdateStateMetricsFromStateProvider()
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	return stateProvider
+}
+
+func (s *StateProviderMemoryOptimized) UpdateStateMetricsFromStateProvider() {
+	guildChannelsCount := 0
+	s.GuildChannels.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateChannel]) bool {
+		guildChannelsCount += value.Count()
+		return false
+	})
+
+	guildRolesCount := 0
+	s.GuildRoles.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateRole]) bool {
+		guildRolesCount += value.Count()
+		return false
+	})
+
+	guildEmojisCount := 0
+	s.GuildEmojis.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateEmoji]) bool {
+		guildEmojisCount += value.Count()
+		return false
+	})
+
+	guildMembersCount := 0
+	s.GuildMembers.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateGuildMember]) bool {
+		guildMembersCount += value.Count()
+		return false
+	})
+
+	userMutualsCount := 0
+	s.UserMutuals.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, bool]) bool {
+		userMutualsCount += value.Count()
+		return false
+	})
+
+	stickersCount := 0
+	s.GuildStickers.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateSticker]) bool {
+		stickersCount += value.Count()
+		return false
+	})
+
+	voiceStatesCount := 0
+	s.VoiceStates.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateVoiceState]) bool {
+		voiceStatesCount += value.Count()
+		return false
+	})
+
+	usersCount := s.Users.Count()
+	guildsCount := s.Guilds.Count()
+
+	UpdateStateMetrics(
+		guildMembersCount,
+		guildRolesCount,
+		guildEmojisCount,
+		usersCount,
+		guildChannelsCount,
+		stickersCount,
+		guildsCount,
+		voiceStatesCount,
+	)
 }
 
 func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID discord.Snowflake) (*discord.Guild, bool) {
