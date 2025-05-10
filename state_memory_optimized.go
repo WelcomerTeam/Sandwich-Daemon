@@ -19,6 +19,7 @@ type StateProviderMemoryOptimized struct {
 	GuildRoles    *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]]
 	GuildEmojis   *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]]
 	VoiceStates   *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]]
+	GuildStickers *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]]
 	Users         *csmap.CsMap[discord.Snowflake, StateUser]
 	UserMutuals   *csmap.CsMap[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]]
 }
@@ -31,6 +32,7 @@ func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
 		GuildRoles:    csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]](),
 		GuildEmojis:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]](),
 		VoiceStates:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]](),
+		GuildStickers: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]](),
 		Users:         csmap.Create[discord.Snowflake, StateUser](),
 		UserMutuals:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](),
 	}
@@ -82,6 +84,10 @@ func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID dis
 
 	if len(guild.Emojis) > 0 {
 		s.SetGuildEmojis(ctx, guildID, guild.Emojis)
+	}
+
+	if len(guild.Stickers) > 0 {
+		s.SetGuildStickers(ctx, guildID, guild.Stickers)
 	}
 
 	s.Guilds.Store(guildID, DiscordToStateGuild(guild))
@@ -363,6 +369,73 @@ func (s *StateProviderMemoryOptimized) RemoveGuildEmoji(_ context.Context, guild
 	guildEmojisState.Delete(emojiID)
 }
 
+func (s *StateProviderMemoryOptimized) GetGuildStickers(_ context.Context, guildID discord.Snowflake) ([]*discord.Sticker, bool) {
+	guildStickersState, ok := s.GuildStickers.Load(guildID)
+	if !ok {
+		return nil, false
+	}
+
+	var guildStickers []*discord.Sticker
+
+	guildStickersState.Range(func(_ discord.Snowflake, value StateSticker) bool {
+		guildSticker := StateStickerToDiscord(value)
+		guildStickers = append(guildStickers, &guildSticker)
+
+		return true
+	})
+
+	return guildStickers, true
+}
+
+func (s *StateProviderMemoryOptimized) SetGuildStickers(_ context.Context, guildID discord.Snowflake, stickers []discord.Sticker) {
+	guildStickersState, ok := s.GuildStickers.Load(guildID)
+	if !ok {
+		guildStickersState = &syncmap.Map[discord.Snowflake, StateSticker]{}
+
+		s.GuildStickers.Store(guildID, guildStickersState)
+	}
+
+	for _, sticker := range stickers {
+		guildStickersState.Store(sticker.ID, DiscordToStateSticker(sticker))
+	}
+}
+
+func (s *StateProviderMemoryOptimized) GetGuildSticker(_ context.Context, guildID, stickerID discord.Snowflake) (*discord.Sticker, bool) {
+	guildStickersState, ok := s.GuildStickers.Load(guildID)
+	if !ok {
+		return nil, false
+	}
+
+	sticker, ok := guildStickersState.Load(stickerID)
+	if !ok {
+		return nil, false
+	}
+
+	guildSticker := StateStickerToDiscord(sticker)
+
+	return &guildSticker, true
+}
+
+func (s *StateProviderMemoryOptimized) SetGuildSticker(_ context.Context, guildID discord.Snowflake, sticker discord.Sticker) {
+	guildStickersState, ok := s.GuildStickers.Load(guildID)
+	if !ok {
+		guildStickersState = &syncmap.Map[discord.Snowflake, StateSticker]{}
+
+		s.GuildStickers.Store(guildID, guildStickersState)
+	}
+
+	guildStickersState.Store(sticker.ID, DiscordToStateSticker(sticker))
+}
+
+func (s *StateProviderMemoryOptimized) RemoveGuildSticker(_ context.Context, guildID, stickerID discord.Snowflake) {
+	guildStickersState, ok := s.GuildStickers.Load(guildID)
+	if !ok {
+		return
+	}
+
+	guildStickersState.Delete(stickerID)
+}
+
 func (s *StateProviderMemoryOptimized) GetVoiceStates(_ context.Context, guildID discord.Snowflake) ([]*discord.VoiceState, bool) {
 	voiceStatesState, ok := s.VoiceStates.Load(guildID)
 	if !ok {
@@ -519,126 +592,111 @@ type StateGuild struct {
 	NSFWLevel                 discord.GuildNSFWLevelType `json:"nsfw_level"`
 	PremiumProgressBarEnabled bool                       `json:"premium_progress_bar_enabled"`
 
-	RoleIDs    []discord.Snowflake `json:"role_ids"`
-	EmojiIDs   []discord.Snowflake `json:"emoji_ids"`
-	ChannelIDs []discord.Snowflake `json:"channel_ids"`
-
 	Features             []string                 `json:"features"`
 	StageInstances       []discord.StageInstance  `json:"stage_instances"`
-	Stickers             []discord.Sticker        `json:"stickers"`
 	GuildScheduledEvents []discord.ScheduledEvent `json:"guild_scheduled_events"`
 }
 
 func DiscordToStateGuild(guild discord.Guild) StateGuild {
 	return StateGuild{
-		ID:              guild.ID,
-		Name:            guild.Name,
-		Icon:            guild.Icon,
-		IconHash:        guild.IconHash,
-		Splash:          guild.Splash,
-		DiscoverySplash: guild.DiscoverySplash,
-
-		Owner:       guild.Owner,
-		OwnerID:     guild.OwnerID,
-		Permissions: guild.Permissions,
-		Region:      guild.Region,
-
-		AFKChannelID: guild.AFKChannelID,
-		AFKTimeout:   guild.AFKTimeout,
-
-		WidgetEnabled:   guild.WidgetEnabled,
-		WidgetChannelID: guild.WidgetChannelID,
-
+		ID:                          guild.ID,
+		Name:                        guild.Name,
+		Icon:                        guild.Icon,
+		IconHash:                    guild.IconHash,
+		Splash:                      guild.Splash,
+		DiscoverySplash:             guild.DiscoverySplash,
+		Owner:                       guild.Owner,
+		OwnerID:                     guild.OwnerID,
+		Permissions:                 guild.Permissions,
+		Region:                      guild.Region,
+		AFKChannelID:                guild.AFKChannelID,
+		AFKTimeout:                  guild.AFKTimeout,
+		WidgetEnabled:               guild.WidgetEnabled,
+		WidgetChannelID:             guild.WidgetChannelID,
 		VerificationLevel:           guild.VerificationLevel,
 		DefaultMessageNotifications: guild.DefaultMessageNotifications,
 		ExplicitContentFilter:       guild.ExplicitContentFilter,
-
-		MFALevel:           guild.MFALevel,
-		ApplicationID:      guild.ApplicationID,
-		SystemChannelID:    guild.SystemChannelID,
-		SystemChannelFlags: guild.SystemChannelFlags,
-		RulesChannelID:     guild.RulesChannelID,
-
-		JoinedAt:    guild.JoinedAt,
-		Large:       guild.Large,
-		Unavailable: guild.Unavailable,
-		MemberCount: guild.MemberCount,
-
-		MaxPresences:  guild.MaxPresences,
-		MaxMembers:    guild.MaxMembers,
-		VanityURLCode: guild.VanityURLCode,
-		Description:   guild.Description,
-		Banner:        guild.Banner,
-
-		PremiumTier:               guild.PremiumTier,
-		PremiumSubscriptionCount:  guild.PremiumSubscriptionCount,
-		PreferredLocale:           guild.PreferredLocale,
-		PublicUpdatesChannelID:    guild.PublicUpdatesChannelID,
-		MaxVideoChannelUsers:      guild.MaxVideoChannelUsers,
-		ApproximateMemberCount:    guild.ApproximateMemberCount,
-		ApproximatePresenceCount:  guild.ApproximatePresenceCount,
-		NSFWLevel:                 guild.NSFWLevel,
-		PremiumProgressBarEnabled: guild.PremiumProgressBarEnabled,
-
-		StageInstances: guild.StageInstances,
-		Stickers:       guild.Stickers,
+		MFALevel:                    guild.MFALevel,
+		ApplicationID:               guild.ApplicationID,
+		SystemChannelID:             guild.SystemChannelID,
+		SystemChannelFlags:          guild.SystemChannelFlags,
+		RulesChannelID:              guild.RulesChannelID,
+		JoinedAt:                    guild.JoinedAt,
+		Large:                       guild.Large,
+		Unavailable:                 guild.Unavailable,
+		MemberCount:                 guild.MemberCount,
+		MaxPresences:                guild.MaxPresences,
+		MaxMembers:                  guild.MaxMembers,
+		VanityURLCode:               guild.VanityURLCode,
+		Description:                 guild.Description,
+		Banner:                      guild.Banner,
+		PremiumTier:                 guild.PremiumTier,
+		PremiumSubscriptionCount:    guild.PremiumSubscriptionCount,
+		PreferredLocale:             guild.PreferredLocale,
+		PublicUpdatesChannelID:      guild.PublicUpdatesChannelID,
+		MaxVideoChannelUsers:        guild.MaxVideoChannelUsers,
+		ApproximateMemberCount:      guild.ApproximateMemberCount,
+		ApproximatePresenceCount:    guild.ApproximatePresenceCount,
+		NSFWLevel:                   guild.NSFWLevel,
+		PremiumProgressBarEnabled:   guild.PremiumProgressBarEnabled,
+		StageInstances:              guild.StageInstances,
+		GuildScheduledEvents:        guild.GuildScheduledEvents,
+		Features:                    guild.Features,
 	}
 }
 
 func StateGuildToDiscord(v StateGuild) discord.Guild {
 	return discord.Guild{
-		ID:              v.ID,
-		Name:            v.Name,
-		Icon:            v.Icon,
-		IconHash:        v.IconHash,
-		Splash:          v.Splash,
-		DiscoverySplash: v.DiscoverySplash,
-
-		Owner:       v.Owner,
-		OwnerID:     v.OwnerID,
-		Permissions: v.Permissions,
-		Region:      v.Region,
-
-		AFKChannelID: v.AFKChannelID,
-		AFKTimeout:   v.AFKTimeout,
-
-		WidgetEnabled:   v.WidgetEnabled,
-		WidgetChannelID: v.WidgetChannelID,
-
+		ID:                          v.ID,
+		Name:                        v.Name,
+		Icon:                        v.Icon,
+		IconHash:                    v.IconHash,
+		Splash:                      v.Splash,
+		DiscoverySplash:             v.DiscoverySplash,
+		Owner:                       v.Owner,
+		OwnerID:                     v.OwnerID,
+		Permissions:                 v.Permissions,
+		Region:                      v.Region,
+		AFKChannelID:                v.AFKChannelID,
+		AFKTimeout:                  v.AFKTimeout,
+		WidgetEnabled:               v.WidgetEnabled,
+		WidgetChannelID:             v.WidgetChannelID,
 		VerificationLevel:           v.VerificationLevel,
 		DefaultMessageNotifications: v.DefaultMessageNotifications,
 		ExplicitContentFilter:       v.ExplicitContentFilter,
-
-		MFALevel:           v.MFALevel,
-		ApplicationID:      v.ApplicationID,
-		SystemChannelID:    v.SystemChannelID,
-		SystemChannelFlags: v.SystemChannelFlags,
-		RulesChannelID:     v.RulesChannelID,
-
-		JoinedAt:    v.JoinedAt,
-		Large:       v.Large,
-		Unavailable: v.Unavailable,
-		MemberCount: v.MemberCount,
-
-		MaxPresences:  v.MaxPresences,
-		MaxMembers:    v.MaxMembers,
-		VanityURLCode: v.VanityURLCode,
-		Description:   v.Description,
-		Banner:        v.Banner,
-
-		PremiumTier:               v.PremiumTier,
-		PremiumSubscriptionCount:  v.PremiumSubscriptionCount,
-		PreferredLocale:           v.PreferredLocale,
-		PublicUpdatesChannelID:    v.PublicUpdatesChannelID,
-		MaxVideoChannelUsers:      v.MaxVideoChannelUsers,
-		ApproximateMemberCount:    v.ApproximateMemberCount,
-		ApproximatePresenceCount:  v.ApproximatePresenceCount,
-		NSFWLevel:                 v.NSFWLevel,
-		PremiumProgressBarEnabled: v.PremiumProgressBarEnabled,
-
-		StageInstances:       v.StageInstances,
-		Stickers:             v.Stickers,
-		GuildScheduledEvents: v.GuildScheduledEvents,
+		MFALevel:                    v.MFALevel,
+		ApplicationID:               v.ApplicationID,
+		SystemChannelID:             v.SystemChannelID,
+		SystemChannelFlags:          v.SystemChannelFlags,
+		RulesChannelID:              v.RulesChannelID,
+		JoinedAt:                    v.JoinedAt,
+		Large:                       v.Large,
+		Unavailable:                 v.Unavailable,
+		MemberCount:                 v.MemberCount,
+		MaxPresences:                v.MaxPresences,
+		MaxMembers:                  v.MaxMembers,
+		VanityURLCode:               v.VanityURLCode,
+		Description:                 v.Description,
+		Banner:                      v.Banner,
+		PremiumTier:                 v.PremiumTier,
+		PremiumSubscriptionCount:    v.PremiumSubscriptionCount,
+		PreferredLocale:             v.PreferredLocale,
+		PublicUpdatesChannelID:      v.PublicUpdatesChannelID,
+		MaxVideoChannelUsers:        v.MaxVideoChannelUsers,
+		ApproximateMemberCount:      v.ApproximateMemberCount,
+		ApproximatePresenceCount:    v.ApproximatePresenceCount,
+		NSFWLevel:                   v.NSFWLevel,
+		PremiumProgressBarEnabled:   v.PremiumProgressBarEnabled,
+		StageInstances:              v.StageInstances,
+		GuildScheduledEvents:        v.GuildScheduledEvents,
+		Features:                    v.Features,
+		Presences:                   []discord.Activity{},
+		Stickers:                    []discord.Sticker{},
+		Roles:                       []discord.Role{},
+		Emojis:                      []discord.Emoji{},
+		VoiceStates:                 []discord.VoiceState{},
+		Members:                     []discord.GuildMember{},
+		Channels:                    []discord.Channel{},
 	}
 }
 
@@ -777,11 +835,18 @@ func DiscordToStateGuildMember(v discord.GuildMember) StateGuildMember {
 
 func StateGuildMemberToDiscord(v StateGuildMember) discord.GuildMember {
 	return discord.GuildMember{
-		User:        &discord.User{ID: v.UserID},
-		Permissions: v.Permissions,
-		JoinedAt:    v.JoinedAt,
-		Roles:       v.Roles,
-		Nick:        v.Nick,
+		User:                       &discord.User{ID: v.UserID},
+		Permissions:                v.Permissions,
+		JoinedAt:                   v.JoinedAt,
+		Roles:                      v.Roles,
+		Nick:                       v.Nick,
+		GuildID:                    nil,
+		Avatar:                     "",
+		PremiumSince:               "",
+		CommunicationDisabledUntil: "",
+		Deaf:                       false,
+		Mute:                       false,
+		Pending:                    false,
 	}
 }
 
@@ -828,6 +893,7 @@ func StateRoleToDiscord(v StateRole) discord.Role {
 		Hoist:        v.Hoist,
 		Managed:      v.Managed,
 		Mentionable:  v.Mentionable,
+		GuildID:      nil,
 	}
 }
 
@@ -851,6 +917,7 @@ func DiscordToStateEmoji(v discord.Emoji) StateEmoji {
 		Managed:       v.Managed,
 		Animated:      v.Animated,
 		Available:     v.Available,
+		UserID:        0,
 	}
 
 	if v.User != nil {
@@ -873,9 +940,71 @@ func StateEmojiToDiscord(v StateEmoji) discord.Emoji {
 	}
 }
 
+type StateSticker struct {
+	ID          discord.Snowflake         `json:"id"`
+	PackID      discord.Snowflake         `json:"pack_id,omitempty"`
+	GuildID     discord.Snowflake         `json:"guild_id,omitempty"`
+	UserID      discord.Snowflake         `json:"user,omitempty"`
+	Name        string                    `json:"name"`
+	Description string                    `json:"description"`
+	Tags        string                    `json:"tags"`
+	Type        discord.StickerType       `json:"type"`
+	FormatType  discord.StickerFormatType `json:"format_type"`
+	SortValue   int32                     `json:"sort_value"`
+	Available   bool                      `json:"available"`
+}
+
+func DiscordToStateSticker(v discord.Sticker) StateSticker {
+	sticker := StateSticker{
+		ID:          v.ID,
+		Name:        v.Name,
+		Description: v.Description,
+		Tags:        v.Tags,
+		Type:        v.Type,
+		FormatType:  v.FormatType,
+		SortValue:   v.SortValue,
+		Available:   v.Available,
+		PackID:      0,
+		GuildID:     0,
+		UserID:      0,
+	}
+
+	if v.PackID != nil {
+		sticker.PackID = *v.PackID
+	}
+
+	if v.GuildID != nil {
+		sticker.GuildID = *v.GuildID
+	}
+
+	if v.User != nil {
+		sticker.UserID = v.User.ID
+	}
+
+	return sticker
+}
+
+func StateStickerToDiscord(v StateSticker) discord.Sticker {
+	return discord.Sticker{
+		ID:          v.ID,
+		PackID:      &v.PackID,
+		GuildID:     &v.GuildID,
+		User:        &discord.User{ID: v.UserID},
+		Name:        v.Name,
+		Description: v.Description,
+		Tags:        v.Tags,
+		Type:        v.Type,
+		FormatType:  v.FormatType,
+		SortValue:   v.SortValue,
+		Available:   v.Available,
+	}
+}
+
 type StateVoiceState struct {
 	RequestToSpeakTimestamp time.Time         `json:"request_to_speak_timestamp"`
 	ChannelID               discord.Snowflake `json:"channel_id"`
+	GuildID                 discord.Snowflake `json:"guild_id"`
+	UserID                  discord.Snowflake `json:"user_id"`
 	SessionID               string            `json:"session_id"`
 	Deaf                    bool              `json:"deaf"`
 	Mute                    bool              `json:"mute"`
@@ -887,9 +1016,11 @@ type StateVoiceState struct {
 }
 
 func DiscordToStateVoiceState(v discord.VoiceState) StateVoiceState {
-	return StateVoiceState{
+	voiceState := StateVoiceState{
 		RequestToSpeakTimestamp: v.RequestToSpeakTimestamp,
 		ChannelID:               v.ChannelID,
+		GuildID:                 0,
+		UserID:                  v.UserID,
 		SessionID:               v.SessionID,
 		Deaf:                    v.Deaf,
 		Mute:                    v.Mute,
@@ -899,6 +1030,12 @@ func DiscordToStateVoiceState(v discord.VoiceState) StateVoiceState {
 		SelfVideo:               v.SelfVideo,
 		Suppress:                v.Suppress,
 	}
+
+	if v.GuildID != nil {
+		voiceState.GuildID = *v.GuildID
+	}
+
+	return voiceState
 }
 
 func StateVoiceStateToDiscord(v StateVoiceState) discord.VoiceState {
@@ -913,6 +1050,9 @@ func StateVoiceStateToDiscord(v StateVoiceState) discord.VoiceState {
 		SelfStream:              v.SelfStream,
 		SelfVideo:               v.SelfVideo,
 		Suppress:                v.Suppress,
+		GuildID:                 &v.GuildID,
+		Member:                  &discord.GuildMember{User: &discord.User{ID: v.UserID}},
+		UserID:                  v.UserID,
 	}
 }
 
@@ -975,5 +1115,7 @@ func StateUserToDiscord(v StateUser) discord.User {
 		Email:         v.Email,
 		Bot:           v.Bot,
 		System:        v.System,
+		MFAEnabled:    false,
+		Verified:      false,
 	}
 }
