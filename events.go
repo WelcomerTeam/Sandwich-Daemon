@@ -25,7 +25,7 @@ type ProducedMetadata struct {
 }
 
 type EventProvider interface {
-	Dispatch(ctx context.Context, shard *Shard, event discord.GatewayPayload, trace *Trace) error
+	Dispatch(ctx context.Context, shard *Shard, event *discord.GatewayPayload, trace *Trace) error
 }
 
 // EventProviderWithBlacklist is an event provider that will not handle events that are in the blacklist
@@ -41,7 +41,7 @@ func NewEventProviderWithBlacklist(dispatchProvider EventDispatchProvider) *Even
 	}
 }
 
-func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard, event discord.GatewayPayload, trace *Trace) error {
+func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard, event *discord.GatewayPayload, trace *Trace) error {
 	eventBlacklist := shard.manager.configuration.Load().EventBlacklist
 
 	for _, blacklistedEvent := range eventBlacklist {
@@ -71,8 +71,10 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 
 	configuration := shard.manager.configuration.Load()
 
+	// TODO: Aquire from pool
+
 	packet := ProducedPayload{
-		GatewayPayload: event,
+		GatewayPayload: *event,
 		Extra:          result.Extra,
 		Metadata: ProducedMetadata{
 			Identifier:    configuration.ProducerIdentifier,
@@ -89,7 +91,7 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 
 	packet.Trace.Set("publish", time.Now().UnixNano())
 
-	err = shard.manager.producer.Publish(ctx, shard, packet)
+	err = shard.manager.producer.Publish(ctx, shard, &packet)
 	if err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}

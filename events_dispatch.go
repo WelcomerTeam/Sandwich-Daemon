@@ -34,7 +34,7 @@ func safeOnGuildDispatchEvent(eventType string, guildID *discord.Snowflake) {
 // OnReady handles the READY event.
 // It will go and mark guilds as unavailable and go through
 // any GUILD_CREATE events for the next few seconds.
-func OnReady(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trace *Trace) (DispatchResult, bool, error) {
+func OnReady(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var readyPayload discord.Ready
@@ -106,6 +106,8 @@ ready:
 		if err != nil && !errors.Is(err, ErrNoDispatchHandler) {
 			shard.logger.Error("Failed to dispatch event", "error", err)
 		}
+
+		shard.gatewayPayloadPool.Put(msg)
 	}
 
 	shard.logger.Debug("Finished lazy loading guilds", "guilds", guildCreateEvents)
@@ -128,7 +130,7 @@ ready:
 	return DispatchResult{nil, nil}, false, nil
 }
 
-func OnResumed(_ context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnResumed(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	shard.logger.Debug("Shard has resumed")
@@ -144,7 +146,7 @@ func OnResumed(_ context.Context, shard *Shard, msg discord.GatewayPayload, _ *T
 	}, true, nil
 }
 
-func OnApplicationCommandCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnApplicationCommandCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var applicationCommandCreatePayload discord.ApplicationCommandCreate
@@ -160,7 +162,7 @@ func OnApplicationCommandCreate(_ context.Context, _ *Shard, msg discord.Gateway
 	}, true, nil
 }
 
-func OnApplicationCommandUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnApplicationCommandUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var applicationCommandUpdatePayload discord.ApplicationCommandUpdate
@@ -176,7 +178,7 @@ func OnApplicationCommandUpdate(_ context.Context, _ *Shard, msg discord.Gateway
 	}, true, nil
 }
 
-func OnApplicationCommandDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnApplicationCommandDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var applicationCommandDeletePayload discord.ApplicationCommandDelete
@@ -192,7 +194,7 @@ func OnApplicationCommandDelete(_ context.Context, _ *Shard, msg discord.Gateway
 	}, true, nil
 }
 
-func OnGuildCreate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildCreatePayload discord.GuildCreate
 
 	err := unmarshalPayload(msg, &guildCreatePayload)
@@ -223,7 +225,7 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var guildMembersChunkPayload discord.GuildMembersChunk
@@ -263,7 +265,7 @@ func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg discord.GatewayP
 	return DispatchResult{nil, nil}, false, nil
 }
 
-func OnChannelCreate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnChannelCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var channelCreatePayload discord.ChannelCreate
 
 	err := unmarshalPayload(msg, &channelCreatePayload)
@@ -281,7 +283,7 @@ func OnChannelCreate(ctx context.Context, shard *Shard, msg discord.GatewayPaylo
 	}, true, nil
 }
 
-func OnChannelUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnChannelUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var channelUpdatePayload discord.ChannelUpdate
 
 	err := unmarshalPayload(msg, &channelUpdatePayload)
@@ -302,7 +304,7 @@ func OnChannelUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPaylo
 	}, true, nil
 }
 
-func OnChannelDelete(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnChannelDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var channelDeletePayload discord.ChannelDelete
 
 	err := unmarshalPayload(msg, &channelDeletePayload)
@@ -323,7 +325,7 @@ func OnChannelDelete(ctx context.Context, shard *Shard, msg discord.GatewayPaylo
 	}, true, nil
 }
 
-func OnChannelPinsUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnChannelPinsUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var channelPinsUpdatePayload discord.ChannelPinsUpdate
 
 	err := unmarshalPayload(msg, &channelPinsUpdatePayload)
@@ -339,7 +341,7 @@ func OnChannelPinsUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnThreadCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnThreadCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var threadCreatePayload discord.ThreadCreate
@@ -355,7 +357,7 @@ func OnThreadCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *
 	}, true, nil
 }
 
-func OnThreadUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnThreadUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var threadUpdatePayload discord.ThreadUpdate
@@ -375,7 +377,7 @@ func OnThreadUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayloa
 	}, true, nil
 }
 
-func OnThreadDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnThreadDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var threadDeletePayload discord.ThreadDelete
@@ -391,7 +393,7 @@ func OnThreadDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *
 	}, true, nil
 }
 
-func OnThreadListSync(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnThreadListSync(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var threadListSyncPayload discord.ThreadListSync
@@ -407,7 +409,7 @@ func OnThreadListSync(_ context.Context, _ *Shard, msg discord.GatewayPayload, _
 	}, true, nil
 }
 
-func OnThreadMemberUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnThreadMemberUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var threadMemberUpdatePayload discord.ThreadMemberUpdate
@@ -423,7 +425,7 @@ func OnThreadMemberUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayloa
 	}, true, nil
 }
 
-func OnThreadMembersUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnThreadMembersUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var threadMembersUpdatePayload discord.ThreadMembersUpdate
@@ -439,7 +441,7 @@ func OnThreadMembersUpdate(_ context.Context, _ *Shard, msg discord.GatewayPaylo
 	}, true, nil
 }
 
-func OnGuildAuditLogEntryCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildAuditLogEntryCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var threadMembersUpdatePayload discord.GuildAuditLogEntryCreate
@@ -455,7 +457,7 @@ func OnGuildAuditLogEntryCreate(_ context.Context, _ *Shard, msg discord.Gateway
 	}, true, nil
 }
 
-func OnEntitlementCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnEntitlementCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var entitlementCreatePayload discord.Entitlement
@@ -471,7 +473,7 @@ func OnEntitlementCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnEntitlementUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnEntitlementUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var entitlementUpdatePayload discord.Entitlement
@@ -487,7 +489,7 @@ func OnEntitlementUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnEntitlementDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnEntitlementDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var entitlementUpdatePayload discord.Entitlement
@@ -503,7 +505,7 @@ func OnEntitlementDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnGuildUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildUpdatePayload discord.GuildUpdate
 
 	err := unmarshalPayload(msg, &guildUpdatePayload)
@@ -553,7 +555,7 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnGuildDelete(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildDeletePayload discord.GuildDelete
 
 	err := unmarshalPayload(msg, &guildDeletePayload)
@@ -583,7 +585,7 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnGuildBanAdd(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildBanAdd(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildBanAddPayload discord.GuildBanAdd
 
 	err := unmarshalPayload(msg, &guildBanAddPayload)
@@ -599,7 +601,7 @@ func OnGuildBanAdd(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *T
 	}, true, nil
 }
 
-func OnGuildBanRemove(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildBanRemove(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildBanRemovePayload discord.GuildBanRemove
 
 	err := unmarshalPayload(msg, &guildBanRemovePayload)
@@ -615,7 +617,7 @@ func OnGuildBanRemove(_ context.Context, _ *Shard, msg discord.GatewayPayload, _
 	}, true, nil
 }
 
-func OnGuildEmojisUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildEmojisUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildEmojisUpdatePayload discord.GuildEmojisUpdate
 
 	err := unmarshalPayload(msg, &guildEmojisUpdatePayload)
@@ -637,7 +639,7 @@ func OnGuildEmojisUpdate(ctx context.Context, shard *Shard, msg discord.GatewayP
 	}, true, nil
 }
 
-func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildStickersUpdatePayload discord.GuildStickersUpdate
 
 	err := unmarshalPayload(msg, &guildStickersUpdatePayload)
@@ -655,7 +657,7 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg discord.Gatewa
 
 		// TODO add stickers to state
 
-		shard.sandwich.stateProvider.SetGuild(ctx, beforeGuild.ID, beforeGuild)
+		shard.sandwich.stateProvider.SetGuild(ctx, beforeGuild.ID, *beforeGuild)
 	} else {
 		shard.logger.Warn("Received "+discord.DiscordEventGuildStickersUpdate+" event, however guild is not present in state", "guild_id", guildStickersUpdatePayload.GuildID)
 	}
@@ -668,7 +670,7 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg discord.Gatewa
 	}, true, nil
 }
 
-func OnGuildIntegrationsUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildIntegrationsUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildIntegrationsUpdatePayload discord.GuildIntegrationsUpdate
 
 	err := unmarshalPayload(msg, &guildIntegrationsUpdatePayload)
@@ -684,7 +686,7 @@ func OnGuildIntegrationsUpdate(_ context.Context, _ *Shard, msg discord.GatewayP
 	}, true, nil
 }
 
-func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildMemberAddPayload discord.GuildMemberAdd
 
 	err := unmarshalPayload(msg, &guildMemberAddPayload)
@@ -695,7 +697,7 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg discord.GatewayPayl
 	guild, exists := shard.sandwich.stateProvider.GetGuild(ctx, *guildMemberAddPayload.GuildID)
 	if exists {
 		guild.MemberCount++
-		shard.sandwich.stateProvider.SetGuild(ctx, *guildMemberAddPayload.GuildID, guild)
+		shard.sandwich.stateProvider.SetGuild(ctx, *guildMemberAddPayload.GuildID, *guild)
 	}
 
 	defer onGuildDispatchEvent(msg.Type, *guildMemberAddPayload.GuildID)
@@ -709,7 +711,7 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg discord.GatewayPayl
 	}, true, nil
 }
 
-func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildMemberRemovePayload discord.GuildMemberRemove
 
 	err := unmarshalPayload(msg, &guildMemberRemovePayload)
@@ -720,10 +722,9 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg discord.GatewayP
 	// TODO: Implement deduping.
 
 	guild, exists := shard.sandwich.stateProvider.GetGuild(ctx, guildMemberRemovePayload.GuildID)
-
 	if exists {
 		guild.MemberCount--
-		shard.sandwich.stateProvider.SetGuild(ctx, guildMemberRemovePayload.GuildID, guild)
+		shard.sandwich.stateProvider.SetGuild(ctx, guildMemberRemovePayload.GuildID, *guild)
 	}
 
 	defer onGuildDispatchEvent(msg.Type, guildMemberRemovePayload.GuildID)
@@ -741,7 +742,7 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg discord.GatewayP
 	}, true, nil
 }
 
-func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildMemberUpdatePayload discord.GuildMemberUpdate
 
 	err := unmarshalPayload(msg, &guildMemberUpdatePayload)
@@ -767,7 +768,7 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg discord.GatewayP
 	}, true, nil
 }
 
-func OnGuildRoleCreate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildRoleCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildRoleCreatePayload discord.GuildRoleCreate
 
 	err := unmarshalPayload(msg, &guildRoleCreatePayload)
@@ -785,7 +786,7 @@ func OnGuildRoleCreate(ctx context.Context, shard *Shard, msg discord.GatewayPay
 	}, true, nil
 }
 
-func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildRoleUpdatePayload discord.GuildRoleUpdate
 
 	err := unmarshalPayload(msg, &guildRoleUpdatePayload)
@@ -807,7 +808,7 @@ func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPay
 	}, true, nil
 }
 
-func OnGuildRoleDelete(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildRoleDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildRoleDeletePayload discord.GuildRoleDelete
 
 	err := unmarshalPayload(msg, &guildRoleDeletePayload)
@@ -825,7 +826,7 @@ func OnGuildRoleDelete(ctx context.Context, shard *Shard, msg discord.GatewayPay
 	}, true, nil
 }
 
-func OnIntegrationCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnIntegrationCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var integrationCreatePayload discord.IntegrationCreate
@@ -841,7 +842,7 @@ func OnIntegrationCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnIntegrationUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnIntegrationUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var integrationUpdatePayload discord.IntegrationUpdate
@@ -857,7 +858,7 @@ func OnIntegrationUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnIntegrationDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnIntegrationDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var integrationDeletePayload discord.IntegrationDelete
@@ -873,7 +874,7 @@ func OnIntegrationDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnInteractionCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnInteractionCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var interactionCreatePayload discord.InteractionCreate
@@ -889,7 +890,7 @@ func OnInteractionCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnInviteCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnInviteCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var inviteCreatePayload discord.InviteCreate
 
 	err := unmarshalPayload(msg, &inviteCreatePayload)
@@ -907,7 +908,7 @@ func OnInviteCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *
 	}, true, nil
 }
 
-func OnInviteDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnInviteDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var inviteDeletePayload discord.InviteDelete
 
 	err := unmarshalPayload(msg, &inviteDeletePayload)
@@ -925,7 +926,7 @@ func OnInviteDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *
 	}, true, nil
 }
 
-func OnMessageCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageCreatePayload discord.MessageCreate
 
 	err := unmarshalPayload(msg, &messageCreatePayload)
@@ -941,7 +942,7 @@ func OnMessageCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ 
 	}, true, nil
 }
 
-func OnMessageUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageUpdatePayload discord.MessageUpdate
 
 	err := unmarshalPayload(msg, &messageUpdatePayload)
@@ -957,7 +958,7 @@ func OnMessageUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ 
 	}, true, nil
 }
 
-func OnMessageDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageDeletePayload discord.MessageDelete
 
 	err := unmarshalPayload(msg, &messageDeletePayload)
@@ -973,7 +974,7 @@ func OnMessageDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ 
 	}, true, nil
 }
 
-func OnMessageDeleteBulk(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageDeleteBulk(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageDeleteBulkPayload discord.MessageDeleteBulk
 
 	err := unmarshalPayload(msg, &messageDeleteBulkPayload)
@@ -989,7 +990,7 @@ func OnMessageDeleteBulk(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnMessageReactionAdd(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageReactionAdd(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageReactionAddPayload discord.MessageReactionAdd
 
 	err := unmarshalPayload(msg, &messageReactionAddPayload)
@@ -1005,7 +1006,7 @@ func OnMessageReactionAdd(_ context.Context, _ *Shard, msg discord.GatewayPayloa
 	}, true, nil
 }
 
-func OnMessageReactionRemove(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageReactionRemove(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageReactionRemovePayload discord.MessageReactionRemove
 
 	err := unmarshalPayload(msg, &messageReactionRemovePayload)
@@ -1021,7 +1022,7 @@ func OnMessageReactionRemove(_ context.Context, _ *Shard, msg discord.GatewayPay
 	}, true, nil
 }
 
-func OnMessageReactionRemoveAll(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageReactionRemoveAll(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageReactionRemoveAllPayload discord.MessageReactionRemoveAll
 
 	err := unmarshalPayload(msg, &messageReactionRemoveAllPayload)
@@ -1037,7 +1038,7 @@ func OnMessageReactionRemoveAll(_ context.Context, _ *Shard, msg discord.Gateway
 	}, true, nil
 }
 
-func OnMessageReactionRemoveEmoji(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnMessageReactionRemoveEmoji(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var messageReactionRemoveEmojiPayload discord.MessageReactionRemoveEmoji
 
 	err := unmarshalPayload(msg, &messageReactionRemoveEmojiPayload)
@@ -1053,7 +1054,7 @@ func OnMessageReactionRemoveEmoji(_ context.Context, _ *Shard, msg discord.Gatew
 	}, true, nil
 }
 
-func OnPresenceUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnPresenceUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var presenceUpdatePayload discord.PresenceUpdate
 
 	err := unmarshalPayload(msg, &presenceUpdatePayload)
@@ -1069,7 +1070,7 @@ func OnPresenceUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _
 	}, true, nil
 }
 
-func OnStageInstanceCreate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnStageInstanceCreate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var stageInstanceCreatePayload discord.StageInstanceCreate
@@ -1085,7 +1086,7 @@ func OnStageInstanceCreate(_ context.Context, _ *Shard, msg discord.GatewayPaylo
 	}, true, nil
 }
 
-func OnStageInstanceUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnStageInstanceUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var stageInstanceUpdatePayload discord.StageInstanceUpdate
@@ -1101,7 +1102,7 @@ func OnStageInstanceUpdate(_ context.Context, _ *Shard, msg discord.GatewayPaylo
 	}, true, nil
 }
 
-func OnStageInstanceDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnStageInstanceDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var stageInstanceDeletePayload discord.StageInstanceDelete
@@ -1117,7 +1118,7 @@ func OnStageInstanceDelete(_ context.Context, _ *Shard, msg discord.GatewayPaylo
 	}, true, nil
 }
 
-func OnTypingStart(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnTypingStart(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var typingStartPayload discord.TypingStart
 
 	err := unmarshalPayload(msg, &typingStartPayload)
@@ -1133,7 +1134,7 @@ func OnTypingStart(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *T
 	}, true, nil
 }
 
-func OnUserUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var userUpdatePayload discord.UserUpdate
@@ -1153,7 +1154,7 @@ func OnUserUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload,
 	}, true, nil
 }
 
-func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var voiceStateUpdatePayload discord.VoiceStateUpdate
 
 	err := unmarshalPayload(msg, &voiceStateUpdatePayload)
@@ -1185,7 +1186,7 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg discord.GatewayPa
 	}, true, nil
 }
 
-func OnVoiceServerUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnVoiceServerUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var voiceServerUpdatePayload discord.VoiceServerUpdate
@@ -1201,7 +1202,7 @@ func OnVoiceServerUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload
 	}, true, nil
 }
 
-func OnWebhookUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnWebhookUpdate(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var webhookUpdatePayload discord.WebhookUpdate
@@ -1217,7 +1218,7 @@ func OnWebhookUpdate(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ 
 	}, true, nil
 }
 
-func OnGuildJoinRequestDelete(_ context.Context, _ *Shard, msg discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnGuildJoinRequestDelete(_ context.Context, _ *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(msg.Type)
 
 	var guildJoinRequestDeletePayload discord.GuildJoinRequestDelete

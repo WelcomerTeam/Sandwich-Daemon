@@ -14,7 +14,7 @@ const (
 	WebsocketReconnectCloseCode = 4000
 )
 
-type GatewayHandler func(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trace *Trace) error
+type GatewayHandler func(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) error
 
 var gatewayEvents = make(map[discord.GatewayOp]GatewayHandler)
 
@@ -22,7 +22,7 @@ func RegisterGatewayEvent(eventType discord.GatewayOp, handler GatewayHandler) {
 	gatewayEvents[eventType] = handler
 }
 
-func gatewayOpDispatch(ctx context.Context, shard *Shard, msg discord.GatewayPayload, trace *Trace) error {
+func gatewayOpDispatch(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) error {
 	shard.sequence.Store(msg.Sequence)
 
 	trace.Set("dispatch", time.Now().UnixNano())
@@ -30,7 +30,7 @@ func gatewayOpDispatch(ctx context.Context, shard *Shard, msg discord.GatewayPay
 	return shard.OnDispatch(ctx, msg, trace)
 }
 
-func gatewayOpHeartbeat(ctx context.Context, shard *Shard, _ discord.GatewayPayload, _ *Trace) error {
+func gatewayOpHeartbeat(ctx context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
 	err := shard.SendEvent(ctx, discord.GatewayOpHeartbeat, shard.sequence.Load())
 	if err != nil {
 		err = shard.reconnect(ctx, websocket.StatusNormalClosure)
@@ -42,7 +42,7 @@ func gatewayOpHeartbeat(ctx context.Context, shard *Shard, _ discord.GatewayPayl
 	return nil
 }
 
-func gatewayOpReconnect(ctx context.Context, shard *Shard, _ discord.GatewayPayload, _ *Trace) error {
+func gatewayOpReconnect(ctx context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
 	shard.logger.Debug("Shard has been requested to reconnect")
 
 	err := shard.reconnect(ctx, WebsocketReconnectCloseCode)
@@ -53,7 +53,7 @@ func gatewayOpReconnect(ctx context.Context, shard *Shard, _ discord.GatewayPayl
 	return nil
 }
 
-func gatewayOpInvalidSession(ctx context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) error {
+func gatewayOpInvalidSession(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) error {
 	var resumable bool
 
 	err := json.Unmarshal(msg.Data, &resumable)
@@ -76,7 +76,7 @@ func gatewayOpInvalidSession(ctx context.Context, shard *Shard, msg discord.Gate
 	return nil
 }
 
-func gatewayOpHello(_ context.Context, shard *Shard, msg discord.GatewayPayload, _ *Trace) error {
+func gatewayOpHello(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) error {
 	var hello discord.Hello
 
 	err := json.Unmarshal(msg.Data, &hello)
@@ -103,7 +103,7 @@ func gatewayOpHello(_ context.Context, shard *Shard, msg discord.GatewayPayload,
 	return nil
 }
 
-func gatewayOpHeartbeatAck(_ context.Context, shard *Shard, _ discord.GatewayPayload, _ *Trace) error {
+func gatewayOpHeartbeatAck(_ context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
 	now := time.Now()
 	shard.lastHeartbeatAck.Store(&now)
 
