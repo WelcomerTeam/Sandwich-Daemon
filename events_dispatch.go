@@ -62,7 +62,7 @@ func OnReady(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, tra
 	shard.sessionID.Store(&readyPayload.SessionID)
 	shard.resumeGatewayURL.Store(&readyGatewayURL.ReadyGatewayURL)
 
-	shard.manager.user.Store(&readyPayload.User)
+	shard.manager.SetUser(&readyPayload.User)
 
 	for _, guild := range readyPayload.Guilds {
 		shard.lazyGuilds.Store(guild.ID, true)

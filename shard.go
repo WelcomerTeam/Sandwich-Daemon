@@ -78,6 +78,8 @@ type Shard struct {
 	status *atomic.Pointer[ShardStatus]
 
 	gatewayPayloadPool *sync.Pool
+
+	metadata *atomic.Pointer[ProducedMetadata]
 }
 
 func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
@@ -127,6 +129,8 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 				return &discord.GatewayPayload{}
 			},
 		},
+
+		metadata: &atomic.Pointer[ProducedMetadata]{},
 	}
 
 	shard.retriesRemaining.Store(ShardConnectRetries)
@@ -135,6 +139,21 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 	shard.initializedAt.Store(&now)
 
 	return shard
+}
+
+func (shard *Shard) SetMetadata(configuration *ManagerConfiguration) {
+	shard.logger.Debug("Setting metadata")
+
+	shard.metadata.Store(&ProducedMetadata{
+		Identifier:    configuration.ProducerIdentifier,
+		Application:   configuration.ApplicationIdentifier,
+		ApplicationID: shard.manager.user.Load().ID,
+		Shard: [3]int32{
+			0,
+			shard.shardID,
+			shard.manager.shardCount.Load(),
+		},
+	})
 }
 
 func (shard *Shard) SetStatus(status ShardStatus) {
