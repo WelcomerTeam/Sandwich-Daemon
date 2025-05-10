@@ -140,25 +140,31 @@ func (sandwich *Sandwich) startManagers(ctx context.Context) {
 	managers := sandwich.config.Load().Managers
 
 	for _, managerConfig := range managers {
+		manager := NewManager(sandwich, managerConfig)
+		sandwich.managers.Store(managerConfig.ApplicationIdentifier, manager)
+
 		if err := sandwich.validateManagerConfig(managerConfig); err != nil {
 			sandwich.logger.Error("Failed to validate manager config", "error", err)
 
-			// TODO: set manager status to failed
+			manager.SetStatus(ManagerStatusFailed)
+
 			continue
 		}
-
-		manager := NewManager(sandwich, managerConfig)
-		sandwich.managers.Store(managerConfig.ApplicationIdentifier, manager)
 
 		if err := manager.Initialize(ctx); err != nil {
 			sandwich.logger.Error("Failed to initialize manager", "error", err)
 
-			// TODO: set manager status to failed
+			manager.SetStatus(ManagerStatusFailed)
+
 			continue
 		}
 
 		if manager.configuration.Load().AutoStart {
-			go manager.Start(ctx)
+			go func(manager *Manager) {
+				if err := manager.Start(ctx); err != nil {
+					manager.SetStatus(ManagerStatusFailed)
+				}
+			}(manager)
 		}
 	}
 }
