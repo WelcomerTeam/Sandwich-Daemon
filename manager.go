@@ -86,6 +86,25 @@ func (manager *Manager) SetStatus(status ManagerStatus) {
 	manager.logger.Info("Manager status updated", "status", status.String())
 }
 
+func (manager *Manager) SetUser(user *discord.User) {
+	existingUser := manager.user.Load()
+	manager.user.Store(user)
+
+	if existingUser != nil && existingUser.ID == user.ID {
+		return
+	}
+
+	manager.logger.Debug("Manager user updated", "user", user.Username)
+
+	configuration := manager.configuration.Load()
+
+	manager.shards.Range(func(_ int32, shard *Shard) bool {
+		shard.SetMetadata(configuration)
+
+		return true
+	})
+}
+
 // Initialize initializes the manager. This includes checking the gateway
 func (manager *Manager) Initialize(ctx context.Context) error {
 	manager.logger.Debug("Initializing manager")
@@ -260,6 +279,7 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 	// Create new shards
 	for _, shardID := range shardIDs {
 		shard := NewShard(manager.sandwich, manager, shardID)
+
 		manager.shards.Store(shardID, shard)
 	}
 
