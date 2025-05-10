@@ -107,6 +107,13 @@ func gatewayOpHeartbeatAck(_ context.Context, shard *Shard, _ *discord.GatewayPa
 	now := time.Now()
 	shard.lastHeartbeatAck.Store(&now)
 
+	if lastHeartbeatSent := shard.lastHeartbeatSent.Load(); lastHeartbeatSent != nil {
+		UpdateGatewayLatency(
+			shard.manager.identifier,
+			float64(now.Sub(*lastHeartbeatSent).Milliseconds()),
+		)
+	}
+
 	return nil
 }
 
