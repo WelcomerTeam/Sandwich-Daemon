@@ -655,9 +655,7 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 	if exists {
 		beforeGuild.Stickers = guildStickersUpdatePayload.Stickers
 
-		// TODO add stickers to state
-
-		shard.sandwich.stateProvider.SetGuild(ctx, beforeGuild.ID, *beforeGuild)
+		shard.sandwich.stateProvider.SetGuildStickers(ctx, beforeGuild.ID, guildStickersUpdatePayload.Stickers)
 	} else {
 		shard.logger.Warn("Received "+discord.DiscordEventGuildStickersUpdate+" event, however guild is not present in state", "guild_id", guildStickersUpdatePayload.GuildID)
 	}

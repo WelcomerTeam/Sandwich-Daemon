@@ -9,7 +9,7 @@ type Int32 struct {
 
 // NewInt32 creates a new Int32 with the given initial value
 func NewInt32(initial int32) *Int32 {
-	i := &Int32{}
+	i := &Int32{atomic.Int32{}}
 	i.Store(initial)
 	return i
 }

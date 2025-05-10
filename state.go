@@ -42,6 +42,14 @@ type StateProvider interface {
 	SetGuildEmoji(ctx context.Context, guildID discord.Snowflake, emoji discord.Emoji)
 	RemoveGuildEmoji(ctx context.Context, guildID, emojiID discord.Snowflake)
 
+	// Stickers
+	GetGuildStickers(ctx context.Context, guildID discord.Snowflake) ([]*discord.Sticker, bool)
+	SetGuildStickers(ctx context.Context, guildID discord.Snowflake, stickers []discord.Sticker)
+
+	GetGuildSticker(ctx context.Context, guildID, stickerID discord.Snowflake) (*discord.Sticker, bool)
+	SetGuildSticker(ctx context.Context, guildID discord.Snowflake, sticker discord.Sticker)
+	RemoveGuildSticker(ctx context.Context, guildID, stickerID discord.Snowflake)
+
 	// Voice States
 	GetVoiceStates(ctx context.Context, guildID discord.Snowflake) ([]*discord.VoiceState, bool)
 
