@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
@@ -13,11 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/WelcomerTeam/Discord/discord"
 	sandwich "github.com/WelcomerTeam/Sandwich-Daemon"
-	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
-
-	_ "net/http/pprof"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Replace this with whatever PUBSUB/implementation you want to use.
@@ -33,7 +32,7 @@ func NewNullProducerProvider() *NullProducerProvider {
 	return &NullProducerProvider{}
 }
 
-func (p *NullProducerProvider) GetProducer(ctx context.Context, managerIdentifier, clientName string) (sandwich.Producer, error) {
+func (p *NullProducerProvider) GetProducer(_ context.Context, managerIdentifier, clientName string) (sandwich.Producer, error) {
 	producer := &NullProducer{
 		counter: &atomic.Int64{},
 	}
@@ -49,7 +48,7 @@ func (p *NullProducerProvider) GetProducer(ctx context.Context, managerIdentifie
 	return producer, nil
 }
 
-func (p *NullProducer) Publish(ctx context.Context, shard *sandwich.Shard, payload *sandwich.ProducedPayload) error {
+func (p *NullProducer) Publish(_ context.Context, shard *sandwich.Shard, payload *sandwich.ProducedPayload) error {
 	traceStr, _ := json.Marshal(payload.Trace)
 
 	p.counter.Add(1)
@@ -68,70 +67,6 @@ func main() {
 	}()
 
 	stateProvider := sandwich.NewStateProviderMemoryOptimized()
-
-	go func() {
-		for {
-			time.Sleep(time.Second * 10)
-
-			guildChannelBuckets := 0
-			guildChannelsCount := 0
-			stateProvider.GuildChannels.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, sandwich.StateChannel]) (stop bool) {
-				guildChannelBuckets++
-				guildChannelsCount += value.Count()
-				return false
-			})
-
-			guildEmojisBuckets := 0
-			guildEmojisCount := 0
-			stateProvider.GuildEmojis.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, sandwich.StateEmoji]) (stop bool) {
-				guildEmojisBuckets++
-				guildEmojisCount += value.Count()
-				return false
-			})
-
-			guildMembersBuckets := 0
-			guildMembersCount := 0
-			stateProvider.GuildMembers.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, sandwich.StateGuildMember]) (stop bool) {
-				guildMembersBuckets++
-				guildMembersCount += value.Count()
-				return false
-			})
-
-			guildsCount := stateProvider.Guilds.Count()
-
-			userMutualsBuckets := 0
-			userMutualsCount := 0
-			stateProvider.UserMutuals.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, bool]) (stop bool) {
-				userMutualsBuckets++
-				userMutualsCount += value.Count()
-				return false
-			})
-
-			usersCount := 0
-			stateProvider.Users.Range(func(key discord.Snowflake, value sandwich.StateUser) (stop bool) {
-				usersCount++
-				return false
-			})
-
-			voiceStatesBuckets := 0
-			voiceStatesCount := 0
-			stateProvider.VoiceStates.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, sandwich.StateVoiceState]) (stop bool) {
-				voiceStatesBuckets++
-				voiceStatesCount += value.Count()
-				return false
-			})
-
-			slog.Info("================")
-			slog.Info("Guild channels", "buckets", guildChannelBuckets, "count", guildChannelsCount)
-			slog.Info("Guilds", "count", guildsCount)
-			slog.Info("Guild emojis", "buckets", guildEmojisBuckets, "count", guildEmojisCount)
-			slog.Info("Guild members", "buckets", guildMembersBuckets, "count", guildMembersCount)
-			slog.Info("User mutuals", "buckets", userMutualsBuckets, "count", userMutualsCount)
-			slog.Info("Users", "count", usersCount)
-			slog.Info("Voice states", "buckets", voiceStatesBuckets, "count", voiceStatesCount)
-			slog.Info("================")
-		}
-	}()
 
 	sandwich := sandwich.NewSandwich(
 		// Replace this with whatever logger you want to use. It must be slog compatible.
@@ -178,9 +113,20 @@ func main() {
 		if err := os.WriteFile(filename, stackTrace, 0o600); err != nil {
 			slog.Error("Failed to write stack trace to file", "error", err)
 		}
-	})
+	}).WithPrometheusAnalytics(
+		&http.Server{
+			Addr:              ":10000",
+			WriteTimeout:      time.Second * 10,
+			ReadTimeout:       time.Second * 10,
+			ReadHeaderTimeout: time.Second * 10,
+			IdleTimeout:       time.Second * 10,
+			ErrorLog:          slog.NewLogLogger(slog.With("service", "prometheus").Handler(), slog.LevelError),
+		},
+		prometheus.NewPedanticRegistry(),
+		promhttp.HandlerOpts{},
+	)
 
-	// TODO: GRPC, Prometheus, HTTP server configuration
+	// TODO: GRPC, HTTP server configuration
 
 	ctx, cancel := context.WithCancel(context.Background())
 
