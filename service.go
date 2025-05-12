@@ -13,6 +13,8 @@ import (
 	"github.com/WelcomerTeam/RealRock/limiter"
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var Version = "2.0.0"
@@ -86,6 +88,57 @@ func (sandwich *Sandwich) WithPanicHandler(panicHandler PanicHandler) *Sandwich 
 	return sandwich
 }
 
+func (sandwich *Sandwich) WithPrometheusAnalytics(
+	server *http.Server,
+	registry *prometheus.Registry,
+	opts promhttp.HandlerOpts,
+) *Sandwich {
+	if registry == nil {
+		registry = prometheus.NewPedanticRegistry()
+	}
+
+	registry.MustRegister(
+		EventMetrics.EventsTotal,
+		EventMetrics.GatewayLatency,
+
+		ShardMetrics.ManagerStatus,
+		ShardMetrics.ShardStatus,
+
+		StateMetrics.Channels,
+		StateMetrics.Emojis,
+		StateMetrics.GuildMembers,
+		StateMetrics.GuildRoles,
+		StateMetrics.Guilds,
+		StateMetrics.Stickers,
+		StateMetrics.UnavailableGuilds,
+		StateMetrics.Users,
+		StateMetrics.VoiceStates,
+	)
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(registry, opts))
+
+	server.Handler = mux
+
+	go func() {
+		slog.Info("Starting Prometheus HTTP server", "host", server.Addr)
+
+		var err error
+
+		if server.TLSConfig != nil {
+			err = server.ListenAndServeTLS("", "")
+		} else {
+			err = server.ListenAndServe()
+		}
+
+		if err != nil {
+			panic(fmt.Errorf("failed to start Prometheus HTTP server: %w", err))
+		}
+	}()
+
+	return sandwich
+}
+
 func (sandwich *Sandwich) Start(ctx context.Context) error {
 	sandwich.logger.Info("Starting Sandwich")
 
@@ -98,7 +151,6 @@ func (sandwich *Sandwich) Start(ctx context.Context) error {
 	}
 
 	// TODO: setup GRPC
-	// TODO: setup Prometheus
 	// TODO: setup HTTP server
 
 	sandwich.startManagers(ctx)
@@ -106,7 +158,7 @@ func (sandwich *Sandwich) Start(ctx context.Context) error {
 	return nil
 }
 
-func (sandwich *Sandwich) Stop(ctx context.Context) error {
+func (sandwich *Sandwich) Stop(ctx context.Context) {
 	sandwich.logger.Info("Stopping Sandwich")
 
 	sandwich.managers.Range(func(_ string, manager *Manager) bool {
@@ -114,8 +166,6 @@ func (sandwich *Sandwich) Stop(ctx context.Context) error {
 
 		return true
 	})
-
-	return nil
 }
 
 func (sandwich *Sandwich) getConfig(ctx context.Context) error {
