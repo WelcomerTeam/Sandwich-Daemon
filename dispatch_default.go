@@ -38,6 +38,6 @@ func (p *BuiltinDispatchProvider) Dispatch(ctx context.Context, shard *Shard, ms
 	return DispatchResult{nil, nil}, false, ErrNoDispatchHandler
 }
 
-func registerDispatchHandler(eventType string, handler DispatchHandler) {
+func RegisterDispatchHandler(eventType string, handler DispatchHandler) {
 	dispatchHandlers[eventType] = handler
 }
