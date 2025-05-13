@@ -1,0 +1,244 @@
+syntax = "proto3";
+package sandwich;
+
+option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/protobuf/sandwich";
+
+import "discord.proto";
+import "google/protobuf/empty.proto";
+
+service Sandwich {
+    // Listen delivers information to Managers.
+    rpc Listen(ListenRequest) returns (stream ListenResponse) {}
+
+    // RelayMessage creates a new event and sends it immediately back to Managers.
+    rpc RelayMessage(RelayMessageRequest) returns (BaseResponse) {}
+
+    // ReloadConfiguration reloads the configuration.
+    rpc ReloadConfiguration(google.protobuf.Empty) returns (BaseResponse) {}
+
+    // Manager requests
+
+    // FetchManager returns the Manager Configuration.
+    rpc FetchManager(FetchManagerRequest) returns (FetchManagerResponse) {}
+
+    // StartManager starts a Manager.
+    rpc StartManager(StartManagerRequest) returns (BaseResponse) {}
+
+    // StopManager stops a Manager.
+    rpc StopManager(StopManagerRequest) returns (BaseResponse) {}
+
+
+    // CreateManager creates a new Manager.
+    rpc CreateManager(CreateManagerRequest) returns (BaseResponse) {}
+
+    // DeleteManager deletes a Manager.
+    rpc DeleteManager(DeleteManagerRequest) returns (BaseResponse) {}
+
+
+    // RequestGuildChunk requests a guild chunk.
+    rpc RequestGuildChunk(RequestGuildChunkRequest) returns (BaseResponse) {}
+
+    // SendWebsocketMessage sends a websocket message to discord from a specific shard.
+    rpc SendWebsocketMessage(SendWebsocketMessageRequest) returns (BaseResponse) {}
+
+    // State requests
+
+    // WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
+    rpc WhereIsGuild(WhereIsGuildRequest) returns (WhereIsGuildResponse) {}
+
+    rpc FetchGuild(FetchGuildRequest) returns (FetchGuildResponse) {}
+    rpc FetchGuildMember(FetchGuildMemberRequest) returns (FetchGuildMemberResponse) {}
+    rpc FetchGuildChannel(FetchGuildChannelRequest) returns (FetchGuildChannelResponse) {}
+    rpc FetchGuildRole(FetchGuildRoleRequest) returns (FetchGuildRoleResponse) {}
+    rpc FetchGuildEmoji(FetchGuildEmojiRequest) returns (FetchGuildEmojiResponse) {}
+    rpc FetchGuildSticker(FetchGuildStickerRequest) returns (FetchGuildStickerResponse) {}
+    rpc FetchGuildVoiceState(FetchGuildVoiceStateRequest) returns (FetchGuildVoiceStateResponse) {}
+    rpc FetchUser(FetchUserRequest) returns (FetchUserResponse) {}
+    rpc FetchUserMutualGuilds(FetchUserMutualGuildsRequest) returns (FetchUserMutualGuildsResponse) {}
+    rpc FetchVoiceState(FetchVoiceStateRequest) returns (FetchVoiceStateResponse) {}
+}
+
+message BaseResponse {
+    string version = 1;
+    bool ok = 2;
+    string error = 3;
+}
+
+message ListenRequest {
+    string identifier = 1;
+}
+
+message ListenResponse {
+    int64 timestamp = 1;
+    bytes data = 2;
+}
+
+// Manager requests
+
+message FetchManagerRequest {
+    string identifier = 1;
+}
+
+message FetchManagerResponse {
+    map<string, ManagerConfiguration> configurations = 1;
+}
+
+message ManagerConfiguration {
+    string application_identifier = 1;
+    string producer_identifier = 2;
+    string display_name = 3;
+    string bot_token = 4;
+    int32 shard_count = 5;
+    repeated int32 shard_ids = 6;
+    bool auto_sharded = 7;
+    int32 status = 8;
+    int64 started_at = 9;
+    int64 user_id = 10;
+    bytes values = 11;
+    map<int32, Shard> shards = 12;
+}
+
+message Shard {
+    int32 id = 1;
+    int32 status = 2;
+    int32 started_at = 3;
+    int32 unavailable_guilds = 4;
+    int32 lazy_guilds = 5;
+    int32 guilds = 6;
+    int32 sequence = 7;
+    int64 last_heartbeat_sent = 8;
+    int64 last_heartbeat_ack = 9;
+    float gateway_latency = 10;
+}
+
+message RequestGuildChunkRequest {
+    int64 guild_id = 1;
+    bool always_chunk = 2;
+}
+
+message SendWebsocketMessageRequest {
+    string identifier = 1;
+    int32 shard = 2;
+    int32 gateway_op_code = 3;
+    bytes data = 4;
+}
+
+message RelayMessageRequest {
+    string identifier = 1;
+    string type = 2;
+    bytes data = 3;
+}
+
+// State requests
+
+message WhereIsGuildRequest {
+    int64 guild_id = 1;
+}
+
+message WhereIsGuildResponse {
+    BaseResponse base_response = 1;
+    map<int64, WhereIsGuildLocation> locations = 2;
+}
+
+message WhereIsGuildLocation {
+    string identifier = 1;
+    int32 shard_id = 2;
+    GuildMember guild_member = 3;
+}
+
+message FetchGuildRequest {
+    int64 guild_id = 1;
+}
+
+message FetchGuildResponse {
+    BaseResponse base_response = 1;
+    map<int64, Guild> guilds = 2;
+}
+
+message FetchGuildMemberRequest {
+    int64 guild_id = 1;
+    repeated int64 user_ids = 2;
+}
+
+message FetchGuildMemberResponse {
+    BaseResponse base_response = 1;
+    map<int64, GuildMember> guild_members = 2;
+}
+
+message FetchGuildChannelRequest {
+    int64 guild_id = 1;
+    repeated int64 channel_ids = 2;
+}
+
+message FetchGuildChannelResponse {
+    BaseResponse base_response = 1;
+    map<int64, Channel> channels = 2;
+}
+
+message FetchGuildRoleRequest {
+    int64 guild_id = 1;
+    repeated int64 role_ids = 2;
+}
+
+message FetchGuildRoleResponse {
+    BaseResponse base_response = 1;
+    map<int64, Role> roles = 2;
+}
+
+message FetchGuildEmojiRequest {
+    int64 guild_id = 1;
+    repeated int64 emoji_ids = 2;
+}
+
+message FetchGuildEmojiResponse {
+    BaseResponse base_response = 1;
+    map<int64, Emoji> emojis = 2;
+}
+
+message FetchGuildStickerRequest {
+    int64 guild_id = 1;
+    repeated int64 sticker_ids = 2;
+}
+
+message FetchGuildStickerResponse {
+    BaseResponse base_response = 1;
+    map<int64, Sticker> stickers = 2;
+}
+
+message FetchGuildVoiceStateRequest {
+    int64 guild_id = 1;
+    repeated int64 user_ids = 2;
+}
+
+message FetchGuildVoiceStateResponse {
+    BaseResponse base_response = 1;
+    map<int64, VoiceState> voice_states = 2;
+}
+
+message FetchUserRequest {
+    repeated int64 user_ids = 1;
+}
+
+message FetchUserResponse {
+    BaseResponse base_response = 1;
+    map<int64, User> users = 2;
+}
+
+message FetchUserMutualGuildsRequest {
+    int64 user_id = 1;
+}
+
+message FetchUserMutualGuildsResponse {
+    BaseResponse base_response = 1;
+    map<int64, Guild> guilds = 2;
+}
+
+message FetchVoiceStateRequest {
+    int64 guild_id = 1;
+    repeated int64 user_ids = 2;
+}
+
+message FetchVoiceStateResponse {
+    BaseResponse base_response = 1;
+    map<int64, VoiceState> voice_states = 2;
+}

@@ -178,6 +178,14 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 
 	sandwich.config.Store(config)
 
+	// Update manager configurations
+	for _, managerConfig := range config.Managers {
+		if manager, ok := sandwich.managers.Load(managerConfig.ApplicationIdentifier); ok {
+			manager.configuration.Store(managerConfig)
+			slog.Info("Updated manager configuration", "application_identifier", managerConfig.ApplicationIdentifier)
+		}
+	}
+
 	// TODO: broadcast config change
 
 	return nil
