@@ -23,13 +23,13 @@ func NewIdentifyViaBuckets() *IdentifyViaBuckets {
 
 func (i *IdentifyViaBuckets) Identify(_ context.Context, shard *Shard) error {
 	method := sha256.New()
-	method.Write([]byte(shard.manager.configuration.Load().BotToken))
+	method.Write([]byte(shard.application.configuration.Load().BotToken))
 	tokenHash := hex.EncodeToString(method.Sum(nil))
 
 	bucketName := fmt.Sprintf(
 		"identify:%s:%d",
 		tokenHash,
-		shard.shardID%shard.manager.gateway.Load().SessionStartLimit.MaxConcurrency,
+		shard.shardID%shard.application.gateway.Load().SessionStartLimit.MaxConcurrency,
 	)
 
 	// Create the bucket if it doesn't exist with a limit of 1 request per IdentifyRateLimit.

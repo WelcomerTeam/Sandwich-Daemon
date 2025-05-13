@@ -1,19 +1,19 @@
 package sandwich
 
-type ManagerStatus int
+type ApplicationStatus int
 
 const (
-	ManagerStatusIdle ManagerStatus = iota
-	ManagerStatusFailed
-	ManagerStatusStarting
-	ManagerStatusConnecting
-	ManagerStatusConnected
-	ManagerStatusReady
-	ManagerStatusStopping
-	ManagerStatusStopped
+	ApplicationStatusIdle ApplicationStatus = iota
+	ApplicationStatusFailed
+	ApplicationStatusStarting
+	ApplicationStatusConnecting
+	ApplicationStatusConnected
+	ApplicationStatusReady
+	ApplicationStatusStopping
+	ApplicationStatusStopped
 )
 
-func (status ManagerStatus) String() string {
+func (status ApplicationStatus) String() string {
 	return []string{
 		"Idle",
 		"Failed",

@@ -35,7 +35,7 @@ type Sandwich struct {
 	gatewayLimiter  *limiter.DurationLimiter
 	identifyBuckets *bucketstore.BucketStore
 
-	managers *syncmap.Map[string, *Manager]
+	applications *syncmap.Map[string, *Application]
 
 	guildChunks *csmap.CsMap[discord.Snowflake, *GuildChunk]
 
@@ -74,7 +74,7 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 		gatewayLimiter:  limiter.NewDurationLimiter(1, time.Second),
 		identifyBuckets: bucketstore.NewBucketStore(),
 
-		managers: &syncmap.Map[string, *Manager]{},
+		applications: &syncmap.Map[string, *Application]{},
 
 		guildChunks: csmap.Create[discord.Snowflake, *GuildChunk](),
 
@@ -101,7 +101,7 @@ func (sandwich *Sandwich) WithPrometheusAnalytics(
 		EventMetrics.EventsTotal,
 		EventMetrics.GatewayLatency,
 
-		ShardMetrics.ManagerStatus,
+		ShardMetrics.ApplicationStatus,
 		ShardMetrics.ShardStatus,
 
 		StateMetrics.Channels,
@@ -153,7 +153,7 @@ func (sandwich *Sandwich) Start(ctx context.Context) error {
 	// TODO: setup GRPC
 	// TODO: setup HTTP server
 
-	sandwich.startManagers(ctx)
+	sandwich.startApplications(ctx)
 
 	return nil
 }
@@ -161,8 +161,8 @@ func (sandwich *Sandwich) Start(ctx context.Context) error {
 func (sandwich *Sandwich) Stop(ctx context.Context) {
 	sandwich.logger.Info("Stopping Sandwich")
 
-	sandwich.managers.Range(func(_ string, manager *Manager) bool {
-		manager.Stop(ctx)
+	sandwich.applications.Range(func(_ string, application *Application) bool {
+		application.Stop(ctx)
 
 		return true
 	})
@@ -178,11 +178,11 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 
 	sandwich.config.Store(config)
 
-	// Update manager configurations
-	for _, managerConfig := range config.Managers {
-		if manager, ok := sandwich.managers.Load(managerConfig.ApplicationIdentifier); ok {
-			manager.configuration.Store(managerConfig)
-			slog.Info("Updated manager configuration", "application_identifier", managerConfig.ApplicationIdentifier)
+	// Update application configurations
+	for _, applicationConfig := range config.Applications {
+		if application, ok := sandwich.applications.Load(applicationConfig.ApplicationIdentifier); ok {
+			application.configuration.Store(applicationConfig)
+			slog.Info("Updated application configuration", "application_identifier", applicationConfig.ApplicationIdentifier)
 		}
 	}
 
@@ -191,52 +191,52 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 	return nil
 }
 
-// startManagers starts all managers.
-func (sandwich *Sandwich) startManagers(ctx context.Context) {
-	sandwich.logger.Debug("Starting managers")
+// startApplications starts all applications.
+func (sandwich *Sandwich) startApplications(ctx context.Context) {
+	sandwich.logger.Debug("Starting applications")
 
-	managers := sandwich.config.Load().Managers
+	applications := sandwich.config.Load().Applications
 
-	for _, managerConfig := range managers {
-		if err := sandwich.validateManagerConfig(managerConfig); err != nil {
-			sandwich.logger.Error("Failed to validate manager config", "error", err)
-
-			continue
-		}
-
-		manager := NewManager(sandwich, managerConfig)
-		sandwich.managers.Store(managerConfig.ApplicationIdentifier, manager)
-
-		if err := manager.Initialize(ctx); err != nil {
-			sandwich.logger.Error("Failed to initialize manager", "error", err)
-
-			manager.SetStatus(ManagerStatusFailed)
+	for _, applicationConfig := range applications {
+		if err := sandwich.validateApplicationConfig(applicationConfig); err != nil {
+			sandwich.logger.Error("Failed to validate application config", "error", err)
 
 			continue
 		}
 
-		if manager.configuration.Load().AutoStart {
-			go func(manager *Manager) {
-				if err := manager.Start(ctx); err != nil {
-					manager.SetStatus(ManagerStatusFailed)
+		application := NewApplication(sandwich, applicationConfig)
+		sandwich.applications.Store(applicationConfig.ApplicationIdentifier, application)
+
+		if err := application.Initialize(ctx); err != nil {
+			sandwich.logger.Error("Failed to initialize application", "error", err)
+
+			application.SetStatus(ApplicationStatusFailed)
+
+			continue
+		}
+
+		if application.configuration.Load().AutoStart {
+			go func(application *Application) {
+				if err := application.Start(ctx); err != nil {
+					application.SetStatus(ApplicationStatusFailed)
 				}
-			}(manager)
+			}(application)
 		}
 	}
 }
 
-// validateManagerConfig validates a manager configuration.
-func (sandwich *Sandwich) validateManagerConfig(managerConfig *ManagerConfiguration) error {
-	if managerConfig.ApplicationIdentifier == "" {
-		return ErrManagerMissingIdentifier
+// validateApplicationConfig validates a application configuration.
+func (sandwich *Sandwich) validateApplicationConfig(applicationConfig *ApplicationConfiguration) error {
+	if applicationConfig.ApplicationIdentifier == "" {
+		return ErrApplicationMissingIdentifier
 	}
 
-	if managerConfig.BotToken == "" {
-		return ErrManagerMissingBotToken
+	if applicationConfig.BotToken == "" {
+		return ErrApplicationMissingBotToken
 	}
 
-	if _, ok := sandwich.managers.Load(managerConfig.ApplicationIdentifier); ok {
-		return ErrManagerIdentifierExists
+	if _, ok := sandwich.applications.Load(applicationConfig.ApplicationIdentifier); ok {
+		return ErrApplicationIdentifierExists
 	}
 
 	return nil

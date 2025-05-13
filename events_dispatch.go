@@ -14,11 +14,11 @@ const (
 )
 
 func onDispatchEvent(shard *Shard, eventType string) {
-	RecordEvent(shard.manager.identifier, eventType)
+	RecordEvent(shard.application.identifier, eventType)
 }
 
 func onGuildDispatchEvent(shard *Shard, eventType string, guildID discord.Snowflake) {
-	RecordEventWithGuildID(shard.manager.identifier, eventType, guildID)
+	RecordEventWithGuildID(shard.application.identifier, eventType, guildID)
 }
 
 func safeonGuildDispatchEvent(shard *Shard, eventType string, guildID *discord.Snowflake) {
@@ -62,7 +62,7 @@ func OnReady(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, tra
 	shard.sessionID.Store(&readyPayload.SessionID)
 	shard.resumeGatewayURL.Store(&readyGatewayURL.ReadyGatewayURL)
 
-	shard.manager.SetUser(&readyPayload.User)
+	shard.application.SetUser(&readyPayload.User)
 
 	for _, guild := range readyPayload.Guilds {
 		shard.lazyGuilds.Store(guild.ID, true)
@@ -121,7 +121,7 @@ ready:
 
 	// ctx.SetStatus(sandwich_structs.ShardStatusReady)
 
-	configuration := shard.manager.configuration.Load()
+	configuration := shard.application.configuration.Load()
 
 	if configuration.ChunkGuildsOnStart {
 		shard.chunkAllGuilds(ctx)
@@ -570,11 +570,11 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 	if guildDeletePayload.Unavailable {
 		shard.unavailableGuilds.Store(guildDeletePayload.ID, true)
 	} else {
-		// We do not remove the actual guild as other managers may be using it.
-		// Dereferencing it locally ensures that if other managers are using it,
+		// We do not remove the actual guild as other applications may be using it.
+		// Dereferencing it locally ensures that if other applications are using it,
 		// it will stay.
 		shard.guilds.Delete(guildDeletePayload.ID)
-		shard.manager.guilds.Delete(guildDeletePayload.ID)
+		shard.application.guilds.Delete(guildDeletePayload.ID)
 	}
 
 	return DispatchResult{

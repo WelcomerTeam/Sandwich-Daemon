@@ -3,11 +3,11 @@
         "node_count": 1,
         "node_id": 1
     },
-    "managers": [
+    "applications": [
         {
-            "application_identifier": "example-manager",
+            "application_identifier": "example-application",
             "producer_identifier": "example-producer",
-            "display_name": "Example Manager",
+            "display_name": "Example Application",
             "client_name": "example-client",
             "client_name_uses_random_suffix": false,
             "bot_token": "example-bot-token",

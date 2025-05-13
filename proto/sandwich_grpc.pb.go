@@ -23,7 +23,7 @@ const (
 	Sandwich_Listen_FullMethodName                    = "/sandwich.Sandwich/Listen"
 	Sandwich_RelayMessage_FullMethodName              = "/sandwich.Sandwich/RelayMessage"
 	Sandwich_ReloadConfiguration_FullMethodName       = "/sandwich.Sandwich/ReloadConfiguration"
-	Sandwich_FetchManagerConfiguration_FullMethodName = "/sandwich.Sandwich/FetchManagerConfiguration"
+	Sandwich_FetchApplicationConfiguration_FullMethodName = "/sandwich.Sandwich/FetchApplicationConfiguration"
 	Sandwich_RequestGuildChunk_FullMethodName         = "/sandwich.Sandwich/RequestGuildChunk"
 	Sandwich_SendWebsocketMessage_FullMethodName      = "/sandwich.Sandwich/SendWebsocketMessage"
 	Sandwich_WhereIsGuild_FullMethodName              = "/sandwich.Sandwich/WhereIsGuild"
@@ -43,14 +43,14 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SandwichClient interface {
-	// Listen delivers information to Managers.
+	// Listen delivers information to Applications.
 	Listen(ctx context.Context, in *ListenRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListenResponse], error)
-	// RelayMessage creates a new event and sends it immediately back to Managers.
+	// RelayMessage creates a new event and sends it immediately back to Applications.
 	RelayMessage(ctx context.Context, in *RelayMessageRequest, opts ...grpc.CallOption) (*BaseResponse, error)
 	// ReloadConfiguration reloads the configuration.
 	ReloadConfiguration(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*BaseResponse, error)
-	// FetchManagerConfiguration returns the Manager Configuration.
-	FetchManagerConfiguration(ctx context.Context, in *FetchManagerConfigurationRequest, opts ...grpc.CallOption) (*FetchManagerConfigurationResponse, error)
+	// FetchApplicationConfiguration returns the Application Configuration.
+	FetchApplicationConfiguration(ctx context.Context, in *FetchApplicationConfigurationRequest, opts ...grpc.CallOption) (*FetchApplicationConfigurationResponse, error)
 	// RequestGuildChunk requests a guild chunk.
 	RequestGuildChunk(ctx context.Context, in *RequestGuildChunkRequest, opts ...grpc.CallOption) (*BaseResponse, error)
 	// SendWebsocketMessage sends a websocket message to discord from a specific shard.
@@ -116,10 +116,10 @@ func (c *sandwichClient) ReloadConfiguration(ctx context.Context, in *empty.Empt
 	return out, nil
 }
 
-func (c *sandwichClient) FetchManagerConfiguration(ctx context.Context, in *FetchManagerConfigurationRequest, opts ...grpc.CallOption) (*FetchManagerConfigurationResponse, error) {
+func (c *sandwichClient) FetchApplicationConfiguration(ctx context.Context, in *FetchApplicationConfigurationRequest, opts ...grpc.CallOption) (*FetchApplicationConfigurationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(FetchManagerConfigurationResponse)
-	err := c.cc.Invoke(ctx, Sandwich_FetchManagerConfiguration_FullMethodName, in, out, cOpts...)
+	out := new(FetchApplicationConfigurationResponse)
+	err := c.cc.Invoke(ctx, Sandwich_FetchApplicationConfiguration_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -260,14 +260,14 @@ func (c *sandwichClient) FetchVoiceState(ctx context.Context, in *FetchVoiceStat
 // All implementations must embed UnimplementedSandwichServer
 // for forward compatibility.
 type SandwichServer interface {
-	// Listen delivers information to Managers.
+	// Listen delivers information to Applications.
 	Listen(*ListenRequest, grpc.ServerStreamingServer[ListenResponse]) error
-	// RelayMessage creates a new event and sends it immediately back to Managers.
+	// RelayMessage creates a new event and sends it immediately back to Applications.
 	RelayMessage(context.Context, *RelayMessageRequest) (*BaseResponse, error)
 	// ReloadConfiguration reloads the configuration.
 	ReloadConfiguration(context.Context, *empty.Empty) (*BaseResponse, error)
-	// FetchManagerConfiguration returns the Manager Configuration.
-	FetchManagerConfiguration(context.Context, *FetchManagerConfigurationRequest) (*FetchManagerConfigurationResponse, error)
+	// FetchApplicationConfiguration returns the Application Configuration.
+	FetchApplicationConfiguration(context.Context, *FetchApplicationConfigurationRequest) (*FetchApplicationConfigurationResponse, error)
 	// RequestGuildChunk requests a guild chunk.
 	RequestGuildChunk(context.Context, *RequestGuildChunkRequest) (*BaseResponse, error)
 	// SendWebsocketMessage sends a websocket message to discord from a specific shard.
@@ -303,8 +303,8 @@ func (UnimplementedSandwichServer) RelayMessage(context.Context, *RelayMessageRe
 func (UnimplementedSandwichServer) ReloadConfiguration(context.Context, *empty.Empty) (*BaseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReloadConfiguration not implemented")
 }
-func (UnimplementedSandwichServer) FetchManagerConfiguration(context.Context, *FetchManagerConfigurationRequest) (*FetchManagerConfigurationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FetchManagerConfiguration not implemented")
+func (UnimplementedSandwichServer) FetchApplicationConfiguration(context.Context, *FetchApplicationConfigurationRequest) (*FetchApplicationConfigurationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FetchApplicationConfiguration not implemented")
 }
 func (UnimplementedSandwichServer) RequestGuildChunk(context.Context, *RequestGuildChunkRequest) (*BaseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestGuildChunk not implemented")
@@ -413,20 +413,20 @@ func _Sandwich_ReloadConfiguration_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Sandwich_FetchManagerConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FetchManagerConfigurationRequest)
+func _Sandwich_FetchApplicationConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FetchApplicationConfigurationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SandwichServer).FetchManagerConfiguration(ctx, in)
+		return srv.(SandwichServer).FetchApplicationConfiguration(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Sandwich_FetchManagerConfiguration_FullMethodName,
+		FullMethod: Sandwich_FetchApplicationConfiguration_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SandwichServer).FetchManagerConfiguration(ctx, req.(*FetchManagerConfigurationRequest))
+		return srv.(SandwichServer).FetchApplicationConfiguration(ctx, req.(*FetchApplicationConfigurationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -681,8 +681,8 @@ var Sandwich_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Sandwich_ReloadConfiguration_Handler,
 		},
 		{
-			MethodName: "FetchManagerConfiguration",
-			Handler:    _Sandwich_FetchManagerConfiguration_Handler,
+			MethodName: "FetchApplicationConfiguration",
+			Handler:    _Sandwich_FetchApplicationConfiguration_Handler,
 		},
 		{
 			MethodName: "RequestGuildChunk",

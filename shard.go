@@ -41,8 +41,8 @@ var gatewayURL = url.URL{
 type Shard struct {
 	logger *slog.Logger
 
-	sandwich *Sandwich
-	manager  *Manager
+	sandwich    *Sandwich
+	application *Application
 
 	shardID int32
 
@@ -82,12 +82,12 @@ type Shard struct {
 	metadata *atomic.Pointer[ProducedMetadata]
 }
 
-func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
+func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shard {
 	shard := &Shard{
-		logger: manager.logger.With("shard_id", shardID),
+		logger: application.logger.With("shard_id", shardID),
 
-		sandwich: sandwich,
-		manager:  manager,
+		sandwich:    sandwich,
+		application: application,
 
 		shardID: shardID,
 
@@ -141,23 +141,23 @@ func NewShard(sandwich *Sandwich, manager *Manager, shardID int32) *Shard {
 	return shard
 }
 
-func (shard *Shard) SetMetadata(configuration *ManagerConfiguration) {
+func (shard *Shard) SetMetadata(configuration *ApplicationConfiguration) {
 	shard.logger.Debug("Setting metadata")
 
 	shard.metadata.Store(&ProducedMetadata{
 		Identifier:    configuration.ProducerIdentifier,
 		Application:   configuration.ApplicationIdentifier,
-		ApplicationID: shard.manager.user.Load().ID,
+		ApplicationID: shard.application.user.Load().ID,
 		Shard: [3]int32{
 			0,
 			shard.shardID,
-			shard.manager.shardCount.Load(),
+			shard.application.shardCount.Load(),
 		},
 	})
 }
 
 func (shard *Shard) SetStatus(status ShardStatus) {
-	UpdateShardStatus(shard.manager.identifier, shard.shardID, status)
+	UpdateShardStatus(shard.application.identifier, shard.shardID, status)
 	shard.status.Store(&status)
 	shard.logger.Info("Shard status updated", "status", status.String())
 }
@@ -337,7 +337,7 @@ func (shard *Shard) Stop(ctx context.Context, code websocket.StatusCode) {
 
 	shard.stop <- struct{}{}
 
-	shard.manager.producer.Close()
+	shard.application.producer.Close()
 	shard.closeWS(ctx, code)
 
 	shard.SetStatus(ShardStatusStopped)
@@ -548,12 +548,12 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 }
 
 func (shard *Shard) identify(ctx context.Context) error {
-	configuration := shard.manager.configuration.Load()
-	shardCount := shard.manager.shardCount.Load()
+	configuration := shard.application.configuration.Load()
+	shardCount := shard.application.shardCount.Load()
 
 	shard.logger.Debug("Shard is identifying", "shard_id", shard.shardID, "shard_count", shardCount)
 
-	shard.manager.gatewaySessionStartLimitRemaining.Add(-1)
+	shard.application.gatewaySessionStartLimitRemaining.Add(-1)
 
 	err := shard.waitForIdentify(ctx)
 	if err != nil {
@@ -589,7 +589,7 @@ func (shard *Shard) waitForIdentify(ctx context.Context) error {
 func (shard *Shard) resume(ctx context.Context) error {
 	shard.logger.Debug("Shard is resuming")
 
-	configuration := shard.manager.configuration.Load()
+	configuration := shard.application.configuration.Load()
 
 	return shard.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
 		Token:     configuration.BotToken,

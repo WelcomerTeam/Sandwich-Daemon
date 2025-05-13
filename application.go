@@ -16,13 +16,13 @@ import (
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
-type Manager struct {
+type Application struct {
 	logger *slog.Logger
 
 	identifier string
 
 	sandwich      *Sandwich
-	configuration *atomic.Pointer[ManagerConfiguration]
+	configuration *atomic.Pointer[ApplicationConfiguration]
 
 	gateway                           *atomic.Pointer[discord.GatewayBotResponse]
 	gatewaySessionStartLimitRemaining *atomic.Int32
@@ -41,17 +41,17 @@ type Manager struct {
 
 	startedAt *atomic.Pointer[time.Time]
 
-	status *atomic.Pointer[ManagerStatus]
+	status *atomic.Pointer[ApplicationStatus]
 }
 
-func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
-	manager := &Manager{
+func NewApplication(s *Sandwich, config *ApplicationConfiguration) *Application {
+	application := &Application{
 		logger: s.logger.With("application_identifier", config.ApplicationIdentifier),
 
 		identifier: config.ApplicationIdentifier,
 
 		sandwich:      s,
-		configuration: &atomic.Pointer[ManagerConfiguration]{},
+		configuration: &atomic.Pointer[ApplicationConfiguration]{},
 
 		gateway:                           &atomic.Pointer[discord.GatewayBotResponse]{},
 		gatewaySessionStartLimitRemaining: &atomic.Int32{},
@@ -70,55 +70,55 @@ func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 
 		startedAt: &atomic.Pointer[time.Time]{},
 
-		status: &atomic.Pointer[ManagerStatus]{},
+		status: &atomic.Pointer[ApplicationStatus]{},
 	}
 
-	manager.configuration.Store(config)
+	application.configuration.Store(config)
 
-	manager.SetStatus(ManagerStatusIdle)
+	application.SetStatus(ApplicationStatusIdle)
 
-	return manager
+	return application
 }
 
-func (manager *Manager) SetStatus(status ManagerStatus) {
-	UpdateManagerStatus(manager.identifier, status)
-	manager.status.Store(&status)
-	manager.logger.Info("Manager status updated", "status", status.String())
+func (application *Application) SetStatus(status ApplicationStatus) {
+	UpdateApplicationStatus(application.identifier, status)
+	application.status.Store(&status)
+	application.logger.Info("Application status updated", "status", status.String())
 }
 
-func (manager *Manager) SetUser(user *discord.User) {
-	existingUser := manager.user.Load()
-	manager.user.Store(user)
+func (application *Application) SetUser(user *discord.User) {
+	existingUser := application.user.Load()
+	application.user.Store(user)
 
 	if existingUser != nil && existingUser.ID == user.ID {
 		return
 	}
 
-	manager.logger.Debug("Manager user updated", "user", user.Username)
+	application.logger.Debug("Application user updated", "user", user.Username)
 
-	configuration := manager.configuration.Load()
+	configuration := application.configuration.Load()
 
-	manager.shards.Range(func(_ int32, shard *Shard) bool {
+	application.shards.Range(func(_ int32, shard *Shard) bool {
 		shard.SetMetadata(configuration)
 
 		return true
 	})
 }
 
-// Initialize initializes the manager. This includes checking the gateway
-func (manager *Manager) Initialize(ctx context.Context) error {
-	manager.logger.Debug("Initializing manager")
+// Initialize initializes the application. This includes checking the gateway
+func (application *Application) Initialize(ctx context.Context) error {
+	application.logger.Debug("Initializing application")
 
-	manager.sandwich.gatewayLimiter.Lock()
+	application.sandwich.gatewayLimiter.Lock()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discord.EndpointGatewayBot, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bot %s", manager.configuration.Load().BotToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bot %s", application.configuration.Load().BotToken))
 
-	resp, err := manager.sandwich.client.Do(req)
+	resp, err := application.sandwich.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to do request: %w", err)
 	}
@@ -130,10 +130,10 @@ func (manager *Manager) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to decode gateway bot response: %w", err)
 	}
 
-	manager.gateway.Store(&gatewayBotResponse)
-	manager.gatewaySessionStartLimitRemaining.Store(gatewayBotResponse.SessionStartLimit.Remaining)
+	application.gateway.Store(&gatewayBotResponse)
+	application.gatewaySessionStartLimitRemaining.Store(gatewayBotResponse.SessionStartLimit.Remaining)
 
-	configuration := manager.configuration.Load()
+	configuration := application.configuration.Load()
 
 	clientName := configuration.ClientName
 
@@ -142,79 +142,79 @@ func (manager *Manager) Initialize(ctx context.Context) error {
 		clientName = fmt.Sprintf("%s-%s", clientName, randomHex(8))
 	}
 
-	producer, err := manager.sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
+	producer, err := application.sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
 	if err != nil {
 		return fmt.Errorf("failed to get producer: %w", err)
 	}
 
-	manager.producer = producer
+	application.producer = producer
 
-	manager.logger.Debug("Manager initialized")
+	application.logger.Debug("Application initialized")
 
 	return nil
 }
 
-func (manager *Manager) Start(ctx context.Context) error {
-	manager.logger.Info("Starting manager")
+func (application *Application) Start(ctx context.Context) error {
+	application.logger.Info("Starting application")
 
-	manager.SetStatus(ManagerStatusStarting)
+	application.SetStatus(ApplicationStatusStarting)
 
-	configuration := manager.configuration.Load()
+	configuration := application.configuration.Load()
 
-	shardIDs, shardCount := manager.getInitialShardCount(
+	shardIDs, shardCount := application.getInitialShardCount(
 		configuration.ShardCount,
 		configuration.ShardIDs,
 		configuration.AutoSharded,
 	)
 
-	manager.logger.Debug("Initializing shards", "shard_count", shardCount, "shard_ids", shardIDs)
+	application.logger.Debug("Initializing shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
-	manager.shardCount.Store(shardCount)
+	application.shardCount.Store(shardCount)
 
-	ready, err := manager.startShards(ctx, shardIDs, shardCount)
+	ready, err := application.startShards(ctx, shardIDs, shardCount)
 	if err != nil {
-		manager.logger.Error("Failed to start shards", "error", err)
+		application.logger.Error("Failed to start shards", "error", err)
 
-		manager.SetStatus(ManagerStatusFailed)
+		application.SetStatus(ApplicationStatusFailed)
 
 		return fmt.Errorf("failed to start: %w", err)
 	}
 
 	<-ready
 
-	manager.SetStatus(ManagerStatusReady)
+	application.SetStatus(ApplicationStatusReady)
 
 	return nil
 }
 
-func (manager *Manager) Stop(ctx context.Context) error {
-	manager.SetStatus(ManagerStatusStopping)
+func (application *Application) Stop(ctx context.Context) error {
+	application.SetStatus(ApplicationStatusStopping)
 
-	manager.shards.Range(func(_ int32, shard *Shard) bool {
+	application.shards.Range(func(_ int32, shard *Shard) bool {
 		shard.Stop(ctx, websocket.StatusNormalClosure)
 
 		return true
 	})
 
-	if manager.producer != nil {
-		manager.producer.Close()
+	if application.producer != nil {
+		application.producer.Close()
 	}
 
-	manager.SetStatus(ManagerStatusStopped)
+	application.SetStatus(ApplicationStatusStopped)
 
 	return nil
 }
 
-// getInitialShardCount returns the shard IDs and shard count for the manager.
-func (manager *Manager) getInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) ([]int32, int32) {
-	config := manager.sandwich.config.Load()
+// getInitialShardCount returns the shard IDs and shard count for the application.
+func (application *Application) getInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) ([]int32, int32) {
+	config := application.sandwich.config.Load()
 
 	var shardCount int32
 
 	var shardIDs []int32
 
 	if autoSharded {
-		shardCount = manager.gateway.Load().Shards
+		shardCount = application.gateway.Load().Shards
 
 		if customShardIDs == "" {
 			for i := range shardCount {
@@ -252,25 +252,25 @@ func (manager *Manager) getInitialShardCount(customShardCount int32, customShard
 	return shardIDs, shardCount
 }
 
-func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
-	manager.logger.Info("Starting shards", "shard_count", shardCount, "shard_ids", shardIDs)
+func (application *Application) startShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
+	application.logger.Info("Starting shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
 	ready = make(chan struct{})
 
 	now := time.Now()
-	manager.startedAt.Store(&now)
+	application.startedAt.Store(&now)
 
-	manager.shardCount.Store(shardCount)
+	application.shardCount.Store(shardCount)
 
-	// If we have no shards, we can't start the manager
+	// If we have no shards, we can't start the application
 	if len(shardIDs) == 0 {
-		manager.logger.Error("No shards to start")
+		application.logger.Error("No shards to start")
 
-		return ready, ErrManagerMissingShards
+		return ready, ErrApplicationMissingShards
 	}
 
 	// Kill any shards that are already running
-	manager.shards.Range(func(_ int32, shard *Shard) bool {
+	application.shards.Range(func(_ int32, shard *Shard) bool {
 		shard.Stop(ctx, websocket.StatusNormalClosure)
 
 		return true
@@ -278,20 +278,20 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 
 	// Create new shards
 	for _, shardID := range shardIDs {
-		shard := NewShard(manager.sandwich, manager, shardID)
+		shard := NewShard(application.sandwich, application, shardID)
 
-		manager.shards.Store(shardID, shard)
+		application.shards.Store(shardID, shard)
 	}
 
-	manager.SetStatus(ManagerStatusConnecting)
+	application.SetStatus(ApplicationStatusConnecting)
 
-	initialShard, ok := manager.shards.Load(shardIDs[0])
+	initialShard, ok := application.shards.Load(shardIDs[0])
 	if !ok {
 		panic("failed to load initial shard")
 	}
 
 	if err := initialShard.ConnectWithRetry(ctx); err != nil {
-		manager.logger.Error("Failed to connect to initial shard", "error", err)
+		application.logger.Error("Failed to connect to initial shard", "error", err)
 
 		return ready, fmt.Errorf("failed to connect to initial shard: %w", err)
 	}
@@ -299,19 +299,19 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 	go initialShard.Start(ctx)
 
 	if err := initialShard.waitForReady(); err != nil {
-		manager.logger.Error("Failed to wait for initial shard", "error", err)
+		application.logger.Error("Failed to wait for initial shard", "error", err)
 
 		return ready, fmt.Errorf("failed to wait for initial shard: %w", err)
 	}
 
-	manager.logger.Debug("Initial shard connected", "shard_id", shardIDs[0])
+	application.logger.Debug("Initial shard connected", "shard_id", shardIDs[0])
 
-	manager.SetStatus(ManagerStatusConnected)
+	application.SetStatus(ApplicationStatusConnected)
 
 	openWg := sync.WaitGroup{}
 
 	for _, shardID := range shardIDs[1:] {
-		shard, ok := manager.shards.Load(shardID)
+		shard, ok := application.shards.Load(shardID)
 		if !ok {
 			panic("failed to load shard")
 		}
@@ -331,12 +331,12 @@ func (manager *Manager) startShards(ctx context.Context, shardIDs []int32, shard
 
 	openWg.Wait()
 
-	manager.logger.Debug("All shards connected")
+	application.logger.Debug("All shards connected")
 
 	// All shards have now connected, but are not ready yet.
 
 	go func() {
-		manager.shards.Range(func(index int32, shard *Shard) bool {
+		application.shards.Range(func(index int32, shard *Shard) bool {
 			// Skip the initial shard
 			if index == 0 {
 				return true

@@ -41,15 +41,15 @@ func NewIdentifyViaURL(url string, headers map[string]string) *IdentifyViaURL {
 
 func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 	method := sha256.New()
-	method.Write([]byte(shard.manager.configuration.Load().BotToken))
+	method.Write([]byte(shard.application.configuration.Load().BotToken))
 	tokenHash := hex.EncodeToString(method.Sum(nil))
 
 	identifyURL := i.URL
 	identifyURL = strings.Replace(identifyURL, "{shard_id}", strconv.Itoa(int(shard.shardID)), 1)
-	identifyURL = strings.Replace(identifyURL, "{shard_count}", strconv.Itoa(int(shard.manager.shardCount.Load())), 1)
-	identifyURL = strings.Replace(identifyURL, "{token}", shard.manager.configuration.Load().BotToken, 1)
+	identifyURL = strings.Replace(identifyURL, "{shard_count}", strconv.Itoa(int(shard.application.shardCount.Load())), 1)
+	identifyURL = strings.Replace(identifyURL, "{token}", shard.application.configuration.Load().BotToken, 1)
 	identifyURL = strings.Replace(identifyURL, "{token_hash}", tokenHash, 1)
-	identifyURL = strings.Replace(identifyURL, "{max_concurrency}", strconv.Itoa(int(shard.manager.gateway.Load().SessionStartLimit.MaxConcurrency)), 1)
+	identifyURL = strings.Replace(identifyURL, "{max_concurrency}", strconv.Itoa(int(shard.application.gateway.Load().SessionStartLimit.MaxConcurrency)), 1)
 
 	_, err := url.Parse(identifyURL)
 	if err != nil {
@@ -64,9 +64,9 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 		TokenHash      string `json:"token_hash"`
 	}{
 		ShardID:        int(shard.shardID),
-		ShardCount:     int(shard.manager.configuration.Load().ShardCount),
-		MaxConcurrency: int(shard.manager.gateway.Load().SessionStartLimit.MaxConcurrency),
-		Token:          shard.manager.configuration.Load().BotToken,
+		ShardCount:     int(shard.application.configuration.Load().ShardCount),
+		MaxConcurrency: int(shard.application.gateway.Load().SessionStartLimit.MaxConcurrency),
+		Token:          shard.application.configuration.Load().BotToken,
 		TokenHash:      tokenHash,
 	}
 

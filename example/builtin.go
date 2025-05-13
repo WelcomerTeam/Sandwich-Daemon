@@ -32,7 +32,7 @@ func NewNullProducerProvider() *NullProducerProvider {
 	return &NullProducerProvider{}
 }
 
-func (p *NullProducerProvider) GetProducer(_ context.Context, managerIdentifier, clientName string) (sandwich.Producer, error) {
+func (p *NullProducerProvider) GetProducer(_ context.Context, applicationIdentifier, clientName string) (sandwich.Producer, error) {
 	producer := &NullProducer{
 		counter: &atomic.Int64{},
 	}

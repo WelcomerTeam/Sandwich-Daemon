@@ -11,18 +11,18 @@ import (
 )
 
 type Configuration struct {
-	Sandwich *DaemonConfiguration    `json:"sandwich"`
-	Managers []*ManagerConfiguration `json:"managers"`
+	Sandwich     *DaemonConfiguration        `json:"sandwich"`
+	Applications []*ApplicationConfiguration `json:"applications"`
 }
 
 type DaemonConfiguration struct {
-	// This is used to segment automatically sharded managers.
+	// This is used to segment automatically sharded applications.
 	NodeCount int32 `json:"node_count"`
 	NodeID    int32 `json:"node_id"`
 }
 
-type ManagerConfiguration struct {
-	// ApplicationIdentifier used in internal APIs to identify the manager.
+type ApplicationConfiguration struct {
+	// ApplicationIdentifier used in internal APIs to identify the application.
 	ApplicationIdentifier string `json:"application_identifier"`
 
 	// ProducerIdentifier is a reusable identifier that can be used by consumers for routing.
@@ -30,7 +30,7 @@ type ManagerConfiguration struct {
 	// by the same consumer. The consumer will use the Identifier to determine what token to use.
 	ProducerIdentifier string `json:"producer_identifier"`
 
-	// This is the display name of the manager. This is included in status APIs.
+	// This is the display name of the application. This is included in status APIs.
 	DisplayName string `json:"display_name"`
 
 	// This is the client name that is passed to producers.
@@ -44,9 +44,9 @@ type ManagerConfiguration struct {
 	Intents            int32                `json:"intents"`
 	ChunkGuildsOnStart bool                 `json:"chunk_guilds_on_start"`
 
-	// Events that the manager should not handle.
+	// Events that the application should not handle.
 	EventBlacklist []string `json:"event_blacklist"`
-	// Events that the manager should handle, but will not be produced.
+	// Events that the application should handle, but will not be produced.
 	ProduceBlacklist []string `json:"produce_blacklist"`
 
 	AutoSharded bool   `json:"auto_sharded"`
