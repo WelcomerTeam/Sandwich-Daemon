@@ -1,1 +1,2 @@
-go vet cmd/main.go
+go vet *.go
+go vet example/builtin.go

@@ -1,7 +1,8 @@
 syntax = "proto3";
+
 package sandwich;
 
-option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/protobuf/sandwich";
+option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/proto/sandwich";
 
 import "discord.proto";
 import "google/protobuf/empty.proto";
@@ -29,13 +30,13 @@ service Sandwich {
     rpc StopApplication(ApplicationIdentifierWithBlocking) returns (BaseResponse) {}
     
     // CreateApplication creates a new Application.
-    rpc CreateApplication(CreateApplicationRequest) returns (Application) {}
+    rpc CreateApplication(CreateApplicationRequest) returns (SandwichApplication) {}
     
     // DeleteApplication deletes a Application.
     rpc DeleteApplication(ApplicationIdentifier) returns (BaseResponse) {}
 
 
-    
+
     // RequestGuildChunk requests a guild chunk.
     rpc RequestGuildChunk(RequestGuildChunkRequest) returns (BaseResponse) {}
     
@@ -86,7 +87,7 @@ message ApplicationIdentifierWithBlocking {
 }
 
 message FetchApplicationResponse {
-    map<string, Application> applications = 1;
+    map<string, SandwichApplication> applications = 1;
 }
 
 message CreateApplicationRequest {
@@ -111,7 +112,7 @@ message CreateApplicationRequest {
     bytes values = 18;
 }
 
-message Application {
+message SandwichApplication {
     string application_identifier = 1;
     string producer_identifier = 2;
     string display_name = 3;
