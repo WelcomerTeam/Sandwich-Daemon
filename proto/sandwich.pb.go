@@ -187,7 +187,7 @@ func (x *ListenResponse) GetData() []byte {
 	return nil
 }
 
-type FetchManagerConfigurationRequest struct {
+type FetchApplicationConfigurationRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -195,8 +195,8 @@ type FetchManagerConfigurationRequest struct {
 	Identifier string `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
 }
 
-func (x *FetchManagerConfigurationRequest) Reset() {
-	*x = FetchManagerConfigurationRequest{}
+func (x *FetchApplicationConfigurationRequest) Reset() {
+	*x = FetchApplicationConfigurationRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_sandwich_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -204,13 +204,13 @@ func (x *FetchManagerConfigurationRequest) Reset() {
 	}
 }
 
-func (x *FetchManagerConfigurationRequest) String() string {
+func (x *FetchApplicationConfigurationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*FetchManagerConfigurationRequest) ProtoMessage() {}
+func (*FetchApplicationConfigurationRequest) ProtoMessage() {}
 
-func (x *FetchManagerConfigurationRequest) ProtoReflect() protoreflect.Message {
+func (x *FetchApplicationConfigurationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_sandwich_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -222,28 +222,28 @@ func (x *FetchManagerConfigurationRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use FetchManagerConfigurationRequest.ProtoReflect.Descriptor instead.
-func (*FetchManagerConfigurationRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use FetchApplicationConfigurationRequest.ProtoReflect.Descriptor instead.
+func (*FetchApplicationConfigurationRequest) Descriptor() ([]byte, []int) {
 	return file_sandwich_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *FetchManagerConfigurationRequest) GetIdentifier() string {
+func (x *FetchApplicationConfigurationRequest) GetIdentifier() string {
 	if x != nil {
 		return x.Identifier
 	}
 	return ""
 }
 
-type FetchManagerConfigurationResponse struct {
+type FetchApplicationConfigurationResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Configurations map[string]*ManagerConfiguration `protobuf:"bytes,1,rep,name=configurations,proto3" json:"configurations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Configurations map[string]*ApplicationConfiguration `protobuf:"bytes,1,rep,name=configurations,proto3" json:"configurations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (x *FetchManagerConfigurationResponse) Reset() {
-	*x = FetchManagerConfigurationResponse{}
+func (x *FetchApplicationConfigurationResponse) Reset() {
+	*x = FetchApplicationConfigurationResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_sandwich_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -251,13 +251,13 @@ func (x *FetchManagerConfigurationResponse) Reset() {
 	}
 }
 
-func (x *FetchManagerConfigurationResponse) String() string {
+func (x *FetchApplicationConfigurationResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*FetchManagerConfigurationResponse) ProtoMessage() {}
+func (*FetchApplicationConfigurationResponse) ProtoMessage() {}
 
-func (x *FetchManagerConfigurationResponse) ProtoReflect() protoreflect.Message {
+func (x *FetchApplicationConfigurationResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_sandwich_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -269,19 +269,19 @@ func (x *FetchManagerConfigurationResponse) ProtoReflect() protoreflect.Message 
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use FetchManagerConfigurationResponse.ProtoReflect.Descriptor instead.
-func (*FetchManagerConfigurationResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use FetchApplicationConfigurationResponse.ProtoReflect.Descriptor instead.
+func (*FetchApplicationConfigurationResponse) Descriptor() ([]byte, []int) {
 	return file_sandwich_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *FetchManagerConfigurationResponse) GetConfigurations() map[string]*ManagerConfiguration {
+func (x *FetchApplicationConfigurationResponse) GetConfigurations() map[string]*ApplicationConfiguration {
 	if x != nil {
 		return x.Configurations
 	}
 	return nil
 }
 
-type ManagerConfiguration struct {
+type ApplicationConfiguration struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -298,8 +298,8 @@ type ManagerConfiguration struct {
 	Values                []byte  `protobuf:"bytes,10,opt,name=values,proto3" json:"values,omitempty"`
 }
 
-func (x *ManagerConfiguration) Reset() {
-	*x = ManagerConfiguration{}
+func (x *ApplicationConfiguration) Reset() {
+	*x = ApplicationConfiguration{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_sandwich_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -307,13 +307,13 @@ func (x *ManagerConfiguration) Reset() {
 	}
 }
 
-func (x *ManagerConfiguration) String() string {
+func (x *ApplicationConfiguration) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ManagerConfiguration) ProtoMessage() {}
+func (*ApplicationConfiguration) ProtoMessage() {}
 
-func (x *ManagerConfiguration) ProtoReflect() protoreflect.Message {
+func (x *ApplicationConfiguration) ProtoReflect() protoreflect.Message {
 	mi := &file_sandwich_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -325,75 +325,75 @@ func (x *ManagerConfiguration) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ManagerConfiguration.ProtoReflect.Descriptor instead.
-func (*ManagerConfiguration) Descriptor() ([]byte, []int) {
+// Deprecated: Use ApplicationConfiguration.ProtoReflect.Descriptor instead.
+func (*ApplicationConfiguration) Descriptor() ([]byte, []int) {
 	return file_sandwich_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ManagerConfiguration) GetApplicationIdentifier() string {
+func (x *ApplicationConfiguration) GetApplicationIdentifier() string {
 	if x != nil {
 		return x.ApplicationIdentifier
 	}
 	return ""
 }
 
-func (x *ManagerConfiguration) GetProducerIdentifier() string {
+func (x *ApplicationConfiguration) GetProducerIdentifier() string {
 	if x != nil {
 		return x.ProducerIdentifier
 	}
 	return ""
 }
 
-func (x *ManagerConfiguration) GetDisplayName() string {
+func (x *ApplicationConfiguration) GetDisplayName() string {
 	if x != nil {
 		return x.DisplayName
 	}
 	return ""
 }
 
-func (x *ManagerConfiguration) GetBotToken() string {
+func (x *ApplicationConfiguration) GetBotToken() string {
 	if x != nil {
 		return x.BotToken
 	}
 	return ""
 }
 
-func (x *ManagerConfiguration) GetShardCount() int32 {
+func (x *ApplicationConfiguration) GetShardCount() int32 {
 	if x != nil {
 		return x.ShardCount
 	}
 	return 0
 }
 
-func (x *ManagerConfiguration) GetStatus() int32 {
+func (x *ApplicationConfiguration) GetStatus() int32 {
 	if x != nil {
 		return x.Status
 	}
 	return 0
 }
 
-func (x *ManagerConfiguration) GetStartedAt() int64 {
+func (x *ApplicationConfiguration) GetStartedAt() int64 {
 	if x != nil {
 		return x.StartedAt
 	}
 	return 0
 }
 
-func (x *ManagerConfiguration) GetUserId() int64 {
+func (x *ApplicationConfiguration) GetUserId() int64 {
 	if x != nil {
 		return x.UserId
 	}
 	return 0
 }
 
-func (x *ManagerConfiguration) GetShardIds() []int32 {
+func (x *ApplicationConfiguration) GetShardIds() []int32 {
 	if x != nil {
 		return x.ShardIds
 	}
 	return nil
 }
 
-func (x *ManagerConfiguration) GetValues() []byte {
+func (x *ApplicationConfiguration) GetValues() []byte {
 	if x != nil {
 		return x.Values
 	}
@@ -2258,9 +2258,9 @@ var file_sandwich_proto_goTypes = []interface{}{
 	(*BaseResponse)(nil),                      // 0: sandwich.BaseResponse
 	(*ListenRequest)(nil),                     // 1: sandwich.ListenRequest
 	(*ListenResponse)(nil),                    // 2: sandwich.ListenResponse
-	(*FetchManagerConfigurationRequest)(nil),  // 3: sandwich.FetchManagerConfigurationRequest
-	(*FetchManagerConfigurationResponse)(nil), // 4: sandwich.FetchManagerConfigurationResponse
-	(*ManagerConfiguration)(nil),              // 5: sandwich.ManagerConfiguration
+	(*FetchApplicationConfigurationRequest)(nil),  // 3: sandwich.FetchApplicationConfigurationRequest
+	(*FetchApplicationConfigurationResponse)(nil), // 4: sandwich.FetchApplicationConfigurationResponse
+	(*ApplicationConfiguration)(nil),              // 5: sandwich.ApplicationConfiguration
 	(*RequestGuildChunkRequest)(nil),          // 6: sandwich.RequestGuildChunkRequest
 	(*SendWebsocketMessageRequest)(nil),       // 7: sandwich.SendWebsocketMessageRequest
 	(*RelayMessageRequest)(nil),               // 8: sandwich.RelayMessageRequest
@@ -2287,7 +2287,7 @@ var file_sandwich_proto_goTypes = []interface{}{
 	(*FetchUserMutualGuildsResponse)(nil),     // 29: sandwich.FetchUserMutualGuildsResponse
 	(*FetchVoiceStateRequest)(nil),            // 30: sandwich.FetchVoiceStateRequest
 	(*FetchVoiceStateResponse)(nil),           // 31: sandwich.FetchVoiceStateResponse
-	nil,                                       // 32: sandwich.FetchManagerConfigurationResponse.ConfigurationsEntry
+	nil,                                       // 32: sandwich.FetchApplicationConfigurationResponse.ConfigurationsEntry
 	nil,                                       // 33: sandwich.WhereIsGuildResponse.LocationsEntry
 	nil,                                       // 34: sandwich.FetchGuildResponse.GuildsEntry
 	nil,                                       // 35: sandwich.FetchGuildMemberResponse.GuildMembersEntry
@@ -2310,7 +2310,7 @@ var file_sandwich_proto_goTypes = []interface{}{
 	(*empty.Empty)(nil),                       // 52: google.protobuf.Empty
 }
 var file_sandwich_proto_depIdxs = []int32{
-	32, // 0: sandwich.FetchManagerConfigurationResponse.configurations:type_name -> sandwich.FetchManagerConfigurationResponse.ConfigurationsEntry
+	32, // 0: sandwich.FetchApplicationConfigurationResponse.configurations:type_name -> sandwich.FetchApplicationConfigurationResponse.ConfigurationsEntry
 	0,  // 1: sandwich.WhereIsGuildResponse.base_response:type_name -> sandwich.BaseResponse
 	33, // 2: sandwich.WhereIsGuildResponse.locations:type_name -> sandwich.WhereIsGuildResponse.LocationsEntry
 	44, // 3: sandwich.WhereIsGuildLocation.guild_member:type_name -> sandwich.GuildMember
@@ -2334,7 +2334,7 @@ var file_sandwich_proto_depIdxs = []int32{
 	42, // 21: sandwich.FetchUserMutualGuildsResponse.guilds:type_name -> sandwich.FetchUserMutualGuildsResponse.GuildsEntry
 	0,  // 22: sandwich.FetchVoiceStateResponse.base_response:type_name -> sandwich.BaseResponse
 	43, // 23: sandwich.FetchVoiceStateResponse.voice_states:type_name -> sandwich.FetchVoiceStateResponse.VoiceStatesEntry
-	5,  // 24: sandwich.FetchManagerConfigurationResponse.ConfigurationsEntry.value:type_name -> sandwich.ManagerConfiguration
+	5,  // 24: sandwich.FetchApplicationConfigurationResponse.ConfigurationsEntry.value:type_name -> sandwich.ApplicationConfiguration
 	11, // 25: sandwich.WhereIsGuildResponse.LocationsEntry.value:type_name -> sandwich.WhereIsGuildLocation
 	45, // 26: sandwich.FetchGuildResponse.GuildsEntry.value:type_name -> sandwich.Guild
 	44, // 27: sandwich.FetchGuildMemberResponse.GuildMembersEntry.value:type_name -> sandwich.GuildMember
@@ -2349,7 +2349,7 @@ var file_sandwich_proto_depIdxs = []int32{
 	1,  // 36: sandwich.Sandwich.Listen:input_type -> sandwich.ListenRequest
 	8,  // 37: sandwich.Sandwich.RelayMessage:input_type -> sandwich.RelayMessageRequest
 	52, // 38: sandwich.Sandwich.ReloadConfiguration:input_type -> google.protobuf.Empty
-	3,  // 39: sandwich.Sandwich.FetchManagerConfiguration:input_type -> sandwich.FetchManagerConfigurationRequest
+	3,  // 39: sandwich.Sandwich.FetchApplicationConfiguration:input_type -> sandwich.FetchApplicationConfigurationRequest
 	6,  // 40: sandwich.Sandwich.RequestGuildChunk:input_type -> sandwich.RequestGuildChunkRequest
 	7,  // 41: sandwich.Sandwich.SendWebsocketMessage:input_type -> sandwich.SendWebsocketMessageRequest
 	9,  // 42: sandwich.Sandwich.WhereIsGuild:input_type -> sandwich.WhereIsGuildRequest
@@ -2366,7 +2366,7 @@ var file_sandwich_proto_depIdxs = []int32{
 	2,  // 53: sandwich.Sandwich.Listen:output_type -> sandwich.ListenResponse
 	0,  // 54: sandwich.Sandwich.RelayMessage:output_type -> sandwich.BaseResponse
 	0,  // 55: sandwich.Sandwich.ReloadConfiguration:output_type -> sandwich.BaseResponse
-	4,  // 56: sandwich.Sandwich.FetchManagerConfiguration:output_type -> sandwich.FetchManagerConfigurationResponse
+	4,  // 56: sandwich.Sandwich.FetchApplicationConfiguration:output_type -> sandwich.FetchApplicationConfigurationResponse
 	0,  // 57: sandwich.Sandwich.RequestGuildChunk:output_type -> sandwich.BaseResponse
 	0,  // 58: sandwich.Sandwich.SendWebsocketMessage:output_type -> sandwich.BaseResponse
 	10, // 59: sandwich.Sandwich.WhereIsGuild:output_type -> sandwich.WhereIsGuildResponse
@@ -2430,7 +2430,7 @@ func file_sandwich_proto_init() {
 			}
 		}
 		file_sandwich_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FetchManagerConfigurationRequest); i {
+			switch v := v.(*FetchApplicationConfigurationRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2442,7 +2442,7 @@ func file_sandwich_proto_init() {
 			}
 		}
 		file_sandwich_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FetchManagerConfigurationResponse); i {
+			switch v := v.(*FetchApplicationConfigurationResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2454,7 +2454,7 @@ func file_sandwich_proto_init() {
 			}
 		}
 		file_sandwich_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ManagerConfiguration); i {
+			switch v := v.(*ApplicationConfiguration); i {
 			case 0:
 				return &v.state
 			case 1:

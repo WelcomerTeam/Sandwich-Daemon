@@ -3,7 +3,7 @@ package sandwich
 import "context"
 
 type ProducerProvider interface {
-	GetProducer(ctx context.Context, managerIdentifier, clientName string) (Producer, error)
+	GetProducer(ctx context.Context, applicationIdentifier, clientName string) (Producer, error)
 }
 
 type Producer interface {

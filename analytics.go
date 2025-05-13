@@ -43,13 +43,13 @@ func UpdateGatewayLatency(identifier string, latency float64) {
 
 // ShardMetrics tracks shard-related metrics
 var ShardMetrics = struct {
-	ManagerStatus *prometheus.GaugeVec
-	ShardStatus   *prometheus.GaugeVec
+	ApplicationStatus *prometheus.GaugeVec
+	ShardStatus       *prometheus.GaugeVec
 }{
-	ManagerStatus: promauto.NewGaugeVec(
+	ApplicationStatus: promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "sandwich_shard_manager_status",
-			Help: "Status of the shard manager",
+			Name: "sandwich_shard_application_status",
+			Help: "Status of the shard application",
 		},
 		[]string{"application_identifier"},
 	),
@@ -62,8 +62,8 @@ var ShardMetrics = struct {
 	),
 }
 
-func UpdateManagerStatus(identifier string, status ManagerStatus) {
-	ShardMetrics.ManagerStatus.WithLabelValues(identifier).Set(float64(status))
+func UpdateApplicationStatus(identifier string, status ApplicationStatus) {
+	ShardMetrics.ApplicationStatus.WithLabelValues(identifier).Set(float64(status))
 }
 
 func UpdateShardStatus(identifier string, shardID int32, status ShardStatus) {

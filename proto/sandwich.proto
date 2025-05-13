@@ -7,45 +7,46 @@ import "discord.proto";
 import "google/protobuf/empty.proto";
 
 service Sandwich {
-    // Listen delivers information to Managers.
+
+    // Listen delivers information to consumers.
     rpc Listen(ListenRequest) returns (stream ListenResponse) {}
-
-    // RelayMessage creates a new event and sends it immediately back to Managers.
+    
+    // RelayMessage creates a new event and sends it immediately back to Applications.
     rpc RelayMessage(RelayMessageRequest) returns (BaseResponse) {}
-
+    
     // ReloadConfiguration reloads the configuration.
     rpc ReloadConfiguration(google.protobuf.Empty) returns (BaseResponse) {}
+    
+    // Application requests
+    
+    // FetchApplication returns the Application Configuration.
+    rpc FetchApplication(ApplicationIdentifier) returns (FetchApplicationResponse) {}
+    
+    // StartApplication starts a Application.
+    rpc StartApplication(ApplicationIdentifierWithBlocking) returns (BaseResponse) {}
+    
+    // StopApplication stops a Application.
+    rpc StopApplication(ApplicationIdentifierWithBlocking) returns (BaseResponse) {}
+    
+    // CreateApplication creates a new Application.
+    rpc CreateApplication(CreateApplicationRequest) returns (Application) {}
+    
+    // DeleteApplication deletes a Application.
+    rpc DeleteApplication(ApplicationIdentifier) returns (BaseResponse) {}
 
-    // Manager requests
 
-    // FetchManager returns the Manager Configuration.
-    rpc FetchManager(FetchManagerRequest) returns (FetchManagerResponse) {}
-
-    // StartManager starts a Manager.
-    rpc StartManager(StartManagerRequest) returns (BaseResponse) {}
-
-    // StopManager stops a Manager.
-    rpc StopManager(StopManagerRequest) returns (BaseResponse) {}
-
-
-    // CreateManager creates a new Manager.
-    rpc CreateManager(CreateManagerRequest) returns (BaseResponse) {}
-
-    // DeleteManager deletes a Manager.
-    rpc DeleteManager(DeleteManagerRequest) returns (BaseResponse) {}
-
-
+    
     // RequestGuildChunk requests a guild chunk.
     rpc RequestGuildChunk(RequestGuildChunkRequest) returns (BaseResponse) {}
-
+    
     // SendWebsocketMessage sends a websocket message to discord from a specific shard.
     rpc SendWebsocketMessage(SendWebsocketMessageRequest) returns (BaseResponse) {}
-
+    
     // State requests
-
+    
     // WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
     rpc WhereIsGuild(WhereIsGuildRequest) returns (WhereIsGuildResponse) {}
-
+    
     rpc FetchGuild(FetchGuildRequest) returns (FetchGuildResponse) {}
     rpc FetchGuildMember(FetchGuildMemberRequest) returns (FetchGuildMemberResponse) {}
     rpc FetchGuildChannel(FetchGuildChannelRequest) returns (FetchGuildChannelResponse) {}
@@ -73,17 +74,44 @@ message ListenResponse {
     bytes data = 2;
 }
 
-// Manager requests
+// Application requests
 
-message FetchManagerRequest {
-    string identifier = 1;
+message ApplicationIdentifier {
+    string application_identifier = 1;
 }
 
-message FetchManagerResponse {
-    map<string, ManagerConfiguration> configurations = 1;
+message ApplicationIdentifierWithBlocking {
+    string application_identifier = 1;
+    bool blocking = 2;
 }
 
-message ManagerConfiguration {
+message FetchApplicationResponse {
+    map<string, Application> applications = 1;
+}
+
+message CreateApplicationRequest {
+    bool save_config = 1;
+    bool create_only = 2;
+    
+    string application_identifier = 3;
+    string producer_identifier = 4;
+    string display_name = 5;
+    string client_name = 6;
+    bool include_random_suffix = 7;
+    string bot_token = 8;
+    bool auto_start = 9;
+    bytes default_presence = 10;
+    int32 intents = 11;
+    bool chunk_guilds_on_start = 12;
+    repeated string event_blacklist = 13;
+    repeated string produce_blacklist = 14;
+    bool auto_sharded = 15;
+    int32 shard_count = 16;
+    string shard_ids = 17;
+    bytes values = 18;
+}
+
+message Application {
     string application_identifier = 1;
     string producer_identifier = 2;
     string display_name = 3;
