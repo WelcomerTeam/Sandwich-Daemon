@@ -42,13 +42,11 @@ type Manager struct {
 	startedAt *atomic.Pointer[time.Time]
 
 	status *atomic.Pointer[ManagerStatus]
-
-	values map[string]any
 }
 
 func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 	manager := &Manager{
-		logger: s.logger.With("manager", config.ApplicationIdentifier),
+		logger: s.logger.With("application_identifier", config.ApplicationIdentifier),
 
 		identifier: config.ApplicationIdentifier,
 
@@ -73,8 +71,6 @@ func NewManager(s *Sandwich, config *ManagerConfiguration) *Manager {
 		startedAt: &atomic.Pointer[time.Time]{},
 
 		status: &atomic.Pointer[ManagerStatus]{},
-
-		values: config.Values,
 	}
 
 	manager.configuration.Store(config)

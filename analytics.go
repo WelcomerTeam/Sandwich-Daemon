@@ -18,14 +18,14 @@ var EventMetrics = struct {
 			Name: "sandwich_events_total",
 			Help: "Total number of events processed, split by identifier and event type",
 		},
-		[]string{"identifier", "event_type", "guild_id"},
+		[]string{"application_identifier", "event_type", "guild_id"},
 	),
 	GatewayLatency: promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "sandwich_gateway_latency_seconds",
 			Help: "Gateway latency in seconds, measured by heartbeat",
 		},
-		[]string{"identifier"},
+		[]string{"application_identifier"},
 	),
 }
 
@@ -51,14 +51,14 @@ var ShardMetrics = struct {
 			Name: "sandwich_shard_manager_status",
 			Help: "Status of the shard manager",
 		},
-		[]string{"identifier"},
+		[]string{"application_identifier"},
 	),
 	ShardStatus: promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "sandwich_shard_status",
 			Help: "Status of the shard",
 		},
-		[]string{"identifier", "shard_id"},
+		[]string{"application_identifier", "shard_id"},
 	),
 }
 

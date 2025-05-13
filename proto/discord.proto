@@ -1,0 +1,712 @@
+syntax = "proto3";
+package sandwich;
+
+option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/proto/sandwich";
+
+// application.go
+
+message Application {
+  int64 ID = 1;
+  string Name = 2;
+  string Icon = 3;
+  string Description = 4;
+  repeated string RPCOrigins = 5;
+  bool BotPublic = 6;
+  bool BotRequireCodeGrant = 7;
+  string TermsOfServiceURL = 8;
+  string PrivacyPolicyURL = 9;
+  User Owner = 10;
+  string Summary = 11;
+  string VerifyKey = 12;
+  ApplicationTeam Team = 13;
+  int64 GuildID = 14;
+  int64 PrimarySKUID = 15;
+  string Slug = 16;
+  string CoverImage = 17;
+  int32 Flags = 18;
+  User Bot = 19;
+}
+
+message ApplicationTeam {
+  string Icon = 1;
+  int64 ID = 2;
+  repeated ApplicationTeamMember Members = 3;
+  string Name = 4;
+  int64 OwnerUserID = 5;
+}
+
+message ApplicationTeamMember {
+  uint32 MembershipState = 1;
+  repeated string Permissions = 2;
+  int64 TeamID = 3;
+  User User = 4;
+}
+
+message ApplicationCommand {
+  int64 ID = 1;
+  uint32 Type = 2;
+  int64 ApplicationID = 3;
+  int64 GuildID = 4;
+  string Name = 5;
+  string Description = 6;
+  repeated ApplicationCommandOption Options = 7;
+  bool DefaultPermission = 8;
+  int32 Version = 9;
+}
+
+message GuildApplicationCommandPermissions {
+  int64 ID = 1;
+  int64 ApplicationID = 2;
+  int64 GuildID = 3;
+  repeated ApplicationCommandPermissions Permissions = 4;
+}
+
+message ApplicationCommandPermissions {
+  int64 ID = 1;
+  uint32 Type = 2;
+  bool Allowed = 3;
+}
+
+message ApplicationCommandOption {
+  uint32 Type = 1;
+  string Name = 2;
+  string Description = 3;
+  bool Required = 4;
+  repeated ApplicationCommandOptionChoice Choices = 5;
+  repeated ApplicationCommandOption Options = 6;
+  repeated uint32 ChannelTypes = 7;
+  int32 MinValue = 8;
+  int32 MaxValue = 9;
+  bool Autocomplete = 10;
+}
+
+message ApplicationCommandOptionChoice {
+  string Name = 1;
+  bytes Value = 2;
+}
+
+message Interaction {
+  int64 ID = 1;
+  int64 ApplicationID = 2;
+  uint32 Type = 3;
+  InteractionData Data = 4;
+  int64 GuildID = 5;
+  int64 ChannelID = 6;
+  GuildMember Member = 7;
+  User User = 8;
+  string Token = 9;
+  int32 Version = 10;
+  Message Message = 11;
+  string Locale = 12;
+  string GuildLocale = 13;
+}
+
+message InteractionData {
+  int64 ID = 1;
+  string Name = 2;
+  uint32 Type = 3;
+  InteractionResolvedData Resolved = 4;
+  repeated InteractionDataOption Options = 5;
+  string CustomID = 6;
+  uint32 ComponentType = 7;
+  repeated ApplicationSelectOption Values = 8;
+  int64 TargetID = 9;
+}
+
+message InteractionDataOption {
+  string Name = 1;
+  uint32 Type = 2;
+  bytes Value = 3;
+  repeated InteractionDataOption Options = 4;
+  bool Focused = 5;
+}
+
+message InteractionResolvedData {
+  repeated User Users = 1;
+  repeated GuildMember Members = 2;
+  repeated Role Roles = 3;
+  repeated Channel Channels = 4;
+  repeated Message Messages = 5;
+}
+
+message ApplicationSelectOption {
+  string Label = 1;
+  string Value = 2;
+  string Description = 3;
+  Emoji Emoji = 4;
+  bool Default = 5;
+}
+
+message Integration {
+  int64 ID = 1;
+  int64 GuildID = 2;
+  string Name = 3;
+  string Type = 4;
+  bool Enabled = 5;
+  bool Syncing = 6;
+  int64 RoleID = 7;
+  bool EnableEmoticons = 8;
+  uint32 ExpireBehavior = 9;
+  int32 ExpireGracePeriod = 10;
+  User User = 11;
+  IntegrationAccount Account = 12;
+  string SyncedAt = 13;
+  int32 SubscriberCount = 14;
+  bool Revoked = 15;
+  Application Application = 16;
+}
+
+message IntegrationAccount {
+  string ID = 1;
+  string Name = 2;
+}
+
+message InteractionComponent {
+  uint32 Type = 1;
+  string CustomID = 2;
+  bool Disabled = 3;
+  uint32 Style = 4;
+  string Label = 5;
+  Emoji Emoji = 6;
+  string URL = 7;
+  repeated ApplicationSelectOption Options = 8;
+  string Placeholder = 9;
+  int32 MinValues = 10;
+  int32 MaxValues = 11;
+  repeated InteractionComponent Components = 12;
+}
+
+// channel.go
+
+message Channel {
+  int64 ID = 1;
+  int64 GuildID = 2;
+  uint32 Type = 3;
+  int32 Position = 4;
+  repeated ChannelOverwrite PermissionOverwrites = 5;
+  string Name = 6;
+  string Topic = 7;
+  bool NSFW = 8;
+  string LastMessageID = 9;
+  int32 Bitrate = 10;
+  int32 UserLimit = 11;
+  int32 RateLimitPerUser = 12;
+  repeated User Recipients = 13;
+  string Icon = 14;
+  int64 OwnerID = 15;
+  int64 ApplicationID = 16;
+  int64 ParentID = 17;
+  string LastPinTimestamp = 18;
+  string RTCRegion = 19;
+  uint32 VideoQualityMode = 20;
+  int32 MessageCount = 21;
+  int32 MemberCount = 22;
+  ThreadMetadata ThreadMetadata = 23;
+  ThreadMember ThreadMember = 24;
+  int32 DefaultAutoArchiveDuration = 25;
+  int64 Permissions = 26;
+}
+
+message ChannelOverwrite {
+  int64 ID = 1;
+  uint32 Type = 2;
+  int64 Allow = 3;
+  int64 Deny = 4;
+}
+
+message ThreadMetadata {
+  bool Archived = 1;
+  int32 AutoArchiveDuration = 2;
+  string ArchiveTimestamp = 3;
+  bool Locked = 4;
+}
+
+message ThreadMember {
+  int64 ID = 1;
+  int64 UserID = 2;
+  int64 GuildID = 3;
+  string JoinTimestamp = 4;
+  int32 Flags = 5;
+}
+
+message StageInstance {
+  int64 ID = 1;
+  int64 GuildID = 2;
+  int64 ChannelID = 3;
+  string Topic = 4;
+  uint32 PrivacyLabel = 5;
+  bool DiscoverableDisabled = 6;
+}
+
+// discord.go
+
+// embed.go
+
+message Embed {
+  string Title = 1;
+  string Type = 2;
+  string Description = 3;
+  string URL = 4;
+  string Timestamp = 5;
+  int32 Color = 6;
+  EmbedFooter Footer = 7;
+  EmbedImage Image = 8;
+  EmbedThumbnail Thumbnail = 9;
+  EmbedVideo Video = 10;
+  EmbedProvider Provider = 11;
+  EmbedAuthor Author = 12;
+  repeated EmbedField Fields = 13;
+}
+
+message EmbedFooter {
+  string Text = 1;
+  string IconURL = 2;
+  string ProxyIconURL = 3;
+}
+
+message EmbedImage {
+  string URL = 1;
+  string ProxyURL = 2;
+  int32 Height = 3;
+  int32 Width = 4;
+}
+
+message EmbedThumbnail {
+  string URL = 1;
+  string ProxyURL = 2;
+  int32 Height = 3;
+  int32 Width = 4;
+}
+
+message EmbedVideo {
+  string URL = 1;
+  int32 Height = 2;
+  int32 Width = 3;
+}
+
+message EmbedProvider {
+  string Name = 1;
+  string URL = 2;
+}
+
+message EmbedAuthor {
+  string Name = 1;
+  string URL = 2;
+  string IconURL = 3;
+  string ProxyIconURL = 4;
+}
+
+message EmbedField {
+  string Name = 1;
+  string Value = 2;
+  bool Inline = 3;
+}
+
+// emoji.go
+
+message Emoji {
+  int64 ID = 1;
+  int64 GuildID = 2;
+  string Name = 3;
+  repeated int64 Roles = 4;
+  User User = 5;
+  bool RequireColons = 6;
+  bool Managed = 7;
+  bool Animated = 8;
+  bool Available = 9;
+}
+
+// guild.go
+
+message Guild {
+  int64 ID = 1;
+  string Name = 2;
+  string Icon = 3;
+  string IconHash = 4;
+  string Splash = 5;
+  string DiscoverySplash = 6;
+  bool Owner = 7;
+  int64 OwnerID = 8;
+  int64 Permissions = 9;
+  string Region = 10;
+  int64 AFKChannelID = 11;
+  int32 AFKTimeout = 12;
+  bool WidgetEnabled = 13;
+  int64 WidgetChannelID = 14;
+  uint32 VerificationLevel = 15;
+  int32 DefaultMessageNotifications = 16;
+  int32 ExplicitContentFilter = 17;
+  repeated Role Roles = 18;
+  repeated Emoji Emojis = 19;
+  repeated string Features = 20;
+  uint32 MFALevel = 21;
+  int64 ApplicationID = 22;
+  int64 SystemChannelID = 23;
+  uint32 SystemChannelFlags = 24;
+  int64 RulesChannelID = 25;
+  string JoinedAt = 26;
+  bool Large = 27;
+  bool Unavailable = 28;
+  int32 MemberCount = 29;
+  repeated VoiceState VoiceStates = 30;
+  repeated GuildMember Members = 31;
+  repeated Channel Channels = 32;
+  repeated Activity Presences = 33;
+  int32 MaxPresences = 34;
+  int32 MaxMembers = 35;
+  string VanityURLCode = 36;
+  string Description = 37;
+  string Banner = 38;
+  uint32 PremiumTier = 39;
+  int32 PremiumSubscriptionCount = 40;
+  string PreferredLocale = 41;
+  int64 PublicUpdatesChannelID = 42;
+  int32 MaxVideoChannelUsers = 43;
+  int32 ApproximateMemberCount = 44;
+  int32 ApproximatePresenceCount = 45;
+  uint32 NSFWLevel = 46;
+  repeated StageInstance StageInstances = 47;
+  repeated Sticker Stickers = 48;
+  repeated ScheduledEvent GuildScheduledEvents = 49;
+  bool PremiumProgressBarEnabled = 50;
+}
+
+message UnavailableGuild {
+  int64 ID = 1;
+  bool Unavailable = 2;
+}
+
+message GuildMember {
+  User User = 1;
+  int64 GuildID = 2;
+  string Nick = 3;
+  string Avatar = 4;
+  repeated int64 Roles = 5;
+  string JoinedAt = 6;
+  string PremiumSince = 7;
+  bool Deaf = 8;
+  bool Mute = 9;
+  bool Pending = 10;
+  int64 Permissions = 11;
+  string CommunicationDisabledUntil = 12;
+}
+
+message VoiceState {
+  int64 UserID = 1;
+  int64 ChannelID = 2;
+  int64 GuildID = 3;
+  GuildMember Member = 4;
+  string SessionID = 5;
+  bool Deaf = 6;
+  bool Mute = 7;
+  bool SelfDeaf = 8;
+  bool SelfMute = 9;
+  bool SelfStream = 10;
+  bool SelfVideo = 11;
+  bool Suppress = 12;
+  string RequestToSpeakTimestamp = 13;
+}
+
+// http.go
+
+message Gateway {
+  string URL = 1;
+}
+
+message GatewayBot {
+  string URL = 1;
+  int32 Shards = 2;
+  int32 Total = 3;
+  int32 Remaining = 4;
+  int32 ResetAfter = 5;
+  int32 MaxConcurrency = 6;
+}
+
+message TooManyRequests {
+  string Message = 1;
+  int32 RetryAfter = 2;
+  bool Global = 3;
+}
+
+message CreateDMChannel {
+  int64 RecipientID = 1;
+}
+
+// invites.go
+
+message Invite {
+  string Code = 1;
+  Guild Guild = 2;
+  int64 GuildID = 3;
+  Channel Channel = 4;
+  User Inviter = 5;
+  uint32 TargetType = 6;
+  User TargetUser = 7;
+  Application TargetApplication = 8;
+  int32 ApproximatePresenceCount = 9;
+  int32 ApproximateMemberCount = 10;
+  string ExpiresAt = 11;
+  InviteStageInstance StageInstance = 12;
+  ScheduledEvent ScheduledEvent = 13;
+  int32 Uses = 14;
+  int32 MaxUses = 15;
+  int32 MaxAge = 16;
+  bool Temporary = 17;
+  string CreatedAt = 18;
+}
+
+message InviteStageInstance {
+  repeated GuildMember Members = 1;
+  int32 ParticipantCount = 2;
+  int32 SpeakerCount = 3;
+  string Topic = 4;
+}
+
+message ScheduledEvent {
+  int64 ID = 1;
+  int64 GuildID = 2;
+  int64 ChannelID = 3;
+  int64 CreatorID = 4;
+  string Name = 5;
+  string Description = 6;
+  string ScheduledStartTime = 7;
+  string ScheduledEndTime = 8;
+  uint32 PrivacyLevel = 9;
+  uint32 Status = 10;
+  uint32 EntityType = 11;
+  int64 EntityID = 12;
+  EventMetadata EntityMetadata = 13;
+  User Creator = 14;
+  int32 UserCount = 15;
+}
+
+message EventMetadata {
+  string Location = 1;
+}
+
+message ScheduledEventUser {
+  int64 EventID = 1;
+  User User = 2;
+  GuildMember Member = 3;
+}
+
+// message.go
+
+message Message {
+  int64 ID = 1;
+  int64 ChannelID = 2;
+  int64 GuildID = 3;
+  User Author = 4;
+  GuildMember Member = 5;
+  string Content = 6;
+  string Timestamp = 7;
+  string EditedTimestamp = 8;
+  bool TTS = 9;
+  bool MentionEveryone = 10;
+  repeated User Mentions = 11;
+  repeated int64 MentionRoles = 12;
+  repeated MessageChannelMention MentionChannels = 13;
+  repeated MessageAttachment Attachments = 14;
+  repeated Embed Embeds = 15;
+  repeated MessageReaction Reactions = 16;
+  // string Nonce = 17;
+  bool Pinned = 18;
+  int64 WebhookID = 19;
+  uint32 Type = 20;
+  MessageActivity Activity = 21;
+  Application Application = 22;
+  repeated MessageReference MessageReference = 23;
+  uint32 Flags = 24;
+  Message ReferencedMessage = 25;
+  MessageInteraction Interaction = 26;
+  Channel Thread = 27;
+  repeated InteractionComponent Components = 28;
+  repeated MessageSticker StickerItems = 29;
+}
+
+message MessageInteraction {
+  int64 ID = 1;
+  uint32 Type = 2;
+  string Name = 3;
+  User User = 4;
+}
+
+message MessageChannelMention {
+  int64 ID = 1;
+  int64 GuildID = 2;
+  uint32 Type = 3;
+  string Name = 4;
+}
+
+message MessageReference {
+  int64 ID = 1;
+  int64 ChannelID = 2;
+  int64 GuildID = 3;
+  bool FailIfNotExists = 4;
+}
+
+message MessageReaction {
+  int32 Count = 1;
+  bool Me = 2;
+  Emoji Emoji = 3;
+}
+
+message MessageAllowedMentions {
+  repeated string Parse = 1;
+  repeated int64 Roles = 2;
+  repeated int64 Users = 3;
+  bool RepliedUser = 4;
+}
+
+message MessageAttachment {
+  int64 ID = 1;
+  string Filename = 2;
+  int32 Size = 3;
+  string URL = 4;
+  string ProxyURL = 5;
+  int32 Height = 6;
+  int32 Width = 7;
+}
+
+message MessageActivity {
+  uint32 Type = 1;
+  string PartyID = 2;
+}
+
+// presence.go
+
+message Activity {
+  string Name = 1;
+  int32 Type = 2;
+  string URL = 3;
+  Timestamps Timestamps = 4;
+  int64 ApplicationID = 5;
+  string Details = 6;
+  string State = 7;
+  Party Party = 8;
+  Assets Assets = 9;
+  Secrets Secrets = 10;
+  bool Instance = 11;
+  int32 Flags = 12;
+}
+
+message Timestamps {
+  int32 Start = 1;
+  int32 End = 2;
+}
+
+message Party {
+  string ID = 1;
+  repeated int32 Size = 2;
+}
+
+message Assets {
+  string LargeImage = 1;
+  string LargeText = 2;
+  string SmallImage = 3;
+  string SmallText = 4;
+}
+
+message Secrets {
+  string Join = 1;
+  string Spectate = 2;
+  string Match = 3;
+}
+
+message ClientStatus {
+  string Desktop = 1;
+  string Mobile = 2;
+  string Web = 3;
+}
+
+// role.go
+
+message Role {
+  int64 ID = 1;
+  int64 GuildID = 2;
+  string Name = 3;
+  int32 Color = 4;
+  bool Hoist = 5;
+  string Icon = 6;
+  string UnicodeEmoji = 7;
+  int32 Position = 8;
+  int64 Permissions = 9;
+  bool Managed = 10;
+  bool Mentionable = 11;
+  RoleTag Tags = 12;
+}
+
+message RoleTag {
+  bool PremiumSubscriber = 1;
+  int64 BotID = 2;
+  int64 IntegrationID = 3;
+}
+
+// sticker.go
+
+message Sticker {
+  int64 ID = 1;
+  int64 PackID = 2;
+  string Name = 3;
+  string Description = 4;
+  string Tags = 5;
+  uint32 Type = 6;
+  uint32 FormatType = 7;
+  bool Available = 8;
+  int64 GuildID = 9;
+  User User = 10;
+  int32 SortValue = 11;
+}
+
+message MessageSticker {
+  int64 ID = 1;
+  string Name = 2;
+  uint32 FormatType = 3;
+}
+
+// user.go
+
+message User {
+  int64 ID = 1;
+  string Username = 2;
+  string Discriminator = 3;
+	string GlobalName = 4;
+  string Avatar = 5;
+  bool Bot = 6;
+  bool System = 7;
+  bool MFAEnabled = 8;
+  string Banner = 9;
+  int32 AccentColour = 10;
+  string Locale = 11;
+  bool Verified = 12;
+  string Email = 13;
+  int32 Flags = 14;
+  int32 PremiumType = 15;
+  int32 PublicFlags = 16;
+  int64 DMChannelID = 17;
+}
+
+// webhook.go
+
+message Webhook {
+  int64 ID = 1;
+  uint32 Type = 2;
+  int64 GuildID = 3;
+  int64 ChannelID = 4;
+  User User = 5;
+  string Name = 6;
+  string Avatar = 7;
+  string Token = 8;
+  int64 ApplicationID = 9;
+}
+
+message WebhookMessage {
+  string Content = 1;
+  string Username = 2;
+  string AvatarURL = 3;
+  bool TTS = 4;
+  repeated Embed Embeds = 5;
+  repeated MessageAllowedMentions AllowedMentions = 6;
+  repeated InteractionComponent Components = 7;
+  bytes PayloadJSON = 8;
+}
