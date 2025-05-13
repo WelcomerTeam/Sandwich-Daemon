@@ -1,4 +1,5 @@
 syntax = "proto3";
+
 package sandwich;
 
 option go_package = "github.com/WelcomerTeam/Sandwich-Daemon/proto/sandwich";
