@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	"github.com/WelcomerTeam/RealRock/limiter"
+	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/limiter"
 	"github.com/WelcomerTeam/czlib"
 	"github.com/coder/websocket"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"

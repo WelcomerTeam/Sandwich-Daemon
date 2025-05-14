@@ -108,7 +108,6 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 	}
 
 	return pbGuild
-
 }
 
 func channelToPB(channel *discord.Channel) *pb.Channel {

@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/WelcomerTeam/RealRock/bucketstore"
+	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/bucketstore"
 )
 
 // IdentifyViaBuckets is a bare minimum identify provider that uses buckets to identify shards.
