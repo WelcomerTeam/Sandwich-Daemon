@@ -2,8 +2,10 @@ package sandwich
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -12,9 +14,12 @@ import (
 	"github.com/WelcomerTeam/RealRock/bucketstore"
 	"github.com/WelcomerTeam/RealRock/limiter"
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
+	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 var Version = "2.0.0"
@@ -40,6 +45,9 @@ type Sandwich struct {
 	guildChunks *csmap.CsMap[discord.Snowflake, *GuildChunk]
 
 	panicHandler PanicHandler
+
+	listenerCounter *atomic.Int32
+	listeners       *syncmap.Map[int32, chan *listenerData]
 }
 
 type PanicHandler func(sandwich *Sandwich, r any)
@@ -79,6 +87,9 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 		guildChunks: csmap.Create[discord.Snowflake, *GuildChunk](),
 
 		panicHandler: nil,
+
+		listenerCounter: &atomic.Int32{},
+		listeners:       &syncmap.Map[int32, chan *listenerData]{},
 	}
 }
 
@@ -139,6 +150,37 @@ func (sandwich *Sandwich) WithPrometheusAnalytics(
 	return sandwich
 }
 
+func (sandwich *Sandwich) WithGRPCServer(listenerConfig *net.ListenConfig, network, address string, server *grpc.Server) *Sandwich {
+	pb.RegisterSandwichServer(server, sandwich.NewGRPCServer())
+
+	// Enables server reflection
+	reflection.Register(server)
+
+	go func() {
+		slog.Info("Starting GRPC server", "network", network, "host", address)
+
+		var err error
+
+		var listener net.Listener
+
+		if listenerConfig != nil {
+			listener, err = listenerConfig.Listen(context.Background(), network, address)
+		} else {
+			listener, err = net.Listen(network, address)
+		}
+
+		if err == nil {
+			err = server.Serve(listener)
+		}
+
+		if err != nil {
+			panic(fmt.Errorf("failed to start GRPC server: %w", err))
+		}
+	}()
+
+	return sandwich
+}
+
 func (sandwich *Sandwich) Start(ctx context.Context) error {
 	sandwich.logger.Info("Starting Sandwich")
 
@@ -150,7 +192,6 @@ func (sandwich *Sandwich) Start(ctx context.Context) error {
 		sandwich.client = http.DefaultClient
 	}
 
-	// TODO: setup GRPC
 	// TODO: setup HTTP server
 
 	sandwich.startApplications(ctx)
@@ -204,25 +245,35 @@ func (sandwich *Sandwich) startApplications(ctx context.Context) {
 			continue
 		}
 
-		application := NewApplication(sandwich, applicationConfig)
-		sandwich.applications.Store(applicationConfig.ApplicationIdentifier, application)
-
-		if err := application.Initialize(ctx); err != nil {
-			sandwich.logger.Error("Failed to initialize application", "error", err)
-
-			application.SetStatus(ApplicationStatusFailed)
+		if _, err := sandwich.addApplication(ctx, applicationConfig); err != nil {
+			sandwich.logger.Error("Failed to add application", "error", err)
 
 			continue
 		}
-
-		if application.configuration.Load().AutoStart {
-			go func(application *Application) {
-				if err := application.Start(ctx); err != nil {
-					application.SetStatus(ApplicationStatusFailed)
-				}
-			}(application)
-		}
 	}
+}
+
+func (sandwich *Sandwich) addApplication(ctx context.Context, applicationConfig *ApplicationConfiguration) (*Application, error) {
+	application := NewApplication(sandwich, applicationConfig)
+	sandwich.applications.Store(applicationConfig.ApplicationIdentifier, application)
+
+	if err := application.Initialize(ctx); err != nil {
+		sandwich.logger.Error("Failed to initialize application", "error", err)
+
+		application.SetStatus(ApplicationStatusFailed)
+
+		return application, err
+	}
+
+	if application.configuration.Load().AutoStart {
+		go func(application *Application) {
+			if err := application.Start(ctx); err != nil {
+				application.SetStatus(ApplicationStatusFailed)
+			}
+		}(application)
+	}
+
+	return application, nil
 }
 
 // validateApplicationConfig validates a application configuration.
@@ -240,4 +291,154 @@ func (sandwich *Sandwich) validateApplicationConfig(applicationConfig *Applicati
 	}
 
 	return nil
+}
+
+type listenerData struct {
+	timestamp time.Time
+	payload   []byte
+}
+
+func (sandwich *Sandwich) addListener(listener chan *listenerData) int32 {
+	counter := sandwich.listenerCounter.Add(1)
+
+	sandwich.listeners.Store(counter, listener)
+
+	return counter
+}
+
+func (sandwich *Sandwich) removeListener(counter int32) {
+	sandwich.listeners.Delete(counter)
+}
+
+func (sandwich *Sandwich) broadcast(data *listenerData) {
+	sandwich.listeners.Range(func(_ int32, listener chan *listenerData) bool {
+		listener <- data
+
+		return true
+	})
+}
+
+// Conversions
+
+func applicationToPB(application *Application) *pb.SandwichApplication {
+	configuration := application.configuration.Load()
+
+	var userID int64
+
+	if applicationUser := application.user.Load(); applicationUser != nil {
+		userID = int64(applicationUser.ID)
+	}
+
+	var valuesJSON []byte
+
+	if configuration.Values != nil {
+		valuesJSON, _ = json.Marshal(configuration.Values)
+	}
+
+	var shards map[int32]*pb.Shard
+
+	application.shards.Range(func(shardIndex int32, shard *Shard) bool {
+		shards[shardIndex] = &pb.Shard{
+			Id:                shardIndex,
+			Status:            shard.status.Load(),
+			StartedAt:         shard.startedAt.Load().Unix(),
+			UnavailableGuilds: int32(shard.unavailableGuilds.Count()),
+			LazyGuilds:        int32(shard.lazyGuilds.Count()),
+			Guilds:            int32(shard.guilds.Count()),
+			Sequence:          shard.sequence.Load(),
+			LastHeartbeatSent: shard.lastHeartbeatSent.Load().Unix(),
+			LastHeartbeatAck:  shard.lastHeartbeatAck.Load().Unix(),
+			GatewayLatency:    shard.gatewayLatency.Load(),
+		}
+		return true
+	})
+
+	var startedAt int64
+
+	if application.startedAt.Load() != nil {
+		startedAt = application.startedAt.Load().Unix()
+	}
+
+	return &pb.SandwichApplication{
+		ApplicationIdentifier: configuration.ApplicationIdentifier,
+		ProducerIdentifier:    configuration.ProducerIdentifier,
+		DisplayName:           configuration.DisplayName,
+		BotToken:              configuration.BotToken,
+		ShardCount:            application.shardCount.Load(),
+		AutoSharded:           configuration.AutoSharded,
+		Status:                application.status.Load(),
+		StartedAt:             startedAt,
+		UserId:                userID,
+		Values:                valuesJSON,
+		Shards:                shards,
+	}
+}
+
+func userToPB(user *discord.User) *pb.User {
+	userPB := &pb.User{
+		ID:            int64(user.ID),
+		Username:      user.Username,
+		Discriminator: user.Discriminator,
+		GlobalName:    user.GlobalName,
+		Avatar:        user.Avatar,
+		Bot:           user.Bot,
+		System:        user.System,
+		MFAEnabled:    user.MFAEnabled,
+		Banner:        user.Banner,
+		AccentColour:  int32(user.AccentColor),
+		Locale:        user.Locale,
+		Verified:      user.Verified,
+		Email:         user.Email,
+		Flags:         int32(user.Flags),
+		PremiumType:   int32(user.PremiumType),
+		PublicFlags:   int32(user.PublicFlags),
+		DMChannelID:   0,
+	}
+
+	if user.DMChannelID != nil {
+		userPB.DMChannelID = int64(*user.DMChannelID)
+	}
+
+	return userPB
+}
+
+func snowflakeListToInt64List(snowflakes []discord.Snowflake) []int64 {
+	int64List := make([]int64, len(snowflakes))
+
+	for i, snowflake := range snowflakes {
+		int64List[i] = int64(snowflake)
+	}
+
+	return int64List
+}
+
+func guildMemberToPB(guildMember *discord.GuildMember) *pb.GuildMember {
+	guildMemberPB := &pb.GuildMember{
+		User:                       nil,
+		GuildID:                    0,
+		Nick:                       guildMember.Nick,
+		Avatar:                     guildMember.Avatar,
+		Roles:                      snowflakeListToInt64List(guildMember.Roles),
+		JoinedAt:                   guildMember.JoinedAt.Format(time.RFC3339),
+		PremiumSince:               guildMember.PremiumSince,
+		Deaf:                       guildMember.Deaf,
+		Mute:                       guildMember.Mute,
+		Pending:                    guildMember.Pending,
+		Permissions:                0,
+		CommunicationDisabledUntil: guildMember.CommunicationDisabledUntil,
+	}
+
+	if guildMember.User != nil {
+		guildMemberPB.User = userToPB(guildMember.User)
+	}
+
+	if guildMember.GuildID != nil {
+		guildMemberPB.GuildID = int64(*guildMember.GuildID)
+	}
+
+	if guildMember.Permissions != nil {
+		guildMemberPB.Permissions = int64(*guildMember.Permissions)
+	}
+
+	return guildMemberPB
 }

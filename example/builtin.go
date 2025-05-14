@@ -17,6 +17,7 @@ import (
 	sandwich "github.com/WelcomerTeam/Sandwich-Daemon"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
 )
 
 // Replace this with whatever PUBSUB/implementation you want to use.
@@ -124,9 +125,14 @@ func main() {
 		},
 		prometheus.NewPedanticRegistry(),
 		promhttp.HandlerOpts{},
+	).WithGRPCServer(
+		nil,
+		"tcp",
+		":10001",
+		grpc.NewServer(),
 	)
 
-	// TODO: GRPC, HTTP server configuration
+	// TODO: HTTP server configuration
 
 	ctx, cancel := context.WithCancel(context.Background())
 

@@ -53,6 +53,7 @@ type Shard struct {
 	heartbeatActive   *atomic.Bool
 	lastHeartbeatAck  *atomic.Pointer[time.Time]
 	lastHeartbeatSent *atomic.Pointer[time.Time]
+	gatewayLatency    *atomic.Int64
 
 	heartbeater              *time.Ticker
 	heartbeatInterval        *atomic.Pointer[time.Duration]
@@ -75,7 +76,7 @@ type Shard struct {
 	stop  chan struct{}
 	error chan error
 
-	status *atomic.Pointer[ShardStatus]
+	status *atomic.Int32
 
 	gatewayPayloadPool *sync.Pool
 
@@ -122,7 +123,7 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 		stop:  make(chan struct{}, 1),
 		error: make(chan error, 1),
 
-		status: &atomic.Pointer[ShardStatus]{},
+		status: &atomic.Int32{},
 
 		gatewayPayloadPool: &sync.Pool{
 			New: func() any {
@@ -158,7 +159,7 @@ func (shard *Shard) SetMetadata(configuration *ApplicationConfiguration) {
 
 func (shard *Shard) SetStatus(status ShardStatus) {
 	UpdateShardStatus(shard.application.identifier, shard.shardID, status)
-	shard.status.Store(&status)
+	shard.status.Store(int32(status))
 	shard.logger.Info("Shard status updated", "status", status.String())
 }
 
