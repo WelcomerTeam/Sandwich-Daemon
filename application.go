@@ -41,16 +41,16 @@ type Application struct {
 
 	startedAt *atomic.Pointer[time.Time]
 
-	status *atomic.Pointer[ApplicationStatus]
+	status *atomic.Int32
 }
 
-func NewApplication(s *Sandwich, config *ApplicationConfiguration) *Application {
+func NewApplication(sandwich *Sandwich, config *ApplicationConfiguration) *Application {
 	application := &Application{
-		logger: s.logger.With("application_identifier", config.ApplicationIdentifier),
+		logger: sandwich.logger.With("application_identifier", config.ApplicationIdentifier),
 
 		identifier: config.ApplicationIdentifier,
 
-		sandwich:      s,
+		sandwich:      sandwich,
 		configuration: &atomic.Pointer[ApplicationConfiguration]{},
 
 		gateway:                           &atomic.Pointer[discord.GatewayBotResponse]{},
@@ -70,7 +70,7 @@ func NewApplication(s *Sandwich, config *ApplicationConfiguration) *Application 
 
 		startedAt: &atomic.Pointer[time.Time]{},
 
-		status: &atomic.Pointer[ApplicationStatus]{},
+		status: &atomic.Int32{},
 	}
 
 	application.configuration.Store(config)
@@ -82,7 +82,7 @@ func NewApplication(s *Sandwich, config *ApplicationConfiguration) *Application 
 
 func (application *Application) SetStatus(status ApplicationStatus) {
 	UpdateApplicationStatus(application.identifier, status)
-	application.status.Store(&status)
+	application.status.Store(int32(status))
 	application.logger.Info("Application status updated", "status", status.String())
 }
 
@@ -116,7 +116,7 @@ func (application *Application) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bot %s", application.configuration.Load().BotToken))
+	req.Header.Set("Authorization", "Bot "+application.configuration.Load().BotToken)
 
 	resp, err := application.sandwich.client.Do(req)
 	if err != nil {

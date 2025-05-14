@@ -57,13 +57,11 @@ service Sandwich {
     rpc FetchGuildVoiceState(FetchGuildVoiceStateRequest) returns (FetchGuildVoiceStateResponse) {}
     rpc FetchUser(FetchUserRequest) returns (FetchUserResponse) {}
     rpc FetchUserMutualGuilds(FetchUserMutualGuildsRequest) returns (FetchUserMutualGuildsResponse) {}
-    rpc FetchVoiceState(FetchVoiceStateRequest) returns (FetchVoiceStateResponse) {}
 }
 
 message BaseResponse {
-    string version = 1;
-    bool ok = 2;
-    string error = 3;
+    bool ok = 1;
+    string error = 2;
 }
 
 message ListenRequest {
@@ -87,7 +85,8 @@ message ApplicationIdentifierWithBlocking {
 }
 
 message FetchApplicationResponse {
-    map<string, SandwichApplication> applications = 1;
+    BaseResponse base_response = 1;
+    map<string, SandwichApplication> applications = 2;
 }
 
 message CreateApplicationRequest {
@@ -118,7 +117,6 @@ message SandwichApplication {
     string display_name = 3;
     string bot_token = 4;
     int32 shard_count = 5;
-    repeated int32 shard_ids = 6;
     bool auto_sharded = 7;
     int32 status = 8;
     int64 started_at = 9;
@@ -130,14 +128,14 @@ message SandwichApplication {
 message Shard {
     int32 id = 1;
     int32 status = 2;
-    int32 started_at = 3;
+    int64 started_at = 3;
     int32 unavailable_guilds = 4;
     int32 lazy_guilds = 5;
     int32 guilds = 6;
     int32 sequence = 7;
     int64 last_heartbeat_sent = 8;
     int64 last_heartbeat_ack = 9;
-    float gateway_latency = 10;
+    int64 gateway_latency = 10;
 }
 
 message RequestGuildChunkRequest {
@@ -260,14 +258,4 @@ message FetchUserMutualGuildsRequest {
 message FetchUserMutualGuildsResponse {
     BaseResponse base_response = 1;
     map<int64, Guild> guilds = 2;
-}
-
-message FetchVoiceStateRequest {
-    int64 guild_id = 1;
-    repeated int64 user_ids = 2;
-}
-
-message FetchVoiceStateResponse {
-    BaseResponse base_response = 1;
-    map<int64, VoiceState> voice_states = 2;
 }

@@ -40,7 +40,6 @@ const (
 	Sandwich_FetchGuildVoiceState_FullMethodName  = "/sandwich.Sandwich/FetchGuildVoiceState"
 	Sandwich_FetchUser_FullMethodName             = "/sandwich.Sandwich/FetchUser"
 	Sandwich_FetchUserMutualGuilds_FullMethodName = "/sandwich.Sandwich/FetchUserMutualGuilds"
-	Sandwich_FetchVoiceState_FullMethodName       = "/sandwich.Sandwich/FetchVoiceState"
 )
 
 // SandwichClient is the client API for Sandwich service.
@@ -78,7 +77,6 @@ type SandwichClient interface {
 	FetchGuildVoiceState(ctx context.Context, in *FetchGuildVoiceStateRequest, opts ...grpc.CallOption) (*FetchGuildVoiceStateResponse, error)
 	FetchUser(ctx context.Context, in *FetchUserRequest, opts ...grpc.CallOption) (*FetchUserResponse, error)
 	FetchUserMutualGuilds(ctx context.Context, in *FetchUserMutualGuildsRequest, opts ...grpc.CallOption) (*FetchUserMutualGuildsResponse, error)
-	FetchVoiceState(ctx context.Context, in *FetchVoiceStateRequest, opts ...grpc.CallOption) (*FetchVoiceStateResponse, error)
 }
 
 type sandwichClient struct {
@@ -298,16 +296,6 @@ func (c *sandwichClient) FetchUserMutualGuilds(ctx context.Context, in *FetchUse
 	return out, nil
 }
 
-func (c *sandwichClient) FetchVoiceState(ctx context.Context, in *FetchVoiceStateRequest, opts ...grpc.CallOption) (*FetchVoiceStateResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(FetchVoiceStateResponse)
-	err := c.cc.Invoke(ctx, Sandwich_FetchVoiceState_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // SandwichServer is the server API for Sandwich service.
 // All implementations must embed UnimplementedSandwichServer
 // for forward compatibility.
@@ -343,7 +331,6 @@ type SandwichServer interface {
 	FetchGuildVoiceState(context.Context, *FetchGuildVoiceStateRequest) (*FetchGuildVoiceStateResponse, error)
 	FetchUser(context.Context, *FetchUserRequest) (*FetchUserResponse, error)
 	FetchUserMutualGuilds(context.Context, *FetchUserMutualGuildsRequest) (*FetchUserMutualGuildsResponse, error)
-	FetchVoiceState(context.Context, *FetchVoiceStateRequest) (*FetchVoiceStateResponse, error)
 	mustEmbedUnimplementedSandwichServer()
 }
 
@@ -413,9 +400,6 @@ func (UnimplementedSandwichServer) FetchUser(context.Context, *FetchUserRequest)
 }
 func (UnimplementedSandwichServer) FetchUserMutualGuilds(context.Context, *FetchUserMutualGuildsRequest) (*FetchUserMutualGuildsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchUserMutualGuilds not implemented")
-}
-func (UnimplementedSandwichServer) FetchVoiceState(context.Context, *FetchVoiceStateRequest) (*FetchVoiceStateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FetchVoiceState not implemented")
 }
 func (UnimplementedSandwichServer) mustEmbedUnimplementedSandwichServer() {}
 func (UnimplementedSandwichServer) testEmbeddedByValue()                  {}
@@ -791,24 +775,6 @@ func _Sandwich_FetchUserMutualGuilds_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Sandwich_FetchVoiceState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FetchVoiceStateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SandwichServer).FetchVoiceState(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Sandwich_FetchVoiceState_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SandwichServer).FetchVoiceState(ctx, req.(*FetchVoiceStateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Sandwich_ServiceDesc is the grpc.ServiceDesc for Sandwich service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -891,10 +857,6 @@ var Sandwich_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FetchUserMutualGuilds",
 			Handler:    _Sandwich_FetchUserMutualGuilds_Handler,
-		},
-		{
-			MethodName: "FetchVoiceState",
-			Handler:    _Sandwich_FetchVoiceState_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
