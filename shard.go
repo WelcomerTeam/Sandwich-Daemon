@@ -99,6 +99,7 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 		heartbeatActive:   &atomic.Bool{},
 		lastHeartbeatAck:  &atomic.Pointer[time.Time]{},
 		lastHeartbeatSent: &atomic.Pointer[time.Time]{},
+		gatewayLatency:    &atomic.Int64{},
 
 		heartbeater:              nil,
 		heartbeatInterval:        &atomic.Pointer[time.Duration]{},

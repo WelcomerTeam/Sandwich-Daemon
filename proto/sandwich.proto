@@ -174,7 +174,7 @@ message WhereIsGuildLocation {
 }
 
 message FetchGuildRequest {
-    int64 guild_id = 1;
+    repeated int64 guild_ids = 1;
 }
 
 message FetchGuildResponse {

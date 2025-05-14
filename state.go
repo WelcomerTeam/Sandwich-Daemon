@@ -8,6 +8,8 @@ import (
 
 type StateProvider interface {
 	// Guilds
+	GetGuilds(ctx context.Context) ([]*discord.Guild, bool)
+
 	GetGuild(ctx context.Context, guildID discord.Snowflake) (*discord.Guild, bool)
 	SetGuild(ctx context.Context, guildID discord.Snowflake, guild discord.Guild)
 
