@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	"github.com/WelcomerTeam/RealRock/bucketstore"
-	"github.com/WelcomerTeam/RealRock/limiter"
+	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/bucketstore"
+	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/limiter"
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
 	csmap "github.com/mhmtszr/concurrent-swiss-map"
