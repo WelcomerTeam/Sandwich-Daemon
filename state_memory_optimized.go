@@ -38,9 +38,14 @@ func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
 	}
 
 	go func() {
+		t := time.NewTicker(10 * time.Second)
+		defer t.Stop()
+
 		for {
-			stateProvider.UpdateStateMetricsFromStateProvider()
-			time.Sleep(10 * time.Second)
+			select {
+			case <-t.C:
+				stateProvider.UpdateStateMetricsFromStateProvider()
+			}
 		}
 	}()
 
@@ -105,11 +110,22 @@ func (s *StateProviderMemoryOptimized) UpdateStateMetricsFromStateProvider() {
 	)
 }
 
-func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID discord.Snowflake) (*discord.Guild, bool) {
-	guildState, guildExists := s.Guilds.Load(guildID)
+func (s *StateProviderMemoryOptimized) GetGuilds(_ context.Context) ([]*discord.Guild, bool) {
+	guilds := make([]*discord.Guild, 0, s.Guilds.Count())
+
+	s.Guilds.Range(func(_ discord.Snowflake, value StateGuild) bool {
+		guilds = append(guilds, s.fillGuild(value))
+
+		return false
+	})
+
+	return guilds, true
+}
+
+func (s *StateProviderMemoryOptimized) fillGuild(guildState StateGuild) *discord.Guild {
 	guild := StateGuildToDiscord(guildState)
 
-	if guildChannels, exists := s.GuildChannels.Load(guildID); exists {
+	if guildChannels, exists := s.GuildChannels.Load(guildState.ID); exists {
 		guildChannels.Range(func(_ discord.Snowflake, value StateChannel) bool {
 			guild.Channels = append(guild.Channels, StateChannelToDiscord(value))
 
@@ -117,7 +133,7 @@ func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID disco
 		})
 	}
 
-	if guildRoles, exists := s.GuildRoles.Load(guildID); exists {
+	if guildRoles, exists := s.GuildRoles.Load(guildState.ID); exists {
 		guildRoles.Range(func(_ discord.Snowflake, value StateRole) bool {
 			guild.Roles = append(guild.Roles, StateRoleToDiscord(value))
 
@@ -125,7 +141,7 @@ func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID disco
 		})
 	}
 
-	if guildEmojis, exists := s.GuildEmojis.Load(guildID); exists {
+	if guildEmojis, exists := s.GuildEmojis.Load(guildState.ID); exists {
 		guildEmojis.Range(func(_ discord.Snowflake, value StateEmoji) bool {
 			guild.Emojis = append(guild.Emojis, StateEmojiToDiscord(value))
 
@@ -133,7 +149,20 @@ func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID disco
 		})
 	}
 
-	return &guild, guildExists
+	if guildStickers, exists := s.GuildStickers.Load(guildState.ID); exists {
+		guildStickers.Range(func(_ discord.Snowflake, value StateSticker) bool {
+			guild.Stickers = append(guild.Stickers, StateStickerToDiscord(value))
+
+			return true
+		})
+	}
+
+	return &guild
+}
+
+func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID discord.Snowflake) (*discord.Guild, bool) {
+	guildState, guildExists := s.Guilds.Load(guildID)
+	return s.fillGuild(guildState), guildExists
 }
 
 func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID discord.Snowflake, guild discord.Guild) {

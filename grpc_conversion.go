@@ -14,7 +14,7 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 		return nil
 	}
 
-	return &pb.Guild{
+	pbGuild := &pb.Guild{
 		ID:                          int64(guild.ID),
 		Name:                        guild.Name,
 		Icon:                        guild.Icon,
@@ -22,13 +22,9 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 		Splash:                      guild.Splash,
 		DiscoverySplash:             guild.DiscoverySplash,
 		Owner:                       guild.Owner,
-		OwnerID:                     int64(*guild.OwnerID),
-		Permissions:                 int64(*guild.Permissions),
 		Region:                      guild.Region,
-		AFKChannelID:                int64(*guild.AFKChannelID),
 		AFKTimeout:                  int32(guild.AFKTimeout),
 		WidgetEnabled:               guild.WidgetEnabled,
-		WidgetChannelID:             int64(*guild.WidgetChannelID),
 		VerificationLevel:           uint32(guild.VerificationLevel),
 		DefaultMessageNotifications: int32(guild.DefaultMessageNotifications),
 		ExplicitContentFilter:       int32(guild.ExplicitContentFilter),
@@ -36,10 +32,6 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 		Emojis:                      emojisToPB(guild.Emojis),
 		Features:                    guild.Features,
 		MFALevel:                    uint32(guild.MFALevel),
-		ApplicationID:               int64(*guild.ApplicationID),
-		SystemChannelID:             int64(*guild.SystemChannelID),
-		SystemChannelFlags:          uint32(*guild.SystemChannelFlags),
-		RulesChannelID:              int64(*guild.RulesChannelID),
 		JoinedAt:                    guild.JoinedAt.Format(time.RFC3339),
 		Large:                       guild.Large,
 		Unavailable:                 guild.Unavailable,
@@ -53,10 +45,8 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 		VanityURLCode:               guild.VanityURLCode,
 		Description:                 guild.Description,
 		Banner:                      guild.Banner,
-		PremiumTier:                 uint32(*guild.PremiumTier),
 		PremiumSubscriptionCount:    int32(guild.PremiumSubscriptionCount),
 		PreferredLocale:             guild.PreferredLocale,
-		PublicUpdatesChannelID:      int64(*guild.PublicUpdatesChannelID),
 		MaxVideoChannelUsers:        int32(guild.MaxVideoChannelUsers),
 		ApproximateMemberCount:      int32(guild.ApproximateMemberCount),
 		ApproximatePresenceCount:    int32(guild.ApproximatePresenceCount),
@@ -65,7 +55,60 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 		Stickers:                    stickersToPB(guild.Stickers),
 		GuildScheduledEvents:        scheduledEventsToPB(guild.GuildScheduledEvents),
 		PremiumProgressBarEnabled:   guild.PremiumProgressBarEnabled,
+		OwnerID:                     0,
+		Permissions:                 0,
+		AFKChannelID:                0,
+		WidgetChannelID:             0,
+		ApplicationID:               0,
+		SystemChannelID:             0,
+		SystemChannelFlags:          0,
+		PremiumTier:                 0,
+		PublicUpdatesChannelID:      0,
+		RulesChannelID:              0,
 	}
+
+	if guild.OwnerID != nil {
+		pbGuild.OwnerID = int64(*guild.OwnerID)
+	}
+
+	if guild.Permissions != nil {
+		pbGuild.Permissions = int64(*guild.Permissions)
+	}
+
+	if guild.AFKChannelID != nil {
+		pbGuild.AFKChannelID = int64(*guild.AFKChannelID)
+	}
+
+	if guild.WidgetChannelID != nil {
+		pbGuild.WidgetChannelID = int64(*guild.WidgetChannelID)
+	}
+
+	if guild.ApplicationID != nil {
+		pbGuild.ApplicationID = int64(*guild.ApplicationID)
+	}
+
+	if guild.SystemChannelID != nil {
+		pbGuild.SystemChannelID = int64(*guild.SystemChannelID)
+	}
+
+	if guild.SystemChannelFlags != nil {
+		pbGuild.SystemChannelFlags = uint32(*guild.SystemChannelFlags)
+	}
+
+	if guild.PremiumTier != nil {
+		pbGuild.PremiumTier = uint32(*guild.PremiumTier)
+	}
+
+	if guild.PublicUpdatesChannelID != nil {
+		pbGuild.PublicUpdatesChannelID = int64(*guild.PublicUpdatesChannelID)
+	}
+
+	if guild.RulesChannelID != nil {
+		pbGuild.RulesChannelID = int64(*guild.RulesChannelID)
+	}
+
+	return pbGuild
+
 }
 
 func channelToPB(channel *discord.Channel) *pb.Channel {
@@ -437,11 +480,10 @@ func roleToPB(role *discord.Role) *pb.Role {
 		return nil
 	}
 
-	return &pb.Role{
+	pbRole := &pb.Role{
 		ID:           int64(role.ID),
-		GuildID:      int64(*role.GuildID),
 		Name:         role.Name,
-		Color:        int32(role.Color),
+		Color:        role.Color,
 		Hoist:        role.Hoist,
 		Icon:         role.Icon,
 		UnicodeEmoji: role.UnicodeEmoji,
@@ -450,7 +492,14 @@ func roleToPB(role *discord.Role) *pb.Role {
 		Managed:      role.Managed,
 		Mentionable:  role.Mentionable,
 		Tags:         roleTagsToPB(role.Tags),
+		GuildID:      0,
 	}
+
+	if role.GuildID != nil {
+		pbRole.GuildID = int64(*role.GuildID)
+	}
+
+	return pbRole
 }
 
 func emojiToPB(emoji *discord.Emoji) *pb.Emoji {
@@ -458,9 +507,8 @@ func emojiToPB(emoji *discord.Emoji) *pb.Emoji {
 		return nil
 	}
 
-	return &pb.Emoji{
+	pbEmoji := &pb.Emoji{
 		ID:            int64(emoji.ID),
-		GuildID:       int64(*emoji.GuildID),
 		Name:          emoji.Name,
 		Roles:         snowflakesToInt64s(emoji.Roles),
 		User:          userToPB(emoji.User),
@@ -468,7 +516,14 @@ func emojiToPB(emoji *discord.Emoji) *pb.Emoji {
 		Managed:       emoji.Managed,
 		Animated:      emoji.Animated,
 		Available:     emoji.Available,
+		GuildID:       0,
 	}
+
+	if emoji.GuildID != nil {
+		pbEmoji.GuildID = int64(*emoji.GuildID)
+	}
+
+	return pbEmoji
 }
 
 func stickerToPB(sticker *discord.Sticker) *pb.Sticker {
@@ -476,19 +531,29 @@ func stickerToPB(sticker *discord.Sticker) *pb.Sticker {
 		return nil
 	}
 
-	return &pb.Sticker{
+	pbSticker := &pb.Sticker{
 		ID:          int64(sticker.ID),
-		PackID:      int64(*sticker.PackID),
 		Name:        sticker.Name,
 		Description: sticker.Description,
 		Tags:        sticker.Tags,
 		Type:        uint32(sticker.Type),
 		FormatType:  uint32(sticker.FormatType),
 		Available:   sticker.Available,
-		GuildID:     int64(*sticker.GuildID),
 		User:        userToPB(sticker.User),
 		SortValue:   int32(sticker.SortValue),
+		PackID:      0,
+		GuildID:     0,
 	}
+
+	if sticker.GuildID != nil {
+		pbSticker.GuildID = int64(*sticker.GuildID)
+	}
+
+	if sticker.PackID != nil {
+		pbSticker.PackID = int64(*sticker.PackID)
+	}
+
+	return pbSticker
 }
 
 func voiceStateToPB(state *discord.VoiceState) *pb.VoiceState {

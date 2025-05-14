@@ -114,6 +114,7 @@ func (sandwich *Sandwich) WithPrometheusAnalytics(
 
 		ShardMetrics.ApplicationStatus,
 		ShardMetrics.ShardStatus,
+		ShardMetrics.UnavailableGuilds,
 
 		StateMetrics.Channels,
 		StateMetrics.Emojis,
@@ -121,7 +122,6 @@ func (sandwich *Sandwich) WithPrometheusAnalytics(
 		StateMetrics.GuildRoles,
 		StateMetrics.Guilds,
 		StateMetrics.Stickers,
-		StateMetrics.UnavailableGuilds,
 		StateMetrics.Users,
 		StateMetrics.VoiceStates,
 	)
@@ -222,8 +222,8 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 	// Update application configurations
 	for _, applicationConfig := range config.Applications {
 		if application, ok := sandwich.applications.Load(applicationConfig.ApplicationIdentifier); ok {
-			application.configuration.Store(applicationConfig)
 			slog.Info("Updated application configuration", "application_identifier", applicationConfig.ApplicationIdentifier)
+			application.configuration.Store(applicationConfig)
 		}
 	}
 
@@ -335,27 +335,29 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 		valuesJSON, _ = json.Marshal(configuration.Values)
 	}
 
-	var shards map[int32]*pb.Shard
+	shards := make(map[int32]*pb.Shard)
 
-	application.shards.Range(func(shardIndex int32, shard *Shard) bool {
-		shards[shardIndex] = &pb.Shard{
-			Id:                shardIndex,
-			Status:            shard.status.Load(),
-			StartedAt:         shard.startedAt.Load().Unix(),
-			UnavailableGuilds: int32(shard.unavailableGuilds.Count()),
-			LazyGuilds:        int32(shard.lazyGuilds.Count()),
-			Guilds:            int32(shard.guilds.Count()),
-			Sequence:          shard.sequence.Load(),
-			LastHeartbeatSent: shard.lastHeartbeatSent.Load().Unix(),
-			LastHeartbeatAck:  shard.lastHeartbeatAck.Load().Unix(),
-			GatewayLatency:    shard.gatewayLatency.Load(),
-		}
-		return true
-	})
+	if application.shards != nil {
+		application.shards.Range(func(shardIndex int32, shard *Shard) bool {
+			shards[shardIndex] = &pb.Shard{
+				Id:                shardIndex,
+				Status:            shard.status.Load(),
+				StartedAt:         shard.startedAt.Load().Unix(),
+				UnavailableGuilds: int32(shard.unavailableGuilds.Count()),
+				LazyGuilds:        int32(shard.lazyGuilds.Count()),
+				Guilds:            int32(shard.guilds.Count()),
+				Sequence:          shard.sequence.Load(),
+				LastHeartbeatSent: shard.lastHeartbeatSent.Load().Unix(),
+				LastHeartbeatAck:  shard.lastHeartbeatAck.Load().Unix(),
+				GatewayLatency:    shard.gatewayLatency.Load(),
+			}
+			return true
+		})
+	}
 
 	var startedAt int64
 
-	if application.startedAt.Load() != nil {
+	if application.shards != nil && application.startedAt.Load() != nil {
 		startedAt = application.startedAt.Load().Unix()
 	}
 

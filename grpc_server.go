@@ -85,7 +85,8 @@ func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *pb.RelayMes
 	}
 
 	return &pb.BaseResponse{
-		Ok: true,
+		Ok:    true,
+		Error: "",
 	}, nil
 }
 
@@ -100,7 +101,8 @@ func (grpcServer *GRPCServer) ReloadConfiguration(ctx context.Context, req *empt
 	}
 
 	return &pb.BaseResponse{
-		Ok: true,
+		Ok:    true,
+		Error: "",
 	}, nil
 }
 
@@ -119,7 +121,8 @@ func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *pb.Appl
 
 	return &pb.FetchApplicationResponse{
 		BaseResponse: &pb.BaseResponse{
-			Ok: true,
+			Ok:    true,
+			Error: "",
 		},
 		Applications: applications,
 	}, nil
@@ -406,19 +409,35 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsG
 
 // FetchGuild implements the FetchGuild RPC method
 func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuildRequest) (*pb.FetchGuildResponse, error) {
-	guild, ok := grpcServer.sandwich.stateProvider.GetGuild(ctx, discord.Snowflake(req.GetGuildId()))
-	if !ok {
-		return &pb.FetchGuildResponse{
-			BaseResponse: &pb.BaseResponse{
-				Ok:    false,
-				Error: ErrGuildNotFound.Error(),
-			},
-			Guilds: nil,
-		}, ErrGuildNotFound
-	}
-
 	guilds := make(map[int64]*pb.Guild)
-	guilds[int64(guild.ID)] = guildToPB(guild)
+
+	guildIDs := req.GetGuildIds()
+
+	if len(guildIDs) == 0 {
+		stateGuilds, ok := grpcServer.sandwich.stateProvider.GetGuilds(ctx)
+		if !ok {
+			return &pb.FetchGuildResponse{
+				BaseResponse: &pb.BaseResponse{
+					Ok:    false,
+					Error: ErrGuildNotFound.Error(),
+				},
+				Guilds: nil,
+			}, ErrGuildNotFound
+		}
+
+		for _, stateGuild := range stateGuilds {
+			guilds[int64(stateGuild.ID)] = guildToPB(stateGuild)
+		}
+	} else {
+		for _, guildID := range guildIDs {
+			guild, ok := grpcServer.sandwich.stateProvider.GetGuild(ctx, discord.Snowflake(guildID))
+			if !ok {
+				continue
+			}
+
+			guilds[int64(guild.ID)] = guildToPB(guild)
+		}
+	}
 
 	return &pb.FetchGuildResponse{
 		BaseResponse: &pb.BaseResponse{
@@ -674,17 +693,10 @@ func (grpcServer *GRPCServer) FetchUser(ctx context.Context, req *pb.FetchUserRe
 
 	userIDs := req.GetUserIds()
 
-	if len(userIDs) == 0 {
-		stateUsers, ok := grpcServer.sandwich.stateProvider.GetUser(ctx, discord.Snowflake(userIDs[0]))
+	for _, userID := range userIDs {
+		stateUser, ok := grpcServer.sandwich.stateProvider.GetUser(ctx, discord.Snowflake(userID))
 		if ok {
-			users[int64(stateUsers.ID)] = userToPB(stateUsers)
-		}
-	} else {
-		for _, userID := range userIDs {
-			stateUser, ok := grpcServer.sandwich.stateProvider.GetUser(ctx, discord.Snowflake(userID))
-			if ok {
-				users[int64(stateUser.ID)] = userToPB(stateUser)
-			}
+			users[int64(stateUser.ID)] = userToPB(stateUser)
 		}
 	}
 

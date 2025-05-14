@@ -45,6 +45,7 @@ func UpdateGatewayLatency(identifier string, latency float64) {
 var ShardMetrics = struct {
 	ApplicationStatus *prometheus.GaugeVec
 	ShardStatus       *prometheus.GaugeVec
+	UnavailableGuilds *prometheus.GaugeVec
 }{
 	ApplicationStatus: promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -60,6 +61,13 @@ var ShardMetrics = struct {
 		},
 		[]string{"application_identifier", "shard_id"},
 	),
+	UnavailableGuilds: promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "sandwich_unavailable_guilds",
+			Help: "Number of currently unavailable guilds",
+		},
+		[]string{"application_identifier", "shard_id"},
+	),
 }
 
 func UpdateApplicationStatus(identifier string, status ApplicationStatus) {
@@ -70,17 +78,20 @@ func UpdateShardStatus(identifier string, shardID int32, status ShardStatus) {
 	ShardMetrics.ShardStatus.WithLabelValues(identifier, strconv.Itoa(int(shardID))).Set(float64(status))
 }
 
+func UpdateUnavailableGuilds(identifier string, shardID int32, count float64) {
+	ShardMetrics.UnavailableGuilds.WithLabelValues(identifier, strconv.Itoa(int(shardID))).Set(count)
+}
+
 // StateMetrics tracks state-related metrics
 var StateMetrics = struct {
-	GuildMembers      prometheus.Gauge
-	GuildRoles        prometheus.Gauge
-	Emojis            prometheus.Gauge
-	Users             prometheus.Gauge
-	Channels          prometheus.Gauge
-	Stickers          prometheus.Gauge
-	Guilds            prometheus.Gauge
-	VoiceStates       prometheus.Gauge
-	UnavailableGuilds prometheus.Gauge
+	GuildMembers prometheus.Gauge
+	GuildRoles   prometheus.Gauge
+	Emojis       prometheus.Gauge
+	Users        prometheus.Gauge
+	Channels     prometheus.Gauge
+	Stickers     prometheus.Gauge
+	Guilds       prometheus.Gauge
+	VoiceStates  prometheus.Gauge
 }{
 	GuildMembers: promauto.NewGauge(
 		prometheus.GaugeOpts{
@@ -130,16 +141,6 @@ var StateMetrics = struct {
 			Help: "Total number of voice states in state",
 		},
 	),
-	UnavailableGuilds: promauto.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "sandwich_unavailable_guilds",
-			Help: "Number of currently unavailable guilds",
-		},
-	),
-}
-
-func UpdateUnavailableGuilds(count float64) {
-	StateMetrics.UnavailableGuilds.Set(count)
 }
 
 func UpdateStateMetrics(members, roles, emojis, users, channels, stickers, guilds, voiceStates int) {
