@@ -3,7 +3,6 @@ package sandwich
 import (
 	"strconv"
 
-	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -18,7 +17,7 @@ var EventMetrics = struct {
 			Name: "sandwich_events_total",
 			Help: "Total number of events processed, split by identifier and event type",
 		},
-		[]string{"application_identifier", "event_type", "guild_id"},
+		[]string{"application_identifier", "event_type"},
 	),
 	GatewayLatency: promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -30,11 +29,7 @@ var EventMetrics = struct {
 }
 
 func RecordEvent(identifier, eventType string) {
-	EventMetrics.EventsTotal.WithLabelValues(identifier, eventType, "").Inc()
-}
-
-func RecordEventWithGuildID(identifier, eventType string, guildID discord.Snowflake) {
-	EventMetrics.EventsTotal.WithLabelValues(identifier, eventType, guildID.String()).Inc()
+	EventMetrics.EventsTotal.WithLabelValues(identifier, eventType).Inc()
 }
 
 func UpdateGatewayLatency(identifier string, latency float64) {
