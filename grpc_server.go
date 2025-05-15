@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/WelcomerTeam/Discord/discord"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
@@ -30,6 +31,8 @@ func (sandwich *Sandwich) NewGRPCServer() *GRPCServer {
 
 // Listen implements the Listen RPC method
 func (grpcServer *GRPCServer) Listen(req *pb.ListenRequest, stream pb.Sandwich_ListenServer) error {
+	RecordGRPCRequest()
+
 	channel := make(chan *listenerData)
 
 	counter := grpcServer.sandwich.addListener(channel)
@@ -55,6 +58,8 @@ func (grpcServer *GRPCServer) Listen(req *pb.ListenRequest, stream pb.Sandwich_L
 
 // RelayMessage implements the RelayMessage RPC method
 func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *pb.RelayMessageRequest) (*pb.BaseResponse, error) {
+	RecordGRPCRequest()
+
 	application, ok := grpcServer.sandwich.applications.Load(req.GetIdentifier())
 	if !ok {
 		return &pb.BaseResponse{
@@ -92,6 +97,8 @@ func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *pb.RelayMes
 
 // ReloadConfiguration implements the ReloadConfiguration RPC method
 func (grpcServer *GRPCServer) ReloadConfiguration(ctx context.Context, req *emptypb.Empty) (*pb.BaseResponse, error) {
+	RecordGRPCRequest()
+
 	err := grpcServer.sandwich.getConfig(ctx)
 	if err != nil {
 		return &pb.BaseResponse{
@@ -108,6 +115,8 @@ func (grpcServer *GRPCServer) ReloadConfiguration(ctx context.Context, req *empt
 
 // FetchApplication implements the FetchApplication RPC method
 func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *pb.ApplicationIdentifier) (*pb.FetchApplicationResponse, error) {
+	RecordGRPCRequest()
+
 	applications := make(map[string]*pb.SandwichApplication)
 
 	grpcServer.sandwich.applications.Range(func(key string, application *Application) bool {
@@ -130,6 +139,8 @@ func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *pb.Appl
 
 // StartApplication implements the StartApplication RPC method
 func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *pb.ApplicationIdentifierWithBlocking) (*pb.BaseResponse, error) {
+	RecordGRPCRequest()
+
 	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
 	if !ok {
 		return &pb.BaseResponse{
@@ -137,6 +148,10 @@ func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *pb.Appl
 			Error: ErrApplicationNotFound.Error(),
 		}, ErrApplicationNotFound
 	}
+
+	// Override the context to a background context as if we are not blocking,
+	// the context will be cancelled when the RPC call ends.
+	ctx = context.Background()
 
 	switch ApplicationStatus(application.status.Load()) {
 	case ApplicationStatusStarting, ApplicationStatusConnecting, ApplicationStatusConnected, ApplicationStatusReady:
@@ -176,6 +191,8 @@ func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *pb.Appl
 
 // StopApplication implements the StopApplication RPC method
 func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *pb.ApplicationIdentifierWithBlocking) (*pb.BaseResponse, error) {
+	RecordGRPCRequest()
+
 	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
 	if !ok {
 		return &pb.BaseResponse{
@@ -183,6 +200,10 @@ func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *pb.Appli
 			Error: ErrApplicationNotFound.Error(),
 		}, ErrApplicationNotFound
 	}
+
+	// Override the context to a background context as if we are not blocking,
+	// the context will be cancelled when the RPC call ends.
+	ctx = context.Background()
 
 	switch ApplicationStatus(application.status.Load()) {
 	case ApplicationStatusStarting, ApplicationStatusConnecting, ApplicationStatusConnected, ApplicationStatusReady:
@@ -217,6 +238,8 @@ func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *pb.Appli
 
 // CreateApplication implements the CreateApplication RPC method
 func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *pb.CreateApplicationRequest) (*pb.SandwichApplication, error) {
+	RecordGRPCRequest()
+
 	var defaultPresence discord.UpdateStatus
 
 	if req.GetDefaultPresence() != nil {
@@ -259,9 +282,31 @@ func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *pb.Cre
 		return nil, err
 	}
 
+	configuration := grpcServer.sandwich.config.Load()
+
+	// Remove existing application configuration.
+	configuration.Applications = slices.DeleteFunc(configuration.Applications, func(application *ApplicationConfiguration) bool {
+		return application.ApplicationIdentifier == applicationConfiguration.ApplicationIdentifier
+	})
+
+	configuration.Applications = append(configuration.Applications, applicationConfiguration)
+
+	grpcServer.sandwich.config.Store(configuration)
+
+	// Override the context to a background context as if we autostart the application,
+	// it will use the context that is passed to the RPC method which will be cancelled.
+	ctx = context.Background()
+
 	application, err := grpcServer.sandwich.addApplication(ctx, applicationConfiguration)
 	if err != nil {
 		return nil, err
+	}
+
+	if req.GetSaveConfig() {
+		err := grpcServer.sandwich.configProvider.SaveConfig(ctx, configuration)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return applicationToPB(application), nil
@@ -269,6 +314,8 @@ func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *pb.Cre
 
 // DeleteApplication implements the DeleteApplication RPC method
 func (grpcServer *GRPCServer) DeleteApplication(ctx context.Context, req *pb.ApplicationIdentifier) (*pb.BaseResponse, error) {
+	RecordGRPCRequest()
+
 	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
 	if !ok {
 		return &pb.BaseResponse{
@@ -291,6 +338,8 @@ func (grpcServer *GRPCServer) DeleteApplication(ctx context.Context, req *pb.App
 
 // RequestGuildChunk implements the RequestGuildChunk RPC method
 func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *pb.RequestGuildChunkRequest) (*pb.BaseResponse, error) {
+	RecordGRPCRequest()
+
 	var shard *Shard
 
 	grpcServer.sandwich.applications.Range(func(key string, application *Application) bool {
@@ -331,6 +380,8 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *pb.Req
 
 // SendWebsocketMessage implements the SendWebsocketMessage RPC method
 func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *pb.SendWebsocketMessageRequest) (*pb.BaseResponse, error) {
+	RecordGRPCRequest()
+
 	application, ok := grpcServer.sandwich.applications.Load(req.GetIdentifier())
 	if !ok {
 		return &pb.BaseResponse{
@@ -362,6 +413,8 @@ func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *pb.
 
 // WhereIsGuild implements the WhereIsGuild RPC method
 func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsGuildRequest) (*pb.WhereIsGuildResponse, error) {
+	RecordGRPCRequest()
+
 	locations := make(map[int64]*pb.WhereIsGuildLocation)
 
 	grpcServer.sandwich.applications.Range(func(applicationIdentifier string, application *Application) bool {
@@ -409,6 +462,8 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsG
 
 // FetchGuild implements the FetchGuild RPC method
 func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuildRequest) (*pb.FetchGuildResponse, error) {
+	RecordGRPCRequest()
+
 	guilds := make(map[int64]*pb.Guild)
 
 	guildIDs := req.GetGuildIds()
@@ -449,6 +504,8 @@ func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuild
 
 // FetchGuildMember implements the FetchGuildMember RPC method
 func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.FetchGuildMemberRequest) (*pb.FetchGuildMemberResponse, error) {
+	RecordGRPCRequest()
+
 	guildMembers := make(map[int64]*pb.GuildMember)
 
 	userIDs := req.GetUserIds()
@@ -489,6 +546,8 @@ func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.Fetc
 
 // FetchGuildChannel implements the FetchGuildChannel RPC method
 func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.FetchGuildChannelRequest) (*pb.FetchGuildChannelResponse, error) {
+	RecordGRPCRequest()
+
 	guildChannels := make(map[int64]*pb.Channel)
 
 	channelIDs := req.GetChannelIds()
@@ -529,6 +588,8 @@ func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.Fet
 
 // FetchGuildRole implements the FetchGuildRole RPC method
 func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchGuildRoleRequest) (*pb.FetchGuildRoleResponse, error) {
+	RecordGRPCRequest()
+
 	guildRoles := make(map[int64]*pb.Role)
 
 	roleIDs := req.GetRoleIds()
@@ -569,6 +630,8 @@ func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchG
 
 // FetchGuildEmoji implements the FetchGuildEmoji RPC method
 func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.FetchGuildEmojiRequest) (*pb.FetchGuildEmojiResponse, error) {
+	RecordGRPCRequest()
+
 	guildEmojis := make(map[int64]*pb.Emoji)
 
 	emojiIDs := req.GetEmojiIds()
@@ -609,6 +672,8 @@ func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.Fetch
 
 // FetchGuildSticker implements the FetchGuildSticker RPC method
 func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.FetchGuildStickerRequest) (*pb.FetchGuildStickerResponse, error) {
+	RecordGRPCRequest()
+
 	guildStickers := make(map[int64]*pb.Sticker)
 
 	stickerIDs := req.GetStickerIds()
@@ -649,6 +714,8 @@ func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.Fet
 
 // FetchGuildVoiceState implements the FetchGuildVoiceState RPC method
 func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.FetchGuildVoiceStateRequest) (*pb.FetchGuildVoiceStateResponse, error) {
+	RecordGRPCRequest()
+
 	voiceStates := make(map[int64]*pb.VoiceState)
 
 	userIDs := req.GetUserIds()
@@ -689,6 +756,8 @@ func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.
 
 // FetchUser implements the FetchUser RPC method
 func (grpcServer *GRPCServer) FetchUser(ctx context.Context, req *pb.FetchUserRequest) (*pb.FetchUserResponse, error) {
+	RecordGRPCRequest()
+
 	users := make(map[int64]*pb.User)
 
 	userIDs := req.GetUserIds()
@@ -710,6 +779,8 @@ func (grpcServer *GRPCServer) FetchUser(ctx context.Context, req *pb.FetchUserRe
 
 // FetchUserMutualGuilds implements the FetchUserMutualGuilds RPC method
 func (grpcServer *GRPCServer) FetchUserMutualGuilds(ctx context.Context, req *pb.FetchUserMutualGuildsRequest) (*pb.FetchUserMutualGuildsResponse, error) {
+	RecordGRPCRequest()
+
 	mutualGuilds := make(map[int64]*pb.Guild)
 
 	mutualGuildsState, ok := grpcServer.sandwich.stateProvider.GetUserMutualGuilds(ctx, discord.Snowflake(req.GetUserId()))
