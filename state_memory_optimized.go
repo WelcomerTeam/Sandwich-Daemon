@@ -56,42 +56,49 @@ func (s *StateProviderMemoryOptimized) UpdateStateMetricsFromStateProvider() {
 	guildChannelsCount := 0
 	s.GuildChannels.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateChannel]) bool {
 		guildChannelsCount += value.Count()
+
 		return false
 	})
 
 	guildRolesCount := 0
 	s.GuildRoles.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateRole]) bool {
 		guildRolesCount += value.Count()
+
 		return false
 	})
 
 	guildEmojisCount := 0
 	s.GuildEmojis.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateEmoji]) bool {
 		guildEmojisCount += value.Count()
+
 		return false
 	})
 
 	guildMembersCount := 0
 	s.GuildMembers.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateGuildMember]) bool {
 		guildMembersCount += value.Count()
+
 		return false
 	})
 
 	userMutualsCount := 0
 	s.UserMutuals.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, bool]) bool {
 		userMutualsCount += value.Count()
+
 		return false
 	})
 
 	stickersCount := 0
 	s.GuildStickers.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateSticker]) bool {
 		stickersCount += value.Count()
+
 		return false
 	})
 
 	voiceStatesCount := 0
 	s.VoiceStates.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateVoiceState]) bool {
 		voiceStatesCount += value.Count()
+
 		return false
 	})
 
@@ -111,6 +118,7 @@ func (s *StateProviderMemoryOptimized) UpdateStateMetricsFromStateProvider() {
 }
 
 func (s *StateProviderMemoryOptimized) GetGuilds(_ context.Context) ([]*discord.Guild, bool) {
+	RecordStateRequest()
 	guilds := make([]*discord.Guild, 0, s.Guilds.Count())
 
 	s.Guilds.Range(func(_ discord.Snowflake, value StateGuild) bool {
@@ -119,6 +127,7 @@ func (s *StateProviderMemoryOptimized) GetGuilds(_ context.Context) ([]*discord.
 		return false
 	})
 
+	RecordStateHitWithValue(float64(len(guilds)))
 	return guilds, true
 }
 
@@ -161,8 +170,16 @@ func (s *StateProviderMemoryOptimized) fillGuild(guildState StateGuild) *discord
 }
 
 func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID discord.Snowflake) (*discord.Guild, bool) {
+	RecordStateRequest()
 	guildState, guildExists := s.Guilds.Load(guildID)
-	return s.fillGuild(guildState), guildExists
+	if !guildExists {
+		RecordStateMiss()
+
+		return nil, false
+	}
+
+	RecordStateHit()
+	return s.fillGuild(guildState), true
 }
 
 func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID discord.Snowflake, guild discord.Guild) {
@@ -190,8 +207,11 @@ func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID dis
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildMembers(_ context.Context, guildID discord.Snowflake) ([]*discord.GuildMember, bool) {
+	RecordStateRequest()
 	guildMembersState, exists := s.GuildMembers.Load(guildID)
 	if !exists {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
@@ -204,6 +224,7 @@ func (s *StateProviderMemoryOptimized) GetGuildMembers(_ context.Context, guildI
 		return true
 	})
 
+	RecordStateHitWithValue(float64(len(guildMembers)))
 	return guildMembers, true
 }
 
@@ -225,18 +246,23 @@ func (s *StateProviderMemoryOptimized) SetGuildMembers(ctx context.Context, guil
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildMember(_ context.Context, guildID, userID discord.Snowflake) (*discord.GuildMember, bool) {
+	RecordStateRequest()
 	members, ok := s.GuildMembers.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	member, ok := members.Load(userID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	guildMember := StateGuildMemberToDiscord(member)
-
+	RecordStateHit()
 	return &guildMember, true
 }
 
@@ -265,8 +291,11 @@ func (s *StateProviderMemoryOptimized) RemoveGuildMember(_ context.Context, guil
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildChannels(_ context.Context, guildID discord.Snowflake) ([]*discord.Channel, bool) {
+	RecordStateRequest()
 	guildChannelsState, ok := s.GuildChannels.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
@@ -279,6 +308,7 @@ func (s *StateProviderMemoryOptimized) GetGuildChannels(_ context.Context, guild
 		return true
 	})
 
+	RecordStateHitWithValue(float64(len(guildChannels)))
 	return guildChannels, true
 }
 
@@ -296,18 +326,23 @@ func (s *StateProviderMemoryOptimized) SetGuildChannels(_ context.Context, guild
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildChannel(_ context.Context, guildID, channelID discord.Snowflake) (*discord.Channel, bool) {
+	RecordStateRequest()
 	guildChannelsState, ok := s.GuildChannels.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	channelState, ok := guildChannelsState.Load(channelID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	guildChannel := StateChannelToDiscord(channelState)
-
+	RecordStateHit()
 	return &guildChannel, true
 }
 
@@ -332,8 +367,11 @@ func (s *StateProviderMemoryOptimized) RemoveGuildChannel(_ context.Context, gui
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildRoles(_ context.Context, guildID discord.Snowflake) ([]*discord.Role, bool) {
+	RecordStateRequest()
 	guildRolesState, ok := s.GuildRoles.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
@@ -346,6 +384,7 @@ func (s *StateProviderMemoryOptimized) GetGuildRoles(_ context.Context, guildID 
 		return true
 	})
 
+	RecordStateHit()
 	return guildRoles, true
 }
 
@@ -363,18 +402,23 @@ func (s *StateProviderMemoryOptimized) SetGuildRoles(_ context.Context, guildID 
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildRole(_ context.Context, guildID, roleID discord.Snowflake) (*discord.Role, bool) {
+	RecordStateRequest()
 	guildRolesState, ok := s.GuildRoles.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	role, ok := guildRolesState.Load(roleID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	guildRole := StateRoleToDiscord(role)
-
+	RecordStateHit()
 	return &guildRole, true
 }
 
@@ -399,8 +443,11 @@ func (s *StateProviderMemoryOptimized) RemoveGuildRole(_ context.Context, guildI
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildEmojis(_ context.Context, guildID discord.Snowflake) ([]*discord.Emoji, bool) {
+	RecordStateRequest()
 	guildEmojisState, ok := s.GuildEmojis.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
@@ -413,6 +460,7 @@ func (s *StateProviderMemoryOptimized) GetGuildEmojis(_ context.Context, guildID
 		return true
 	})
 
+	RecordStateHitWithValue(float64(len(guildEmojis)))
 	return guildEmojis, true
 }
 
@@ -430,18 +478,23 @@ func (s *StateProviderMemoryOptimized) SetGuildEmojis(_ context.Context, guildID
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildEmoji(_ context.Context, guildID, emojiID discord.Snowflake) (*discord.Emoji, bool) {
+	RecordStateRequest()
 	guildEmojisState, ok := s.GuildEmojis.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	emoji, ok := guildEmojisState.Load(emojiID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	guildEmoji := StateEmojiToDiscord(emoji)
-
+	RecordStateHit()
 	return &guildEmoji, true
 }
 
@@ -466,8 +519,11 @@ func (s *StateProviderMemoryOptimized) RemoveGuildEmoji(_ context.Context, guild
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildStickers(_ context.Context, guildID discord.Snowflake) ([]*discord.Sticker, bool) {
+	RecordStateRequest()
 	guildStickersState, ok := s.GuildStickers.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
@@ -480,6 +536,7 @@ func (s *StateProviderMemoryOptimized) GetGuildStickers(_ context.Context, guild
 		return true
 	})
 
+	RecordStateHitWithValue(float64(len(guildStickers)))
 	return guildStickers, true
 }
 
@@ -497,18 +554,23 @@ func (s *StateProviderMemoryOptimized) SetGuildStickers(_ context.Context, guild
 }
 
 func (s *StateProviderMemoryOptimized) GetGuildSticker(_ context.Context, guildID, stickerID discord.Snowflake) (*discord.Sticker, bool) {
+	RecordStateRequest()
 	guildStickersState, ok := s.GuildStickers.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	sticker, ok := guildStickersState.Load(stickerID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	guildSticker := StateStickerToDiscord(sticker)
-
+	RecordStateHit()
 	return &guildSticker, true
 }
 
@@ -533,8 +595,11 @@ func (s *StateProviderMemoryOptimized) RemoveGuildSticker(_ context.Context, gui
 }
 
 func (s *StateProviderMemoryOptimized) GetVoiceStates(_ context.Context, guildID discord.Snowflake) ([]*discord.VoiceState, bool) {
+	RecordStateRequest()
 	voiceStatesState, ok := s.VoiceStates.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
@@ -547,22 +612,28 @@ func (s *StateProviderMemoryOptimized) GetVoiceStates(_ context.Context, guildID
 		return true
 	})
 
+	RecordStateHitWithValue(float64(len(voiceStates)))
 	return voiceStates, true
 }
 
 func (s *StateProviderMemoryOptimized) GetVoiceState(_ context.Context, guildID, userID discord.Snowflake) (*discord.VoiceState, bool) {
+	RecordStateRequest()
 	voiceStatesState, ok := s.VoiceStates.Load(guildID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	voiceStateState, ok := voiceStatesState.Load(userID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	voiceState := StateVoiceStateToDiscord(voiceStateState)
-
+	RecordStateHit()
 	return &voiceState, true
 }
 
@@ -587,14 +658,17 @@ func (s *StateProviderMemoryOptimized) RemoveVoiceState(_ context.Context, guild
 }
 
 func (s *StateProviderMemoryOptimized) GetUser(_ context.Context, userID discord.Snowflake) (*discord.User, bool) {
+	RecordStateRequest()
 	userState, ok := s.Users.Load(userID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
 	user := StateUserToDiscord(userState)
-
-	return &user, ok
+	RecordStateHit()
+	return &user, true
 }
 
 func (s *StateProviderMemoryOptimized) SetUser(_ context.Context, userID discord.Snowflake, user discord.User) {
@@ -602,8 +676,11 @@ func (s *StateProviderMemoryOptimized) SetUser(_ context.Context, userID discord
 }
 
 func (s *StateProviderMemoryOptimized) GetUserMutualGuilds(_ context.Context, userID discord.Snowflake) ([]discord.Snowflake, bool) {
+	RecordStateRequest()
 	userMutualsState, ok := s.UserMutuals.Load(userID)
 	if !ok {
+		RecordStateMiss()
+
 		return nil, false
 	}
 
@@ -615,6 +692,7 @@ func (s *StateProviderMemoryOptimized) GetUserMutualGuilds(_ context.Context, us
 		return true
 	})
 
+	RecordStateHitWithValue(float64(len(userMutuals)))
 	return userMutuals, true
 }
 

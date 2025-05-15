@@ -91,7 +91,6 @@ message FetchApplicationResponse {
 
 message CreateApplicationRequest {
     bool save_config = 1;
-    bool create_only = 2;
     
     string application_identifier = 3;
     string producer_identifier = 4;

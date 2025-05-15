@@ -67,8 +67,6 @@ func main() {
 		http.ListenAndServe(":6060", nil)
 	}()
 
-	slog.SetLogLoggerLevel(slog.LevelDebug)
-
 	stateProvider := sandwich.NewStateProviderMemoryOptimized()
 
 	sandwich := sandwich.NewSandwich(
