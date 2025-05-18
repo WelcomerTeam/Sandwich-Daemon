@@ -24,7 +24,7 @@ var EventMetrics = struct {
 			Name: "sandwich_gateway_latency_seconds",
 			Help: "Gateway latency in seconds, measured by heartbeat",
 		},
-		[]string{"application_identifier"},
+		[]string{"application_identifier", "shard_id"},
 	),
 }
 
@@ -32,8 +32,8 @@ func RecordEvent(identifier, eventType string) {
 	EventMetrics.EventsTotal.WithLabelValues(identifier, eventType).Inc()
 }
 
-func UpdateGatewayLatency(identifier string, latency float64) {
-	EventMetrics.GatewayLatency.WithLabelValues(identifier).Set(latency)
+func UpdateGatewayLatency(identifier string, shardID int32, latency float64) {
+	EventMetrics.GatewayLatency.WithLabelValues(identifier, strconv.Itoa(int(shardID))).Set(latency)
 }
 
 // GRPCMetrics tracks GRPC-related metrics
