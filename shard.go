@@ -659,7 +659,7 @@ func (shard *Shard) read(ctx context.Context, websocketConn *websocket.Conn) (*d
 
 	err = json.Unmarshal(data, gatewayPayload)
 	if err != nil {
-		return gatewayPayload, fmt.Errorf("failed to unmarshal payload: %w", err)
+		return gatewayPayload, fmt.Errorf("failed to unmarshal payload: %w (payload: %s)", err, string(data))
 	}
 
 	return gatewayPayload, nil
