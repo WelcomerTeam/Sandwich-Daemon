@@ -162,6 +162,15 @@ func (shard *Shard) SetStatus(status ShardStatus) {
 	UpdateShardStatus(shard.application.identifier, shard.shardID, status)
 	shard.status.Store(int32(status))
 	shard.logger.Info("Shard status updated", "status", status.String())
+
+	err := shard.sandwich.broadcast(SandwichShardStatusUpdate, ShardStatusUpdateEvent{
+		Identifier: shard.application.identifier,
+		ShardID:    shard.shardID,
+		Status:     status,
+	})
+	if err != nil {
+		shard.logger.Error("Failed to broadcast shard status update", "error", err)
+	}
 }
 
 func (shard *Shard) ConnectWithRetry(ctx context.Context) error {

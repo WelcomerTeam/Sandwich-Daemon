@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.1"
+var Version = "2.0.0-rc.2"
 
 type Sandwich struct {
 	logger *slog.Logger
@@ -194,8 +194,6 @@ func (sandwich *Sandwich) Start(ctx context.Context) error {
 		sandwich.client = http.DefaultClient
 	}
 
-	// TODO: setup HTTP server
-
 	sandwich.startApplications(ctx)
 
 	return nil
@@ -230,6 +228,8 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 	}
 
 	// TODO: broadcast config change
+
+	sandwich.broadcast(SandwichEventConfigUpdate, nil)
 
 	return nil
 }
@@ -312,12 +312,40 @@ func (sandwich *Sandwich) removeListener(counter int32) {
 	sandwich.listeners.Delete(counter)
 }
 
-func (sandwich *Sandwich) broadcast(data *listenerData) {
+func (sandwich *Sandwich) broadcast(eventType string, data any) error {
+	payloadDataBytes, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload data: %w", err)
+	}
+
+	payload := ProducedPayload{
+		GatewayPayload: discord.GatewayPayload{
+			Op:   discord.GatewayOpDispatch,
+			Type: eventType,
+			Data: payloadDataBytes,
+		},
+		Extra:    nil,
+		Metadata: ProducedMetadata{},
+		Trace:    Trace{},
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	listenData := &listenerData{
+		timestamp: time.Now(),
+		payload:   payloadBytes,
+	}
+
 	sandwich.listeners.Range(func(_ int32, listener chan *listenerData) bool {
-		listener <- data
+		listener <- listenData
 
 		return true
 	})
+
+	return nil
 }
 
 // Conversions
