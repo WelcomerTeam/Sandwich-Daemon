@@ -41,7 +41,7 @@ func (p *NullProducerProvider) GetProducer(_ context.Context, applicationIdentif
 	go func() {
 		for {
 			time.Sleep(time.Second * 1)
-			slog.Info("Events/s", "events", producer.counter.Load())
+			slog.Info("Events/s", "application", applicationIdentifier, "events", producer.counter.Load())
 			producer.counter.Store(0)
 		}
 	}()
