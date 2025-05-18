@@ -132,8 +132,6 @@ func main() {
 		grpc.NewServer(),
 	)
 
-	// TODO: HTTP server configuration
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err := sandwich.Start(ctx)

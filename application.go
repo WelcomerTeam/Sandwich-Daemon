@@ -84,6 +84,14 @@ func (application *Application) SetStatus(status ApplicationStatus) {
 	UpdateApplicationStatus(application.identifier, status)
 	application.status.Store(int32(status))
 	application.logger.Info("Application status updated", "status", status.String())
+
+	err := application.sandwich.broadcast(SandwichApplicationStatusUpdate, ApplicationStatusUpdateEvent{
+		Identifier: application.identifier,
+		Status:     status,
+	})
+	if err != nil {
+		application.logger.Error("Failed to broadcast application status update", "error", err)
+	}
 }
 
 func (application *Application) SetUser(user *discord.User) {
