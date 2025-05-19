@@ -637,6 +637,7 @@ func (s *subscriber) writeMessages() {
 			s.meta.status = subscriberStatusDead
 			s.cancelFunc()
 			s.c.Close(msg.closeCode, msg.closeString)
+			s.cs.deleteSubscriber(s)
 			return
 		}
 	}
