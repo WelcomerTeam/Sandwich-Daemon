@@ -1280,7 +1280,7 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 
 	beforeVoiceState, _ := shard.sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
 
-	if guildID.IsNil() {
+	if voiceStateUpdatePayload.ChannelID.IsNil() {
 		shard.sandwich.stateProvider.RemoveVoiceState(ctx, *voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID)
 	} else {
 		shard.sandwich.stateProvider.SetVoiceState(ctx, *voiceStateUpdatePayload.GuildID, discord.VoiceState(voiceStateUpdatePayload))

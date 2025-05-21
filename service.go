@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.2"
+var Version = "2.0.0-rc.3"
 
 type Sandwich struct {
 	logger *slog.Logger

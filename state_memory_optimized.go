@@ -1289,7 +1289,7 @@ func StateUserToDiscord(v StateUser) discord.User {
 		Email:         v.Email,
 		Bot:           v.Bot,
 		System:        v.System,
-		MFAEnabled:    false,
-		Verified:      false,
+		MFAEnabled:    v.MFAEnabled,
+		Verified:      v.Verified,
 	}
 }
