@@ -225,7 +225,7 @@ func (application *Application) getInitialShardCount(customShardCount int32, cus
 		shardCount = application.gateway.Load().Shards
 
 		if customShardIDs == "" {
-			for i := range shardCount {
+			for i := int32(0); i < shardCount; i++ {
 				shardIDs = append(shardIDs, i)
 			}
 		} else {
