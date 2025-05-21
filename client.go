@@ -38,7 +38,7 @@ func (t *proxyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	proxyReq.URL.Scheme = t.host.Scheme
 	proxyReq.Host = t.host.Host
 
-	if !strings.HasPrefix(proxyReq.URL.String(), "/api") {
+	if !strings.HasPrefix(proxyReq.URL.Path, "/api") {
 		proxyReq.URL.Path = "/api/v10" + proxyReq.URL.Path
 	}
 
