@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.3"
+var Version = "2.0.0-rc.4"
 
 type Sandwich struct {
 	logger *slog.Logger
@@ -406,7 +406,7 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 	}
 }
 
-func userToPB(user *discord.User) *pb.User {
+func UserToPB(user *discord.User) *pb.User {
 	userPB := &pb.User{
 		ID:            int64(user.ID),
 		Username:      user.Username,
@@ -444,7 +444,7 @@ func snowflakeListToInt64List(snowflakes []discord.Snowflake) []int64 {
 	return int64List
 }
 
-func guildMemberToPB(guildMember *discord.GuildMember) *pb.GuildMember {
+func GuildMemberToPB(guildMember *discord.GuildMember) *pb.GuildMember {
 	guildMemberPB := &pb.GuildMember{
 		User:                       nil,
 		GuildID:                    0,
@@ -461,7 +461,7 @@ func guildMemberToPB(guildMember *discord.GuildMember) *pb.GuildMember {
 	}
 
 	if guildMember.User != nil {
-		guildMemberPB.User = userToPB(guildMember.User)
+		guildMemberPB.User = UserToPB(guildMember.User)
 	}
 
 	if guildMember.GuildID != nil {

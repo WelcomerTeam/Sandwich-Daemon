@@ -1,6 +1,6 @@
 package sandwich
 
-type ApplicationStatus int
+type ApplicationStatus int32
 
 const (
 	ApplicationStatusIdle ApplicationStatus = iota
@@ -26,7 +26,7 @@ func (status ApplicationStatus) String() string {
 	}[status]
 }
 
-type ShardStatus int
+type ShardStatus int32
 
 const (
 	ShardStatusIdle ShardStatus = iota

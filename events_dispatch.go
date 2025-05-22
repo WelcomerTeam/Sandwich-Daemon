@@ -116,7 +116,7 @@ ready:
 	return DispatchResult{nil, nil}, false, nil
 }
 
-func OnResumed(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnResumed(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(shard, msg.Type)
 
 	shard.logger.Debug("Shard has resumed")
@@ -132,7 +132,7 @@ func OnResumed(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _
 	}, true, nil
 }
 
-func OnApplicationCommandCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
+func OnApplicationCommandCreate(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(shard, msg.Type)
 
 	var applicationCommandCreatePayload discord.ApplicationCommandCreate

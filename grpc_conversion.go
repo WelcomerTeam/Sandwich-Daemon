@@ -9,7 +9,7 @@ import (
 
 // Conversion functions for Discord types to protobuf types
 
-func guildToPB(guild *discord.Guild) *pb.Guild {
+func GuildToPB(guild *discord.Guild) *pb.Guild {
 	if guild == nil {
 		return nil
 	}
@@ -28,18 +28,18 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 		VerificationLevel:           uint32(guild.VerificationLevel),
 		DefaultMessageNotifications: int32(guild.DefaultMessageNotifications),
 		ExplicitContentFilter:       int32(guild.ExplicitContentFilter),
-		Roles:                       rolesToPB(guild.Roles),
-		Emojis:                      emojisToPB(guild.Emojis),
+		Roles:                       RolesToPB(guild.Roles),
+		Emojis:                      EmojisToPB(guild.Emojis),
 		Features:                    guild.Features,
 		MFALevel:                    uint32(guild.MFALevel),
 		JoinedAt:                    guild.JoinedAt.Format(time.RFC3339),
 		Large:                       guild.Large,
 		Unavailable:                 guild.Unavailable,
 		MemberCount:                 int32(guild.MemberCount),
-		VoiceStates:                 voiceStatesToPB(guild.VoiceStates),
-		Members:                     guildMembersToPB(guild.Members),
-		Channels:                    channelsToPB(guild.Channels),
-		Presences:                   activitiesToPB(guild.Presences),
+		VoiceStates:                 VoiceStatesToPB(guild.VoiceStates),
+		Members:                     GuildMembersToPB(guild.Members),
+		Channels:                    ChannelsToPB(guild.Channels),
+		Presences:                   ActivitiesToPB(guild.Presences),
 		MaxPresences:                int32(guild.MaxPresences),
 		MaxMembers:                  int32(guild.MaxMembers),
 		VanityURLCode:               guild.VanityURLCode,
@@ -52,8 +52,8 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 		ApproximatePresenceCount:    int32(guild.ApproximatePresenceCount),
 		NSFWLevel:                   uint32(guild.NSFWLevel),
 		StageInstances:              stageInstancesToPB(guild.StageInstances),
-		Stickers:                    stickersToPB(guild.Stickers),
-		GuildScheduledEvents:        scheduledEventsToPB(guild.GuildScheduledEvents),
+		Stickers:                    StickersToPB(guild.Stickers),
+		GuildScheduledEvents:        ScheduledEventsToPB(guild.GuildScheduledEvents),
 		PremiumProgressBarEnabled:   guild.PremiumProgressBarEnabled,
 		OwnerID:                     0,
 		Permissions:                 0,
@@ -110,7 +110,7 @@ func guildToPB(guild *discord.Guild) *pb.Guild {
 	return pbGuild
 }
 
-func channelToPB(channel *discord.Channel) *pb.Channel {
+func ChannelToPB(channel *discord.Channel) *pb.Channel {
 	if channel == nil {
 		return nil
 	}
@@ -119,7 +119,7 @@ func channelToPB(channel *discord.Channel) *pb.Channel {
 		GuildID:                    int64(ptrSnowflake(channel.GuildID)),
 		Type:                       uint32(channel.Type),
 		Position:                   int32(channel.Position),
-		PermissionOverwrites:       channelOverwritesToPB(channel.PermissionOverwrites),
+		PermissionOverwrites:       ChannelOverwritesToPB(channel.PermissionOverwrites),
 		Name:                       channel.Name,
 		Topic:                      channel.Topic,
 		NSFW:                       channel.NSFW,
@@ -127,7 +127,7 @@ func channelToPB(channel *discord.Channel) *pb.Channel {
 		Bitrate:                    int32(channel.Bitrate),
 		UserLimit:                  int32(channel.UserLimit),
 		RateLimitPerUser:           int32(channel.RateLimitPerUser),
-		Recipients:                 usersToPB(channel.Recipients),
+		Recipients:                 UsersToPB(channel.Recipients),
 		Icon:                       channel.Icon,
 		OwnerID:                    int64(ptrSnowflake(channel.OwnerID)),
 		ApplicationID:              int64(ptrSnowflake(channel.ApplicationID)),
@@ -137,14 +137,14 @@ func channelToPB(channel *discord.Channel) *pb.Channel {
 		VideoQualityMode:           uint32(ptrVideoQualityMode(channel.VideoQualityMode)),
 		MessageCount:               int32(channel.MessageCount),
 		MemberCount:                int32(channel.MemberCount),
-		ThreadMetadata:             threadMetadataToPB(channel.ThreadMetadata),
-		ThreadMember:               threadMemberToPB(channel.ThreadMember),
+		ThreadMetadata:             ThreadMetadataToPB(channel.ThreadMetadata),
+		ThreadMember:               ThreadMemberToPB(channel.ThreadMember),
 		DefaultAutoArchiveDuration: int32(channel.DefaultAutoArchiveDuration),
 		Permissions:                int64(ptrInt64(channel.Permissions)),
 	}
 }
 
-func channelOverwritesToPB(overwrites []discord.ChannelOverwrite) []*pb.ChannelOverwrite {
+func ChannelOverwritesToPB(overwrites []discord.ChannelOverwrite) []*pb.ChannelOverwrite {
 	if overwrites == nil {
 		return nil
 	}
@@ -160,13 +160,13 @@ func channelOverwritesToPB(overwrites []discord.ChannelOverwrite) []*pb.ChannelO
 	return pbOverwrites
 }
 
-func usersToPB(users []discord.User) []*pb.User {
+func UsersToPB(users []discord.User) []*pb.User {
 	if users == nil {
 		return nil
 	}
 	pbUsers := make([]*pb.User, len(users))
 	for i, user := range users {
-		pbUsers[i] = userToPB(&user)
+		pbUsers[i] = UserToPB(&user)
 	}
 	return pbUsers
 }
@@ -199,86 +199,86 @@ func ptrVideoQualityMode(vqm *discord.VideoQualityMode) discord.VideoQualityMode
 	return *vqm
 }
 
-func rolesToPB(roles []discord.Role) []*pb.Role {
+func RolesToPB(roles []discord.Role) []*pb.Role {
 	if roles == nil {
 		return nil
 	}
 
 	pbRoles := make([]*pb.Role, len(roles))
 	for i, role := range roles {
-		pbRoles[i] = roleToPB(&role)
+		pbRoles[i] = RoleToPB(&role)
 	}
 	return pbRoles
 }
 
-func emojisToPB(emojis []discord.Emoji) []*pb.Emoji {
+func EmojisToPB(emojis []discord.Emoji) []*pb.Emoji {
 	if emojis == nil {
 		return nil
 	}
 
 	pbEmojis := make([]*pb.Emoji, len(emojis))
 	for i, emoji := range emojis {
-		pbEmojis[i] = emojiToPB(&emoji)
+		pbEmojis[i] = EmojiToPB(&emoji)
 	}
 	return pbEmojis
 }
 
-func voiceStatesToPB(states []discord.VoiceState) []*pb.VoiceState {
+func VoiceStatesToPB(states []discord.VoiceState) []*pb.VoiceState {
 	if states == nil {
 		return nil
 	}
 
 	pbStates := make([]*pb.VoiceState, len(states))
 	for i, state := range states {
-		pbStates[i] = voiceStateToPB(&state)
+		pbStates[i] = VoiceStateToPB(&state)
 	}
 	return pbStates
 }
 
-func guildMembersToPB(members []discord.GuildMember) []*pb.GuildMember {
+func GuildMembersToPB(members []discord.GuildMember) []*pb.GuildMember {
 	if members == nil {
 		return nil
 	}
 
 	pbMembers := make([]*pb.GuildMember, len(members))
 	for i, member := range members {
-		pbMembers[i] = guildMemberToPB(&member)
+		pbMembers[i] = GuildMemberToPB(&member)
 	}
 	return pbMembers
 }
 
-func channelsToPB(channels []discord.Channel) []*pb.Channel {
+func ChannelsToPB(channels []discord.Channel) []*pb.Channel {
 	if channels == nil {
 		return nil
 	}
 
 	pbChannels := make([]*pb.Channel, len(channels))
 	for i, channel := range channels {
-		pbChannels[i] = channelToPB(&channel)
+		pbChannels[i] = ChannelToPB(&channel)
 	}
 	return pbChannels
 }
 
-func activitiesToPB(activities []discord.Activity) []*pb.Activity {
+func ActivitiesToPB(activities []discord.Activity) []*pb.Activity {
 	if activities == nil {
 		return nil
 	}
 
 	pbActivities := make([]*pb.Activity, len(activities))
 	for i, activity := range activities {
-		pbActivities[i] = activityToPB(&activity)
+		pbActivities[i] = ActivityToPB(&activity)
 	}
 	return pbActivities
 }
 
-func stickersToPB(stickers []discord.Sticker) []*pb.Sticker {
+func StickersToPB(stickers []discord.Sticker) []*pb.Sticker {
 	if stickers == nil {
 		return nil
 	}
 
 	pbStickers := make([]*pb.Sticker, len(stickers))
 	for i, sticker := range stickers {
-		pbStickers[i] = stickerToPB(&sticker)
+		pbStickers[i] = StickerToPB(&sticker)
 	}
 	return pbStickers
 }
@@ -295,7 +295,7 @@ func snowflakesToInt64s(snowflakes []discord.Snowflake) []int64 {
 	return int64s
 }
 
-func threadMetadataToPB(metadata *discord.ThreadMetadata) *pb.ThreadMetadata {
+func ThreadMetadataToPB(metadata *discord.ThreadMetadata) *pb.ThreadMetadata {
 	if metadata == nil {
 		return nil
 	}
@@ -313,7 +313,7 @@ func threadMetadataToPB(metadata *discord.ThreadMetadata) *pb.ThreadMetadata {
 	}
 }
 
-func threadMemberToPB(member *discord.ThreadMember) *pb.ThreadMember {
+func ThreadMemberToPB(member *discord.ThreadMember) *pb.ThreadMember {
 	if member == nil {
 		return nil
 	}
@@ -332,7 +332,7 @@ func threadMemberToPB(member *discord.ThreadMember) *pb.ThreadMember {
 	}
 }
 
-func activityToPB(activity *discord.Activity) *pb.Activity {
+func ActivityToPB(activity *discord.Activity) *pb.Activity {
 	if activity == nil {
 		return nil
 	}
@@ -424,7 +424,7 @@ func stageInstancesToPB(instances []discord.StageInstance) []*pb.StageInstance {
 	return pbInstances
 }
 
-func scheduledEventsToPB(events []discord.ScheduledEvent) []*pb.ScheduledEvent {
+func ScheduledEventsToPB(events []discord.ScheduledEvent) []*pb.ScheduledEvent {
 	if events == nil {
 		return nil
 	}
@@ -445,7 +445,7 @@ func scheduledEventsToPB(events []discord.ScheduledEvent) []*pb.ScheduledEvent {
 			EntityType:         uint32(event.EntityType),
 			EntityID:           int64(ptrSnowflake(event.EntityID)),
 			EntityMetadata:     eventMetadataToPB(event.EntityMetadata),
-			Creator:            userToPB(event.Creator),
+			Creator:            UserToPB(event.Creator),
 			UserCount:          int32(event.UserCount),
 		}
 	}
@@ -474,7 +474,7 @@ func roleTagsToPB(tags *discord.RoleTag) *pb.RoleTag {
 	}
 }
 
-func roleToPB(role *discord.Role) *pb.Role {
+func RoleToPB(role *discord.Role) *pb.Role {
 	if role == nil {
 		return nil
 	}
@@ -501,7 +501,7 @@ func roleToPB(role *discord.Role) *pb.Role {
 	return pbRole
 }
 
-func emojiToPB(emoji *discord.Emoji) *pb.Emoji {
+func EmojiToPB(emoji *discord.Emoji) *pb.Emoji {
 	if emoji == nil {
 		return nil
 	}
@@ -510,7 +510,7 @@ func emojiToPB(emoji *discord.Emoji) *pb.Emoji {
 		ID:            int64(emoji.ID),
 		Name:          emoji.Name,
 		Roles:         snowflakesToInt64s(emoji.Roles),
-		User:          userToPB(emoji.User),
+		User:          UserToPB(emoji.User),
 		RequireColons: emoji.RequireColons,
 		Managed:       emoji.Managed,
 		Animated:      emoji.Animated,
@@ -525,7 +525,7 @@ func emojiToPB(emoji *discord.Emoji) *pb.Emoji {
 	return pbEmoji
 }
 
-func stickerToPB(sticker *discord.Sticker) *pb.Sticker {
+func StickerToPB(sticker *discord.Sticker) *pb.Sticker {
 	if sticker == nil {
 		return nil
 	}
@@ -538,7 +538,7 @@ func stickerToPB(sticker *discord.Sticker) *pb.Sticker {
 		Type:        uint32(sticker.Type),
 		FormatType:  uint32(sticker.FormatType),
 		Available:   sticker.Available,
-		User:        userToPB(sticker.User),
+		User:        UserToPB(sticker.User),
 		SortValue:   int32(sticker.SortValue),
 		PackID:      0,
 		GuildID:     0,
@@ -555,7 +555,7 @@ func stickerToPB(sticker *discord.Sticker) *pb.Sticker {
 	return pbSticker
 }
 
-func voiceStateToPB(state *discord.VoiceState) *pb.VoiceState {
+func VoiceStateToPB(state *discord.VoiceState) *pb.VoiceState {
 	if state == nil {
 		return nil
 	}
@@ -564,7 +564,7 @@ func voiceStateToPB(state *discord.VoiceState) *pb.VoiceState {
 		UserID:                  int64(state.UserID),
 		ChannelID:               int64(state.ChannelID),
 		GuildID:                 int64(*state.GuildID),
-		Member:                  guildMemberToPB(state.Member),
+		Member:                  GuildMemberToPB(state.Member),
 		SessionID:               state.SessionID,
 		Deaf:                    state.Deaf,
 		Mute:                    state.Mute,

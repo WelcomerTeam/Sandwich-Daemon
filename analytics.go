@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// EventMetrics tracks event-related metrics
+// EventMetrics tracks event-related metrics.
 var EventMetrics = struct {
 	EventsTotal    *prometheus.CounterVec
 	GatewayLatency *prometheus.GaugeVec
@@ -36,7 +36,7 @@ func UpdateGatewayLatency(identifier string, shardID int32, latency float64) {
 	EventMetrics.GatewayLatency.WithLabelValues(identifier, strconv.Itoa(int(shardID))).Set(latency)
 }
 
-// GRPCMetrics tracks GRPC-related metrics
+// GRPCMetrics tracks GRPC-related metrics.
 var GRPCMetrics = struct {
 	Requests prometheus.Counter
 }{
@@ -52,7 +52,7 @@ func RecordGRPCRequest() {
 	GRPCMetrics.Requests.Inc()
 }
 
-// ShardMetrics tracks shard-related metrics
+// ShardMetrics tracks shard-related metrics.
 var ShardMetrics = struct {
 	ApplicationStatus *prometheus.GaugeVec
 	ShardStatus       *prometheus.GaugeVec
