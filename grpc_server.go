@@ -434,7 +434,7 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsG
 					user.ID,
 				)
 				if ok {
-					pbGuildMember = guildMemberToPB(guildMember)
+					pbGuildMember = GuildMemberToPB(guildMember)
 				}
 
 				locations[int64(user.ID)] = &pb.WhereIsGuildLocation{
@@ -481,7 +481,7 @@ func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuild
 		}
 
 		for _, stateGuild := range stateGuilds {
-			guilds[int64(stateGuild.ID)] = guildToPB(stateGuild)
+			guilds[int64(stateGuild.ID)] = GuildToPB(stateGuild)
 		}
 	} else {
 		for _, guildID := range guildIDs {
@@ -490,7 +490,7 @@ func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuild
 				continue
 			}
 
-			guilds[int64(guild.ID)] = guildToPB(guild)
+			guilds[int64(guild.ID)] = GuildToPB(guild)
 		}
 	}
 
@@ -523,7 +523,7 @@ func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.Fetc
 		}
 
 		for _, stateGuildMember := range stateGuildMembers {
-			guildMembers[int64(stateGuildMember.User.ID)] = guildMemberToPB(stateGuildMember)
+			guildMembers[int64(stateGuildMember.User.ID)] = GuildMemberToPB(stateGuildMember)
 		}
 	} else {
 		for _, userID := range req.GetUserIds() {
@@ -532,7 +532,7 @@ func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.Fetc
 				continue
 			}
 
-			guildMembers[int64(stateGuildMember.User.ID)] = guildMemberToPB(stateGuildMember)
+			guildMembers[int64(stateGuildMember.User.ID)] = GuildMemberToPB(stateGuildMember)
 		}
 	}
 
@@ -565,7 +565,7 @@ func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.Fet
 		}
 
 		for _, stateGuildChannel := range stateGuildChannels {
-			guildChannels[int64(stateGuildChannel.ID)] = channelToPB(stateGuildChannel)
+			guildChannels[int64(stateGuildChannel.ID)] = ChannelToPB(stateGuildChannel)
 		}
 	} else {
 		for _, channelID := range channelIDs {
@@ -574,7 +574,7 @@ func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.Fet
 				continue
 			}
 
-			guildChannels[int64(stateGuildChannel.ID)] = channelToPB(stateGuildChannel)
+			guildChannels[int64(stateGuildChannel.ID)] = ChannelToPB(stateGuildChannel)
 		}
 	}
 
@@ -607,7 +607,7 @@ func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchG
 		}
 
 		for _, stateGuildRole := range stateGuildRoles {
-			guildRoles[int64(stateGuildRole.ID)] = roleToPB(stateGuildRole)
+			guildRoles[int64(stateGuildRole.ID)] = RoleToPB(stateGuildRole)
 		}
 	} else {
 		for _, roleID := range roleIDs {
@@ -616,7 +616,7 @@ func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchG
 				continue
 			}
 
-			guildRoles[int64(stateGuildRole.ID)] = roleToPB(stateGuildRole)
+			guildRoles[int64(stateGuildRole.ID)] = RoleToPB(stateGuildRole)
 		}
 	}
 
@@ -649,7 +649,7 @@ func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.Fetch
 		}
 
 		for _, stateGuildEmoji := range stateGuildEmojis {
-			guildEmojis[int64(stateGuildEmoji.ID)] = emojiToPB(stateGuildEmoji)
+			guildEmojis[int64(stateGuildEmoji.ID)] = EmojiToPB(stateGuildEmoji)
 		}
 	} else {
 		for _, emojiID := range emojiIDs {
@@ -658,7 +658,7 @@ func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.Fetch
 				continue
 			}
 
-			guildEmojis[int64(stateGuildEmoji.ID)] = emojiToPB(stateGuildEmoji)
+			guildEmojis[int64(stateGuildEmoji.ID)] = EmojiToPB(stateGuildEmoji)
 		}
 	}
 
@@ -691,7 +691,7 @@ func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.Fet
 		}
 
 		for _, stateGuildSticker := range stateGuildStickers {
-			guildStickers[int64(stateGuildSticker.ID)] = stickerToPB(stateGuildSticker)
+			guildStickers[int64(stateGuildSticker.ID)] = StickerToPB(stateGuildSticker)
 		}
 	} else {
 		for _, stickerID := range stickerIDs {
@@ -700,7 +700,7 @@ func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.Fet
 				continue
 			}
 
-			guildStickers[int64(stateGuildSticker.ID)] = stickerToPB(stateGuildSticker)
+			guildStickers[int64(stateGuildSticker.ID)] = StickerToPB(stateGuildSticker)
 		}
 	}
 
@@ -733,7 +733,7 @@ func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.
 		}
 
 		for _, stateVoiceState := range stateVoiceStates {
-			voiceStates[int64(stateVoiceState.UserID)] = voiceStateToPB(stateVoiceState)
+			voiceStates[int64(stateVoiceState.UserID)] = VoiceStateToPB(stateVoiceState)
 		}
 	} else {
 		for _, userID := range userIDs {
@@ -742,7 +742,7 @@ func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.
 				continue
 			}
 
-			voiceStates[int64(stateVoiceState.UserID)] = voiceStateToPB(stateVoiceState)
+			voiceStates[int64(stateVoiceState.UserID)] = VoiceStateToPB(stateVoiceState)
 		}
 	}
 
@@ -765,7 +765,7 @@ func (grpcServer *GRPCServer) FetchUser(ctx context.Context, req *pb.FetchUserRe
 	for _, userID := range userIDs {
 		stateUser, ok := grpcServer.sandwich.stateProvider.GetUser(ctx, discord.Snowflake(userID))
 		if ok {
-			users[int64(stateUser.ID)] = userToPB(stateUser)
+			users[int64(stateUser.ID)] = UserToPB(stateUser)
 		}
 	}
 
@@ -796,7 +796,7 @@ func (grpcServer *GRPCServer) FetchUserMutualGuilds(ctx context.Context, req *pb
 	for _, mutualGuild := range mutualGuildsState {
 		guildState, ok := grpcServer.sandwich.stateProvider.GetGuild(ctx, discord.Snowflake(mutualGuild))
 		if ok {
-			mutualGuilds[int64(guildState.ID)] = guildToPB(guildState)
+			mutualGuilds[int64(guildState.ID)] = GuildToPB(guildState)
 		} else {
 			mutualGuilds[int64(mutualGuild)] = &pb.Guild{
 				ID: int64(mutualGuild),
