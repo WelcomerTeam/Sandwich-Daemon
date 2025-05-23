@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.4"
+var Version = "2.0.0-rc.5"
 
 type Sandwich struct {
 	logger *slog.Logger
@@ -452,12 +452,12 @@ func GuildMemberToPB(guildMember *discord.GuildMember) *pb.GuildMember {
 		Avatar:                     guildMember.Avatar,
 		Roles:                      snowflakeListToInt64List(guildMember.Roles),
 		JoinedAt:                   guildMember.JoinedAt.Format(time.RFC3339),
-		PremiumSince:               guildMember.PremiumSince,
+		PremiumSince:               "",
 		Deaf:                       guildMember.Deaf,
 		Mute:                       guildMember.Mute,
 		Pending:                    guildMember.Pending,
 		Permissions:                0,
-		CommunicationDisabledUntil: guildMember.CommunicationDisabledUntil,
+		CommunicationDisabledUntil: "",
 	}
 
 	if guildMember.User != nil {
@@ -470,6 +470,14 @@ func GuildMemberToPB(guildMember *discord.GuildMember) *pb.GuildMember {
 
 	if guildMember.Permissions != nil {
 		guildMemberPB.Permissions = int64(*guildMember.Permissions)
+	}
+
+	if guildMember.PremiumSince != nil {
+		guildMemberPB.PremiumSince = guildMember.PremiumSince.Format(time.RFC3339)
+	}
+
+	if guildMember.CommunicationDisabledUntil != nil {
+		guildMemberPB.CommunicationDisabledUntil = guildMember.CommunicationDisabledUntil.Format(time.RFC3339)
 	}
 
 	return guildMemberPB

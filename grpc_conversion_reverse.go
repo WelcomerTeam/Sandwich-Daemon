@@ -431,10 +431,9 @@ func PBToGuildMember(pbMember *pb.GuildMember) *discord.GuildMember {
 	}
 
 	if pbMember.PremiumSince != "" {
-		member.PremiumSince = pbMember.PremiumSince
-		// if premiumSince, err := time.Parse(time.RFC3339, pbMember.PremiumSince); err == nil {
-		// 	member.PremiumSince = &premiumSince
-		// }
+		if premiumSince, err := time.Parse(time.RFC3339, pbMember.PremiumSince); err == nil {
+			member.PremiumSince = &premiumSince
+		}
 	}
 
 	if pbMember.Permissions != 0 {
@@ -443,10 +442,9 @@ func PBToGuildMember(pbMember *pb.GuildMember) *discord.GuildMember {
 	}
 
 	if pbMember.CommunicationDisabledUntil != "" {
-		member.CommunicationDisabledUntil = pbMember.CommunicationDisabledUntil
-		// if disabledUntil, err := time.Parse(time.RFC3339, pbMember.CommunicationDisabledUntil); err == nil {
-		// 	member.CommunicationDisabledUntil = &disabledUntil
-		// }
+		if disabledUntil, err := time.Parse(time.RFC3339, pbMember.CommunicationDisabledUntil); err == nil {
+			member.CommunicationDisabledUntil = &disabledUntil
+		}
 	}
 
 	return member
