@@ -4,12 +4,11 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
 )
 
 // Conversion functions for protobuf types to Discord types
 
-func PBToGuild(pbGuild *pb.Guild) *discord.Guild {
+func PBToGuild(pbGuild *Guild) *discord.Guild {
 	if pbGuild == nil {
 		return nil
 	}
@@ -117,7 +116,7 @@ func PBToGuild(pbGuild *pb.Guild) *discord.Guild {
 	return guild
 }
 
-func PBToChannel(pbChannel *pb.Channel) *discord.Channel {
+func PBToChannel(pbChannel *Channel) *discord.Channel {
 	if pbChannel == nil {
 		return nil
 	}
@@ -184,7 +183,7 @@ func PBToChannel(pbChannel *pb.Channel) *discord.Channel {
 	return channel
 }
 
-func PBToChannelOverwrites(pbOverwrites []*pb.ChannelOverwrite) []discord.ChannelOverwrite {
+func PBToChannelOverwrites(pbOverwrites []*ChannelOverwrite) []discord.ChannelOverwrite {
 	if pbOverwrites == nil {
 		return nil
 	}
@@ -201,7 +200,7 @@ func PBToChannelOverwrites(pbOverwrites []*pb.ChannelOverwrite) []discord.Channe
 	return overwrites
 }
 
-func PBToUsers(pbUsers []*pb.User) []discord.User {
+func PBToUsers(pbUsers []*User) []discord.User {
 	if pbUsers == nil {
 		return nil
 	}
@@ -213,7 +212,7 @@ func PBToUsers(pbUsers []*pb.User) []discord.User {
 	return users
 }
 
-func PBToUser(pbUser *pb.User) *discord.User {
+func PBToUser(pbUser *User) *discord.User {
 	if pbUser == nil {
 		return nil
 	}
@@ -239,7 +238,7 @@ func PBToUser(pbUser *pb.User) *discord.User {
 	return user
 }
 
-func PBToRoles(pbRoles []*pb.Role) []discord.Role {
+func PBToRoles(pbRoles []*Role) []discord.Role {
 	if pbRoles == nil {
 		return nil
 	}
@@ -251,7 +250,7 @@ func PBToRoles(pbRoles []*pb.Role) []discord.Role {
 	return roles
 }
 
-func PBToRole(pbRole *pb.Role) *discord.Role {
+func PBToRole(pbRole *Role) *discord.Role {
 	if pbRole == nil {
 		return nil
 	}
@@ -278,7 +277,7 @@ func PBToRole(pbRole *pb.Role) *discord.Role {
 	return role
 }
 
-func PBToRoleTags(pbTags *pb.RoleTag) *discord.RoleTag {
+func PBToRoleTags(pbTags *RoleTag) *discord.RoleTag {
 	if pbTags == nil {
 		return nil
 	}
@@ -300,7 +299,7 @@ func PBToRoleTags(pbTags *pb.RoleTag) *discord.RoleTag {
 	return tags
 }
 
-func PBToEmojis(pbEmojis []*pb.Emoji) []discord.Emoji {
+func PBToEmojis(pbEmojis []*Emoji) []discord.Emoji {
 	if pbEmojis == nil {
 		return nil
 	}
@@ -312,7 +311,7 @@ func PBToEmojis(pbEmojis []*pb.Emoji) []discord.Emoji {
 	return emojis
 }
 
-func PBToEmoji(pbEmoji *pb.Emoji) *discord.Emoji {
+func PBToEmoji(pbEmoji *Emoji) *discord.Emoji {
 	if pbEmoji == nil {
 		return nil
 	}
@@ -348,7 +347,7 @@ func PBToSnowflakes(pbSnowflakes []int64) []discord.Snowflake {
 	return snowflakes
 }
 
-func PBToVoiceStates(pbStates []*pb.VoiceState) []discord.VoiceState {
+func PBToVoiceStates(pbStates []*VoiceState) []discord.VoiceState {
 	if pbStates == nil {
 		return nil
 	}
@@ -360,7 +359,7 @@ func PBToVoiceStates(pbStates []*pb.VoiceState) []discord.VoiceState {
 	return states
 }
 
-func PBToVoiceState(pbState *pb.VoiceState) *discord.VoiceState {
+func PBToVoiceState(pbState *VoiceState) *discord.VoiceState {
 	if pbState == nil {
 		return nil
 	}
@@ -393,7 +392,7 @@ func PBToVoiceState(pbState *pb.VoiceState) *discord.VoiceState {
 	return state
 }
 
-func PBToGuildMembers(pbMembers []*pb.GuildMember) []discord.GuildMember {
+func PBToGuildMembers(pbMembers []*GuildMember) []discord.GuildMember {
 	if pbMembers == nil {
 		return nil
 	}
@@ -405,7 +404,7 @@ func PBToGuildMembers(pbMembers []*pb.GuildMember) []discord.GuildMember {
 	return members
 }
 
-func PBToGuildMember(pbMember *pb.GuildMember) *discord.GuildMember {
+func PBToGuildMember(pbMember *GuildMember) *discord.GuildMember {
 	if pbMember == nil {
 		return nil
 	}
@@ -450,7 +449,7 @@ func PBToGuildMember(pbMember *pb.GuildMember) *discord.GuildMember {
 	return member
 }
 
-func PBToChannels(pbChannels []*pb.Channel) []discord.Channel {
+func PBToChannels(pbChannels []*Channel) []discord.Channel {
 	if pbChannels == nil {
 		return nil
 	}
@@ -462,7 +461,7 @@ func PBToChannels(pbChannels []*pb.Channel) []discord.Channel {
 	return channels
 }
 
-func PBToActivities(pbActivities []*pb.Activity) []discord.Activity {
+func PBToActivities(pbActivities []*Activity) []discord.Activity {
 	if pbActivities == nil {
 		return nil
 	}
@@ -474,7 +473,7 @@ func PBToActivities(pbActivities []*pb.Activity) []discord.Activity {
 	return activities
 }
 
-func PBToActivity(pbActivity *pb.Activity) *discord.Activity {
+func PBToActivity(pbActivity *Activity) *discord.Activity {
 	if pbActivity == nil {
 		return nil
 	}
@@ -501,7 +500,7 @@ func PBToActivity(pbActivity *pb.Activity) *discord.Activity {
 	return activity
 }
 
-func PBToTimestamps(pbTimestamps *pb.Timestamps) *discord.Timestamps {
+func PBToTimestamps(pbTimestamps *Timestamps) *discord.Timestamps {
 	if pbTimestamps == nil {
 		return nil
 	}
@@ -512,7 +511,7 @@ func PBToTimestamps(pbTimestamps *pb.Timestamps) *discord.Timestamps {
 	}
 }
 
-func PBToParty(pbParty *pb.Party) *discord.Party {
+func PBToParty(pbParty *Party) *discord.Party {
 	if pbParty == nil {
 		return nil
 	}
@@ -523,7 +522,7 @@ func PBToParty(pbParty *pb.Party) *discord.Party {
 	}
 }
 
-func PBToAssets(pbAssets *pb.Assets) *discord.Assets {
+func PBToAssets(pbAssets *Assets) *discord.Assets {
 	if pbAssets == nil {
 		return nil
 	}
@@ -536,7 +535,7 @@ func PBToAssets(pbAssets *pb.Assets) *discord.Assets {
 	}
 }
 
-func PBToSecrets(pbSecrets *pb.Secrets) *discord.Secrets {
+func PBToSecrets(pbSecrets *Secrets) *discord.Secrets {
 	if pbSecrets == nil {
 		return nil
 	}
@@ -548,7 +547,7 @@ func PBToSecrets(pbSecrets *pb.Secrets) *discord.Secrets {
 	}
 }
 
-func PBToStageInstances(pbInstances []*pb.StageInstance) []discord.StageInstance {
+func PBToStageInstances(pbInstances []*StageInstance) []discord.StageInstance {
 	if pbInstances == nil {
 		return nil
 	}
@@ -567,7 +566,7 @@ func PBToStageInstances(pbInstances []*pb.StageInstance) []discord.StageInstance
 	return instances
 }
 
-func PBToStickers(pbStickers []*pb.Sticker) []discord.Sticker {
+func PBToStickers(pbStickers []*Sticker) []discord.Sticker {
 	if pbStickers == nil {
 		return nil
 	}
@@ -579,7 +578,7 @@ func PBToStickers(pbStickers []*pb.Sticker) []discord.Sticker {
 	return stickers
 }
 
-func PBToSticker(pbSticker *pb.Sticker) *discord.Sticker {
+func PBToSticker(pbSticker *Sticker) *discord.Sticker {
 	if pbSticker == nil {
 		return nil
 	}
@@ -609,7 +608,7 @@ func PBToSticker(pbSticker *pb.Sticker) *discord.Sticker {
 	return sticker
 }
 
-func PBToScheduledEvents(pbEvents []*pb.ScheduledEvent) []discord.ScheduledEvent {
+func PBToScheduledEvents(pbEvents []*ScheduledEvent) []discord.ScheduledEvent {
 	if pbEvents == nil {
 		return nil
 	}
@@ -621,7 +620,7 @@ func PBToScheduledEvents(pbEvents []*pb.ScheduledEvent) []discord.ScheduledEvent
 	return events
 }
 
-func PBToScheduledEvent(pbEvent *pb.ScheduledEvent) *discord.ScheduledEvent {
+func PBToScheduledEvent(pbEvent *ScheduledEvent) *discord.ScheduledEvent {
 	if pbEvent == nil {
 		return nil
 	}
@@ -659,7 +658,7 @@ func PBToScheduledEvent(pbEvent *pb.ScheduledEvent) *discord.ScheduledEvent {
 	return event
 }
 
-func PBToEventMetadata(pbMetadata *pb.EventMetadata) *discord.EventMetadata {
+func PBToEventMetadata(pbMetadata *EventMetadata) *discord.EventMetadata {
 	if pbMetadata == nil {
 		return nil
 	}
@@ -669,7 +668,7 @@ func PBToEventMetadata(pbMetadata *pb.EventMetadata) *discord.EventMetadata {
 	}
 }
 
-func PBToThreadMetadata(pbMetadata *pb.ThreadMetadata) *discord.ThreadMetadata {
+func PBToThreadMetadata(pbMetadata *ThreadMetadata) *discord.ThreadMetadata {
 	if pbMetadata == nil {
 		return nil
 	}
@@ -689,7 +688,7 @@ func PBToThreadMetadata(pbMetadata *pb.ThreadMetadata) *discord.ThreadMetadata {
 	return metadata
 }
 
-func PBToThreadMember(pbMember *pb.ThreadMember) *discord.ThreadMember {
+func PBToThreadMember(pbMember *ThreadMember) *discord.ThreadMember {
 	if pbMember == nil {
 		return nil
 	}

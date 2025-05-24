@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	sandwich_daemon "github.com/WelcomerTeam/Sandwich-Daemon"
-	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
+	sandwich_protobuf "github.com/WelcomerTeam/Sandwich-Daemon/proto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +17,7 @@ func TestPBToGuild(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now().Format(time.RFC3339)
-	pbGuild := &pb.Guild{
+	pbGuild := &sandwich_protobuf.Guild{
 		ID:                          123,
 		Name:                        "Test Guild",
 		Icon:                        "test_icon",
@@ -62,7 +61,7 @@ func TestPBToGuild(t *testing.T) {
 		RulesChannelID:              505,
 	}
 
-	guild := sandwich_daemon.PBToGuild(pbGuild)
+	guild := sandwich_protobuf.PBToGuild(pbGuild)
 
 	assert.NotNil(t, guild)
 	assertEqual(t, discord.Snowflake(123), guild.ID)
@@ -112,7 +111,7 @@ func TestPBToChannel(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now().Format(time.RFC3339)
-	pbChannel := &pb.Channel{
+	pbChannel := &sandwich_protobuf.Channel{
 		ID:                         123,
 		Type:                       uint32(discord.ChannelTypeGuildText),
 		Position:                   1,
@@ -137,7 +136,7 @@ func TestPBToChannel(t *testing.T) {
 		Permissions:                123456,
 	}
 
-	channel := sandwich_daemon.PBToChannel(pbChannel)
+	channel := sandwich_protobuf.PBToChannel(pbChannel)
 
 	assert.NotNil(t, channel)
 	assertEqual(t, discord.Snowflake(123), channel.ID)
@@ -167,7 +166,7 @@ func TestPBToChannel(t *testing.T) {
 func TestPBToUser(t *testing.T) {
 	t.Parallel()
 
-	pbUser := &pb.User{
+	pbUser := &sandwich_protobuf.User{
 		ID:            123,
 		Username:      "testuser",
 		Discriminator: "1234",
@@ -183,7 +182,7 @@ func TestPBToUser(t *testing.T) {
 		PublicFlags:   int32(1), // DiscordEmployee
 	}
 
-	user := sandwich_daemon.PBToUser(pbUser)
+	user := sandwich_protobuf.PBToUser(pbUser)
 
 	assert.NotNil(t, user)
 	assertEqual(t, discord.Snowflake(123), user.ID)
@@ -204,7 +203,7 @@ func TestPBToUser(t *testing.T) {
 func TestPBToRole(t *testing.T) {
 	t.Parallel()
 
-	pbRole := &pb.Role{
+	pbRole := &sandwich_protobuf.Role{
 		ID:           123,
 		Name:         "Test Role",
 		Color:        16777215,
@@ -216,14 +215,14 @@ func TestPBToRole(t *testing.T) {
 		Managed:      true,
 		Mentionable:  true,
 		GuildID:      456,
-		Tags: &pb.RoleTag{
+		Tags: &sandwich_protobuf.RoleTag{
 			PremiumSubscriber: true,
 			BotID:             789,
 			IntegrationID:     101,
 		},
 	}
 
-	role := sandwich_daemon.PBToRole(pbRole)
+	role := sandwich_protobuf.PBToRole(pbRole)
 
 	assert.NotNil(t, role)
 	assertEqual(t, discord.Snowflake(123), role.ID)
@@ -246,7 +245,7 @@ func TestPBToRole(t *testing.T) {
 func TestPBToEmoji(t *testing.T) {
 	t.Parallel()
 
-	pbEmoji := &pb.Emoji{
+	pbEmoji := &sandwich_protobuf.Emoji{
 		ID:            123,
 		Name:          "test_emoji",
 		Roles:         []int64{456, 789},
@@ -255,13 +254,13 @@ func TestPBToEmoji(t *testing.T) {
 		Animated:      true,
 		Available:     true,
 		GuildID:       101,
-		User: &pb.User{
+		User: &sandwich_protobuf.User{
 			ID:       202,
 			Username: "testuser",
 		},
 	}
 
-	emoji := sandwich_daemon.PBToEmoji(pbEmoji)
+	emoji := sandwich_protobuf.PBToEmoji(pbEmoji)
 
 	assert.NotNil(t, emoji)
 	assertEqual(t, discord.Snowflake(123), emoji.ID)
@@ -281,7 +280,7 @@ func TestPBToVoiceState(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now().Format(time.RFC3339)
-	pbState := &pb.VoiceState{
+	pbState := &sandwich_protobuf.VoiceState{
 		UserID:                  123,
 		ChannelID:               456,
 		GuildID:                 789,
@@ -294,8 +293,8 @@ func TestPBToVoiceState(t *testing.T) {
 		SelfVideo:               true,
 		Suppress:                true,
 		RequestToSpeakTimestamp: now,
-		Member: &pb.GuildMember{
-			User: &pb.User{
+		Member: &sandwich_protobuf.GuildMember{
+			User: &sandwich_protobuf.User{
 				ID:       123,
 				Username: "testuser",
 			},
@@ -303,7 +302,7 @@ func TestPBToVoiceState(t *testing.T) {
 		},
 	}
 
-	state := sandwich_daemon.PBToVoiceState(pbState)
+	state := sandwich_protobuf.PBToVoiceState(pbState)
 
 	assert.NotNil(t, state)
 	assertEqual(t, discord.Snowflake(123), state.UserID)
@@ -327,7 +326,7 @@ func TestPBToVoiceState(t *testing.T) {
 func TestPBToActivity(t *testing.T) {
 	t.Parallel()
 
-	pbActivity := &pb.Activity{
+	pbActivity := &sandwich_protobuf.Activity{
 		Name:     "Test Activity",
 		Type:     int32(0), // Playing
 		URL:      "https://example.com",
@@ -335,28 +334,28 @@ func TestPBToActivity(t *testing.T) {
 		State:    "Test State",
 		Instance: true,
 		Flags:    1,
-		Timestamps: &pb.Timestamps{
+		Timestamps: &sandwich_protobuf.Timestamps{
 			Start: 123,
 			End:   456,
 		},
-		Party: &pb.Party{
+		Party: &sandwich_protobuf.Party{
 			ID:   "test_party",
 			Size: []int32{1, 2},
 		},
-		Assets: &pb.Assets{
+		Assets: &sandwich_protobuf.Assets{
 			LargeImage: "test_large",
 			LargeText:  "Test Large",
 			SmallImage: "test_small",
 			SmallText:  "Test Small",
 		},
-		Secrets: &pb.Secrets{
+		Secrets: &sandwich_protobuf.Secrets{
 			Join:     "test_join",
 			Spectate: "test_spectate",
 			Match:    "test_match",
 		},
 	}
 
-	activity := sandwich_daemon.PBToActivity(pbActivity)
+	activity := sandwich_protobuf.PBToActivity(pbActivity)
 
 	assert.NotNil(t, activity)
 	assertEqual(t, "Test Activity", activity.Name)
@@ -386,7 +385,7 @@ func TestPBToActivity(t *testing.T) {
 func TestPBToSticker(t *testing.T) {
 	t.Parallel()
 
-	pbSticker := &pb.Sticker{
+	pbSticker := &sandwich_protobuf.Sticker{
 		ID:          123,
 		Name:        "Test Sticker",
 		Description: "Test Description",
@@ -397,13 +396,13 @@ func TestPBToSticker(t *testing.T) {
 		SortValue:   1,
 		GuildID:     456,
 		PackID:      789,
-		User: &pb.User{
+		User: &sandwich_protobuf.User{
 			ID:       101,
 			Username: "testuser",
 		},
 	}
 
-	sticker := sandwich_daemon.PBToSticker(pbSticker)
+	sticker := sandwich_protobuf.PBToSticker(pbSticker)
 
 	assert.NotNil(t, sticker)
 	assertEqual(t, discord.Snowflake(123), sticker.ID)
@@ -424,7 +423,7 @@ func TestPBToSticker(t *testing.T) {
 func TestPBToScheduledEvent(t *testing.T) {
 	t.Parallel()
 
-	pbEvent := &pb.ScheduledEvent{
+	pbEvent := &sandwich_protobuf.ScheduledEvent{
 		ID:                 123,
 		GuildID:            456,
 		Name:               "Test Event",
@@ -438,16 +437,16 @@ func TestPBToScheduledEvent(t *testing.T) {
 		ChannelID:          789,
 		CreatorID:          101,
 		EntityID:           202,
-		EntityMetadata: &pb.EventMetadata{
+		EntityMetadata: &sandwich_protobuf.EventMetadata{
 			Location: "Test Location",
 		},
-		Creator: &pb.User{
+		Creator: &sandwich_protobuf.User{
 			ID:       101,
 			Username: "testuser",
 		},
 	}
 
-	event := sandwich_daemon.PBToScheduledEvent(pbEvent)
+	event := sandwich_protobuf.PBToScheduledEvent(pbEvent)
 
 	assert.NotNil(t, event)
 	assertEqual(t, discord.Snowflake(123), event.ID)
@@ -474,14 +473,14 @@ func TestPBToThreadMetadata(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now().Format(time.RFC3339)
-	pbMetadata := &pb.ThreadMetadata{
+	pbMetadata := &sandwich_protobuf.ThreadMetadata{
 		Archived:            true,
 		AutoArchiveDuration: 1440,
 		ArchiveTimestamp:    now,
 		Locked:              true,
 	}
 
-	metadata := sandwich_daemon.PBToThreadMetadata(pbMetadata)
+	metadata := sandwich_protobuf.PBToThreadMetadata(pbMetadata)
 
 	assert.NotNil(t, metadata)
 	assert.True(t, metadata.Archived)
@@ -494,7 +493,7 @@ func TestPBToThreadMember(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now().Format(time.RFC3339)
-	pbMember := &pb.ThreadMember{
+	pbMember := &sandwich_protobuf.ThreadMember{
 		ID:            123,
 		UserID:        456,
 		GuildID:       789,
@@ -502,7 +501,7 @@ func TestPBToThreadMember(t *testing.T) {
 		Flags:         1,
 	}
 
-	member := sandwich_daemon.PBToThreadMember(pbMember)
+	member := sandwich_protobuf.PBToThreadMember(pbMember)
 
 	assert.NotNil(t, member)
 	assertEqual(t, discord.Snowflake(123), *member.ID)

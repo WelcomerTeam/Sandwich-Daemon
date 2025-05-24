@@ -8,14 +8,14 @@ import (
 	"slices"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
+	sandwich_protobuf "github.com/WelcomerTeam/Sandwich-Daemon/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var _ pb.SandwichServer = &GRPCServer{}
+var _ sandwich_protobuf.SandwichServer = &GRPCServer{}
 
 type GRPCServer struct {
-	pb.UnimplementedSandwichServer
+	sandwich_protobuf.UnimplementedSandwichServer
 
 	sandwich *Sandwich
 	logger   *slog.Logger
@@ -23,14 +23,14 @@ type GRPCServer struct {
 
 func (sandwich *Sandwich) NewGRPCServer() *GRPCServer {
 	return &GRPCServer{
-		UnimplementedSandwichServer: pb.UnimplementedSandwichServer{},
+		UnimplementedSandwichServer: sandwich_protobuf.UnimplementedSandwichServer{},
 		sandwich:                    sandwich,
 		logger:                      sandwich.logger.With("service", "grpc"),
 	}
 }
 
 // Listen implements the Listen RPC method
-func (grpcServer *GRPCServer) Listen(req *pb.ListenRequest, stream pb.Sandwich_ListenServer) error {
+func (grpcServer *GRPCServer) Listen(req *sandwich_protobuf.ListenRequest, stream sandwich_protobuf.Sandwich_ListenServer) error {
 	RecordGRPCRequest()
 
 	channel := make(chan *listenerData)
@@ -43,7 +43,7 @@ func (grpcServer *GRPCServer) Listen(req *pb.ListenRequest, stream pb.Sandwich_L
 		case <-stream.Context().Done():
 			return nil
 		case data := <-channel:
-			err := stream.Send(&pb.ListenResponse{
+			err := stream.Send(&sandwich_protobuf.ListenResponse{
 				Timestamp: data.timestamp.Unix(),
 				Data:      data.payload,
 			})
@@ -57,12 +57,12 @@ func (grpcServer *GRPCServer) Listen(req *pb.ListenRequest, stream pb.Sandwich_L
 }
 
 // RelayMessage implements the RelayMessage RPC method
-func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *pb.RelayMessageRequest) (*pb.BaseResponse, error) {
+func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *sandwich_protobuf.RelayMessageRequest) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
 	application, ok := grpcServer.sandwich.applications.Load(req.GetIdentifier())
 	if !ok {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrApplicationNotFound.Error(),
 		}, ErrApplicationNotFound
@@ -83,41 +83,41 @@ func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *pb.RelayMes
 		Op:       discord.GatewayOpDispatch,
 	}, nil)
 	if err != nil {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: err.Error(),
 		}, err
 	}
 
-	return &pb.BaseResponse{
+	return &sandwich_protobuf.BaseResponse{
 		Ok:    true,
 		Error: "",
 	}, nil
 }
 
 // ReloadConfiguration implements the ReloadConfiguration RPC method
-func (grpcServer *GRPCServer) ReloadConfiguration(ctx context.Context, req *emptypb.Empty) (*pb.BaseResponse, error) {
+func (grpcServer *GRPCServer) ReloadConfiguration(ctx context.Context, req *emptypb.Empty) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
 	err := grpcServer.sandwich.getConfig(ctx)
 	if err != nil {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: err.Error(),
 		}, err
 	}
 
-	return &pb.BaseResponse{
+	return &sandwich_protobuf.BaseResponse{
 		Ok:    true,
 		Error: "",
 	}, nil
 }
 
 // FetchApplication implements the FetchApplication RPC method
-func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *pb.ApplicationIdentifier) (*pb.FetchApplicationResponse, error) {
+func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *sandwich_protobuf.ApplicationIdentifier) (*sandwich_protobuf.FetchApplicationResponse, error) {
 	RecordGRPCRequest()
 
-	applications := make(map[string]*pb.SandwichApplication)
+	applications := make(map[string]*sandwich_protobuf.SandwichApplication)
 
 	grpcServer.sandwich.applications.Range(func(key string, application *Application) bool {
 		if req.GetApplicationIdentifier() != "" && key != req.GetApplicationIdentifier() {
@@ -128,8 +128,8 @@ func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *pb.Appl
 		return true
 	})
 
-	return &pb.FetchApplicationResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchApplicationResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok:    true,
 			Error: "",
 		},
@@ -138,12 +138,12 @@ func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *pb.Appl
 }
 
 // StartApplication implements the StartApplication RPC method
-func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *pb.ApplicationIdentifierWithBlocking) (*pb.BaseResponse, error) {
+func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *sandwich_protobuf.ApplicationIdentifierWithBlocking) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
 	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
 	if !ok {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrApplicationNotFound.Error(),
 		}, ErrApplicationNotFound
@@ -155,7 +155,7 @@ func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *pb.Appl
 
 	switch ApplicationStatus(application.status.Load()) {
 	case ApplicationStatusStarting, ApplicationStatusConnecting, ApplicationStatusConnected, ApplicationStatusReady:
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrApplicationAlreadyRunning.Error(),
 		}, ErrApplicationAlreadyRunning
@@ -177,25 +177,25 @@ func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *pb.Appl
 	if req.GetBlocking() {
 		err := <-wait
 		if err != nil {
-			return &pb.BaseResponse{
+			return &sandwich_protobuf.BaseResponse{
 				Ok:    false,
 				Error: err.Error(),
 			}, err
 		}
 	}
 
-	return &pb.BaseResponse{
+	return &sandwich_protobuf.BaseResponse{
 		Ok: true,
 	}, nil
 }
 
 // StopApplication implements the StopApplication RPC method
-func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *pb.ApplicationIdentifierWithBlocking) (*pb.BaseResponse, error) {
+func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *sandwich_protobuf.ApplicationIdentifierWithBlocking) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
 	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
 	if !ok {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrApplicationNotFound.Error(),
 		}, ErrApplicationNotFound
@@ -221,7 +221,7 @@ func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *pb.Appli
 		if req.GetBlocking() {
 			err := <-wait
 			if err != nil {
-				return &pb.BaseResponse{
+				return &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: err.Error(),
 				}, err
@@ -231,13 +231,13 @@ func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *pb.Appli
 		break
 	}
 
-	return &pb.BaseResponse{
+	return &sandwich_protobuf.BaseResponse{
 		Ok: true,
 	}, nil
 }
 
 // CreateApplication implements the CreateApplication RPC method
-func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *pb.CreateApplicationRequest) (*pb.SandwichApplication, error) {
+func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *sandwich_protobuf.CreateApplicationRequest) (*sandwich_protobuf.SandwichApplication, error) {
 	RecordGRPCRequest()
 
 	var defaultPresence discord.UpdateStatus
@@ -313,12 +313,12 @@ func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *pb.Cre
 }
 
 // DeleteApplication implements the DeleteApplication RPC method
-func (grpcServer *GRPCServer) DeleteApplication(ctx context.Context, req *pb.ApplicationIdentifier) (*pb.BaseResponse, error) {
+func (grpcServer *GRPCServer) DeleteApplication(ctx context.Context, req *sandwich_protobuf.ApplicationIdentifier) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
 	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
 	if !ok {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrApplicationNotFound.Error(),
 		}, ErrApplicationNotFound
@@ -331,13 +331,13 @@ func (grpcServer *GRPCServer) DeleteApplication(ctx context.Context, req *pb.App
 
 	grpcServer.sandwich.applications.Delete(req.GetApplicationIdentifier())
 
-	return &pb.BaseResponse{
+	return &sandwich_protobuf.BaseResponse{
 		Ok: true,
 	}, nil
 }
 
 // RequestGuildChunk implements the RequestGuildChunk RPC method
-func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *pb.RequestGuildChunkRequest) (*pb.BaseResponse, error) {
+func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *sandwich_protobuf.RequestGuildChunkRequest) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
 	var shard *Shard
@@ -359,7 +359,7 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *pb.Req
 	if shard == nil {
 		grpcServer.logger.Error("failed to find shard for guild", "guild", req.GetGuildId())
 
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrGuildNotFound.Error(),
 		}, ErrGuildNotFound
@@ -367,24 +367,24 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *pb.Req
 
 	err := shard.chunkGuild(ctx, discord.Snowflake(req.GetGuildId()), req.GetAlwaysChunk())
 	if err != nil {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: err.Error(),
 		}, err
 	}
 
-	return &pb.BaseResponse{
+	return &sandwich_protobuf.BaseResponse{
 		Ok: true,
 	}, nil
 }
 
 // SendWebsocketMessage implements the SendWebsocketMessage RPC method
-func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *pb.SendWebsocketMessageRequest) (*pb.BaseResponse, error) {
+func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *sandwich_protobuf.SendWebsocketMessageRequest) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
 	application, ok := grpcServer.sandwich.applications.Load(req.GetIdentifier())
 	if !ok {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrApplicationNotFound.Error(),
 		}, ErrApplicationNotFound
@@ -392,7 +392,7 @@ func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *pb.
 
 	shard, ok := application.shards.Load(req.GetShard())
 	if !ok {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: ErrShardNotFound.Error(),
 		}, ErrShardNotFound
@@ -400,22 +400,22 @@ func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *pb.
 
 	err := shard.send(ctx, discord.GatewayOp(req.GetGatewayOpCode()), req.GetData())
 	if err != nil {
-		return &pb.BaseResponse{
+		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
 			Error: err.Error(),
 		}, err
 	}
 
-	return &pb.BaseResponse{
+	return &sandwich_protobuf.BaseResponse{
 		Ok: true,
 	}, nil
 }
 
 // WhereIsGuild implements the WhereIsGuild RPC method
-func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsGuildRequest) (*pb.WhereIsGuildResponse, error) {
+func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_protobuf.WhereIsGuildRequest) (*sandwich_protobuf.WhereIsGuildResponse, error) {
 	RecordGRPCRequest()
 
-	locations := make(map[int64]*pb.WhereIsGuildLocation)
+	locations := make(map[int64]*sandwich_protobuf.WhereIsGuildLocation)
 
 	grpcServer.sandwich.applications.Range(func(applicationIdentifier string, application *Application) bool {
 		hasGuild := false
@@ -426,7 +426,7 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsG
 
 				user := application.user.Load()
 
-				var pbGuildMember *pb.GuildMember
+				var pbGuildMember *sandwich_protobuf.GuildMember
 
 				guildMember, ok := grpcServer.sandwich.stateProvider.GetGuildMember(
 					ctx,
@@ -434,10 +434,10 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsG
 					user.ID,
 				)
 				if ok {
-					pbGuildMember = GuildMemberToPB(guildMember)
+					pbGuildMember = sandwich_protobuf.GuildMemberToPB(guildMember)
 				}
 
-				locations[int64(user.ID)] = &pb.WhereIsGuildLocation{
+				locations[int64(user.ID)] = &sandwich_protobuf.WhereIsGuildLocation{
 					Identifier:  applicationIdentifier,
 					ShardId:     shard.shardID,
 					GuildMember: pbGuildMember,
@@ -452,8 +452,8 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsG
 		return hasGuild
 	})
 
-	return &pb.WhereIsGuildResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.WhereIsGuildResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Locations: locations,
@@ -461,18 +461,18 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *pb.WhereIsG
 }
 
 // FetchGuild implements the FetchGuild RPC method
-func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuildRequest) (*pb.FetchGuildResponse, error) {
+func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *sandwich_protobuf.FetchGuildRequest) (*sandwich_protobuf.FetchGuildResponse, error) {
 	RecordGRPCRequest()
 
-	guilds := make(map[int64]*pb.Guild)
+	guilds := make(map[int64]*sandwich_protobuf.Guild)
 
 	guildIDs := req.GetGuildIds()
 
 	if len(guildIDs) == 0 {
 		stateGuilds, ok := grpcServer.sandwich.stateProvider.GetGuilds(ctx)
 		if !ok {
-			return &pb.FetchGuildResponse{
-				BaseResponse: &pb.BaseResponse{
+			return &sandwich_protobuf.FetchGuildResponse{
+				BaseResponse: &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: ErrGuildNotFound.Error(),
 				},
@@ -481,7 +481,7 @@ func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuild
 		}
 
 		for _, stateGuild := range stateGuilds {
-			guilds[int64(stateGuild.ID)] = GuildToPB(stateGuild)
+			guilds[int64(stateGuild.ID)] = sandwich_protobuf.GuildToPB(stateGuild)
 		}
 	} else {
 		for _, guildID := range guildIDs {
@@ -490,12 +490,12 @@ func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuild
 				continue
 			}
 
-			guilds[int64(guild.ID)] = GuildToPB(guild)
+			guilds[int64(guild.ID)] = sandwich_protobuf.GuildToPB(guild)
 		}
 	}
 
-	return &pb.FetchGuildResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchGuildResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Guilds: guilds,
@@ -503,18 +503,18 @@ func (grpcServer *GRPCServer) FetchGuild(ctx context.Context, req *pb.FetchGuild
 }
 
 // FetchGuildMember implements the FetchGuildMember RPC method
-func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.FetchGuildMemberRequest) (*pb.FetchGuildMemberResponse, error) {
+func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *sandwich_protobuf.FetchGuildMemberRequest) (*sandwich_protobuf.FetchGuildMemberResponse, error) {
 	RecordGRPCRequest()
 
-	guildMembers := make(map[int64]*pb.GuildMember)
+	guildMembers := make(map[int64]*sandwich_protobuf.GuildMember)
 
 	userIDs := req.GetUserIds()
 
 	if len(userIDs) == 0 {
 		stateGuildMembers, ok := grpcServer.sandwich.stateProvider.GetGuildMembers(ctx, discord.Snowflake(req.GetGuildId()))
 		if !ok {
-			return &pb.FetchGuildMemberResponse{
-				BaseResponse: &pb.BaseResponse{
+			return &sandwich_protobuf.FetchGuildMemberResponse{
+				BaseResponse: &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: ErrGuildNotFound.Error(),
 				},
@@ -523,7 +523,7 @@ func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.Fetc
 		}
 
 		for _, stateGuildMember := range stateGuildMembers {
-			guildMembers[int64(stateGuildMember.User.ID)] = GuildMemberToPB(stateGuildMember)
+			guildMembers[int64(stateGuildMember.User.ID)] = sandwich_protobuf.GuildMemberToPB(stateGuildMember)
 		}
 	} else {
 		for _, userID := range req.GetUserIds() {
@@ -532,12 +532,12 @@ func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.Fetc
 				continue
 			}
 
-			guildMembers[int64(stateGuildMember.User.ID)] = GuildMemberToPB(stateGuildMember)
+			guildMembers[int64(stateGuildMember.User.ID)] = sandwich_protobuf.GuildMemberToPB(stateGuildMember)
 		}
 	}
 
-	return &pb.FetchGuildMemberResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchGuildMemberResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		GuildMembers: guildMembers,
@@ -545,18 +545,18 @@ func (grpcServer *GRPCServer) FetchGuildMember(ctx context.Context, req *pb.Fetc
 }
 
 // FetchGuildChannel implements the FetchGuildChannel RPC method
-func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.FetchGuildChannelRequest) (*pb.FetchGuildChannelResponse, error) {
+func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *sandwich_protobuf.FetchGuildChannelRequest) (*sandwich_protobuf.FetchGuildChannelResponse, error) {
 	RecordGRPCRequest()
 
-	guildChannels := make(map[int64]*pb.Channel)
+	guildChannels := make(map[int64]*sandwich_protobuf.Channel)
 
 	channelIDs := req.GetChannelIds()
 
 	if len(channelIDs) == 0 {
 		stateGuildChannels, ok := grpcServer.sandwich.stateProvider.GetGuildChannels(ctx, discord.Snowflake(req.GetGuildId()))
 		if !ok {
-			return &pb.FetchGuildChannelResponse{
-				BaseResponse: &pb.BaseResponse{
+			return &sandwich_protobuf.FetchGuildChannelResponse{
+				BaseResponse: &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: ErrGuildNotFound.Error(),
 				},
@@ -565,7 +565,7 @@ func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.Fet
 		}
 
 		for _, stateGuildChannel := range stateGuildChannels {
-			guildChannels[int64(stateGuildChannel.ID)] = ChannelToPB(stateGuildChannel)
+			guildChannels[int64(stateGuildChannel.ID)] = sandwich_protobuf.ChannelToPB(stateGuildChannel)
 		}
 	} else {
 		for _, channelID := range channelIDs {
@@ -574,12 +574,12 @@ func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.Fet
 				continue
 			}
 
-			guildChannels[int64(stateGuildChannel.ID)] = ChannelToPB(stateGuildChannel)
+			guildChannels[int64(stateGuildChannel.ID)] = sandwich_protobuf.ChannelToPB(stateGuildChannel)
 		}
 	}
 
-	return &pb.FetchGuildChannelResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchGuildChannelResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Channels: guildChannels,
@@ -587,18 +587,18 @@ func (grpcServer *GRPCServer) FetchGuildChannel(ctx context.Context, req *pb.Fet
 }
 
 // FetchGuildRole implements the FetchGuildRole RPC method
-func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchGuildRoleRequest) (*pb.FetchGuildRoleResponse, error) {
+func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *sandwich_protobuf.FetchGuildRoleRequest) (*sandwich_protobuf.FetchGuildRoleResponse, error) {
 	RecordGRPCRequest()
 
-	guildRoles := make(map[int64]*pb.Role)
+	guildRoles := make(map[int64]*sandwich_protobuf.Role)
 
 	roleIDs := req.GetRoleIds()
 
 	if len(roleIDs) == 0 {
 		stateGuildRoles, ok := grpcServer.sandwich.stateProvider.GetGuildRoles(ctx, discord.Snowflake(req.GetGuildId()))
 		if !ok {
-			return &pb.FetchGuildRoleResponse{
-				BaseResponse: &pb.BaseResponse{
+			return &sandwich_protobuf.FetchGuildRoleResponse{
+				BaseResponse: &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: ErrGuildNotFound.Error(),
 				},
@@ -607,7 +607,7 @@ func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchG
 		}
 
 		for _, stateGuildRole := range stateGuildRoles {
-			guildRoles[int64(stateGuildRole.ID)] = RoleToPB(stateGuildRole)
+			guildRoles[int64(stateGuildRole.ID)] = sandwich_protobuf.RoleToPB(stateGuildRole)
 		}
 	} else {
 		for _, roleID := range roleIDs {
@@ -616,12 +616,12 @@ func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchG
 				continue
 			}
 
-			guildRoles[int64(stateGuildRole.ID)] = RoleToPB(stateGuildRole)
+			guildRoles[int64(stateGuildRole.ID)] = sandwich_protobuf.RoleToPB(stateGuildRole)
 		}
 	}
 
-	return &pb.FetchGuildRoleResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchGuildRoleResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Roles: guildRoles,
@@ -629,18 +629,18 @@ func (grpcServer *GRPCServer) FetchGuildRole(ctx context.Context, req *pb.FetchG
 }
 
 // FetchGuildEmoji implements the FetchGuildEmoji RPC method
-func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.FetchGuildEmojiRequest) (*pb.FetchGuildEmojiResponse, error) {
+func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *sandwich_protobuf.FetchGuildEmojiRequest) (*sandwich_protobuf.FetchGuildEmojiResponse, error) {
 	RecordGRPCRequest()
 
-	guildEmojis := make(map[int64]*pb.Emoji)
+	guildEmojis := make(map[int64]*sandwich_protobuf.Emoji)
 
 	emojiIDs := req.GetEmojiIds()
 
 	if len(emojiIDs) == 0 {
 		stateGuildEmojis, ok := grpcServer.sandwich.stateProvider.GetGuildEmojis(ctx, discord.Snowflake(req.GetGuildId()))
 		if !ok {
-			return &pb.FetchGuildEmojiResponse{
-				BaseResponse: &pb.BaseResponse{
+			return &sandwich_protobuf.FetchGuildEmojiResponse{
+				BaseResponse: &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: ErrGuildNotFound.Error(),
 				},
@@ -649,7 +649,7 @@ func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.Fetch
 		}
 
 		for _, stateGuildEmoji := range stateGuildEmojis {
-			guildEmojis[int64(stateGuildEmoji.ID)] = EmojiToPB(stateGuildEmoji)
+			guildEmojis[int64(stateGuildEmoji.ID)] = sandwich_protobuf.EmojiToPB(stateGuildEmoji)
 		}
 	} else {
 		for _, emojiID := range emojiIDs {
@@ -658,12 +658,12 @@ func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.Fetch
 				continue
 			}
 
-			guildEmojis[int64(stateGuildEmoji.ID)] = EmojiToPB(stateGuildEmoji)
+			guildEmojis[int64(stateGuildEmoji.ID)] = sandwich_protobuf.EmojiToPB(stateGuildEmoji)
 		}
 	}
 
-	return &pb.FetchGuildEmojiResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchGuildEmojiResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Emojis: guildEmojis,
@@ -671,18 +671,18 @@ func (grpcServer *GRPCServer) FetchGuildEmoji(ctx context.Context, req *pb.Fetch
 }
 
 // FetchGuildSticker implements the FetchGuildSticker RPC method
-func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.FetchGuildStickerRequest) (*pb.FetchGuildStickerResponse, error) {
+func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *sandwich_protobuf.FetchGuildStickerRequest) (*sandwich_protobuf.FetchGuildStickerResponse, error) {
 	RecordGRPCRequest()
 
-	guildStickers := make(map[int64]*pb.Sticker)
+	guildStickers := make(map[int64]*sandwich_protobuf.Sticker)
 
 	stickerIDs := req.GetStickerIds()
 
 	if len(stickerIDs) == 0 {
 		stateGuildStickers, ok := grpcServer.sandwich.stateProvider.GetGuildStickers(ctx, discord.Snowflake(req.GetGuildId()))
 		if !ok {
-			return &pb.FetchGuildStickerResponse{
-				BaseResponse: &pb.BaseResponse{
+			return &sandwich_protobuf.FetchGuildStickerResponse{
+				BaseResponse: &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: ErrGuildNotFound.Error(),
 				},
@@ -691,7 +691,7 @@ func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.Fet
 		}
 
 		for _, stateGuildSticker := range stateGuildStickers {
-			guildStickers[int64(stateGuildSticker.ID)] = StickerToPB(stateGuildSticker)
+			guildStickers[int64(stateGuildSticker.ID)] = sandwich_protobuf.StickerToPB(stateGuildSticker)
 		}
 	} else {
 		for _, stickerID := range stickerIDs {
@@ -700,12 +700,12 @@ func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.Fet
 				continue
 			}
 
-			guildStickers[int64(stateGuildSticker.ID)] = StickerToPB(stateGuildSticker)
+			guildStickers[int64(stateGuildSticker.ID)] = sandwich_protobuf.StickerToPB(stateGuildSticker)
 		}
 	}
 
-	return &pb.FetchGuildStickerResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchGuildStickerResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Stickers: guildStickers,
@@ -713,18 +713,18 @@ func (grpcServer *GRPCServer) FetchGuildSticker(ctx context.Context, req *pb.Fet
 }
 
 // FetchGuildVoiceState implements the FetchGuildVoiceState RPC method
-func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.FetchGuildVoiceStateRequest) (*pb.FetchGuildVoiceStateResponse, error) {
+func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *sandwich_protobuf.FetchGuildVoiceStateRequest) (*sandwich_protobuf.FetchGuildVoiceStateResponse, error) {
 	RecordGRPCRequest()
 
-	voiceStates := make(map[int64]*pb.VoiceState)
+	voiceStates := make(map[int64]*sandwich_protobuf.VoiceState)
 
 	userIDs := req.GetUserIds()
 
 	if len(userIDs) == 0 {
 		stateVoiceStates, ok := grpcServer.sandwich.stateProvider.GetVoiceStates(ctx, discord.Snowflake(req.GetGuildId()))
 		if !ok {
-			return &pb.FetchGuildVoiceStateResponse{
-				BaseResponse: &pb.BaseResponse{
+			return &sandwich_protobuf.FetchGuildVoiceStateResponse{
+				BaseResponse: &sandwich_protobuf.BaseResponse{
 					Ok:    false,
 					Error: ErrGuildNotFound.Error(),
 				},
@@ -733,7 +733,7 @@ func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.
 		}
 
 		for _, stateVoiceState := range stateVoiceStates {
-			voiceStates[int64(stateVoiceState.UserID)] = VoiceStateToPB(stateVoiceState)
+			voiceStates[int64(stateVoiceState.UserID)] = sandwich_protobuf.VoiceStateToPB(stateVoiceState)
 		}
 	} else {
 		for _, userID := range userIDs {
@@ -742,12 +742,12 @@ func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.
 				continue
 			}
 
-			voiceStates[int64(stateVoiceState.UserID)] = VoiceStateToPB(stateVoiceState)
+			voiceStates[int64(stateVoiceState.UserID)] = sandwich_protobuf.VoiceStateToPB(stateVoiceState)
 		}
 	}
 
-	return &pb.FetchGuildVoiceStateResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchGuildVoiceStateResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		VoiceStates: voiceStates,
@@ -755,22 +755,22 @@ func (grpcServer *GRPCServer) FetchGuildVoiceState(ctx context.Context, req *pb.
 }
 
 // FetchUser implements the FetchUser RPC method
-func (grpcServer *GRPCServer) FetchUser(ctx context.Context, req *pb.FetchUserRequest) (*pb.FetchUserResponse, error) {
+func (grpcServer *GRPCServer) FetchUser(ctx context.Context, req *sandwich_protobuf.FetchUserRequest) (*sandwich_protobuf.FetchUserResponse, error) {
 	RecordGRPCRequest()
 
-	users := make(map[int64]*pb.User)
+	users := make(map[int64]*sandwich_protobuf.User)
 
 	userIDs := req.GetUserIds()
 
 	for _, userID := range userIDs {
 		stateUser, ok := grpcServer.sandwich.stateProvider.GetUser(ctx, discord.Snowflake(userID))
 		if ok {
-			users[int64(stateUser.ID)] = UserToPB(stateUser)
+			users[int64(stateUser.ID)] = sandwich_protobuf.UserToPB(stateUser)
 		}
 	}
 
-	return &pb.FetchUserResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchUserResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Users: users,
@@ -778,15 +778,15 @@ func (grpcServer *GRPCServer) FetchUser(ctx context.Context, req *pb.FetchUserRe
 }
 
 // FetchUserMutualGuilds implements the FetchUserMutualGuilds RPC method
-func (grpcServer *GRPCServer) FetchUserMutualGuilds(ctx context.Context, req *pb.FetchUserMutualGuildsRequest) (*pb.FetchUserMutualGuildsResponse, error) {
+func (grpcServer *GRPCServer) FetchUserMutualGuilds(ctx context.Context, req *sandwich_protobuf.FetchUserMutualGuildsRequest) (*sandwich_protobuf.FetchUserMutualGuildsResponse, error) {
 	RecordGRPCRequest()
 
-	mutualGuilds := make(map[int64]*pb.Guild)
+	mutualGuilds := make(map[int64]*sandwich_protobuf.Guild)
 
 	mutualGuildsState, ok := grpcServer.sandwich.stateProvider.GetUserMutualGuilds(ctx, discord.Snowflake(req.GetUserId()))
 	if !ok {
-		return &pb.FetchUserMutualGuildsResponse{
-			BaseResponse: &pb.BaseResponse{
+		return &sandwich_protobuf.FetchUserMutualGuildsResponse{
+			BaseResponse: &sandwich_protobuf.BaseResponse{
 				Ok:    false,
 				Error: ErrUserNotFound.Error(),
 			},
@@ -796,16 +796,16 @@ func (grpcServer *GRPCServer) FetchUserMutualGuilds(ctx context.Context, req *pb
 	for _, mutualGuild := range mutualGuildsState {
 		guildState, ok := grpcServer.sandwich.stateProvider.GetGuild(ctx, discord.Snowflake(mutualGuild))
 		if ok {
-			mutualGuilds[int64(guildState.ID)] = GuildToPB(guildState)
+			mutualGuilds[int64(guildState.ID)] = sandwich_protobuf.GuildToPB(guildState)
 		} else {
-			mutualGuilds[int64(mutualGuild)] = &pb.Guild{
+			mutualGuilds[int64(mutualGuild)] = &sandwich_protobuf.Guild{
 				ID: int64(mutualGuild),
 			}
 		}
 	}
 
-	return &pb.FetchUserMutualGuildsResponse{
-		BaseResponse: &pb.BaseResponse{
+	return &sandwich_protobuf.FetchUserMutualGuildsResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
 			Ok: true,
 		},
 		Guilds: mutualGuilds,

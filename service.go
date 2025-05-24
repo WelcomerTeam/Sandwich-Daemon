@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.5"
+var Version = "2.0.0-rc.6"
 
 type Sandwich struct {
 	logger *slog.Logger
@@ -348,7 +348,7 @@ func (sandwich *Sandwich) broadcast(eventType string, data any) error {
 	return nil
 }
 
-// Conversions
+// Custom conversions
 
 func applicationToPB(application *Application) *pb.SandwichApplication {
 	configuration := application.configuration.Load()
@@ -404,81 +404,4 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 		Values:                valuesJSON,
 		Shards:                shards,
 	}
-}
-
-func UserToPB(user *discord.User) *pb.User {
-	userPB := &pb.User{
-		ID:            int64(user.ID),
-		Username:      user.Username,
-		Discriminator: user.Discriminator,
-		GlobalName:    user.GlobalName,
-		Avatar:        user.Avatar,
-		Bot:           user.Bot,
-		System:        user.System,
-		MFAEnabled:    user.MFAEnabled,
-		Banner:        user.Banner,
-		AccentColour:  int32(user.AccentColor),
-		Locale:        user.Locale,
-		Verified:      user.Verified,
-		Email:         user.Email,
-		Flags:         int32(user.Flags),
-		PremiumType:   int32(user.PremiumType),
-		PublicFlags:   int32(user.PublicFlags),
-		DMChannelID:   0,
-	}
-
-	if user.DMChannelID != nil {
-		userPB.DMChannelID = int64(*user.DMChannelID)
-	}
-
-	return userPB
-}
-
-func snowflakeListToInt64List(snowflakes []discord.Snowflake) []int64 {
-	int64List := make([]int64, len(snowflakes))
-
-	for i, snowflake := range snowflakes {
-		int64List[i] = int64(snowflake)
-	}
-
-	return int64List
-}
-
-func GuildMemberToPB(guildMember *discord.GuildMember) *pb.GuildMember {
-	guildMemberPB := &pb.GuildMember{
-		User:                       nil,
-		GuildID:                    0,
-		Nick:                       guildMember.Nick,
-		Avatar:                     guildMember.Avatar,
-		Roles:                      snowflakeListToInt64List(guildMember.Roles),
-		JoinedAt:                   guildMember.JoinedAt.Format(time.RFC3339),
-		PremiumSince:               "",
-		Deaf:                       guildMember.Deaf,
-		Mute:                       guildMember.Mute,
-		Pending:                    guildMember.Pending,
-		Permissions:                0,
-		CommunicationDisabledUntil: "",
-	}
-
-	if guildMember.User != nil {
-		guildMemberPB.User = UserToPB(guildMember.User)
-	}
-
-	if guildMember.GuildID != nil {
-		guildMemberPB.GuildID = int64(*guildMember.GuildID)
-	}
-
-	if guildMember.Permissions != nil {
-		guildMemberPB.Permissions = int64(*guildMember.Permissions)
-	}
-
-	if guildMember.PremiumSince != nil {
-		guildMemberPB.PremiumSince = guildMember.PremiumSince.Format(time.RFC3339)
-	}
-
-	if guildMember.CommunicationDisabledUntil != nil {
-		guildMemberPB.CommunicationDisabledUntil = guildMember.CommunicationDisabledUntil.Format(time.RFC3339)
-	}
-
-	return guildMemberPB
 }

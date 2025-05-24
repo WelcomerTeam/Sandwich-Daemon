@@ -4,17 +4,95 @@ import (
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
-	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
 )
 
 // Conversion functions for Discord types to protobuf types
 
-func GuildToPB(guild *discord.Guild) *pb.Guild {
+// Conversions
+
+func UserToPB(user *discord.User) *User {
+	userPB := &User{
+		ID:            int64(user.ID),
+		Username:      user.Username,
+		Discriminator: user.Discriminator,
+		GlobalName:    user.GlobalName,
+		Avatar:        user.Avatar,
+		Bot:           user.Bot,
+		System:        user.System,
+		MFAEnabled:    user.MFAEnabled,
+		Banner:        user.Banner,
+		AccentColour:  int32(user.AccentColor),
+		Locale:        user.Locale,
+		Verified:      user.Verified,
+		Email:         user.Email,
+		Flags:         int32(user.Flags),
+		PremiumType:   int32(user.PremiumType),
+		PublicFlags:   int32(user.PublicFlags),
+		DMChannelID:   0,
+	}
+
+	if user.DMChannelID != nil {
+		userPB.DMChannelID = int64(*user.DMChannelID)
+	}
+
+	return userPB
+}
+
+func snowflakeListToInt64List(snowflakes []discord.Snowflake) []int64 {
+	int64List := make([]int64, len(snowflakes))
+
+	for i, snowflake := range snowflakes {
+		int64List[i] = int64(snowflake)
+	}
+
+	return int64List
+}
+
+func GuildMemberToPB(guildMember *discord.GuildMember) *GuildMember {
+	guildMemberPB := &GuildMember{
+		User:                       nil,
+		GuildID:                    0,
+		Nick:                       guildMember.Nick,
+		Avatar:                     guildMember.Avatar,
+		Roles:                      snowflakeListToInt64List(guildMember.Roles),
+		JoinedAt:                   guildMember.JoinedAt.Format(time.RFC3339),
+		PremiumSince:               "",
+		Deaf:                       guildMember.Deaf,
+		Mute:                       guildMember.Mute,
+		Pending:                    guildMember.Pending,
+		Permissions:                0,
+		CommunicationDisabledUntil: "",
+	}
+
+	if guildMember.User != nil {
+		guildMemberPB.User = UserToPB(guildMember.User)
+	}
+
+	if guildMember.GuildID != nil {
+		guildMemberPB.GuildID = int64(*guildMember.GuildID)
+	}
+
+	if guildMember.Permissions != nil {
+		guildMemberPB.Permissions = int64(*guildMember.Permissions)
+	}
+
+	if guildMember.PremiumSince != nil {
+		guildMemberPB.PremiumSince = guildMember.PremiumSince.Format(time.RFC3339)
+	}
+
+	if guildMember.CommunicationDisabledUntil != nil {
+		guildMemberPB.CommunicationDisabledUntil = guildMember.CommunicationDisabledUntil.Format(time.RFC3339)
+	}
+
+	return guildMemberPB
+}
+
+func GuildToPB(guild *discord.Guild) *Guild {
 	if guild == nil {
 		return nil
 	}
 
-	pbGuild := &pb.Guild{
+	pbGuild := &Guild{
 		ID:                          int64(guild.ID),
 		Name:                        guild.Name,
 		Icon:                        guild.Icon,
@@ -110,11 +188,11 @@ func GuildToPB(guild *discord.Guild) *pb.Guild {
 	return pbGuild
 }
 
-func ChannelToPB(channel *discord.Channel) *pb.Channel {
+func ChannelToPB(channel *discord.Channel) *Channel {
 	if channel == nil {
 		return nil
 	}
-	return &pb.Channel{
+	return &Channel{
 		ID:                         int64(channel.ID),
 		GuildID:                    int64(ptrSnowflake(channel.GuildID)),
 		Type:                       uint32(channel.Type),
@@ -144,13 +222,13 @@ func ChannelToPB(channel *discord.Channel) *pb.Channel {
 	}
 }
 
-func ChannelOverwritesToPB(overwrites []discord.ChannelOverwrite) []*pb.ChannelOverwrite {
+func ChannelOverwritesToPB(overwrites []discord.ChannelOverwrite) []*ChannelOverwrite {
 	if overwrites == nil {
 		return nil
 	}
-	pbOverwrites := make([]*pb.ChannelOverwrite, len(overwrites))
+	pbOverwrites := make([]*ChannelOverwrite, len(overwrites))
 	for i, overwrite := range overwrites {
-		pbOverwrites[i] = &pb.ChannelOverwrite{
+		pbOverwrites[i] = &ChannelOverwrite{
 			ID:    int64(overwrite.ID),
 			Type:  uint32(overwrite.Type),
 			Allow: int64(overwrite.Allow),
@@ -160,11 +238,11 @@ func ChannelOverwritesToPB(overwrites []discord.ChannelOverwrite) []*pb.ChannelO
 	return pbOverwrites
 }
 
-func UsersToPB(users []discord.User) []*pb.User {
+func UsersToPB(users []discord.User) []*User {
 	if users == nil {
 		return nil
 	}
-	pbUsers := make([]*pb.User, len(users))
+	pbUsers := make([]*User, len(users))
 	for i, user := range users {
 		pbUsers[i] = UserToPB(&user)
 	}
@@ -199,84 +277,84 @@ func ptrVideoQualityMode(vqm *discord.VideoQualityMode) discord.VideoQualityMode
 	return *vqm
 }
 
-func RolesToPB(roles []discord.Role) []*pb.Role {
+func RolesToPB(roles []discord.Role) []*Role {
 	if roles == nil {
 		return nil
 	}
 
-	pbRoles := make([]*pb.Role, len(roles))
+	pbRoles := make([]*Role, len(roles))
 	for i, role := range roles {
 		pbRoles[i] = RoleToPB(&role)
 	}
 	return pbRoles
 }
 
-func EmojisToPB(emojis []discord.Emoji) []*pb.Emoji {
+func EmojisToPB(emojis []discord.Emoji) []*Emoji {
 	if emojis == nil {
 		return nil
 	}
 
-	pbEmojis := make([]*pb.Emoji, len(emojis))
+	pbEmojis := make([]*Emoji, len(emojis))
 	for i, emoji := range emojis {
 		pbEmojis[i] = EmojiToPB(&emoji)
 	}
 	return pbEmojis
 }
 
-func VoiceStatesToPB(states []discord.VoiceState) []*pb.VoiceState {
+func VoiceStatesToPB(states []discord.VoiceState) []*VoiceState {
 	if states == nil {
 		return nil
 	}
 
-	pbStates := make([]*pb.VoiceState, len(states))
+	pbStates := make([]*VoiceState, len(states))
 	for i, state := range states {
 		pbStates[i] = VoiceStateToPB(&state)
 	}
 	return pbStates
 }
 
-func GuildMembersToPB(members []discord.GuildMember) []*pb.GuildMember {
+func GuildMembersToPB(members []discord.GuildMember) []*GuildMember {
 	if members == nil {
 		return nil
 	}
 
-	pbMembers := make([]*pb.GuildMember, len(members))
+	pbMembers := make([]*GuildMember, len(members))
 	for i, member := range members {
 		pbMembers[i] = GuildMemberToPB(&member)
 	}
 	return pbMembers
 }
 
-func ChannelsToPB(channels []discord.Channel) []*pb.Channel {
+func ChannelsToPB(channels []discord.Channel) []*Channel {
 	if channels == nil {
 		return nil
 	}
 
-	pbChannels := make([]*pb.Channel, len(channels))
+	pbChannels := make([]*Channel, len(channels))
 	for i, channel := range channels {
 		pbChannels[i] = ChannelToPB(&channel)
 	}
 	return pbChannels
 }
 
-func ActivitiesToPB(activities []discord.Activity) []*pb.Activity {
+func ActivitiesToPB(activities []discord.Activity) []*Activity {
 	if activities == nil {
 		return nil
 	}
 
-	pbActivities := make([]*pb.Activity, len(activities))
+	pbActivities := make([]*Activity, len(activities))
 	for i, activity := range activities {
 		pbActivities[i] = ActivityToPB(&activity)
 	}
 	return pbActivities
 }
 
-func StickersToPB(stickers []discord.Sticker) []*pb.Sticker {
+func StickersToPB(stickers []discord.Sticker) []*Sticker {
 	if stickers == nil {
 		return nil
 	}
 
-	pbStickers := make([]*pb.Sticker, len(stickers))
+	pbStickers := make([]*Sticker, len(stickers))
 	for i, sticker := range stickers {
 		pbStickers[i] = StickerToPB(&sticker)
 	}
@@ -295,7 +373,7 @@ func snowflakesToInt64s(snowflakes []discord.Snowflake) []int64 {
 	return int64s
 }
 
-func ThreadMetadataToPB(metadata *discord.ThreadMetadata) *pb.ThreadMetadata {
+func ThreadMetadataToPB(metadata *discord.ThreadMetadata) *ThreadMetadata {
 	if metadata == nil {
 		return nil
 	}
@@ -305,7 +383,7 @@ func ThreadMetadataToPB(metadata *discord.ThreadMetadata) *pb.ThreadMetadata {
 		archiveTimestamp = metadata.ArchiveTimestamp.Format(time.RFC3339)
 	}
 
-	return &pb.ThreadMetadata{
+	return &ThreadMetadata{
 		Archived:            metadata.Archived,
 		AutoArchiveDuration: int32(metadata.AutoArchiveDuration),
 		ArchiveTimestamp:    archiveTimestamp,
@@ -313,7 +391,7 @@ func ThreadMetadataToPB(metadata *discord.ThreadMetadata) *pb.ThreadMetadata {
 	}
 }
 
-func ThreadMemberToPB(member *discord.ThreadMember) *pb.ThreadMember {
+func ThreadMemberToPB(member *discord.ThreadMember) *ThreadMember {
 	if member == nil {
 		return nil
 	}
@@ -323,7 +401,7 @@ func ThreadMemberToPB(member *discord.ThreadMember) *pb.ThreadMember {
 		joinTimestamp = member.JoinTimestamp.Format(time.RFC3339)
 	}
 
-	return &pb.ThreadMember{
+	return &ThreadMember{
 		ID:            int64(ptrSnowflake(member.ID)),
 		UserID:        int64(ptrSnowflake(member.UserID)),
 		GuildID:       int64(ptrSnowflake(member.GuildID)),
@@ -332,7 +410,7 @@ func ThreadMemberToPB(member *discord.ThreadMember) *pb.ThreadMember {
 	}
 }
 
-func ActivityToPB(activity *discord.Activity) *pb.Activity {
+func ActivityToPB(activity *discord.Activity) *Activity {
 	if activity == nil {
 		return nil
 	}
@@ -342,7 +420,7 @@ func ActivityToPB(activity *discord.Activity) *pb.Activity {
 		flags = int32(*activity.Flags)
 	}
 
-	return &pb.Activity{
+	return &Activity{
 		Name:          activity.Name,
 		Type:          int32(activity.Type),
 		URL:           activity.URL,
@@ -358,34 +436,34 @@ func ActivityToPB(activity *discord.Activity) *pb.Activity {
 	}
 }
 
-func timestampsToPB(timestamps *discord.Timestamps) *pb.Timestamps {
+func timestampsToPB(timestamps *discord.Timestamps) *Timestamps {
 	if timestamps == nil {
 		return nil
 	}
 
-	return &pb.Timestamps{
+	return &Timestamps{
 		Start: int32(timestamps.Start),
 		End:   int32(timestamps.End),
 	}
 }
 
-func partyToPB(party *discord.Party) *pb.Party {
+func partyToPB(party *discord.Party) *Party {
 	if party == nil {
 		return nil
 	}
 
-	return &pb.Party{
+	return &Party{
 		ID:   party.ID,
 		Size: party.Size,
 	}
 }
 
-func assetsToPB(assets *discord.Assets) *pb.Assets {
+func assetsToPB(assets *discord.Assets) *Assets {
 	if assets == nil {
 		return nil
 	}
 
-	return &pb.Assets{
+	return &Assets{
 		LargeImage: assets.LargeImage,
 		LargeText:  assets.LargeText,
 		SmallImage: assets.SmallImage,
@@ -393,26 +471,26 @@ func assetsToPB(assets *discord.Assets) *pb.Assets {
 	}
 }
 
-func secretsToPB(secrets *discord.Secrets) *pb.Secrets {
+func secretsToPB(secrets *discord.Secrets) *Secrets {
 	if secrets == nil {
 		return nil
 	}
 
-	return &pb.Secrets{
+	return &Secrets{
 		Join:     secrets.Join,
 		Spectate: secrets.Spectate,
 		Match:    secrets.Match,
 	}
 }
 
-func stageInstancesToPB(instances []discord.StageInstance) []*pb.StageInstance {
+func stageInstancesToPB(instances []discord.StageInstance) []*StageInstance {
 	if instances == nil {
 		return nil
 	}
 
-	pbInstances := make([]*pb.StageInstance, len(instances))
+	pbInstances := make([]*StageInstance, len(instances))
 	for i, instance := range instances {
-		pbInstances[i] = &pb.StageInstance{
+		pbInstances[i] = &StageInstance{
 			ID:                   int64(instance.ID),
 			GuildID:              int64(instance.GuildID),
 			ChannelID:            int64(instance.ChannelID),
@@ -424,14 +502,14 @@ func stageInstancesToPB(instances []discord.StageInstance) []*pb.StageInstance {
 	return pbInstances
 }
 
-func ScheduledEventsToPB(events []discord.ScheduledEvent) []*pb.ScheduledEvent {
+func ScheduledEventsToPB(events []discord.ScheduledEvent) []*ScheduledEvent {
 	if events == nil {
 		return nil
 	}
 
-	pbEvents := make([]*pb.ScheduledEvent, len(events))
+	pbEvents := make([]*ScheduledEvent, len(events))
 	for i, event := range events {
-		pbEvents[i] = &pb.ScheduledEvent{
+		pbEvents[i] = &ScheduledEvent{
 			ID:                 int64(event.ID),
 			GuildID:            int64(event.GuildID),
 			ChannelID:          int64(ptrSnowflake(event.ChannelID)),
@@ -452,34 +530,34 @@ func ScheduledEventsToPB(events []discord.ScheduledEvent) []*pb.ScheduledEvent {
 	return pbEvents
 }
 
-func eventMetadataToPB(metadata *discord.EventMetadata) *pb.EventMetadata {
+func eventMetadataToPB(metadata *discord.EventMetadata) *EventMetadata {
 	if metadata == nil {
 		return nil
 	}
 
-	return &pb.EventMetadata{
+	return &EventMetadata{
 		Location: metadata.Location,
 	}
 }
 
-func roleTagsToPB(tags *discord.RoleTag) *pb.RoleTag {
+func roleTagsToPB(tags *discord.RoleTag) *RoleTag {
 	if tags == nil {
 		return nil
 	}
 
-	return &pb.RoleTag{
+	return &RoleTag{
 		PremiumSubscriber: tags.PremiumSubscriber,
 		BotID:             int64(ptrSnowflake(tags.BotID)),
 		IntegrationID:     int64(ptrSnowflake(tags.IntegrationID)),
 	}
 }
 
-func RoleToPB(role *discord.Role) *pb.Role {
+func RoleToPB(role *discord.Role) *Role {
 	if role == nil {
 		return nil
 	}
 
-	pbRole := &pb.Role{
+	pbRole := &Role{
 		ID:           int64(role.ID),
 		Name:         role.Name,
 		Color:        role.Color,
@@ -501,12 +579,12 @@ func RoleToPB(role *discord.Role) *pb.Role {
 	return pbRole
 }
 
-func EmojiToPB(emoji *discord.Emoji) *pb.Emoji {
+func EmojiToPB(emoji *discord.Emoji) *Emoji {
 	if emoji == nil {
 		return nil
 	}
 
-	pbEmoji := &pb.Emoji{
+	pbEmoji := &Emoji{
 		ID:            int64(emoji.ID),
 		Name:          emoji.Name,
 		Roles:         snowflakesToInt64s(emoji.Roles),
@@ -525,12 +603,12 @@ func EmojiToPB(emoji *discord.Emoji) *pb.Emoji {
 	return pbEmoji
 }
 
-func StickerToPB(sticker *discord.Sticker) *pb.Sticker {
+func StickerToPB(sticker *discord.Sticker) *Sticker {
 	if sticker == nil {
 		return nil
 	}
 
-	pbSticker := &pb.Sticker{
+	pbSticker := &Sticker{
 		ID:          int64(sticker.ID),
 		Name:        sticker.Name,
 		Description: sticker.Description,
@@ -555,12 +633,12 @@ func StickerToPB(sticker *discord.Sticker) *pb.Sticker {
 	return pbSticker
 }
 
-func VoiceStateToPB(state *discord.VoiceState) *pb.VoiceState {
+func VoiceStateToPB(state *discord.VoiceState) *VoiceState {
 	if state == nil {
 		return nil
 	}
 
-	return &pb.VoiceState{
+	return &VoiceState{
 		UserID:                  int64(state.UserID),
 		ChannelID:               int64(state.ChannelID),
 		GuildID:                 int64(*state.GuildID),
