@@ -509,7 +509,7 @@ func ScheduledEventsToPB(events []discord.ScheduledEvent) []*ScheduledEvent {
 
 	pbEvents := make([]*ScheduledEvent, len(events))
 	for i, event := range events {
-		pbEvents[i] = &ScheduledEvent{
+		scheduledEvent := &ScheduledEvent{
 			ID:                 int64(event.ID),
 			GuildID:            int64(event.GuildID),
 			ChannelID:          int64(ptrSnowflake(event.ChannelID)),
@@ -522,10 +522,20 @@ func ScheduledEventsToPB(events []discord.ScheduledEvent) []*ScheduledEvent {
 			Status:             uint32(event.Status),
 			EntityType:         uint32(event.EntityType),
 			EntityID:           int64(ptrSnowflake(event.EntityID)),
-			EntityMetadata:     eventMetadataToPB(event.EntityMetadata),
-			Creator:            UserToPB(event.Creator),
+			EntityMetadata:     nil,
+			Creator:            nil,
 			UserCount:          int32(event.UserCount),
 		}
+
+		if event.EntityMetadata != nil {
+			scheduledEvent.EntityMetadata = eventMetadataToPB(event.EntityMetadata)
+		}
+
+		if event.Creator != nil {
+			scheduledEvent.Creator = UserToPB(event.Creator)
+		}
+
+		pbEvents[i] = scheduledEvent
 	}
 	return pbEvents
 }
@@ -588,12 +598,16 @@ func EmojiToPB(emoji *discord.Emoji) *Emoji {
 		ID:            int64(emoji.ID),
 		Name:          emoji.Name,
 		Roles:         snowflakesToInt64s(emoji.Roles),
-		User:          UserToPB(emoji.User),
+		User:          nil,
 		RequireColons: emoji.RequireColons,
 		Managed:       emoji.Managed,
 		Animated:      emoji.Animated,
 		Available:     emoji.Available,
 		GuildID:       0,
+	}
+
+	if emoji.User != nil {
+		pbEmoji.User = UserToPB(emoji.User)
 	}
 
 	if emoji.GuildID != nil {
@@ -616,10 +630,14 @@ func StickerToPB(sticker *discord.Sticker) *Sticker {
 		Type:        uint32(sticker.Type),
 		FormatType:  uint32(sticker.FormatType),
 		Available:   sticker.Available,
-		User:        UserToPB(sticker.User),
+		User:        nil,
 		SortValue:   int32(sticker.SortValue),
 		PackID:      0,
 		GuildID:     0,
+	}
+
+	if sticker.User != nil {
+		pbSticker.User = UserToPB(sticker.User)
 	}
 
 	if sticker.GuildID != nil {
@@ -638,11 +656,11 @@ func VoiceStateToPB(state *discord.VoiceState) *VoiceState {
 		return nil
 	}
 
-	return &VoiceState{
+	voiceState := &VoiceState{
 		UserID:                  int64(state.UserID),
 		ChannelID:               int64(state.ChannelID),
-		GuildID:                 int64(*state.GuildID),
-		Member:                  GuildMemberToPB(state.Member),
+		GuildID:                 0,
+		Member:                  nil,
 		SessionID:               state.SessionID,
 		Deaf:                    state.Deaf,
 		Mute:                    state.Mute,
@@ -653,4 +671,14 @@ func VoiceStateToPB(state *discord.VoiceState) *VoiceState {
 		Suppress:                state.Suppress,
 		RequestToSpeakTimestamp: state.RequestToSpeakTimestamp.Format(time.RFC3339),
 	}
+
+	if state.GuildID != nil {
+		voiceState.GuildID = int64(*state.GuildID)
+	}
+
+	if state.Member != nil {
+		voiceState.Member = GuildMemberToPB(state.Member)
+	}
+
+	return voiceState
 }

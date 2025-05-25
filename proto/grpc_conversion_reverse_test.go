@@ -9,6 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var (
+	NilDate = time.Time{}
+)
+
 func assertEqual[v comparable](t assert.TestingT, a, b v) {
 	assert.Equal(t, a, b)
 }
@@ -509,4 +513,259 @@ func TestPBToThreadMember(t *testing.T) {
 	assertEqual(t, discord.Snowflake(789), *member.GuildID)
 	assertEqual(t, now, member.JoinTimestamp.Format(time.RFC3339))
 	assertEqual(t, 1, member.Flags)
+}
+
+func TestEmptyPBToGuild(t *testing.T) {
+	t.Parallel()
+
+	pbGuild := &sandwich_protobuf.Guild{}
+	guild := sandwich_protobuf.PBToGuild(pbGuild)
+
+	assert.NotNil(t, guild)
+	assertEqual(t, discord.Snowflake(0), guild.ID)
+	assertEqual(t, "", guild.Name)
+	assertEqual(t, "", guild.Icon)
+	assertEqual(t, "", guild.IconHash)
+	assertEqual(t, "", guild.Splash)
+	assertEqual(t, "", guild.DiscoverySplash)
+	assert.False(t, guild.Owner)
+	assertEqual(t, "", guild.Region)
+	assertEqual(t, 0, guild.AFKTimeout)
+	assert.False(t, guild.WidgetEnabled)
+	assertEqual(t, discord.VerificationLevel(0), guild.VerificationLevel)
+	assertEqual(t, discord.MessageNotificationLevel(0), guild.DefaultMessageNotifications)
+	assertEqual(t, discord.ExplicitContentFilterLevel(0), guild.ExplicitContentFilter)
+	assert.Nil(t, guild.Features)
+	assertEqual(t, discord.MFALevel(0), guild.MFALevel)
+	assertEqual(t, NilDate, guild.JoinedAt)
+	assert.False(t, guild.Large)
+	assert.False(t, guild.Unavailable)
+	assertEqual(t, 0, guild.MemberCount)
+	assertEqual(t, 0, guild.MaxPresences)
+	assertEqual(t, 0, guild.MaxMembers)
+	assertEqual(t, "", guild.VanityURLCode)
+	assertEqual(t, "", guild.Description)
+	assertEqual(t, "", guild.Banner)
+	assertEqual(t, 0, guild.PremiumSubscriptionCount)
+	assertEqual(t, "", guild.PreferredLocale)
+	assertEqual(t, 0, guild.MaxVideoChannelUsers)
+	assertEqual(t, 0, guild.ApproximateMemberCount)
+	assertEqual(t, 0, guild.ApproximatePresenceCount)
+	assertEqual(t, discord.GuildNSFWLevelType(0), guild.NSFWLevel)
+	assert.False(t, guild.PremiumProgressBarEnabled)
+	assert.Nil(t, guild.OwnerID)
+	assert.Nil(t, guild.Permissions)
+	assert.Nil(t, guild.AFKChannelID)
+	assert.Nil(t, guild.WidgetChannelID)
+	assert.Nil(t, guild.ApplicationID)
+	assert.Nil(t, guild.SystemChannelID)
+	assert.Nil(t, guild.SystemChannelFlags)
+	assert.Nil(t, guild.PremiumTier)
+	assert.Nil(t, guild.PublicUpdatesChannelID)
+	assert.Nil(t, guild.RulesChannelID)
+}
+
+func TestEmptyPBToChannel(t *testing.T) {
+	t.Parallel()
+
+	pbChannel := &sandwich_protobuf.Channel{}
+	channel := sandwich_protobuf.PBToChannel(pbChannel)
+
+	assert.NotNil(t, channel)
+	assertEqual(t, discord.Snowflake(0), channel.ID)
+	assertEqual(t, discord.ChannelType(0), channel.Type)
+	assertEqual(t, 0, channel.Position)
+	assertEqual(t, "", channel.Name)
+	assertEqual(t, "", channel.Topic)
+	assert.False(t, channel.NSFW)
+	assertEqual(t, "", channel.LastMessageID)
+	assertEqual(t, 0, channel.Bitrate)
+	assertEqual(t, 0, channel.UserLimit)
+	assertEqual(t, 0, channel.RateLimitPerUser)
+	assertEqual(t, "", channel.Icon)
+	assertEqual(t, "", channel.RTCRegion)
+	assertEqual(t, 0, channel.MessageCount)
+	assertEqual(t, 0, channel.MemberCount)
+	assertEqual(t, 0, channel.DefaultAutoArchiveDuration)
+	assert.Nil(t, channel.GuildID)
+	assert.Nil(t, channel.OwnerID)
+	assert.Nil(t, channel.ApplicationID)
+	assert.Nil(t, channel.ParentID)
+	assert.Nil(t, channel.LastPinTimestamp)
+	assert.Nil(t, channel.VideoQualityMode)
+	assert.Nil(t, channel.Permissions)
+}
+
+func TestEmptyPBToUser(t *testing.T) {
+	t.Parallel()
+
+	pbUser := &sandwich_protobuf.User{}
+	user := sandwich_protobuf.PBToUser(pbUser)
+
+	assert.NotNil(t, user)
+	assertEqual(t, discord.Snowflake(0), user.ID)
+	assertEqual(t, "", user.Username)
+	assertEqual(t, "", user.Discriminator)
+	assertEqual(t, "", user.Avatar)
+	assert.False(t, user.Bot)
+	assert.False(t, user.System)
+	assert.False(t, user.MFAEnabled)
+	assertEqual(t, "", user.Banner)
+	assertEqual(t, "", user.Locale)
+	assert.False(t, user.Verified)
+	assertEqual(t, "", user.Email)
+	assertEqual(t, discord.UserFlags(0), user.Flags)
+	assertEqual(t, discord.UserFlags(0), user.PublicFlags)
+}
+
+func TestEmptyPBToRole(t *testing.T) {
+	t.Parallel()
+
+	pbRole := &sandwich_protobuf.Role{}
+	role := sandwich_protobuf.PBToRole(pbRole)
+
+	assert.NotNil(t, role)
+	assertEqual(t, discord.Snowflake(0), role.ID)
+	assertEqual(t, "", role.Name)
+	assertEqual(t, int32(0), role.Color)
+	assert.False(t, role.Hoist)
+	assertEqual(t, "", role.Icon)
+	assertEqual(t, "", role.UnicodeEmoji)
+	assertEqual(t, 0, role.Position)
+	assertEqual(t, discord.Int64(0), role.Permissions)
+	assert.False(t, role.Managed)
+	assert.False(t, role.Mentionable)
+	assert.Nil(t, role.GuildID)
+	assert.Nil(t, role.Tags)
+}
+
+func TestEmptyPBToEmoji(t *testing.T) {
+	t.Parallel()
+
+	pbEmoji := &sandwich_protobuf.Emoji{}
+	emoji := sandwich_protobuf.PBToEmoji(pbEmoji)
+
+	assert.NotNil(t, emoji)
+	assertEqual(t, discord.Snowflake(0), emoji.ID)
+	assertEqual(t, "", emoji.Name)
+	assert.Nil(t, emoji.Roles)
+	assert.False(t, emoji.RequireColons)
+	assert.False(t, emoji.Managed)
+	assert.False(t, emoji.Animated)
+	assert.False(t, emoji.Available)
+	assert.Nil(t, emoji.GuildID)
+	assert.Nil(t, emoji.User)
+}
+
+func TestEmptyPBToVoiceState(t *testing.T) {
+	t.Parallel()
+
+	pbState := &sandwich_protobuf.VoiceState{}
+	state := sandwich_protobuf.PBToVoiceState(pbState)
+
+	assert.NotNil(t, state)
+	assertEqual(t, discord.Snowflake(0), state.UserID)
+	assertEqual(t, discord.Snowflake(0), state.ChannelID)
+	assert.Nil(t, state.GuildID)
+	assertEqual(t, "", state.SessionID)
+	assert.False(t, state.Deaf)
+	assert.False(t, state.Mute)
+	assert.False(t, state.SelfDeaf)
+	assert.False(t, state.SelfMute)
+	assert.False(t, state.SelfStream)
+	assert.False(t, state.SelfVideo)
+	assert.False(t, state.Suppress)
+	assertEqual(t, NilDate, state.RequestToSpeakTimestamp)
+	assert.Nil(t, state.Member)
+}
+
+func TestEmptyPBToActivity(t *testing.T) {
+	t.Parallel()
+
+	pbActivity := &sandwich_protobuf.Activity{}
+	activity := sandwich_protobuf.PBToActivity(pbActivity)
+
+	assert.NotNil(t, activity)
+	assertEqual(t, "", activity.Name)
+	assertEqual(t, discord.ActivityType(0), activity.Type)
+	assertEqual(t, "", activity.URL)
+	assertEqual(t, "", activity.Details)
+	assertEqual(t, "", activity.State)
+	assert.False(t, activity.Instance)
+	assert.Nil(t, activity.Flags)
+	assert.Nil(t, activity.Timestamps)
+	assert.Nil(t, activity.Party)
+	assert.Nil(t, activity.Assets)
+	assert.Nil(t, activity.Secrets)
+}
+
+func TestEmptyPBToSticker(t *testing.T) {
+	t.Parallel()
+
+	pbSticker := &sandwich_protobuf.Sticker{}
+	sticker := sandwich_protobuf.PBToSticker(pbSticker)
+
+	assert.NotNil(t, sticker)
+	assertEqual(t, discord.Snowflake(0), sticker.ID)
+	assertEqual(t, "", sticker.Name)
+	assertEqual(t, "", sticker.Description)
+	assertEqual(t, "", sticker.Tags)
+	assertEqual(t, discord.StickerType(0), sticker.Type)
+	assertEqual(t, discord.StickerFormatType(0), sticker.FormatType)
+	assert.False(t, sticker.Available)
+	assertEqual(t, 0, sticker.SortValue)
+	assert.Nil(t, sticker.GuildID)
+	assert.Nil(t, sticker.PackID)
+	assert.Nil(t, sticker.User)
+}
+
+func TestEmptyPBToScheduledEvent(t *testing.T) {
+	t.Parallel()
+
+	pbEvent := &sandwich_protobuf.ScheduledEvent{}
+	event := sandwich_protobuf.PBToScheduledEvent(pbEvent)
+
+	assert.NotNil(t, event)
+	assertEqual(t, discord.Snowflake(0), event.ID)
+	assertEqual(t, discord.Snowflake(0), event.GuildID)
+	assertEqual(t, "", event.Name)
+	assertEqual(t, "", event.Description)
+	assertEqual(t, "", event.ScheduledStartTime)
+	assertEqual(t, "", event.ScheduledEndTime)
+	assertEqual(t, discord.StageChannelPrivacyLevel(0), event.PrivacyLevel)
+	assertEqual(t, discord.EventStatus(0), event.Status)
+	assertEqual(t, discord.ScheduledEntityType(0), event.EntityType)
+	assertEqual(t, 0, event.UserCount)
+	assert.Nil(t, event.ChannelID)
+	assert.Nil(t, event.CreatorID)
+	assert.Nil(t, event.EntityID)
+	assert.Nil(t, event.EntityMetadata)
+	assert.Nil(t, event.Creator)
+}
+
+func TestEmptyPBToThreadMetadata(t *testing.T) {
+	t.Parallel()
+
+	pbMetadata := &sandwich_protobuf.ThreadMetadata{}
+	metadata := sandwich_protobuf.PBToThreadMetadata(pbMetadata)
+
+	assert.NotNil(t, metadata)
+	assert.False(t, metadata.Archived)
+	assertEqual(t, 0, metadata.AutoArchiveDuration)
+	assertEqual(t, NilDate, metadata.ArchiveTimestamp)
+	assert.False(t, metadata.Locked)
+}
+
+func TestEmptyPBToThreadMember(t *testing.T) {
+	t.Parallel()
+
+	pbMember := &sandwich_protobuf.ThreadMember{}
+	member := sandwich_protobuf.PBToThreadMember(pbMember)
+
+	assert.NotNil(t, member)
+	assert.Nil(t, member.ID)
+	assert.Nil(t, member.UserID)
+	assert.Nil(t, member.GuildID)
+	assertEqual(t, NilDate, member.JoinTimestamp)
+	assertEqual(t, 0, member.Flags)
 }
