@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.7"
+var Version = "2.0.0-rc.8"
 
 type Sandwich struct {
 	Logger *slog.Logger
@@ -319,14 +319,14 @@ func (sandwich *Sandwich) broadcast(eventType string, data any) error {
 	}
 
 	payload := ProducedPayload{
-		GatewayPayload: discord.GatewayPayload{
+		GatewayPayload: &discord.GatewayPayload{
 			Op:   discord.GatewayOpDispatch,
 			Type: eventType,
 			Data: payloadDataBytes,
 		},
 		Extra:    nil,
-		Metadata: ProducedMetadata{},
-		Trace:    Trace{},
+		Metadata: &ProducedMetadata{},
+		Trace:    &Trace{},
 	}
 
 	payloadBytes, err := json.Marshal(payload)

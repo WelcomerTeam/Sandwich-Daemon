@@ -7,11 +7,11 @@ import (
 )
 
 type ProducedPayload struct {
-	discord.GatewayPayload
+	*discord.GatewayPayload
 
-	Extra    map[string]any   `json:"__extra,omitempty"`
-	Metadata ProducedMetadata `json:"__metadata,omitempty"`
-	Trace    Trace            `json:"__trace,omitempty"`
+	Extra    map[string]any    `json:"__extra,omitempty"`
+	Metadata *ProducedMetadata `json:"__metadata,omitempty"`
+	Trace    *Trace            `json:"__trace,omitempty"`
 }
 
 type ProducedMetadata struct {

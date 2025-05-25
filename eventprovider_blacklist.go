@@ -61,10 +61,10 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 
 	packet := p.producedPayloadPool.Get().(*ProducedPayload)
 
-	packet.GatewayPayload = *event
+	packet.GatewayPayload = event
 	packet.Extra = result.Extra
-	packet.Metadata = *shard.Metadata.Load()
-	packet.Trace = *trace
+	packet.Metadata = shard.Metadata.Load()
+	packet.Trace = trace
 
 	packet.Trace.Set("publish", time.Now().UnixNano())
 
