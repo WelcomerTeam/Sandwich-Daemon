@@ -39,12 +39,12 @@ var gatewayURL = url.URL{
 }
 
 type Shard struct {
-	logger *slog.Logger
+	Logger *slog.Logger
 
-	sandwich    *Sandwich
-	application *Application
+	Sandwich    *Sandwich
+	Application *Application
 
-	shardID int32
+	ShardID int32
 
 	retriesRemaining *atomic.Int32
 	startedAt        *atomic.Pointer[time.Time]
@@ -76,21 +76,21 @@ type Shard struct {
 	stop  chan struct{}
 	error chan error
 
-	status *atomic.Int32
+	Status *atomic.Int32
 
 	gatewayPayloadPool *sync.Pool
 
-	metadata *atomic.Pointer[ProducedMetadata]
+	Metadata *atomic.Pointer[ProducedMetadata]
 }
 
 func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shard {
 	shard := &Shard{
-		logger: application.logger.With("shard_id", shardID),
+		Logger: application.Logger.With("shard_id", shardID),
 
-		sandwich:    sandwich,
-		application: application,
+		Sandwich:    sandwich,
+		Application: application,
 
-		shardID: shardID,
+		ShardID: shardID,
 
 		retriesRemaining: &atomic.Int32{},
 		startedAt:        &atomic.Pointer[time.Time]{},
@@ -124,7 +124,7 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 		stop:  make(chan struct{}, 1),
 		error: make(chan error, 1),
 
-		status: &atomic.Int32{},
+		Status: &atomic.Int32{},
 
 		gatewayPayloadPool: &sync.Pool{
 			New: func() any {
@@ -132,7 +132,7 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 			},
 		},
 
-		metadata: &atomic.Pointer[ProducedMetadata]{},
+		Metadata: &atomic.Pointer[ProducedMetadata]{},
 	}
 
 	shard.retriesRemaining.Store(ShardConnectRetries)
@@ -144,32 +144,32 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 }
 
 func (shard *Shard) SetMetadata(configuration *ApplicationConfiguration) {
-	shard.logger.Debug("Setting metadata")
+	shard.Logger.Debug("Setting metadata")
 
-	shard.metadata.Store(&ProducedMetadata{
+	shard.Metadata.Store(&ProducedMetadata{
 		Identifier:    configuration.ProducerIdentifier,
 		Application:   configuration.ApplicationIdentifier,
-		ApplicationID: shard.application.user.Load().ID,
+		ApplicationID: shard.Application.User.Load().ID,
 		Shard: [3]int32{
 			0,
-			shard.shardID,
-			shard.application.shardCount.Load(),
+			shard.ShardID,
+			shard.Application.ShardCount.Load(),
 		},
 	})
 }
 
 func (shard *Shard) SetStatus(status ShardStatus) {
-	UpdateShardStatus(shard.application.identifier, shard.shardID, status)
-	shard.status.Store(int32(status))
-	shard.logger.Info("Shard status updated", "status", status.String())
+	UpdateShardStatus(shard.Application.Identifier, shard.ShardID, status)
+	shard.Status.Store(int32(status))
+	shard.Logger.Info("Shard status updated", "status", status.String())
 
-	err := shard.sandwich.broadcast(SandwichShardStatusUpdate, ShardStatusUpdateEvent{
-		Identifier: shard.application.identifier,
-		ShardID:    shard.shardID,
+	err := shard.Sandwich.broadcast(SandwichShardStatusUpdate, ShardStatusUpdateEvent{
+		Identifier: shard.Application.Identifier,
+		ShardID:    shard.ShardID,
 		Status:     status,
 	})
 	if err != nil {
-		shard.logger.Error("Failed to broadcast shard status update", "error", err)
+		shard.Logger.Error("Failed to broadcast shard status update", "error", err)
 	}
 }
 
@@ -184,7 +184,7 @@ func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 				return fmt.Errorf("%w: %w", ErrShardConnectFailed, err)
 			}
 
-			shard.logger.Error("Failed to connect to shard", "error", err, "retries_remaining", newValue)
+			shard.Logger.Error("Failed to connect to shard", "error", err, "retries_remaining", newValue)
 		} else if err == nil {
 			break
 		}
@@ -194,7 +194,7 @@ func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 }
 
 func (shard *Shard) Connect(ctx context.Context) error {
-	shard.logger.Debug("Shard is connecting")
+	shard.Logger.Debug("Shard is connecting")
 
 	shard.SetStatus(ShardStatusConnecting)
 
@@ -230,7 +230,7 @@ readyConsumer:
 	if shard.websocketConn != nil {
 		err = shard.closeWS(ctx, websocket.StatusNormalClosure)
 		if err != nil {
-			shard.logger.Error("Failed to close websocket", "error", err)
+			shard.Logger.Error("Failed to close websocket", "error", err)
 
 			return fmt.Errorf("failed to close websocket: %w", err)
 		}
@@ -239,11 +239,11 @@ readyConsumer:
 	// We need to append the v10 and encoding=json to the URL.
 	websocketURL = websocketURL + "?v=10&encoding=json"
 
-	shard.logger.Debug("Dialing websocket", "url", websocketURL)
+	shard.Logger.Debug("Dialing websocket", "url", websocketURL)
 
 	conn, _, err := websocket.Dial(ctx, websocketURL, nil)
 	if err != nil {
-		shard.logger.Error("Failed to dial websocket", "error", err)
+		shard.Logger.Error("Failed to dial websocket", "error", err)
 
 		return fmt.Errorf("failed to dial websocket: %w", err)
 	}
@@ -256,7 +256,7 @@ readyConsumer:
 	// Read the initial payload
 	payload, err := shard.read(ctx, conn)
 	if err != nil {
-		shard.logger.Error("Failed to read initial payload", "error", err)
+		shard.Logger.Error("Failed to read initial payload", "error", err)
 
 		return fmt.Errorf("failed to read initial payload: %w", err)
 	}
@@ -265,7 +265,7 @@ readyConsumer:
 
 	err = unmarshalPayload(payload, &hello)
 	if err != nil {
-		shard.logger.Error("Failed to unmarshal hello", "error", err)
+		shard.Logger.Error("Failed to unmarshal hello", "error", err)
 
 		return fmt.Errorf("failed to unmarshal hello: %w", err)
 	}
@@ -287,7 +287,7 @@ readyConsumer:
 	heartbeatFailureInterval := heartbeatInterval * time.Duration(ShardMaxHeartbeatFailures)
 	shard.heartbeatFailureInterval.Store(&heartbeatFailureInterval)
 
-	shard.logger.Debug("Shard is ready", "heartbeat_interval", heartbeatInterval.Milliseconds(), "heartbeat_failure_interval", heartbeatFailureInterval.Milliseconds())
+	shard.Logger.Debug("Shard is ready", "heartbeat_interval", heartbeatInterval.Milliseconds(), "heartbeat_failure_interval", heartbeatFailureInterval.Milliseconds())
 
 	go shard.heartbeat(ctx)
 
@@ -312,7 +312,7 @@ readyConsumer:
 }
 
 func (shard *Shard) Start(ctx context.Context) error {
-	shard.logger.Debug("Shard is starting")
+	shard.Logger.Debug("Shard is starting")
 
 	for {
 		err := shard.Listen(ctx)
@@ -342,20 +342,20 @@ func (shard *Shard) Start(ctx context.Context) error {
 }
 
 func (shard *Shard) Stop(ctx context.Context, code websocket.StatusCode) {
-	shard.logger.Debug("Shard is stopping")
+	shard.Logger.Debug("Shard is stopping")
 
 	shard.SetStatus(ShardStatusStopping)
 
 	shard.stop <- struct{}{}
 
-	shard.application.producer.Close()
+	shard.Application.producer.Close()
 	shard.closeWS(ctx, code)
 
 	shard.SetStatus(ShardStatusStopped)
 }
 
 func (shard *Shard) Listen(ctx context.Context) error {
-	shard.logger.Debug("Shard is listening")
+	shard.Logger.Debug("Shard is listening")
 
 	websocketConn := shard.websocketConn
 
@@ -376,7 +376,7 @@ func (shard *Shard) Listen(ctx context.Context) error {
 
 			err = shard.OnEvent(ctx, msg, &trace)
 			if err != nil {
-				shard.logger.Error("Failed to handle event", "error", err)
+				shard.Logger.Error("Failed to handle event", "error", err)
 			}
 
 			shard.gatewayPayloadPool.Put(msg)
@@ -393,26 +393,26 @@ func (shard *Shard) Listen(ctx context.Context) error {
 
 		if ok := errors.As(err, &closeError); ok {
 			if !isStatusCodeRecoverable(closeError.Code) {
-				shard.logger.Error("Shard received close event", "error", closeError)
+				shard.Logger.Error("Shard received close event", "error", closeError)
 
-				return fmt.Errorf("shard %d received close event: %w", shard.shardID, closeError)
+				return fmt.Errorf("shard %d received close event: %w", shard.ShardID, closeError)
 			}
 		}
 
 		msgs, merr := json.Marshal(msg)
 		if merr != nil {
-			shard.logger.Error("Failed to marshal message", "error", merr)
+			shard.Logger.Error("Failed to marshal message", "error", merr)
 		}
 
 		shard.gatewayPayloadPool.Put(msg)
 
-		shard.logger.Error("Shard received error", "error", err, "message", string(msgs))
+		shard.Logger.Error("Shard received error", "error", err, "message", string(msgs))
 
 		// If the websocket connection is the same as the one we're using, we need to reconnect.
 		if websocketConn == shard.websocketConn {
 			err = shard.reconnect(ctx, websocket.StatusNormalClosure)
 			if err != nil {
-				shard.logger.Error("Failed to reconnect", "error", err)
+				shard.Logger.Error("Failed to reconnect", "error", err)
 
 				return err
 			}
@@ -434,7 +434,7 @@ func isStatusCodeRecoverable(code websocket.StatusCode) bool {
 }
 
 func (shard *Shard) reconnect(ctx context.Context, code websocket.StatusCode) error {
-	shard.logger.Debug("Shard is reconnecting")
+	shard.Logger.Debug("Shard is reconnecting")
 
 	err := shard.closeWS(ctx, code)
 	if err != nil {
@@ -473,7 +473,7 @@ func (shard *Shard) reconnect(ctx context.Context, code websocket.StatusCode) er
 }
 
 func (shard *Shard) closeWS(_ context.Context, code websocket.StatusCode) error {
-	shard.logger.Debug("Shard is closing websocket", "code", code)
+	shard.Logger.Debug("Shard is closing websocket", "code", code)
 
 	if shard.websocketConn == nil {
 		return nil
@@ -481,14 +481,14 @@ func (shard *Shard) closeWS(_ context.Context, code websocket.StatusCode) error 
 
 	err := shard.websocketConn.Close(code, "")
 	if err != nil && !errors.Is(err, net.ErrClosed) {
-		shard.logger.Error("Failed to close websocket", "error", err)
+		shard.Logger.Error("Failed to close websocket", "error", err)
 	}
 
 	return nil
 }
 
 func (shard *Shard) waitForReady() error {
-	shard.logger.Debug("Shard is waiting for ready")
+	shard.Logger.Debug("Shard is waiting for ready")
 
 	since := time.Now()
 	ticker := time.NewTicker(time.Second * 15)
@@ -502,13 +502,13 @@ func (shard *Shard) waitForReady() error {
 		case err := <-shard.error:
 			return err
 		case <-ticker.C:
-			shard.logger.Error("Shard not ready", "duration", time.Since(since))
+			shard.Logger.Error("Shard not ready", "duration", time.Since(since))
 		}
 	}
 }
 
 func (shard *Shard) heartbeat(ctx context.Context) {
-	shard.logger.Debug("Shard is heartbeating")
+	shard.Logger.Debug("Shard is heartbeating")
 
 	shard.heartbeatActive.Store(true)
 	defer shard.heartbeatActive.Store(false)
@@ -523,7 +523,7 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 		shard.heartbeater.Reset(heartbeatJitter)
 	}
 
-	shard.logger.Debug("Shard is heartbeating", "heartbeat_jitter", int(heartbeatJitter.Milliseconds()))
+	shard.Logger.Debug("Shard is heartbeating", "heartbeat_jitter", int(heartbeatJitter.Milliseconds()))
 
 	for {
 		select {
@@ -535,10 +535,10 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 
 				shard.heartbeater.Reset(*shard.heartbeatInterval.Load())
 
-				shard.logger.Debug("Shard is heartbeating", "heartbeat_interval", *shard.heartbeatInterval.Load())
+				shard.Logger.Debug("Shard is heartbeating", "heartbeat_interval", *shard.heartbeatInterval.Load())
 			}
 
-			shard.logger.Debug("Sending heartbeat", "sequence", shard.sequence.Load())
+			shard.Logger.Debug("Sending heartbeat", "sequence", shard.sequence.Load())
 
 			err := shard.SendEvent(ctx, discord.GatewayOpHeartbeat, shard.sequence.Load())
 
@@ -547,9 +547,9 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 
 			if err != nil || now.Sub(*shard.lastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
 				if err != nil {
-					shard.logger.Error("Heartbeat failed", "error", err)
+					shard.Logger.Error("Heartbeat failed", "error", err)
 				} else {
-					shard.logger.Error("Heartbeat failed", "error", "timeout")
+					shard.Logger.Error("Heartbeat failed", "error", "timeout")
 				}
 
 				return
@@ -559,12 +559,12 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 }
 
 func (shard *Shard) identify(ctx context.Context) error {
-	configuration := shard.application.configuration.Load()
-	shardCount := shard.application.shardCount.Load()
+	configuration := shard.Application.Configuration.Load()
+	shardCount := shard.Application.ShardCount.Load()
 
-	shard.logger.Debug("Shard is identifying", "shard_id", shard.shardID, "shard_count", shardCount)
+	shard.Logger.Debug("Shard is identifying", "shard_id", shard.ShardID, "shard_count", shardCount)
 
-	shard.application.gatewaySessionStartLimitRemaining.Add(-1)
+	shard.Application.gatewaySessionStartLimitRemaining.Add(-1)
 
 	err := shard.waitForIdentify(ctx)
 	if err != nil {
@@ -579,7 +579,7 @@ func (shard *Shard) identify(ctx context.Context) error {
 		},
 		Presence:       &configuration.DefaultPresence,
 		Token:          configuration.BotToken,
-		Shard:          [2]int32{shard.shardID, shardCount},
+		Shard:          [2]int32{shard.ShardID, shardCount},
 		LargeThreshold: GatewayLargeThreshold,
 		Intents:        configuration.Intents,
 		Compress:       true,
@@ -587,9 +587,9 @@ func (shard *Shard) identify(ctx context.Context) error {
 }
 
 func (shard *Shard) waitForIdentify(ctx context.Context) error {
-	shard.logger.Debug("Shard is waiting for identify")
+	shard.Logger.Debug("Shard is waiting for identify")
 
-	err := shard.sandwich.identifyProvider.Identify(ctx, shard)
+	err := shard.Sandwich.identifyProvider.Identify(ctx, shard)
 	if err != nil {
 		return fmt.Errorf("failed to identify: %w", err)
 	}
@@ -598,9 +598,9 @@ func (shard *Shard) waitForIdentify(ctx context.Context) error {
 }
 
 func (shard *Shard) resume(ctx context.Context) error {
-	shard.logger.Debug("Shard is resuming")
+	shard.Logger.Debug("Shard is resuming")
 
-	configuration := shard.application.configuration.Load()
+	configuration := shard.Application.Configuration.Load()
 
 	return shard.SendEvent(ctx, discord.GatewayOpResume, discord.Resume{
 		Token:     configuration.BotToken,
@@ -621,8 +621,8 @@ func (shard *Shard) SendEvent(ctx context.Context, gatewayOp discord.GatewayOp, 
 func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data any) error {
 	defer func() {
 		if r := recover(); r != nil {
-			if shard.sandwich.panicHandler != nil {
-				shard.sandwich.panicHandler(shard.sandwich, r)
+			if shard.Sandwich.panicHandler != nil {
+				shard.Sandwich.panicHandler(shard.Sandwich, r)
 			}
 		}
 	}()
@@ -637,7 +637,7 @@ func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data 
 		shard.websocketRatelimit.Lock()
 	}
 
-	shard.logger.Debug("Sending payload", "payload", string(payload))
+	shard.Logger.Debug("Sending payload", "payload", string(payload))
 
 	err = shard.websocketConn.Write(ctx, websocket.MessageText, payload)
 	if err != nil {
@@ -685,23 +685,23 @@ func (shard *Shard) OnEvent(ctx context.Context, msg *discord.GatewayPayload, tr
 func (shard *Shard) OnDispatch(ctx context.Context, msg *discord.GatewayPayload, trace *Trace) error {
 	defer func() {
 		if r := recover(); r != nil {
-			if shard.sandwich.panicHandler != nil {
-				shard.sandwich.panicHandler(shard.sandwich, r)
+			if shard.Sandwich.panicHandler != nil {
+				shard.Sandwich.panicHandler(shard.Sandwich, r)
 			}
 		}
 	}()
 
 	// Dispatch the event to the event provider.
-	err := shard.sandwich.eventProvider.Dispatch(ctx, shard, msg, trace)
+	err := shard.Sandwich.eventProvider.Dispatch(ctx, shard, msg, trace)
 	if err != nil {
-		shard.logger.Error("Failed to dispatch event", "error", err)
+		shard.Logger.Error("Failed to dispatch event", "error", err)
 	}
 
 	return nil
 }
 
 func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
-	shard.logger.Debug("Chunking all guilds")
+	shard.Logger.Debug("Chunking all guilds")
 
 	done := make(chan struct{})
 
@@ -714,16 +714,16 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 			return false
 		})
 
-		shard.logger.Debug("Chunking all guilds", "count", len(guildIDs))
+		shard.Logger.Debug("Chunking all guilds", "count", len(guildIDs))
 
 		for _, guildID := range guildIDs {
 			err := shard.chunkGuild(ctx, guildID, false)
 			if err != nil {
-				shard.logger.Error("Failed to chunk guild", "error", err)
+				shard.Logger.Error("Failed to chunk guild", "error", err)
 			}
 		}
 
-		shard.logger.Debug("Chunked all guilds")
+		shard.Logger.Debug("Chunked all guilds")
 
 		close(done)
 	}()
@@ -732,9 +732,9 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 }
 
 func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, always bool) error {
-	shard.logger.Debug("Chunking guild", "guildID", guildID)
+	shard.Logger.Debug("Chunking guild", "guildID", guildID)
 
-	guildChunk, ok := shard.sandwich.guildChunks.Load(guildID)
+	guildChunk, ok := shard.Sandwich.guildChunks.Load(guildID)
 
 	if !ok {
 		guildChunk = &GuildChunk{
@@ -744,7 +744,7 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 			completedAt:     &atomic.Pointer[time.Time]{},
 		}
 
-		shard.sandwich.guildChunks.Store(guildID, guildChunk)
+		shard.Sandwich.guildChunks.Store(guildID, guildChunk)
 	}
 
 	guildChunk.complete.Store(false)
@@ -752,10 +752,10 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 	now := time.Now()
 	guildChunk.startedAt.Store(&now)
 
-	guildMembers, _ := shard.sandwich.stateProvider.GetGuildMembers(ctx, guildID)
+	guildMembers, _ := shard.Sandwich.stateProvider.GetGuildMembers(ctx, guildID)
 	memberCount := len(guildMembers)
 
-	guild, _ := shard.sandwich.stateProvider.GetGuild(ctx, guildID)
+	guild, _ := shard.Sandwich.stateProvider.GetGuild(ctx, guildID)
 
 	if always || int(guild.MemberCount) > memberCount {
 		nonce := randomHex(16)
@@ -788,15 +788,15 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 				// Reset the timeout.
 				timeout.Reset(MemberChunkTimeout)
 
-				shard.logger.Debug("Received chunk", "chunksReceived", chunksReceived, "totalChunks", totalChunks)
+				shard.Logger.Debug("Received chunk", "chunksReceived", chunksReceived, "totalChunks", totalChunks)
 
 				if chunksReceived >= totalChunks {
-					shard.logger.Debug("Received all chunks", "guildID", guildID)
+					shard.Logger.Debug("Received all chunks", "guildID", guildID)
 
 					break guildChunkLoop
 				}
 			case <-timeout.C:
-				shard.logger.Error("Timeout while waiting for guild members", "guildID", guildID)
+				shard.Logger.Error("Timeout while waiting for guild members", "guildID", guildID)
 
 				break guildChunkLoop
 			}
@@ -810,7 +810,7 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 	now = time.Now()
 	guildChunk.completedAt.Store(&now)
 
-	shard.logger.Debug("Chunked guild", "guildID", guildID)
+	shard.Logger.Debug("Chunked guild", "guildID", guildID)
 
 	return nil
 }

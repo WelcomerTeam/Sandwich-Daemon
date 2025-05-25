@@ -41,15 +41,15 @@ func NewIdentifyViaURL(url string, headers map[string]string) *IdentifyViaURL {
 
 func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 	method := sha256.New()
-	method.Write([]byte(shard.application.configuration.Load().BotToken))
+	method.Write([]byte(shard.Application.Configuration.Load().BotToken))
 	tokenHash := hex.EncodeToString(method.Sum(nil))
 
 	identifyURL := i.URL
-	identifyURL = strings.Replace(identifyURL, "{shard_id}", strconv.Itoa(int(shard.shardID)), 1)
-	identifyURL = strings.Replace(identifyURL, "{shard_count}", strconv.Itoa(int(shard.application.shardCount.Load())), 1)
-	identifyURL = strings.Replace(identifyURL, "{token}", shard.application.configuration.Load().BotToken, 1)
+	identifyURL = strings.Replace(identifyURL, "{shard_id}", strconv.Itoa(int(shard.ShardID)), 1)
+	identifyURL = strings.Replace(identifyURL, "{shard_count}", strconv.Itoa(int(shard.Application.ShardCount.Load())), 1)
+	identifyURL = strings.Replace(identifyURL, "{token}", shard.Application.Configuration.Load().BotToken, 1)
 	identifyURL = strings.Replace(identifyURL, "{token_hash}", tokenHash, 1)
-	identifyURL = strings.Replace(identifyURL, "{max_concurrency}", strconv.Itoa(int(shard.application.gateway.Load().SessionStartLimit.MaxConcurrency)), 1)
+	identifyURL = strings.Replace(identifyURL, "{max_concurrency}", strconv.Itoa(int(shard.Application.Gateway.Load().SessionStartLimit.MaxConcurrency)), 1)
 
 	_, err := url.Parse(identifyURL)
 	if err != nil {
@@ -63,10 +63,10 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 		Token          string `json:"token"`
 		TokenHash      string `json:"token_hash"`
 	}{
-		ShardID:        int(shard.shardID),
-		ShardCount:     int(shard.application.configuration.Load().ShardCount),
-		MaxConcurrency: int(shard.application.gateway.Load().SessionStartLimit.MaxConcurrency),
-		Token:          shard.application.configuration.Load().BotToken,
+		ShardID:        int(shard.ShardID),
+		ShardCount:     int(shard.Application.Configuration.Load().ShardCount),
+		MaxConcurrency: int(shard.Application.Gateway.Load().SessionStartLimit.MaxConcurrency),
+		Token:          shard.Application.Configuration.Load().BotToken,
 		TokenHash:      tokenHash,
 	}
 

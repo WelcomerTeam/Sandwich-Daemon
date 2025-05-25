@@ -17,63 +17,63 @@ import (
 )
 
 type Application struct {
-	logger *slog.Logger
+	Logger *slog.Logger
 
-	identifier string
+	Identifier string
 
-	sandwich      *Sandwich
-	configuration *atomic.Pointer[ApplicationConfiguration]
+	Sandwich      *Sandwich
+	Configuration *atomic.Pointer[ApplicationConfiguration]
 
-	gateway                           *atomic.Pointer[discord.GatewayBotResponse]
+	Gateway                           *atomic.Pointer[discord.GatewayBotResponse]
 	gatewaySessionStartLimitRemaining *atomic.Int32
 
-	user *atomic.Pointer[discord.User]
+	User *atomic.Pointer[discord.User]
 
 	producer Producer
 
-	shardCount *atomic.Int32
+	ShardCount *atomic.Int32
 
 	ready   chan struct{}
 	readyWg sync.WaitGroup
 
-	shards *syncmap.Map[int32, *Shard]
+	Shards *syncmap.Map[int32, *Shard]
 	guilds *csmap.CsMap[discord.Snowflake, bool]
 
 	startedAt *atomic.Pointer[time.Time]
 
-	status *atomic.Int32
+	Status *atomic.Int32
 }
 
 func NewApplication(sandwich *Sandwich, config *ApplicationConfiguration) *Application {
 	application := &Application{
-		logger: sandwich.logger.With("application_identifier", config.ApplicationIdentifier),
+		Logger: sandwich.Logger.With("application_identifier", config.ApplicationIdentifier),
 
-		identifier: config.ApplicationIdentifier,
+		Identifier: config.ApplicationIdentifier,
 
-		sandwich:      sandwich,
-		configuration: &atomic.Pointer[ApplicationConfiguration]{},
+		Sandwich:      sandwich,
+		Configuration: &atomic.Pointer[ApplicationConfiguration]{},
 
-		gateway:                           &atomic.Pointer[discord.GatewayBotResponse]{},
+		Gateway:                           &atomic.Pointer[discord.GatewayBotResponse]{},
 		gatewaySessionStartLimitRemaining: &atomic.Int32{},
 
-		user: &atomic.Pointer[discord.User]{},
+		User: &atomic.Pointer[discord.User]{},
 
 		producer: nil,
 
-		shardCount: &atomic.Int32{},
+		ShardCount: &atomic.Int32{},
 
 		ready:   make(chan struct{}),
 		readyWg: sync.WaitGroup{},
 
-		shards: &syncmap.Map[int32, *Shard]{},
+		Shards: &syncmap.Map[int32, *Shard]{},
 		guilds: csmap.Create[discord.Snowflake, bool](),
 
 		startedAt: &atomic.Pointer[time.Time]{},
 
-		status: &atomic.Int32{},
+		Status: &atomic.Int32{},
 	}
 
-	application.configuration.Store(config)
+	application.Configuration.Store(config)
 
 	application.SetStatus(ApplicationStatusIdle)
 
@@ -81,32 +81,32 @@ func NewApplication(sandwich *Sandwich, config *ApplicationConfiguration) *Appli
 }
 
 func (application *Application) SetStatus(status ApplicationStatus) {
-	UpdateApplicationStatus(application.identifier, status)
-	application.status.Store(int32(status))
-	application.logger.Info("Application status updated", "status", status.String())
+	UpdateApplicationStatus(application.Identifier, status)
+	application.Status.Store(int32(status))
+	application.Logger.Info("Application status updated", "status", status.String())
 
-	err := application.sandwich.broadcast(SandwichApplicationStatusUpdate, ApplicationStatusUpdateEvent{
-		Identifier: application.identifier,
+	err := application.Sandwich.broadcast(SandwichApplicationStatusUpdate, ApplicationStatusUpdateEvent{
+		Identifier: application.Identifier,
 		Status:     status,
 	})
 	if err != nil {
-		application.logger.Error("Failed to broadcast application status update", "error", err)
+		application.Logger.Error("Failed to broadcast application status update", "error", err)
 	}
 }
 
 func (application *Application) SetUser(user *discord.User) {
-	existingUser := application.user.Load()
-	application.user.Store(user)
+	existingUser := application.User.Load()
+	application.User.Store(user)
 
 	if existingUser != nil && existingUser.ID == user.ID {
 		return
 	}
 
-	application.logger.Debug("Application user updated", "user", user.Username)
+	application.Logger.Debug("Application user updated", "user", user.Username)
 
-	configuration := application.configuration.Load()
+	configuration := application.Configuration.Load()
 
-	application.shards.Range(func(_ int32, shard *Shard) bool {
+	application.Shards.Range(func(_ int32, shard *Shard) bool {
 		shard.SetMetadata(configuration)
 
 		return true
@@ -115,18 +115,18 @@ func (application *Application) SetUser(user *discord.User) {
 
 // Initialize initializes the application. This includes checking the gateway
 func (application *Application) Initialize(ctx context.Context) error {
-	application.logger.Debug("Initializing application")
+	application.Logger.Debug("Initializing application")
 
-	application.sandwich.gatewayLimiter.Lock()
+	application.Sandwich.gatewayLimiter.Lock()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discord.EndpointGatewayBot, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bot "+application.configuration.Load().BotToken)
+	req.Header.Set("Authorization", "Bot "+application.Configuration.Load().BotToken)
 
-	resp, err := application.sandwich.client.Do(req)
+	resp, err := application.Sandwich.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to do request: %w", err)
 	}
@@ -138,10 +138,10 @@ func (application *Application) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to decode gateway bot response: %w", err)
 	}
 
-	application.gateway.Store(&gatewayBotResponse)
+	application.Gateway.Store(&gatewayBotResponse)
 	application.gatewaySessionStartLimitRemaining.Store(gatewayBotResponse.SessionStartLimit.Remaining)
 
-	configuration := application.configuration.Load()
+	configuration := application.Configuration.Load()
 
 	clientName := configuration.ClientName
 
@@ -150,24 +150,24 @@ func (application *Application) Initialize(ctx context.Context) error {
 		clientName = fmt.Sprintf("%s-%s", clientName, randomHex(8))
 	}
 
-	producer, err := application.sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
+	producer, err := application.Sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
 	if err != nil {
 		return fmt.Errorf("failed to get producer: %w", err)
 	}
 
 	application.producer = producer
 
-	application.logger.Debug("Application initialized")
+	application.Logger.Debug("Application initialized")
 
 	return nil
 }
 
 func (application *Application) Start(ctx context.Context) error {
-	application.logger.Info("Starting application")
+	application.Logger.Info("Starting application")
 
 	application.SetStatus(ApplicationStatusStarting)
 
-	configuration := application.configuration.Load()
+	configuration := application.Configuration.Load()
 
 	shardIDs, shardCount := application.getInitialShardCount(
 		configuration.ShardCount,
@@ -175,13 +175,13 @@ func (application *Application) Start(ctx context.Context) error {
 		configuration.AutoSharded,
 	)
 
-	application.logger.Debug("Initializing shards", "shard_count", shardCount, "shard_ids", shardIDs)
+	application.Logger.Debug("Initializing shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
-	application.shardCount.Store(shardCount)
+	application.ShardCount.Store(shardCount)
 
 	ready, err := application.startShards(ctx, shardIDs, shardCount)
 	if err != nil {
-		application.logger.Error("Failed to start shards", "error", err)
+		application.Logger.Error("Failed to start shards", "error", err)
 
 		application.SetStatus(ApplicationStatusFailed)
 
@@ -198,7 +198,7 @@ func (application *Application) Start(ctx context.Context) error {
 func (application *Application) Stop(ctx context.Context) error {
 	application.SetStatus(ApplicationStatusStopping)
 
-	application.shards.Range(func(_ int32, shard *Shard) bool {
+	application.Shards.Range(func(_ int32, shard *Shard) bool {
 		shard.Stop(ctx, websocket.StatusNormalClosure)
 
 		return true
@@ -215,14 +215,14 @@ func (application *Application) Stop(ctx context.Context) error {
 
 // getInitialShardCount returns the shard IDs and shard count for the application.
 func (application *Application) getInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) ([]int32, int32) {
-	config := application.sandwich.config.Load()
+	config := application.Sandwich.Config.Load()
 
 	var shardCount int32
 
 	var shardIDs []int32
 
 	if autoSharded {
-		shardCount = application.gateway.Load().Shards
+		shardCount = application.Gateway.Load().Shards
 
 		if customShardIDs == "" {
 			for i := range shardCount {
@@ -261,24 +261,24 @@ func (application *Application) getInitialShardCount(customShardCount int32, cus
 }
 
 func (application *Application) startShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
-	application.logger.Info("Starting shards", "shard_count", shardCount, "shard_ids", shardIDs)
+	application.Logger.Info("Starting shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
 	ready = make(chan struct{})
 
 	now := time.Now()
 	application.startedAt.Store(&now)
 
-	application.shardCount.Store(shardCount)
+	application.ShardCount.Store(shardCount)
 
 	// If we have no shards, we can't start the application
 	if len(shardIDs) == 0 {
-		application.logger.Error("No shards to start")
+		application.Logger.Error("No shards to start")
 
 		return ready, ErrApplicationMissingShards
 	}
 
 	// Kill any shards that are already running
-	application.shards.Range(func(_ int32, shard *Shard) bool {
+	application.Shards.Range(func(_ int32, shard *Shard) bool {
 		shard.Stop(ctx, websocket.StatusNormalClosure)
 
 		return true
@@ -286,20 +286,20 @@ func (application *Application) startShards(ctx context.Context, shardIDs []int3
 
 	// Create new shards
 	for _, shardID := range shardIDs {
-		shard := NewShard(application.sandwich, application, shardID)
+		shard := NewShard(application.Sandwich, application, shardID)
 
-		application.shards.Store(shardID, shard)
+		application.Shards.Store(shardID, shard)
 	}
 
 	application.SetStatus(ApplicationStatusConnecting)
 
-	initialShard, ok := application.shards.Load(shardIDs[0])
+	initialShard, ok := application.Shards.Load(shardIDs[0])
 	if !ok {
 		panic("failed to load initial shard")
 	}
 
 	if err := initialShard.ConnectWithRetry(ctx); err != nil {
-		application.logger.Error("Failed to connect to initial shard", "error", err)
+		application.Logger.Error("Failed to connect to initial shard", "error", err)
 
 		return ready, fmt.Errorf("failed to connect to initial shard: %w", err)
 	}
@@ -307,19 +307,19 @@ func (application *Application) startShards(ctx context.Context, shardIDs []int3
 	go initialShard.Start(ctx)
 
 	if err := initialShard.waitForReady(); err != nil {
-		application.logger.Error("Failed to wait for initial shard", "error", err)
+		application.Logger.Error("Failed to wait for initial shard", "error", err)
 
 		return ready, fmt.Errorf("failed to wait for initial shard: %w", err)
 	}
 
-	application.logger.Debug("Initial shard connected", "shard_id", shardIDs[0])
+	application.Logger.Debug("Initial shard connected", "shard_id", shardIDs[0])
 
 	application.SetStatus(ApplicationStatusConnected)
 
 	openWg := sync.WaitGroup{}
 
 	for _, shardID := range shardIDs[1:] {
-		shard, ok := application.shards.Load(shardID)
+		shard, ok := application.Shards.Load(shardID)
 		if !ok {
 			panic("failed to load shard")
 		}
@@ -339,12 +339,12 @@ func (application *Application) startShards(ctx context.Context, shardIDs []int3
 
 	openWg.Wait()
 
-	application.logger.Debug("All shards connected")
+	application.Logger.Debug("All shards connected")
 
 	// All shards have now connected, but are not ready yet.
 
 	go func() {
-		application.shards.Range(func(index int32, shard *Shard) bool {
+		application.Shards.Range(func(index int32, shard *Shard) bool {
 			// Skip the initial shard
 			if index == 0 {
 				return true

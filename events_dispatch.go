@@ -14,7 +14,7 @@ const (
 )
 
 func onDispatchEvent(shard *Shard, eventType string) {
-	RecordEvent(shard.application.identifier, eventType)
+	RecordEvent(shard.Application.Identifier, eventType)
 }
 
 // OnReady handles the READY event.
@@ -31,24 +31,24 @@ func OnReady(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, tra
 
 	err := unmarshalPayload(msg, &readyPayload)
 	if err != nil {
-		shard.logger.Error("Failed to unmarshal ready payload", "error", err)
+		shard.Logger.Error("Failed to unmarshal ready payload", "error", err)
 
 		return DispatchResult{nil, nil}, false, err
 	}
 
 	err = unmarshalPayload(msg, &readyGatewayURL)
 	if err != nil {
-		shard.logger.Error("Failed to unmarshal ready gateway url", "error", err)
+		shard.Logger.Error("Failed to unmarshal ready gateway url", "error", err)
 
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	shard.logger.Debug("Received READY payload")
+	shard.Logger.Debug("Received READY payload")
 
 	shard.sessionID.Store(&readyPayload.SessionID)
 	shard.resumeGatewayURL.Store(&readyGatewayURL.ReadyGatewayURL)
 
-	shard.application.SetUser(&readyPayload.User)
+	shard.Application.SetUser(&readyPayload.User)
 
 	for _, guild := range readyPayload.Guilds {
 		shard.lazyGuilds.Store(guild.ID, true)
@@ -59,7 +59,7 @@ func OnReady(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, tra
 
 	readyTimeout := time.NewTicker(ReadyTimeout)
 
-	shard.logger.Debug("Starting lazy loading guilds")
+	shard.Logger.Debug("Starting lazy loading guilds")
 
 ready:
 	for {
@@ -74,7 +74,7 @@ ready:
 		msg, err := shard.read(ctx, shard.websocketConn)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) {
-				shard.logger.Error("Encountered error during READY", "error", err)
+				shard.Logger.Error("Encountered error during READY", "error", err)
 			}
 
 			break ready
@@ -83,22 +83,22 @@ ready:
 		if msg.Type == discord.DiscordEventGuildCreate {
 			guildCreateEvents++
 
-			shard.logger.Debug("Received GUILD_CREATE event", "guilds", guildCreateEvents)
+			shard.Logger.Debug("Received GUILD_CREATE event", "guilds", guildCreateEvents)
 
 			readyTimeout.Reset(ReadyTimeout)
 		}
 
 		err = shard.OnEvent(ctx, msg, trace)
 		if err != nil && !errors.Is(err, ErrNoDispatchHandler) {
-			shard.logger.Error("Failed to dispatch event", "error", err)
+			shard.Logger.Error("Failed to dispatch event", "error", err)
 		}
 
 		shard.gatewayPayloadPool.Put(msg)
 	}
 
-	shard.logger.Debug("Finished lazy loading guilds", "guilds", guildCreateEvents)
+	shard.Logger.Debug("Finished lazy loading guilds", "guilds", guildCreateEvents)
 
-	shard.logger.Debug("Shard is ready")
+	shard.Logger.Debug("Shard is ready")
 
 	select {
 	case shard.ready <- struct{}{}:
@@ -107,7 +107,7 @@ ready:
 
 	// ctx.SetStatus(sandwich_structs.ShardStatusReady)
 
-	configuration := shard.application.configuration.Load()
+	configuration := shard.Application.Configuration.Load()
 
 	if configuration.ChunkGuildsOnStart {
 		shard.chunkAllGuilds(ctx)
@@ -119,7 +119,7 @@ ready:
 func OnResumed(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	onDispatchEvent(shard, msg.Type)
 
-	shard.logger.Debug("Shard has resumed")
+	shard.Logger.Debug("Shard has resumed")
 
 	select {
 	case shard.ready <- struct{}{}:
@@ -194,7 +194,7 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		ctx = WithGuildID(ctx, guildCreatePayload.ID)
 	}
 
-	shard.sandwich.stateProvider.SetGuild(ctx, guildCreatePayload.ID, discord.Guild(guildCreatePayload))
+	shard.Sandwich.stateProvider.SetGuild(ctx, guildCreatePayload.ID, discord.Guild(guildCreatePayload))
 
 	lazy, exists := shard.lazyGuilds.Load(guildCreatePayload.ID)
 
@@ -228,21 +228,21 @@ func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg *discord.Gateway
 	}
 
 	for _, member := range guildMembersChunkPayload.Members {
-		shard.sandwich.stateProvider.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
+		shard.Sandwich.stateProvider.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
 	}
 
-	shard.logger.Debug("Chunked guild members", "memberCount", len(guildMembersChunkPayload.Members), "chunkIndex", guildMembersChunkPayload.ChunkIndex, "chunkCount", guildMembersChunkPayload.ChunkCount, "guildID", guildMembersChunkPayload.GuildID)
+	shard.Logger.Debug("Chunked guild members", "memberCount", len(guildMembersChunkPayload.Members), "chunkIndex", guildMembersChunkPayload.ChunkIndex, "chunkCount", guildMembersChunkPayload.ChunkCount, "guildID", guildMembersChunkPayload.GuildID)
 
-	guildChunk, exists := shard.sandwich.guildChunks.Load(guildMembersChunkPayload.GuildID)
+	guildChunk, exists := shard.Sandwich.guildChunks.Load(guildMembersChunkPayload.GuildID)
 
 	if !exists {
-		shard.logger.Warn("Received guild member chunk, but there is no record in the GuildChunks map", "guildID", guildMembersChunkPayload.GuildID)
+		shard.Logger.Warn("Received guild member chunk, but there is no record in the GuildChunks map", "guildID", guildMembersChunkPayload.GuildID)
 
 		return DispatchResult{nil, nil}, false, nil
 	}
 
 	if guildChunk.complete.Load() {
-		shard.logger.Warn("Received guild member chunk, but it is already complete", "guildID", guildMembersChunkPayload.GuildID)
+		shard.Logger.Warn("Received guild member chunk, but it is already complete", "guildID", guildMembersChunkPayload.GuildID)
 	}
 
 	select {
@@ -271,7 +271,7 @@ func OnChannelCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		ctx = WithGuildID(ctx, *channelCreatePayload.GuildID)
 	}
 
-	shard.sandwich.stateProvider.SetGuildChannel(ctx, *channelCreatePayload.GuildID, discord.Channel(channelCreatePayload))
+	shard.Sandwich.stateProvider.SetGuildChannel(ctx, *channelCreatePayload.GuildID, discord.Channel(channelCreatePayload))
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -293,8 +293,8 @@ func OnChannelUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		ctx = WithGuildID(ctx, *channelUpdatePayload.GuildID)
 	}
 
-	beforeChannel, _ := shard.sandwich.stateProvider.GetGuildChannel(ctx, *channelUpdatePayload.GuildID, channelUpdatePayload.ID)
-	shard.sandwich.stateProvider.SetGuildChannel(ctx, *channelUpdatePayload.GuildID, discord.Channel(channelUpdatePayload))
+	beforeChannel, _ := shard.Sandwich.stateProvider.GetGuildChannel(ctx, *channelUpdatePayload.GuildID, channelUpdatePayload.ID)
+	shard.Sandwich.stateProvider.SetGuildChannel(ctx, *channelUpdatePayload.GuildID, discord.Channel(channelUpdatePayload))
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -318,8 +318,8 @@ func OnChannelDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		ctx = WithGuildID(ctx, *channelDeletePayload.GuildID)
 	}
 
-	beforeChannel, _ := shard.sandwich.stateProvider.GetGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
-	shard.sandwich.stateProvider.RemoveGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
+	beforeChannel, _ := shard.Sandwich.stateProvider.GetGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
+	shard.Sandwich.stateProvider.RemoveGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -375,7 +375,7 @@ func OnThreadUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	beforeChannel, _ := shard.sandwich.stateProvider.GetGuildChannel(ctx, *threadUpdatePayload.GuildID, threadUpdatePayload.ID)
+	beforeChannel, _ := shard.Sandwich.stateProvider.GetGuildChannel(ctx, *threadUpdatePayload.GuildID, threadUpdatePayload.ID)
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -527,7 +527,7 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		ctx = WithGuildID(ctx, guildUpdatePayload.ID)
 	}
 
-	beforeGuild, exists := shard.sandwich.stateProvider.GetGuild(ctx, guildUpdatePayload.ID)
+	beforeGuild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, guildUpdatePayload.ID)
 
 	if exists {
 		// Preserve values only present in GUILD_CREATE events.
@@ -554,10 +554,10 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		guildUpdatePayload.Large = beforeGuild.Large
 		guildUpdatePayload.JoinedAt = beforeGuild.JoinedAt
 	} else {
-		shard.logger.Warn("Received "+discord.DiscordEventGuildUpdate+" event, but previous guild not present in state", "guild_id", guildUpdatePayload.ID)
+		shard.Logger.Warn("Received "+discord.DiscordEventGuildUpdate+" event, but previous guild not present in state", "guild_id", guildUpdatePayload.ID)
 	}
 
-	shard.sandwich.stateProvider.SetGuild(ctx, guildUpdatePayload.ID, discord.Guild(guildUpdatePayload))
+	shard.Sandwich.stateProvider.SetGuild(ctx, guildUpdatePayload.ID, discord.Guild(guildUpdatePayload))
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -581,7 +581,7 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		ctx = WithGuildID(ctx, guildDeletePayload.ID)
 	}
 
-	beforeGuild, _ := shard.sandwich.stateProvider.GetGuild(ctx, guildDeletePayload.ID)
+	beforeGuild, _ := shard.Sandwich.stateProvider.GetGuild(ctx, guildDeletePayload.ID)
 
 	if guildDeletePayload.Unavailable {
 		shard.unavailableGuilds.Store(guildDeletePayload.ID, true)
@@ -590,7 +590,7 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		// Dereferencing it locally ensures that if other applications are using it,
 		// it will stay.
 		shard.guilds.Delete(guildDeletePayload.ID)
-		shard.application.guilds.Delete(guildDeletePayload.ID)
+		shard.Application.guilds.Delete(guildDeletePayload.ID)
 	}
 
 	return DispatchResult{
@@ -655,9 +655,9 @@ func OnGuildEmojisUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		ctx = WithGuildID(ctx, guildEmojisUpdatePayload.GuildID)
 	}
 
-	beforeEmojis, _ := shard.sandwich.stateProvider.GetGuildEmojis(ctx, guildEmojisUpdatePayload.GuildID)
+	beforeEmojis, _ := shard.Sandwich.stateProvider.GetGuildEmojis(ctx, guildEmojisUpdatePayload.GuildID)
 
-	shard.sandwich.stateProvider.SetGuildEmojis(ctx, guildEmojisUpdatePayload.GuildID, guildEmojisUpdatePayload.Emojis)
+	shard.Sandwich.stateProvider.SetGuildEmojis(ctx, guildEmojisUpdatePayload.GuildID, guildEmojisUpdatePayload.Emojis)
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -681,15 +681,15 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 		ctx = WithGuildID(ctx, guildStickersUpdatePayload.GuildID)
 	}
 
-	beforeGuild, exists := shard.sandwich.stateProvider.GetGuild(ctx, guildStickersUpdatePayload.GuildID)
+	beforeGuild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, guildStickersUpdatePayload.GuildID)
 	beforeStickers := beforeGuild.Stickers
 
 	if exists {
 		beforeGuild.Stickers = guildStickersUpdatePayload.Stickers
 
-		shard.sandwich.stateProvider.SetGuildStickers(ctx, beforeGuild.ID, guildStickersUpdatePayload.Stickers)
+		shard.Sandwich.stateProvider.SetGuildStickers(ctx, beforeGuild.ID, guildStickersUpdatePayload.Stickers)
 	} else {
-		shard.logger.Warn("Received "+discord.DiscordEventGuildStickersUpdate+" event, however guild is not present in state", "guild_id", guildStickersUpdatePayload.GuildID)
+		shard.Logger.Warn("Received "+discord.DiscordEventGuildStickersUpdate+" event, however guild is not present in state", "guild_id", guildStickersUpdatePayload.GuildID)
 	}
 
 	return DispatchResult{
@@ -728,11 +728,11 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	guild, exists := shard.sandwich.stateProvider.GetGuild(ctx, *guildMemberAddPayload.GuildID)
+	guild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, *guildMemberAddPayload.GuildID)
 
 	if exists {
 		guild.MemberCount++
-		shard.sandwich.stateProvider.SetGuild(ctx, *guildMemberAddPayload.GuildID, *guild)
+		shard.Sandwich.stateProvider.SetGuild(ctx, *guildMemberAddPayload.GuildID, *guild)
 	}
 
 	defer onDispatchEvent(shard, msg.Type)
@@ -741,8 +741,8 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 		ctx = WithGuildID(ctx, *guildMemberAddPayload.GuildID)
 	}
 
-	shard.sandwich.stateProvider.SetGuildMember(ctx, *guildMemberAddPayload.GuildID, discord.GuildMember(guildMemberAddPayload))
-	shard.sandwich.stateProvider.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, *guildMemberAddPayload.GuildID)
+	shard.Sandwich.stateProvider.SetGuildMember(ctx, *guildMemberAddPayload.GuildID, discord.GuildMember(guildMemberAddPayload))
+	shard.Sandwich.stateProvider.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, *guildMemberAddPayload.GuildID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -760,11 +760,11 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	// TODO: Implement deduping.
 
-	guild, exists := shard.sandwich.stateProvider.GetGuild(ctx, guildMemberRemovePayload.GuildID)
+	guild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, guildMemberRemovePayload.GuildID)
 
 	if exists {
 		guild.MemberCount--
-		shard.sandwich.stateProvider.SetGuild(ctx, guildMemberRemovePayload.GuildID, *guild)
+		shard.Sandwich.stateProvider.SetGuild(ctx, guildMemberRemovePayload.GuildID, *guild)
 	}
 
 	defer onDispatchEvent(shard, msg.Type)
@@ -773,10 +773,10 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 		ctx = WithGuildID(ctx, guildMemberRemovePayload.GuildID)
 	}
 
-	guildMember, _ := shard.sandwich.stateProvider.GetGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
+	guildMember, _ := shard.Sandwich.stateProvider.GetGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 
-	shard.sandwich.stateProvider.RemoveGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
-	shard.sandwich.stateProvider.RemoveUserMutualGuild(ctx, guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
+	shard.Sandwich.stateProvider.RemoveGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
+	shard.Sandwich.stateProvider.RemoveUserMutualGuild(ctx, guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -800,13 +800,13 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		ctx = WithGuildID(ctx, *guildMemberUpdatePayload.GuildID)
 	}
 
-	beforeGuildMember, _ := shard.sandwich.stateProvider.GetGuildMember(
+	beforeGuildMember, _ := shard.Sandwich.stateProvider.GetGuildMember(
 		ctx,
 		*guildMemberUpdatePayload.GuildID,
 		guildMemberUpdatePayload.User.ID,
 	)
 
-	shard.sandwich.stateProvider.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, discord.GuildMember(guildMemberUpdatePayload))
+	shard.Sandwich.stateProvider.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, discord.GuildMember(guildMemberUpdatePayload))
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -830,7 +830,7 @@ func OnGuildRoleCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 		ctx = WithGuildID(ctx, *guildRoleCreatePayload.GuildID)
 	}
 
-	shard.sandwich.stateProvider.SetGuildRole(ctx, *guildRoleCreatePayload.GuildID, discord.Role(guildRoleCreatePayload))
+	shard.Sandwich.stateProvider.SetGuildRole(ctx, *guildRoleCreatePayload.GuildID, discord.Role(guildRoleCreatePayload))
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -852,9 +852,9 @@ func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 		ctx = WithGuildID(ctx, guildRoleUpdatePayload.GuildID)
 	}
 
-	beforeRole, _ := shard.sandwich.stateProvider.GetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
+	beforeRole, _ := shard.Sandwich.stateProvider.GetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
 
-	shard.sandwich.stateProvider.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
+	shard.Sandwich.stateProvider.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -878,7 +878,7 @@ func OnGuildRoleDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 		ctx = WithGuildID(ctx, guildRoleDeletePayload.GuildID)
 	}
 
-	shard.sandwich.stateProvider.RemoveGuildRole(ctx, guildRoleDeletePayload.GuildID, guildRoleDeletePayload.RoleID)
+	shard.Sandwich.stateProvider.RemoveGuildRole(ctx, guildRoleDeletePayload.GuildID, guildRoleDeletePayload.RoleID)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1248,7 +1248,7 @@ func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	beforeUser, _ := shard.sandwich.stateProvider.GetUser(ctx, userUpdatePayload.ID)
+	beforeUser, _ := shard.Sandwich.stateProvider.GetUser(ctx, userUpdatePayload.ID)
 
 	return DispatchResult{
 		Data: msg.Data,
@@ -1278,12 +1278,12 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 		guildID = *voiceStateUpdatePayload.GuildID
 	}
 
-	beforeVoiceState, _ := shard.sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
+	beforeVoiceState, _ := shard.Sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
 
 	if voiceStateUpdatePayload.ChannelID.IsNil() {
-		shard.sandwich.stateProvider.RemoveVoiceState(ctx, *voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID)
+		shard.Sandwich.stateProvider.RemoveVoiceState(ctx, *voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID)
 	} else {
-		shard.sandwich.stateProvider.SetVoiceState(ctx, *voiceStateUpdatePayload.GuildID, discord.VoiceState(voiceStateUpdatePayload))
+		shard.Sandwich.stateProvider.SetVoiceState(ctx, *voiceStateUpdatePayload.GuildID, discord.VoiceState(voiceStateUpdatePayload))
 	}
 
 	return DispatchResult{

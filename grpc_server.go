@@ -25,7 +25,7 @@ func (sandwich *Sandwich) NewGRPCServer() *GRPCServer {
 	return &GRPCServer{
 		UnimplementedSandwichServer: sandwich_protobuf.UnimplementedSandwichServer{},
 		sandwich:                    sandwich,
-		logger:                      sandwich.logger.With("service", "grpc"),
+		logger:                      sandwich.Logger.With("service", "grpc"),
 	}
 }
 
@@ -60,7 +60,7 @@ func (grpcServer *GRPCServer) Listen(req *sandwich_protobuf.ListenRequest, strea
 func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *sandwich_protobuf.RelayMessageRequest) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
-	application, ok := grpcServer.sandwich.applications.Load(req.GetIdentifier())
+	application, ok := grpcServer.sandwich.Applications.Load(req.GetIdentifier())
 	if !ok {
 		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
@@ -70,7 +70,7 @@ func (grpcServer *GRPCServer) RelayMessage(ctx context.Context, req *sandwich_pr
 
 	var shard *Shard
 
-	application.shards.Range(func(_ int32, value *Shard) bool {
+	application.Shards.Range(func(_ int32, value *Shard) bool {
 		shard = value
 
 		return false
@@ -119,7 +119,7 @@ func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *sandwic
 
 	applications := make(map[string]*sandwich_protobuf.SandwichApplication)
 
-	grpcServer.sandwich.applications.Range(func(key string, application *Application) bool {
+	grpcServer.sandwich.Applications.Range(func(key string, application *Application) bool {
 		if req.GetApplicationIdentifier() != "" && key != req.GetApplicationIdentifier() {
 			return true
 		}
@@ -141,7 +141,7 @@ func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *sandwic
 func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *sandwich_protobuf.ApplicationIdentifierWithBlocking) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
-	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
+	application, ok := grpcServer.sandwich.Applications.Load(req.GetApplicationIdentifier())
 	if !ok {
 		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
@@ -153,7 +153,7 @@ func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *sandwic
 	// the context will be cancelled when the RPC call ends.
 	ctx = context.Background()
 
-	switch ApplicationStatus(application.status.Load()) {
+	switch ApplicationStatus(application.Status.Load()) {
 	case ApplicationStatusStarting, ApplicationStatusConnecting, ApplicationStatusConnected, ApplicationStatusReady:
 		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
@@ -193,7 +193,7 @@ func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *sandwic
 func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *sandwich_protobuf.ApplicationIdentifierWithBlocking) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
-	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
+	application, ok := grpcServer.sandwich.Applications.Load(req.GetApplicationIdentifier())
 	if !ok {
 		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
@@ -205,7 +205,7 @@ func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *sandwich
 	// the context will be cancelled when the RPC call ends.
 	ctx = context.Background()
 
-	switch ApplicationStatus(application.status.Load()) {
+	switch ApplicationStatus(application.Status.Load()) {
 	case ApplicationStatusStarting, ApplicationStatusConnecting, ApplicationStatusConnected, ApplicationStatusReady:
 		wait := make(chan error)
 
@@ -282,7 +282,7 @@ func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *sandwi
 		return nil, err
 	}
 
-	configuration := grpcServer.sandwich.config.Load()
+	configuration := grpcServer.sandwich.Config.Load()
 
 	// Remove existing application configuration.
 	configuration.Applications = slices.DeleteFunc(configuration.Applications, func(application *ApplicationConfiguration) bool {
@@ -291,7 +291,7 @@ func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *sandwi
 
 	configuration.Applications = append(configuration.Applications, applicationConfiguration)
 
-	grpcServer.sandwich.config.Store(configuration)
+	grpcServer.sandwich.Config.Store(configuration)
 
 	// Override the context to a background context as if we autostart the application,
 	// it will use the context that is passed to the RPC method which will be cancelled.
@@ -316,7 +316,7 @@ func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *sandwi
 func (grpcServer *GRPCServer) DeleteApplication(ctx context.Context, req *sandwich_protobuf.ApplicationIdentifier) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
-	application, ok := grpcServer.sandwich.applications.Load(req.GetApplicationIdentifier())
+	application, ok := grpcServer.sandwich.Applications.Load(req.GetApplicationIdentifier())
 	if !ok {
 		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
@@ -329,7 +329,7 @@ func (grpcServer *GRPCServer) DeleteApplication(ctx context.Context, req *sandwi
 		grpcServer.logger.Error("failed to stop application", "error", err, "identifier", req.GetApplicationIdentifier())
 	}
 
-	grpcServer.sandwich.applications.Delete(req.GetApplicationIdentifier())
+	grpcServer.sandwich.Applications.Delete(req.GetApplicationIdentifier())
 
 	return &sandwich_protobuf.BaseResponse{
 		Ok: true,
@@ -342,8 +342,8 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *sandwi
 
 	var shard *Shard
 
-	grpcServer.sandwich.applications.Range(func(key string, application *Application) bool {
-		application.shards.Range(func(_ int32, value *Shard) bool {
+	grpcServer.sandwich.Applications.Range(func(key string, application *Application) bool {
+		application.Shards.Range(func(_ int32, value *Shard) bool {
 			if value.guilds.Has(discord.Snowflake(req.GetGuildId())) {
 				shard = value
 
@@ -382,7 +382,7 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *sandwi
 func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *sandwich_protobuf.SendWebsocketMessageRequest) (*sandwich_protobuf.BaseResponse, error) {
 	RecordGRPCRequest()
 
-	application, ok := grpcServer.sandwich.applications.Load(req.GetIdentifier())
+	application, ok := grpcServer.sandwich.Applications.Load(req.GetIdentifier())
 	if !ok {
 		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
@@ -390,7 +390,7 @@ func (grpcServer *GRPCServer) SendWebsocketMessage(ctx context.Context, req *san
 		}, ErrApplicationNotFound
 	}
 
-	shard, ok := application.shards.Load(req.GetShard())
+	shard, ok := application.Shards.Load(req.GetShard())
 	if !ok {
 		return &sandwich_protobuf.BaseResponse{
 			Ok:    false,
@@ -417,14 +417,14 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 
 	locations := make(map[int64]*sandwich_protobuf.WhereIsGuildLocation)
 
-	grpcServer.sandwich.applications.Range(func(applicationIdentifier string, application *Application) bool {
+	grpcServer.sandwich.Applications.Range(func(applicationIdentifier string, application *Application) bool {
 		hasGuild := false
 
-		application.shards.Range(func(_ int32, shard *Shard) bool {
+		application.Shards.Range(func(_ int32, shard *Shard) bool {
 			if shard.guilds.Has(discord.Snowflake(req.GetGuildId())) {
 				hasGuild = true
 
-				user := application.user.Load()
+				user := application.User.Load()
 
 				var pbGuildMember *sandwich_protobuf.GuildMember
 
@@ -439,7 +439,7 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 
 				locations[int64(user.ID)] = &sandwich_protobuf.WhereIsGuildLocation{
 					Identifier:  applicationIdentifier,
-					ShardId:     shard.shardID,
+					ShardId:     shard.ShardID,
 					GuildMember: pbGuildMember,
 				}
 

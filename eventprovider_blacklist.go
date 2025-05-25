@@ -32,7 +32,7 @@ func NewEventProviderWithBlacklist(dispatchProvider EventDispatchProvider) *Even
 }
 
 func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard, event *discord.GatewayPayload, trace *Trace) error {
-	eventBlacklist := shard.application.configuration.Load().EventBlacklist
+	eventBlacklist := shard.Application.Configuration.Load().EventBlacklist
 
 	for _, blacklistedEvent := range eventBlacklist {
 		if blacklistedEvent == event.Type {
@@ -51,7 +51,7 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 		return nil
 	}
 
-	produceBlacklist := shard.application.configuration.Load().ProduceBlacklist
+	produceBlacklist := shard.Application.Configuration.Load().ProduceBlacklist
 
 	for _, blacklistedEvent := range produceBlacklist {
 		if blacklistedEvent == event.Type {
@@ -63,12 +63,12 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 
 	packet.GatewayPayload = *event
 	packet.Extra = result.Extra
-	packet.Metadata = *shard.metadata.Load()
+	packet.Metadata = *shard.Metadata.Load()
 	packet.Trace = *trace
 
 	packet.Trace.Set("publish", time.Now().UnixNano())
 
-	err = shard.application.producer.Publish(ctx, shard, packet)
+	err = shard.Application.producer.Publish(ctx, shard, packet)
 	if err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}

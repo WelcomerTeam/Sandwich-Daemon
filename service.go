@@ -22,25 +22,25 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.6"
+var Version = "2.0.0-rc.7"
 
 type Sandwich struct {
-	logger *slog.Logger
+	Logger *slog.Logger
 
 	configProvider ConfigProvider
-	config         *atomic.Pointer[Configuration]
+	Config         *atomic.Pointer[Configuration]
 
 	eventProvider    EventProvider
 	identifyProvider IdentifyProvider
 	producerProvider ProducerProvider
 	stateProvider    StateProvider
 
-	client *http.Client
+	Client *http.Client
 
 	gatewayLimiter  *limiter.DurationLimiter
 	identifyBuckets *bucketstore.BucketStore
 
-	applications *syncmap.Map[string, *Application]
+	Applications *syncmap.Map[string, *Application]
 
 	guildChunks *csmap.CsMap[discord.Snowflake, *GuildChunk]
 
@@ -67,22 +67,22 @@ type GuildChunkPartial struct {
 
 func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *http.Client, eventProvider EventProvider, identifyProvider IdentifyProvider, producerProvider ProducerProvider, stateProvider StateProvider) *Sandwich {
 	return &Sandwich{
-		logger: logger,
+		Logger: logger,
 
 		configProvider: configProvider,
-		config:         &atomic.Pointer[Configuration]{},
+		Config:         &atomic.Pointer[Configuration]{},
 
 		eventProvider:    eventProvider,
 		identifyProvider: identifyProvider,
 		producerProvider: producerProvider,
 		stateProvider:    stateProvider,
 
-		client: client,
+		Client: client,
 
 		gatewayLimiter:  limiter.NewDurationLimiter(1, time.Second),
 		identifyBuckets: bucketstore.NewBucketStore(),
 
-		applications: &syncmap.Map[string, *Application]{},
+		Applications: &syncmap.Map[string, *Application]{},
 
 		guildChunks: csmap.Create[discord.Snowflake, *GuildChunk](),
 
@@ -184,14 +184,14 @@ func (sandwich *Sandwich) WithGRPCServer(listenerConfig *net.ListenConfig, netwo
 }
 
 func (sandwich *Sandwich) Start(ctx context.Context) error {
-	sandwich.logger.Info("Starting Sandwich")
+	sandwich.Logger.Info("Starting Sandwich")
 
 	if err := sandwich.getConfig(ctx); err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
 	}
 
-	if sandwich.client == nil {
-		sandwich.client = http.DefaultClient
+	if sandwich.Client == nil {
+		sandwich.Client = http.DefaultClient
 	}
 
 	sandwich.startApplications(ctx)
@@ -200,9 +200,9 @@ func (sandwich *Sandwich) Start(ctx context.Context) error {
 }
 
 func (sandwich *Sandwich) Stop(ctx context.Context) {
-	sandwich.logger.Info("Stopping Sandwich")
+	sandwich.Logger.Info("Stopping Sandwich")
 
-	sandwich.applications.Range(func(_ string, application *Application) bool {
+	sandwich.Applications.Range(func(_ string, application *Application) bool {
 		application.Stop(ctx)
 
 		return true
@@ -210,20 +210,20 @@ func (sandwich *Sandwich) Stop(ctx context.Context) {
 }
 
 func (sandwich *Sandwich) getConfig(ctx context.Context) error {
-	sandwich.logger.Debug("Getting config")
+	sandwich.Logger.Debug("Getting config")
 
 	config, err := sandwich.configProvider.GetConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
 	}
 
-	sandwich.config.Store(config)
+	sandwich.Config.Store(config)
 
 	// Update application configurations
 	for _, applicationConfig := range config.Applications {
-		if application, ok := sandwich.applications.Load(applicationConfig.ApplicationIdentifier); ok {
+		if application, ok := sandwich.Applications.Load(applicationConfig.ApplicationIdentifier); ok {
 			slog.Info("Updated application configuration", "application_identifier", applicationConfig.ApplicationIdentifier)
-			application.configuration.Store(applicationConfig)
+			application.Configuration.Store(applicationConfig)
 		}
 	}
 
@@ -236,19 +236,19 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 
 // startApplications starts all applications.
 func (sandwich *Sandwich) startApplications(ctx context.Context) {
-	sandwich.logger.Debug("Starting applications")
+	sandwich.Logger.Debug("Starting applications")
 
-	applications := sandwich.config.Load().Applications
+	applications := sandwich.Config.Load().Applications
 
 	for _, applicationConfig := range applications {
 		if err := sandwich.validateApplicationConfig(applicationConfig); err != nil {
-			sandwich.logger.Error("Failed to validate application config", "error", err)
+			sandwich.Logger.Error("Failed to validate application config", "error", err)
 
 			continue
 		}
 
 		if _, err := sandwich.addApplication(ctx, applicationConfig); err != nil {
-			sandwich.logger.Error("Failed to add application", "error", err)
+			sandwich.Logger.Error("Failed to add application", "error", err)
 
 			continue
 		}
@@ -257,17 +257,17 @@ func (sandwich *Sandwich) startApplications(ctx context.Context) {
 
 func (sandwich *Sandwich) addApplication(ctx context.Context, applicationConfig *ApplicationConfiguration) (*Application, error) {
 	application := NewApplication(sandwich, applicationConfig)
-	sandwich.applications.Store(applicationConfig.ApplicationIdentifier, application)
+	sandwich.Applications.Store(applicationConfig.ApplicationIdentifier, application)
 
 	if err := application.Initialize(ctx); err != nil {
-		sandwich.logger.Error("Failed to initialize application", "error", err)
+		sandwich.Logger.Error("Failed to initialize application", "error", err)
 
 		application.SetStatus(ApplicationStatusFailed)
 
 		return application, err
 	}
 
-	if application.configuration.Load().AutoStart {
+	if application.Configuration.Load().AutoStart {
 		go func(application *Application) {
 			if err := application.Start(ctx); err != nil {
 				application.SetStatus(ApplicationStatusFailed)
@@ -288,7 +288,7 @@ func (sandwich *Sandwich) validateApplicationConfig(applicationConfig *Applicati
 		return ErrApplicationMissingBotToken
 	}
 
-	if _, ok := sandwich.applications.Load(applicationConfig.ApplicationIdentifier); ok {
+	if _, ok := sandwich.Applications.Load(applicationConfig.ApplicationIdentifier); ok {
 		return ErrApplicationIdentifierExists
 	}
 
@@ -351,11 +351,11 @@ func (sandwich *Sandwich) broadcast(eventType string, data any) error {
 // Custom conversions
 
 func applicationToPB(application *Application) *pb.SandwichApplication {
-	configuration := application.configuration.Load()
+	configuration := application.Configuration.Load()
 
 	var userID int64
 
-	if applicationUser := application.user.Load(); applicationUser != nil {
+	if applicationUser := application.User.Load(); applicationUser != nil {
 		userID = int64(applicationUser.ID)
 	}
 
@@ -367,11 +367,11 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 
 	shards := make(map[int32]*pb.Shard)
 
-	if application.shards != nil {
-		application.shards.Range(func(shardIndex int32, shard *Shard) bool {
+	if application.Shards != nil {
+		application.Shards.Range(func(shardIndex int32, shard *Shard) bool {
 			shards[shardIndex] = &pb.Shard{
 				Id:                shardIndex,
-				Status:            shard.status.Load(),
+				Status:            shard.Status.Load(),
 				StartedAt:         shard.startedAt.Load().Unix(),
 				UnavailableGuilds: int32(shard.unavailableGuilds.Count()),
 				LazyGuilds:        int32(shard.lazyGuilds.Count()),
@@ -387,7 +387,7 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 
 	var startedAt int64
 
-	if application.shards != nil && application.startedAt.Load() != nil {
+	if application.Shards != nil && application.startedAt.Load() != nil {
 		startedAt = application.startedAt.Load().Unix()
 	}
 
@@ -396,9 +396,9 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 		ProducerIdentifier:    configuration.ProducerIdentifier,
 		DisplayName:           configuration.DisplayName,
 		BotToken:              configuration.BotToken,
-		ShardCount:            application.shardCount.Load(),
+		ShardCount:            application.ShardCount.Load(),
 		AutoSharded:           configuration.AutoSharded,
-		Status:                application.status.Load(),
+		Status:                application.Status.Load(),
 		StartedAt:             startedAt,
 		UserId:                userID,
 		Values:                valuesJSON,
