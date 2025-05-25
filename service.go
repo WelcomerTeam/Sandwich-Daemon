@@ -319,14 +319,14 @@ func (sandwich *Sandwich) broadcast(eventType string, data any) error {
 	}
 
 	payload := ProducedPayload{
-		GatewayPayload: &discord.GatewayPayload{
+		GatewayPayload: discord.GatewayPayload{
 			Op:   discord.GatewayOpDispatch,
 			Type: eventType,
 			Data: payloadDataBytes,
 		},
 		Extra:    nil,
-		Metadata: &ProducedMetadata{},
-		Trace:    &Trace{},
+		Metadata: ProducedMetadata{},
+		Trace:    Trace{},
 	}
 
 	payloadBytes, err := json.Marshal(payload)
