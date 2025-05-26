@@ -213,11 +213,8 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 	}
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"lazy":        lazy,
-			"unavailable": unavailable,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("lazy", lazy).Set("unavailable", unavailable),
 	}, true, nil
 }
 
@@ -305,10 +302,8 @@ func OnChannelUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 	shard.Sandwich.stateProvider.SetGuildChannel(ctx, *channelUpdatePayload.GuildID, discord.Channel(channelUpdatePayload))
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeChannel,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeChannel),
 	}, true, nil
 }
 
@@ -334,10 +329,8 @@ func OnChannelDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 	shard.Sandwich.stateProvider.RemoveGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeChannel,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeChannel),
 	}, true, nil
 }
 
@@ -393,10 +386,8 @@ func OnThreadUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 	}
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeChannel,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeChannel),
 	}, true, nil
 }
 
@@ -575,10 +566,8 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 	shard.Sandwich.stateProvider.SetGuild(ctx, guildUpdatePayload.ID, discord.Guild(guildUpdatePayload))
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeGuild,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeGuild),
 	}, true, nil
 }
 
@@ -612,10 +601,8 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 	}
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeGuild,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeGuild),
 	}, true, nil
 }
 
@@ -681,10 +668,8 @@ func OnGuildEmojisUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 	shard.Sandwich.stateProvider.SetGuildEmojis(ctx, guildEmojisUpdatePayload.GuildID, guildEmojisUpdatePayload.Emojis)
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeEmojis,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeEmojis),
 	}, true, nil
 }
 
@@ -714,10 +699,8 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 	}
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeStickers,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeStickers),
 	}, true, nil
 }
 
@@ -803,10 +786,8 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 	shard.Sandwich.stateProvider.RemoveUserMutualGuild(ctx, guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": guildMember,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", guildMember),
 	}, true, nil
 }
 
@@ -836,10 +817,8 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 	shard.Sandwich.stateProvider.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, discord.GuildMember(guildMemberUpdatePayload))
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeGuildMember,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeGuildMember),
 	}, true, nil
 }
 
@@ -887,10 +866,8 @@ func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 	shard.Sandwich.stateProvider.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeRole,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeRole),
 	}, true, nil
 }
 
@@ -1286,10 +1263,8 @@ func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload
 	shard.Sandwich.stateProvider.SetUser(ctx, userUpdatePayload.ID, discord.User(userUpdatePayload))
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeUser,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeUser),
 	}, true, nil
 }
 
@@ -1325,10 +1300,8 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 	}
 
 	return DispatchResult{
-		Data: msg.Data,
-		Extra: Extra{
-			"before": beforeVoiceState,
-		},
+		Data:  msg.Data,
+		Extra: NewExtra().Set("before", beforeVoiceState),
 	}, true, nil
 }
 
