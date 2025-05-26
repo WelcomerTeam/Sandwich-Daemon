@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.0-rc.9"
+var Version = "2.0.0-rc.10"
 
 type Sandwich struct {
 	Logger *slog.Logger
@@ -369,18 +369,33 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 
 	if application.Shards != nil {
 		application.Shards.Range(func(shardIndex int32, shard *Shard) bool {
-			shards[shardIndex] = &pb.Shard{
+			shardPb := &pb.Shard{
 				Id:                shardIndex,
 				Status:            shard.Status.Load(),
-				StartedAt:         shard.startedAt.Load().Unix(),
 				UnavailableGuilds: int32(shard.unavailableGuilds.Count()),
 				LazyGuilds:        int32(shard.lazyGuilds.Count()),
 				Guilds:            int32(shard.guilds.Count()),
 				Sequence:          shard.sequence.Load(),
-				LastHeartbeatSent: shard.lastHeartbeatSent.Load().Unix(),
-				LastHeartbeatAck:  shard.lastHeartbeatAck.Load().Unix(),
 				GatewayLatency:    shard.gatewayLatency.Load(),
 			}
+
+			startedAt := shard.startedAt.Load()
+			if startedAt != nil {
+				shardPb.StartedAt = startedAt.Unix()
+			}
+
+			lastHeartbeatSent := shard.lastHeartbeatSent.Load()
+			if lastHeartbeatSent != nil {
+				shardPb.LastHeartbeatSent = lastHeartbeatSent.Unix()
+			}
+
+			lastHeartbeatAck := shard.lastHeartbeatAck.Load()
+			if lastHeartbeatAck != nil {
+				shardPb.LastHeartbeatAck = lastHeartbeatAck.Unix()
+			}
+
+			shards[shardIndex] = shardPb
+
 			return true
 		})
 	}
