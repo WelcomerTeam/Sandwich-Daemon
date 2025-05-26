@@ -38,7 +38,7 @@ func (e *Extra) Set(key string, value any) *Extra {
 
 	(*e)[key] = data
 
-	return nil
+	return e
 }
 
 type DispatchResult struct {
