@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -77,7 +78,11 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
 
-	p.producedPayloadPool.Put(packet)
+	if packet != nil {
+		p.producedPayloadPool.Put(packet)
+	} else {
+		slog.Error("Attempt to insert nil packet into pool", "loc", "EventProviderWithBlacklist.Dispatch")
+	}
 
 	return nil
 }

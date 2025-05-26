@@ -270,7 +270,11 @@ readyConsumer:
 		return fmt.Errorf("failed to unmarshal hello: %w", err)
 	}
 
-	shard.gatewayPayloadPool.Put(payload)
+	if payload != nil {
+		shard.gatewayPayloadPool.Put(payload)
+	} else {
+		shard.Logger.Error("Attempt to put nil message into pool", "loc", "Shard.Connect")
+	}
 
 	if hello.HeartbeatInterval <= 0 {
 		return ErrShardInvalidHeartbeatInterval
@@ -379,7 +383,11 @@ func (shard *Shard) Listen(ctx context.Context) error {
 				shard.Logger.Error("Failed to handle event", "error", err)
 			}
 
-			shard.gatewayPayloadPool.Put(msg)
+			if msg != nil {
+				shard.gatewayPayloadPool.Put(msg)
+			} else {
+				shard.Logger.Error("Attempt to put nil message into pool", "loc", "Shard.Listen(recv)")
+			}
 
 			continue
 		}
@@ -404,7 +412,11 @@ func (shard *Shard) Listen(ctx context.Context) error {
 			shard.Logger.Error("Failed to marshal message", "error", merr)
 		}
 
-		shard.gatewayPayloadPool.Put(msg)
+		if msg != nil {
+			shard.gatewayPayloadPool.Put(msg)
+		} else {
+			shard.Logger.Error("Attempt to put nil message into pool", "loc", "Shard.Listen(marshal)")
+		}
 
 		shard.Logger.Error("Shard received error", "error", err, "message", string(msgs))
 
@@ -666,7 +678,7 @@ func (shard *Shard) read(ctx context.Context, websocketConn *websocket.Conn) (*d
 
 	gatewayPayload := shard.gatewayPayloadPool.Get().(*discord.GatewayPayload)
 
-	err = json.Unmarshal(data, gatewayPayload)
+	err = json.Unmarshal(data, &gatewayPayload)
 	if err != nil {
 		return gatewayPayload, fmt.Errorf("failed to unmarshal payload: %w (payload: %s)", err, string(data))
 	}
