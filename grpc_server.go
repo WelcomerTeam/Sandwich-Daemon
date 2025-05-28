@@ -445,10 +445,10 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 				}
 			}
 
-			return false
+			return true
 		})
 
-		return false
+		return true
 	})
 
 	println("WhereIsGuild", "locations", len(locations), "guildId", req.GetGuildId())
