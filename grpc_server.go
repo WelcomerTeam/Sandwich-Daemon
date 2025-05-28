@@ -418,8 +418,13 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 	locations := make(map[int64]*sandwich_protobuf.WhereIsGuildLocation)
 
 	grpcServer.sandwich.Applications.Range(func(applicationIdentifier string, application *Application) bool {
+		println("WhereIsGuild", "applicationIdentifier", applicationIdentifier, "guildId", req.GetGuildId())
 		application.Shards.Range(func(_ int32, shard *Shard) bool {
-			if shard.guilds.Has(discord.Snowflake(req.GetGuildId())) {
+			has := shard.guilds.Has(discord.Snowflake(req.GetGuildId()))
+
+			println("WhereIsGuild", "applicationIdentifier", applicationIdentifier, "shardId", shard.ShardID, "hasGuild", has)
+
+			if has {
 				user := application.User.Load()
 
 				var pbGuildMember *sandwich_protobuf.GuildMember
@@ -440,11 +445,13 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 				}
 			}
 
-			return true
+			return false
 		})
 
-		return true
+		return false
 	})
+
+	println("WhereIsGuild", "locations", len(locations), "guildId", req.GetGuildId())
 
 	return &sandwich_protobuf.WhereIsGuildResponse{
 		BaseResponse: &sandwich_protobuf.BaseResponse{
