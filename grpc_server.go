@@ -125,6 +125,7 @@ func (grpcServer *GRPCServer) FetchApplication(ctx context.Context, req *sandwic
 		}
 
 		applications[key] = applicationToPB(application)
+
 		return true
 	})
 
@@ -342,7 +343,7 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *sandwi
 
 	var shard *Shard
 
-	grpcServer.sandwich.Applications.Range(func(key string, application *Application) bool {
+	grpcServer.sandwich.Applications.Range(func(_ string, application *Application) bool {
 		application.Shards.Range(func(_ int32, value *Shard) bool {
 			if value.guilds.Has(discord.Snowflake(req.GetGuildId())) {
 				shard = value
@@ -353,7 +354,7 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *sandwi
 			return true
 		})
 
-		return shard != nil
+		return shard == nil
 	})
 
 	if shard == nil {
@@ -460,8 +461,6 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 
 		return true
 	})
-
-	println("WhereIsGuild", "locations", len(locations), "guildId", req.GetGuildId())
 
 	return &sandwich_protobuf.WhereIsGuildResponse{
 		BaseResponse: &sandwich_protobuf.BaseResponse{
