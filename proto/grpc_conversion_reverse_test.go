@@ -9,9 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	NilDate = time.Time{}
-)
+var NilDate = time.Time{}
 
 func assertEqual[v comparable](t assert.TestingT, a, b v) {
 	assert.Equal(t, a, b)

@@ -418,35 +418,45 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 	locations := make(map[int64]*sandwich_protobuf.WhereIsGuildLocation)
 
 	grpcServer.sandwich.Applications.Range(func(applicationIdentifier string, application *Application) bool {
-		println("WhereIsGuild", "applicationIdentifier", applicationIdentifier, "guildId", req.GetGuildId())
-		application.Shards.Range(func(_ int32, shard *Shard) bool {
-			has := shard.guilds.Has(discord.Snowflake(req.GetGuildId()))
+		user := application.User.Load()
 
-			println("WhereIsGuild", "applicationIdentifier", applicationIdentifier, "shardId", shard.ShardID, "hasGuild", has)
-
-			if has {
-				user := application.User.Load()
-
-				var pbGuildMember *sandwich_protobuf.GuildMember
-
-				guildMember, ok := grpcServer.sandwich.stateProvider.GetGuildMember(
-					ctx,
-					discord.Snowflake(req.GetGuildId()),
-					user.ID,
-				)
-				if ok {
-					pbGuildMember = sandwich_protobuf.GuildMemberToPB(guildMember)
-				}
-
-				locations[int64(user.ID)] = &sandwich_protobuf.WhereIsGuildLocation{
-					Identifier:  applicationIdentifier,
-					ShardId:     shard.ShardID,
-					GuildMember: pbGuildMember,
-				}
-			}
-
+		if user == nil {
 			return true
-		})
+		}
+
+		guildMember, guildMemberFound := grpcServer.sandwich.stateProvider.GetGuildMember(
+			ctx,
+			discord.Snowflake(req.GetGuildId()),
+			user.ID,
+		)
+		if !guildMemberFound {
+			return true
+		}
+
+		var shardHas bool
+
+		shardID := int32((req.GetGuildId() >> 22) % int64(application.ShardCount.Load()))
+
+		shard, shardFound := application.Shards.Load(int32(shardID))
+		if shardFound {
+			shardHas = shard.guilds.Has(discord.Snowflake(req.GetGuildId()))
+		}
+
+		if !shardHas {
+			shardID = -1 // Set to -1 if the shard does not have the guild
+			grpcServer.logger.Warn("GuildMember found in shard, but shard does not have guild",
+				"applicationIdentifier", applicationIdentifier,
+				"shardId", shardID,
+				"guildId", req.GetGuildId(),
+				"guildMember", user.ID,
+			)
+		}
+
+		locations[int64(user.ID)] = &sandwich_protobuf.WhereIsGuildLocation{
+			Identifier:  applicationIdentifier,
+			ShardId:     int32(shardID),
+			GuildMember: sandwich_protobuf.GuildMemberToPB(guildMember),
+		}
 
 		return true
 	})
