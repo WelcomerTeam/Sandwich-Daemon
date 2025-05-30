@@ -687,15 +687,11 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 		ctx = WithGuildID(ctx, guildStickersUpdatePayload.GuildID)
 	}
 
-	beforeGuild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, guildStickersUpdatePayload.GuildID)
-	beforeStickers := beforeGuild.Stickers
-
+	beforeStickers, exists := shard.Sandwich.stateProvider.GetGuildStickers(ctx, guildStickersUpdatePayload.GuildID)
 	if exists {
-		beforeGuild.Stickers = guildStickersUpdatePayload.Stickers
-
-		shard.Sandwich.stateProvider.SetGuildStickers(ctx, beforeGuild.ID, guildStickersUpdatePayload.Stickers)
+		shard.Sandwich.stateProvider.SetGuildStickers(ctx, guildStickersUpdatePayload.GuildID, guildStickersUpdatePayload.Stickers)
 	} else {
-		shard.Logger.Warn("Received "+discord.DiscordEventGuildStickersUpdate+" event, however guild is not present in state", "guild_id", guildStickersUpdatePayload.GuildID)
+		shard.Logger.Warn("Received "+discord.DiscordEventGuildStickersUpdate+" event, however stickers is not present in state", "guild_id", guildStickersUpdatePayload.GuildID)
 	}
 
 	return DispatchResult{
@@ -777,10 +773,10 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 		ctx = WithGuildID(ctx, guildMemberRemovePayload.GuildID)
 	}
 
-	guildMember, ok := shard.Sandwich.stateProvider.GetGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
-	if !ok {
-		shard.Logger.Warn("Received "+discord.DiscordEventGuildMemberRemove+" event, but previous guild member not present in state", "guild_id", guildMemberRemovePayload.GuildID, "user_id", guildMemberRemovePayload.User.ID)
-	}
+	guildMember, _ := shard.Sandwich.stateProvider.GetGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
+	// if !ok {
+	// 	shard.Logger.Warn("Received "+discord.DiscordEventGuildMemberRemove+" event, but previous guild member not present in state", "guild_id", guildMemberRemovePayload.GuildID, "user_id", guildMemberRemovePayload.User.ID)
+	// }
 
 	shard.Sandwich.stateProvider.RemoveGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 	shard.Sandwich.stateProvider.RemoveUserMutualGuild(ctx, guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
@@ -805,14 +801,14 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		ctx = WithGuildID(ctx, *guildMemberUpdatePayload.GuildID)
 	}
 
-	beforeGuildMember, ok := shard.Sandwich.stateProvider.GetGuildMember(
+	beforeGuildMember, _ := shard.Sandwich.stateProvider.GetGuildMember(
 		ctx,
 		*guildMemberUpdatePayload.GuildID,
 		guildMemberUpdatePayload.User.ID,
 	)
-	if !ok {
-		shard.Logger.Warn("Received "+discord.DiscordEventGuildMemberUpdate+" event, but previous guild member not present in state", "guild_id", *guildMemberUpdatePayload.GuildID, "user_id", guildMemberUpdatePayload.User.ID)
-	}
+	// if !ok {
+	// 	shard.Logger.Warn("Received "+discord.DiscordEventGuildMemberUpdate+" event, but previous guild member not present in state", "guild_id", *guildMemberUpdatePayload.GuildID, "user_id", guildMemberUpdatePayload.User.ID)
+	// }
 
 	shard.Sandwich.stateProvider.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, discord.GuildMember(guildMemberUpdatePayload))
 
@@ -858,10 +854,10 @@ func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 		ctx = WithGuildID(ctx, guildRoleUpdatePayload.GuildID)
 	}
 
-	beforeRole, ok := shard.Sandwich.stateProvider.GetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
-	if !ok {
-		shard.Logger.Warn("Received "+discord.DiscordEventGuildRoleUpdate+" event, but previous guild role not present in state", "guild_id", guildRoleUpdatePayload.GuildID, "role_id", guildRoleUpdatePayload.Role.ID)
-	}
+	beforeRole, _ := shard.Sandwich.stateProvider.GetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
+	// if !ok {
+	// 	shard.Logger.Warn("Received "+discord.DiscordEventGuildRoleUpdate+" event, but previous guild role not present in state", "guild_id", guildRoleUpdatePayload.GuildID, "role_id", guildRoleUpdatePayload.Role.ID)
+	// }
 
 	shard.Sandwich.stateProvider.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
@@ -1255,10 +1251,10 @@ func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	beforeUser, ok := shard.Sandwich.stateProvider.GetUser(ctx, userUpdatePayload.ID)
-	if !ok {
-		shard.Logger.Warn("Received "+discord.DiscordEventUserUpdate+" event, but previous user not present in state", "user_id", userUpdatePayload.ID)
-	}
+	beforeUser, _ := shard.Sandwich.stateProvider.GetUser(ctx, userUpdatePayload.ID)
+	// if !ok {
+	// 	shard.Logger.Warn("Received "+discord.DiscordEventUserUpdate+" event, but previous user not present in state", "user_id", userUpdatePayload.ID)
+	// }
 
 	shard.Sandwich.stateProvider.SetUser(ctx, userUpdatePayload.ID, discord.User(userUpdatePayload))
 
@@ -1288,10 +1284,10 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 		guildID = *voiceStateUpdatePayload.GuildID
 	}
 
-	beforeVoiceState, ok := shard.Sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
-	if !ok {
-		shard.Logger.Warn("Received "+discord.DiscordEventVoiceStateUpdate+" event, but previous voice state not present in state", "guild_id", guildID, "user_id", voiceStateUpdatePayload.UserID)
-	}
+	beforeVoiceState, _ := shard.Sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
+	// if !ok {
+	// 	shard.Logger.Warn("Received "+discord.DiscordEventVoiceStateUpdate+" event, but previous voice state not present in state", "guild_id", guildID, "user_id", voiceStateUpdatePayload.UserID)
+	// }
 
 	if voiceStateUpdatePayload.ChannelID.IsNil() {
 		shard.Sandwich.stateProvider.RemoveVoiceState(ctx, *voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID)
