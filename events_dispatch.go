@@ -198,16 +198,16 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		ctx = WithGuildID(ctx, guildCreatePayload.ID)
 	}
 
+	shard.guilds.Store(guildCreatePayload.ID, true)
+
 	shard.Sandwich.stateProvider.SetGuild(ctx, guildCreatePayload.ID, discord.Guild(guildCreatePayload))
 
 	lazy, exists := shard.lazyGuilds.Load(guildCreatePayload.ID)
-
 	if exists {
 		shard.lazyGuilds.Delete(guildCreatePayload.ID)
 	}
 
 	unavailable, exists := shard.unavailableGuilds.Load(guildCreatePayload.ID)
-
 	if exists {
 		shard.unavailableGuilds.Delete(guildCreatePayload.ID)
 	}
