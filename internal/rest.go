@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"os"
 
 	"github.com/WelcomerTeam/Sandwich-Daemon/discord"
 	sandwich_structs "github.com/WelcomerTeam/Sandwich-Daemon/internal/structs"
@@ -671,6 +671,54 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 
 			snowflake := discord.GuildID(idInt64)
 			sg.State.SetGuildChannel(NewFakeCtx(mg), snowflake, ch)
+		}
+	case "guild_roles":
+		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
+
+		if err != nil {
+			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+				Ok:    false,
+				Error: err.Error(),
+			})
+
+			return
+		}
+
+		if ctx.IsGet() {
+			roles, ok := sg.State.GetAllGuildRoles(discord.GuildID(idInt64))
+
+			if !ok {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: "Guild roles not found",
+				})
+
+				return
+			}
+
+			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+				Ok:   true,
+				Data: roles,
+			})
+		} else {
+			// Read request body as a user
+			var role discord.Role
+
+			err := sandwichjson.Unmarshal(ctx.PostBody(), &role)
+
+			if err != nil {
+				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+					Ok:    false,
+					Error: err.Error(),
+				})
+
+				return
+			}
+
+			sg.Logger.Info().Any("role", role).Any("guildId", idInt64).Msg("Setting guild channels")
+
+			snowflake := discord.GuildID(idInt64)
+			sg.State.SetGuildRole(snowflake, role)
 		}
 	case "channels":
 		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
