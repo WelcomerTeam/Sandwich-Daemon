@@ -51,8 +51,8 @@ func OnReady(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, tra
 	shard.Application.SetUser(&readyPayload.User)
 
 	for _, guild := range readyPayload.Guilds {
-		shard.lazyGuilds.Store(guild.ID, true)
-		shard.guilds.Store(guild.ID, true)
+		shard.LazyGuilds.Store(guild.ID, true)
+		shard.Guilds.Store(guild.ID, true)
 	}
 
 	guildCreateEvents := 0
@@ -198,18 +198,18 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		ctx = WithGuildID(ctx, guildCreatePayload.ID)
 	}
 
-	shard.guilds.Store(guildCreatePayload.ID, true)
+	shard.Guilds.Store(guildCreatePayload.ID, true)
 
 	shard.Sandwich.stateProvider.SetGuild(ctx, guildCreatePayload.ID, discord.Guild(guildCreatePayload))
 
-	lazy, exists := shard.lazyGuilds.Load(guildCreatePayload.ID)
+	lazy, exists := shard.LazyGuilds.Load(guildCreatePayload.ID)
 	if exists {
-		shard.lazyGuilds.Delete(guildCreatePayload.ID)
+		shard.LazyGuilds.Delete(guildCreatePayload.ID)
 	}
 
-	unavailable, exists := shard.unavailableGuilds.Load(guildCreatePayload.ID)
+	unavailable, exists := shard.UnavailableGuilds.Load(guildCreatePayload.ID)
 	if exists {
-		shard.unavailableGuilds.Delete(guildCreatePayload.ID)
+		shard.UnavailableGuilds.Delete(guildCreatePayload.ID)
 	}
 
 	return DispatchResult{
@@ -591,12 +591,12 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 	}
 
 	if guildDeletePayload.Unavailable {
-		shard.unavailableGuilds.Store(guildDeletePayload.ID, true)
+		shard.UnavailableGuilds.Store(guildDeletePayload.ID, true)
 	} else {
 		// We do not remove the actual guild as other applications may be using it.
 		// Dereferencing it locally ensures that if other applications are using it,
 		// it will stay.
-		shard.guilds.Delete(guildDeletePayload.ID)
+		shard.Guilds.Delete(guildDeletePayload.ID)
 		shard.Application.guilds.Delete(guildDeletePayload.ID)
 	}
 

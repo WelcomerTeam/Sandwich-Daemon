@@ -22,7 +22,7 @@ func RegisterGatewayEvent(eventType discord.GatewayOp, handler GatewayHandler) {
 	gatewayEvents[eventType] = handler
 }
 
-func gatewayOpDispatch(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) error {
+func GatewayOpDispatch(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, trace *Trace) error {
 	shard.sequence.Store(msg.Sequence)
 
 	trace.Set("dispatch", time.Now().UnixNano())
@@ -30,7 +30,7 @@ func gatewayOpDispatch(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 	return shard.OnDispatch(ctx, msg, trace)
 }
 
-func gatewayOpHeartbeat(ctx context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
+func GatewayOpHeartbeat(ctx context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
 	err := shard.SendEvent(ctx, discord.GatewayOpHeartbeat, shard.sequence.Load())
 	if err != nil {
 		err = shard.reconnect(ctx, websocket.StatusNormalClosure)
@@ -42,7 +42,7 @@ func gatewayOpHeartbeat(ctx context.Context, shard *Shard, _ *discord.GatewayPay
 	return nil
 }
 
-func gatewayOpReconnect(ctx context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
+func GatewayOpReconnect(ctx context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
 	shard.Logger.Debug("Shard has been requested to reconnect")
 
 	err := shard.reconnect(ctx, WebsocketReconnectCloseCode)
@@ -53,7 +53,7 @@ func gatewayOpReconnect(ctx context.Context, shard *Shard, _ *discord.GatewayPay
 	return nil
 }
 
-func gatewayOpInvalidSession(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) error {
+func GatewayOpInvalidSession(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) error {
 	var resumable bool
 
 	err := json.Unmarshal(msg.Data, &resumable)
@@ -76,7 +76,7 @@ func gatewayOpInvalidSession(ctx context.Context, shard *Shard, msg *discord.Gat
 	return nil
 }
 
-func gatewayOpHello(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) error {
+func GatewayOpHello(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) error {
 	var hello discord.Hello
 
 	err := json.Unmarshal(msg.Data, &hello)
@@ -85,8 +85,8 @@ func gatewayOpHello(_ context.Context, shard *Shard, msg *discord.GatewayPayload
 	}
 
 	now := time.Now()
-	shard.lastHeartbeatSent.Store(&now)
-	shard.lastHeartbeatAck.Store(&now)
+	shard.LastHeartbeatSent.Store(&now)
+	shard.LastHeartbeatAck.Store(&now)
 
 	if hello.HeartbeatInterval <= 0 {
 		return ErrShardInvalidHeartbeatInterval
@@ -103,13 +103,13 @@ func gatewayOpHello(_ context.Context, shard *Shard, msg *discord.GatewayPayload
 	return nil
 }
 
-func gatewayOpHeartbeatAck(_ context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
+func GatewayOpHeartbeatAck(_ context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
 	now := time.Now()
-	shard.lastHeartbeatAck.Store(&now)
+	shard.LastHeartbeatAck.Store(&now)
 
-	if lastHeartbeatSent := shard.lastHeartbeatSent.Load(); lastHeartbeatSent != nil {
+	if lastHeartbeatSent := shard.LastHeartbeatSent.Load(); lastHeartbeatSent != nil {
 		gatewayLatency := now.Sub(*lastHeartbeatSent).Milliseconds()
-		shard.gatewayLatency.Store(gatewayLatency)
+		shard.GatewayLatency.Store(gatewayLatency)
 		UpdateGatewayLatency(shard.Application.Identifier, shard.ShardID, float64(gatewayLatency))
 	}
 
@@ -117,10 +117,10 @@ func gatewayOpHeartbeatAck(_ context.Context, shard *Shard, _ *discord.GatewayPa
 }
 
 func init() {
-	RegisterGatewayEvent(discord.GatewayOpDispatch, gatewayOpDispatch)
-	RegisterGatewayEvent(discord.GatewayOpHeartbeat, gatewayOpHeartbeat)
-	RegisterGatewayEvent(discord.GatewayOpReconnect, gatewayOpReconnect)
-	RegisterGatewayEvent(discord.GatewayOpInvalidSession, gatewayOpInvalidSession)
-	RegisterGatewayEvent(discord.GatewayOpHello, gatewayOpHello)
-	RegisterGatewayEvent(discord.GatewayOpHeartbeatACK, gatewayOpHeartbeatAck)
+	RegisterGatewayEvent(discord.GatewayOpDispatch, GatewayOpDispatch)
+	RegisterGatewayEvent(discord.GatewayOpHeartbeat, GatewayOpHeartbeat)
+	RegisterGatewayEvent(discord.GatewayOpReconnect, GatewayOpReconnect)
+	RegisterGatewayEvent(discord.GatewayOpInvalidSession, GatewayOpInvalidSession)
+	RegisterGatewayEvent(discord.GatewayOpHello, GatewayOpHello)
+	RegisterGatewayEvent(discord.GatewayOpHeartbeatACK, GatewayOpHeartbeatAck)
 }

@@ -16,9 +16,9 @@ import (
 
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/limiter"
+	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
 	"github.com/WelcomerTeam/czlib"
 	"github.com/coder/websocket"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 var (
@@ -47,21 +47,21 @@ type Shard struct {
 	ShardID int32
 
 	retriesRemaining *atomic.Int32
-	startedAt        *atomic.Pointer[time.Time]
-	initializedAt    *atomic.Pointer[time.Time]
+	StartedAt        *atomic.Pointer[time.Time]
+	InitializedAt    *atomic.Pointer[time.Time]
 
-	heartbeatActive   *atomic.Bool
-	lastHeartbeatAck  *atomic.Pointer[time.Time]
-	lastHeartbeatSent *atomic.Pointer[time.Time]
-	gatewayLatency    *atomic.Int64
+	HeartbeatActive   *atomic.Bool
+	LastHeartbeatAck  *atomic.Pointer[time.Time]
+	LastHeartbeatSent *atomic.Pointer[time.Time]
+	GatewayLatency    *atomic.Int64
 
 	heartbeater              *time.Ticker
 	heartbeatInterval        *atomic.Pointer[time.Duration]
 	heartbeatFailureInterval *atomic.Pointer[time.Duration]
 
-	unavailableGuilds *csmap.CsMap[discord.Snowflake, bool]
-	lazyGuilds        *csmap.CsMap[discord.Snowflake, bool]
-	guilds            *csmap.CsMap[discord.Snowflake, bool]
+	UnavailableGuilds *syncmap.Map[discord.Snowflake, bool]
+	LazyGuilds        *syncmap.Map[discord.Snowflake, bool]
+	Guilds            *syncmap.Map[discord.Snowflake, bool]
 
 	sequence  *atomic.Int32
 	sessionID *atomic.Pointer[string]
@@ -93,21 +93,21 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 		ShardID: shardID,
 
 		retriesRemaining: &atomic.Int32{},
-		startedAt:        &atomic.Pointer[time.Time]{},
-		initializedAt:    &atomic.Pointer[time.Time]{},
+		StartedAt:        &atomic.Pointer[time.Time]{},
+		InitializedAt:    &atomic.Pointer[time.Time]{},
 
-		heartbeatActive:   &atomic.Bool{},
-		lastHeartbeatAck:  &atomic.Pointer[time.Time]{},
-		lastHeartbeatSent: &atomic.Pointer[time.Time]{},
-		gatewayLatency:    &atomic.Int64{},
+		HeartbeatActive:   &atomic.Bool{},
+		LastHeartbeatAck:  &atomic.Pointer[time.Time]{},
+		LastHeartbeatSent: &atomic.Pointer[time.Time]{},
+		GatewayLatency:    &atomic.Int64{},
 
 		heartbeater:              nil,
 		heartbeatInterval:        &atomic.Pointer[time.Duration]{},
 		heartbeatFailureInterval: &atomic.Pointer[time.Duration]{},
 
-		unavailableGuilds: csmap.Create[discord.Snowflake, bool](),
-		lazyGuilds:        csmap.Create[discord.Snowflake, bool](),
-		guilds:            csmap.Create[discord.Snowflake, bool](),
+		UnavailableGuilds: &syncmap.Map[discord.Snowflake, bool]{},
+		LazyGuilds:        &syncmap.Map[discord.Snowflake, bool]{},
+		Guilds:            &syncmap.Map[discord.Snowflake, bool]{},
 
 		sequence:  &atomic.Int32{},
 		sessionID: &atomic.Pointer[string]{},
@@ -138,7 +138,7 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 	shard.retriesRemaining.Store(ShardConnectRetries)
 
 	now := time.Now()
-	shard.initializedAt.Store(&now)
+	shard.InitializedAt.Store(&now)
 
 	return shard
 }
@@ -163,7 +163,7 @@ func (shard *Shard) SetStatus(status ShardStatus) {
 	shard.Status.Store(int32(status))
 	shard.Logger.Info("Shard status updated", "status", status.String())
 
-	err := shard.Sandwich.broadcast(SandwichShardStatusUpdate, ShardStatusUpdateEvent{
+	err := shard.Sandwich.Broadcast(SandwichShardStatusUpdate, ShardStatusUpdateEvent{
 		Identifier: shard.Application.Identifier,
 		ShardID:    shard.ShardID,
 		Status:     status,
@@ -281,9 +281,9 @@ readyConsumer:
 	}
 
 	now := time.Now()
-	shard.startedAt.Store(&now)
-	shard.lastHeartbeatAck.Store(&now)
-	shard.lastHeartbeatSent.Store(&now)
+	shard.StartedAt.Store(&now)
+	shard.LastHeartbeatAck.Store(&now)
+	shard.LastHeartbeatSent.Store(&now)
 
 	heartbeatInterval := time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	shard.heartbeatInterval.Store(&heartbeatInterval)
@@ -331,7 +331,7 @@ func (shard *Shard) Start(ctx context.Context) error {
 
 			// If the status code is not recoverable, we need to return the error.
 			if ok := errors.As(err, &closeError); ok {
-				if !isStatusCodeRecoverable(closeError.Code) {
+				if !IsStatusCodeRecoverable(closeError.Code) {
 					return err
 				}
 			}
@@ -400,7 +400,7 @@ func (shard *Shard) Listen(ctx context.Context) error {
 		var closeError websocket.CloseError
 
 		if ok := errors.As(err, &closeError); ok {
-			if !isStatusCodeRecoverable(closeError.Code) {
+			if !IsStatusCodeRecoverable(closeError.Code) {
 				shard.Logger.Error("Shard received close event", "error", closeError)
 
 				return fmt.Errorf("shard %d received close event: %w", shard.ShardID, closeError)
@@ -434,7 +434,7 @@ func (shard *Shard) Listen(ctx context.Context) error {
 	}
 }
 
-func isStatusCodeRecoverable(code websocket.StatusCode) bool {
+func IsStatusCodeRecoverable(code websocket.StatusCode) bool {
 	return code != discord.CloseNotAuthenticated &&
 		code != discord.CloseAuthenticationFailed &&
 		code != discord.CloseAlreadyAuthenticated &&
@@ -499,7 +499,7 @@ func (shard *Shard) closeWS(_ context.Context, code websocket.StatusCode) error 
 	return nil
 }
 
-func (shard *Shard) waitForReady() error {
+func (shard *Shard) WaitForReady() error {
 	shard.Logger.Debug("Shard is waiting for ready")
 
 	since := time.Now()
@@ -522,8 +522,8 @@ func (shard *Shard) waitForReady() error {
 func (shard *Shard) heartbeat(ctx context.Context) {
 	shard.Logger.Debug("Shard is heartbeating")
 
-	shard.heartbeatActive.Store(true)
-	defer shard.heartbeatActive.Store(false)
+	shard.HeartbeatActive.Store(true)
+	defer shard.HeartbeatActive.Store(false)
 
 	// We will use a jitter to avoid the heartbeat interval from being the same for all shards.
 	hasJitter := true
@@ -555,9 +555,9 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 			err := shard.SendEvent(ctx, discord.GatewayOpHeartbeat, shard.sequence.Load())
 
 			now := time.Now()
-			shard.lastHeartbeatSent.Store(&now)
+			shard.LastHeartbeatSent.Store(&now)
 
-			if err != nil || now.Sub(*shard.lastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
+			if err != nil || now.Sub(*shard.LastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
 				if err != nil {
 					shard.Logger.Error("Heartbeat failed", "error", err)
 				} else {
@@ -720,10 +720,10 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 	go func() {
 		guildIDs := make([]discord.Snowflake, 0)
 
-		shard.guilds.Range(func(key discord.Snowflake, _ bool) bool {
+		shard.Guilds.Range(func(key discord.Snowflake, _ bool) bool {
 			guildIDs = append(guildIDs, key)
 
-			return false
+			return true
 		})
 
 		shard.Logger.Debug("Chunking all guilds", "count", len(guildIDs))

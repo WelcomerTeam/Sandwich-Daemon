@@ -35,8 +35,8 @@ func (grpcServer *GRPCServer) Listen(req *sandwich_protobuf.ListenRequest, strea
 
 	channel := make(chan *listenerData)
 
-	counter := grpcServer.sandwich.addListener(channel)
-	defer grpcServer.sandwich.removeListener(counter)
+	counter := grpcServer.sandwich.AddListener(channel)
+	defer grpcServer.sandwich.RemoveListener(counter)
 
 	for {
 		select {
@@ -298,7 +298,7 @@ func (grpcServer *GRPCServer) CreateApplication(ctx context.Context, req *sandwi
 	// it will use the context that is passed to the RPC method which will be cancelled.
 	ctx = context.Background()
 
-	application, err := grpcServer.sandwich.addApplication(ctx, applicationConfiguration)
+	application, err := grpcServer.sandwich.AddApplication(ctx, applicationConfiguration)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func (grpcServer *GRPCServer) RequestGuildChunk(ctx context.Context, req *sandwi
 
 	grpcServer.sandwich.Applications.Range(func(_ string, application *Application) bool {
 		application.Shards.Range(func(_ int32, value *Shard) bool {
-			if value.guilds.Has(discord.Snowflake(req.GetGuildId())) {
+			if _, has := value.Guilds.Load(discord.Snowflake(req.GetGuildId())); has {
 				shard = value
 
 				return false
@@ -440,7 +440,7 @@ func (grpcServer *GRPCServer) WhereIsGuild(ctx context.Context, req *sandwich_pr
 
 		shard, shardFound := application.Shards.Load(int32(shardID))
 		if shardFound {
-			shardHas = shard.guilds.Has(discord.Snowflake(req.GetGuildId()))
+			_, shardHas = shard.Guilds.Load(discord.Snowflake(req.GetGuildId()))
 		}
 
 		if !shardHas {

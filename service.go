@@ -15,14 +15,13 @@ import (
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/limiter"
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
 	pb "github.com/WelcomerTeam/Sandwich-Daemon/proto"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.0.4"
+var Version = "2.1"
 
 type Sandwich struct {
 	Logger *slog.Logger
@@ -42,7 +41,7 @@ type Sandwich struct {
 
 	Applications *syncmap.Map[string, *Application]
 
-	guildChunks *csmap.CsMap[discord.Snowflake, *GuildChunk]
+	guildChunks *syncmap.Map[discord.Snowflake, *GuildChunk]
 
 	panicHandler PanicHandler
 
@@ -84,7 +83,7 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 
 		Applications: &syncmap.Map[string, *Application]{},
 
-		guildChunks: csmap.Create[discord.Snowflake, *GuildChunk](),
+		guildChunks: &syncmap.Map[discord.Snowflake, *GuildChunk]{},
 
 		panicHandler: nil,
 
@@ -229,7 +228,7 @@ func (sandwich *Sandwich) getConfig(ctx context.Context) error {
 
 	// TODO: broadcast config change
 
-	sandwich.broadcast(SandwichEventConfigUpdate, nil)
+	sandwich.Broadcast(SandwichEventConfigUpdate, nil)
 
 	return nil
 }
@@ -247,7 +246,7 @@ func (sandwich *Sandwich) startApplications(ctx context.Context) {
 			continue
 		}
 
-		if _, err := sandwich.addApplication(ctx, applicationConfig); err != nil {
+		if _, err := sandwich.AddApplication(ctx, applicationConfig); err != nil {
 			sandwich.Logger.Error("Failed to add application", "error", err)
 
 			continue
@@ -255,7 +254,7 @@ func (sandwich *Sandwich) startApplications(ctx context.Context) {
 	}
 }
 
-func (sandwich *Sandwich) addApplication(ctx context.Context, applicationConfig *ApplicationConfiguration) (*Application, error) {
+func (sandwich *Sandwich) AddApplication(ctx context.Context, applicationConfig *ApplicationConfiguration) (*Application, error) {
 	application := NewApplication(sandwich, applicationConfig)
 	sandwich.Applications.Store(applicationConfig.ApplicationIdentifier, application)
 
@@ -300,7 +299,7 @@ type listenerData struct {
 	payload   []byte
 }
 
-func (sandwich *Sandwich) addListener(listener chan *listenerData) int32 {
+func (sandwich *Sandwich) AddListener(listener chan *listenerData) int32 {
 	counter := sandwich.listenerCounter.Add(1)
 
 	sandwich.listeners.Store(counter, listener)
@@ -308,11 +307,11 @@ func (sandwich *Sandwich) addListener(listener chan *listenerData) int32 {
 	return counter
 }
 
-func (sandwich *Sandwich) removeListener(counter int32) {
+func (sandwich *Sandwich) RemoveListener(counter int32) {
 	sandwich.listeners.Delete(counter)
 }
 
-func (sandwich *Sandwich) broadcast(eventType string, data any) error {
+func (sandwich *Sandwich) Broadcast(eventType string, data any) error {
 	payloadDataBytes, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal payload data: %w", err)
@@ -372,24 +371,24 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 			shardPb := &pb.Shard{
 				Id:                shardIndex,
 				Status:            shard.Status.Load(),
-				UnavailableGuilds: int32(shard.unavailableGuilds.Count()),
-				LazyGuilds:        int32(shard.lazyGuilds.Count()),
-				Guilds:            int32(shard.guilds.Count()),
+				UnavailableGuilds: int32(shard.UnavailableGuilds.Count()),
+				LazyGuilds:        int32(shard.LazyGuilds.Count()),
+				Guilds:            int32(shard.Guilds.Count()),
 				Sequence:          shard.sequence.Load(),
-				GatewayLatency:    shard.gatewayLatency.Load(),
+				GatewayLatency:    shard.GatewayLatency.Load(),
 			}
 
-			startedAt := shard.startedAt.Load()
+			startedAt := shard.StartedAt.Load()
 			if startedAt != nil {
 				shardPb.StartedAt = startedAt.Unix()
 			}
 
-			lastHeartbeatSent := shard.lastHeartbeatSent.Load()
+			lastHeartbeatSent := shard.LastHeartbeatSent.Load()
 			if lastHeartbeatSent != nil {
 				shardPb.LastHeartbeatSent = lastHeartbeatSent.Unix()
 			}
 
-			lastHeartbeatAck := shard.lastHeartbeatAck.Load()
+			lastHeartbeatAck := shard.LastHeartbeatAck.Load()
 			if lastHeartbeatAck != nil {
 				shardPb.LastHeartbeatAck = lastHeartbeatAck.Unix()
 			}

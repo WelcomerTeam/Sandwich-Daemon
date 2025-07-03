@@ -26,26 +26,59 @@ type StateProviderMemoryOptimized struct {
 
 func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
 	stateProvider := &StateProviderMemoryOptimized{
-		Guilds:        csmap.Create[discord.Snowflake, StateGuild](),
-		GuildMembers:  csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateGuildMember]](),
-		GuildChannels: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateChannel]](),
-		GuildRoles:    csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]](),
-		GuildEmojis:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]](),
-		VoiceStates:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]](),
-		GuildStickers: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]](),
-		Users:         csmap.Create[discord.Snowflake, StateUser](),
-		UserMutuals:   csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](),
+		Guilds: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, StateGuild](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		GuildMembers: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateGuildMember]](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		GuildChannels: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateChannel]](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		GuildRoles: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		GuildEmojis: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		VoiceStates: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		GuildStickers: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		Users: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, StateUser](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
+		UserMutuals: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
 	}
 
 	go func() {
 		t := time.NewTicker(10 * time.Second)
 		defer t.Stop()
 
-		for {
-			select {
-			case <-t.C:
-				stateProvider.UpdateStateMetricsFromStateProvider()
-			}
+		for range t.C {
+			stateProvider.UpdateStateMetricsFromStateProvider()
 		}
 	}()
 
@@ -61,6 +94,7 @@ func (s *StateProviderMemoryOptimized) UpdateStateMetricsFromStateProvider() {
 	})
 
 	guildRolesCount := 0
+
 	s.GuildRoles.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateRole]) bool {
 		guildRolesCount += value.Count()
 
@@ -124,7 +158,7 @@ func (s *StateProviderMemoryOptimized) GetGuilds(_ context.Context) ([]*discord.
 	s.Guilds.Range(func(_ discord.Snowflake, value StateGuild) bool {
 		guilds = append(guilds, s.fillGuild(value))
 
-		return false
+		return true
 	})
 
 	RecordStateHitWithValue(float64(len(guilds)))

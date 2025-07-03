@@ -66,7 +66,11 @@ func NewApplication(sandwich *Sandwich, config *ApplicationConfiguration) *Appli
 		readyWg: sync.WaitGroup{},
 
 		Shards: &syncmap.Map[int32, *Shard]{},
-		guilds: csmap.Create[discord.Snowflake, bool](),
+		guilds: csmap.Create(
+			csmap.WithCustomHasher[discord.Snowflake, bool](func(key discord.Snowflake) uint64 {
+				return uint64(key)
+			}),
+		),
 
 		startedAt: &atomic.Pointer[time.Time]{},
 
@@ -85,7 +89,7 @@ func (application *Application) SetStatus(status ApplicationStatus) {
 	application.Status.Store(int32(status))
 	application.Logger.Info("Application status updated", "status", status.String())
 
-	err := application.Sandwich.broadcast(SandwichApplicationStatusUpdate, ApplicationStatusUpdateEvent{
+	err := application.Sandwich.Broadcast(SandwichApplicationStatusUpdate, ApplicationStatusUpdateEvent{
 		Identifier: application.Identifier,
 		Status:     status,
 	})
@@ -169,7 +173,7 @@ func (application *Application) Start(ctx context.Context) error {
 
 	configuration := application.Configuration.Load()
 
-	shardIDs, shardCount := application.getInitialShardCount(
+	shardIDs, shardCount := application.GetInitialShardCount(
 		configuration.ShardCount,
 		configuration.ShardIDs,
 		configuration.AutoSharded,
@@ -179,7 +183,7 @@ func (application *Application) Start(ctx context.Context) error {
 
 	application.ShardCount.Store(shardCount)
 
-	ready, err := application.startShards(ctx, shardIDs, shardCount)
+	ready, err := application.StartShards(ctx, shardIDs, shardCount)
 	if err != nil {
 		application.Logger.Error("Failed to start shards", "error", err)
 
@@ -213,8 +217,8 @@ func (application *Application) Stop(ctx context.Context) error {
 	return nil
 }
 
-// getInitialShardCount returns the shard IDs and shard count for the application.
-func (application *Application) getInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) ([]int32, int32) {
+// GetInitialShardCount returns the shard IDs and shard count for the application.
+func (application *Application) GetInitialShardCount(customShardCount int32, customShardIDs string, autoSharded bool) ([]int32, int32) {
 	config := application.Sandwich.Config.Load()
 
 	var shardCount int32
@@ -229,7 +233,7 @@ func (application *Application) getInitialShardCount(customShardCount int32, cus
 				shardIDs = append(shardIDs, i)
 			}
 		} else {
-			shardIDs = returnRangeInt32(config.Sandwich.NodeCount, config.Sandwich.NodeID, customShardIDs, shardCount)
+			shardIDs = ReturnRangeInt32(config.Sandwich.NodeCount, config.Sandwich.NodeID, customShardIDs, shardCount)
 		}
 	} else {
 		shardCount = customShardCount
@@ -239,7 +243,7 @@ func (application *Application) getInitialShardCount(customShardCount int32, cus
 				shardIDs = append(shardIDs, i)
 			}
 		} else {
-			shardIDs = returnRangeInt32(config.Sandwich.NodeCount, config.Sandwich.NodeID, customShardIDs, shardCount)
+			shardIDs = ReturnRangeInt32(config.Sandwich.NodeCount, config.Sandwich.NodeID, customShardIDs, shardCount)
 		}
 	}
 
@@ -260,7 +264,7 @@ func (application *Application) getInitialShardCount(customShardCount int32, cus
 	return shardIDs, shardCount
 }
 
-func (application *Application) startShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
+func (application *Application) StartShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
 	application.Logger.Info("Starting shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
 	ready = make(chan struct{})
@@ -306,7 +310,7 @@ func (application *Application) startShards(ctx context.Context, shardIDs []int3
 
 	go initialShard.Start(ctx)
 
-	if err := initialShard.waitForReady(); err != nil {
+	if err := initialShard.WaitForReady(); err != nil {
 		application.Logger.Error("Failed to wait for initial shard", "error", err)
 
 		return ready, fmt.Errorf("failed to wait for initial shard: %w", err)
@@ -350,7 +354,7 @@ func (application *Application) startShards(ctx context.Context, shardIDs []int3
 				return true
 			}
 
-			shard.waitForReady()
+			shard.WaitForReady()
 
 			return true
 		})

@@ -26,8 +26,8 @@ func randomHex(length int) string {
 	return hex.EncodeToString(buf)
 }
 
-// returnRangeInt32 converts a string like 0-4,6-7 to [0,1,2,3,4,6,7].
-func returnRangeInt32(nodeCount, nodeID int32, rangeString string, max int32) (result []int32) {
+// ReturnRangeInt32 converts a string like 0-4,6-7 to [0,1,2,3,4,6,7].
+func ReturnRangeInt32(nodeCount, nodeID int32, rangeString string, max int32) (result []int32) {
 	splits := strings.Split(rangeString, ",")
 	if len(splits) == 0 {
 		splits = append(splits, rangeString)
