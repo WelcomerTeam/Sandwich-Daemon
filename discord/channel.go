@@ -66,6 +66,7 @@ type Channel struct {
 	Bitrate                    int32                `json:"bitrate"`
 	MessageCount               int32                `json:"message_count"`
 	MemberCount                int32                `json:"member_count"`
+	TotalMessagesSent	   int32                `json:"total_message_sent"`
 	RateLimitPerUser           int32                `json:"rate_limit_per_user"`
 	Position                   int32                `json:"position"`
 	DefaultAutoArchiveDuration int32                `json:"default_auto_archive_duration"`
