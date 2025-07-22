@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	heartbeatAck               = []byte(`{"op":11}`)
+	heartbeatAck               = []byte(`{"op":11,"d":null}`)
 	helloPayload               = []byte(`{"op":10,"d":{"heartbeat_interval":45000}}`)
 	resumableInvalidSession    = []byte(`{"op":9,"d":true}`)
 	nonresumableInvalidSession = []byte(`{"op":9,"d":false}`)
