@@ -21,6 +21,7 @@ type SandwichTrace = map[string]discord.Int64
 // Used as a key for virtual shard dispatches etc., must be set for all events
 type EventDispatchIdentifier struct {
 	GuildID        *discord.GuildID
+	UserID         *discord.UserID
 	GloballyRouted bool // Whether or not the event should be globally routed
 }
 
@@ -34,5 +35,5 @@ type SandwichPayload struct {
 	Data                    json.RawMessage          `json:"d"`
 	Sequence                int32                    `json:"s"`
 	Op                      discord.GatewayOp        `json:"op"`
-	EventDispatchIdentifier *EventDispatchIdentifier `json:"-"`
+	EventDispatchIdentifier *EventDispatchIdentifier `json:"__sandwich_edt"`
 }
