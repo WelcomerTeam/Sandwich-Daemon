@@ -65,6 +65,7 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	// State routes
 	r.GET("/{manager}/api/state", sg.internalEndpoint(sg.StateEndpoint))
 	r.POST("/{manager}/api/state", sg.internalEndpoint(sg.StateEndpoint))
+	r.GET("/{manager}/api/current-user", sg.internalEndpoint(sg.CurrentUserEndpoint))
 
 	// Discord gateway routes (uses cached data)
 	//
@@ -982,6 +983,30 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 			return // Not implemented
 		}
 	}
+}
+
+func (sg *Sandwich) CurrentUserEndpoint(ctx *fasthttp.RequestCtx) {
+	managerKey := ctx.UserValue("manager").(string)
+
+	mg, ok := sg.Managers.Load(managerKey)
+
+	if !ok {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: "Manager not found",
+		})
+
+		return
+	}
+
+	mg.userMu.RLock()
+	currentUser := mg.User
+	mg.userMu.RUnlock()
+
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+		Ok:   true,
+		Data: currentUser,
+	})
 }
 
 func getManagerShardGroupStatus(manager *Manager) (shardGroups []sandwich_structs.StatusEndpointShardGroup) {

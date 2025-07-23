@@ -1145,7 +1145,7 @@ func WildcardEvent(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_stru
 
 	var guildId struct {
 		GuildID *discord.GuildID `json:"guild_id"`
-		UserID  *discord.UserID `json:"user_id"`
+		UserID  *discord.UserID  `json:"user_id"`
 	}
 
 	err = ctx.decodeContent(msg, &guildId)
