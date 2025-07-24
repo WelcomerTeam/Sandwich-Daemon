@@ -66,6 +66,7 @@ func (sg *Sandwich) NewRestRouter() (routerHandler fasthttp.RequestHandler, fsHa
 	r.GET("/{manager}/api/state", sg.internalEndpoint(sg.StateEndpoint))
 	r.POST("/{manager}/api/state", sg.internalEndpoint(sg.StateEndpoint))
 	r.GET("/{manager}/api/current-user", sg.internalEndpoint(sg.CurrentUserEndpoint))
+	r.POST("/{manager}/api/bulk-has-guild", sg.internalEndpoint(sg.BulkHasGuildEndpoint))
 
 	// Discord gateway routes (uses cached data)
 	//
@@ -1006,6 +1007,38 @@ func (sg *Sandwich) CurrentUserEndpoint(ctx *fasthttp.RequestCtx) {
 	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
 		Ok:   true,
 		Data: currentUser,
+	})
+}
+
+// Post is a JSON array of guild ids
+// Response is a set of 0s/1s where 0 means the guild is not present in sandwich
+// and 1 means it is present.
+func (sg *Sandwich) BulkHasGuildEndpoint(ctx *fasthttp.RequestCtx) {
+	var guildIDs []discord.GuildID
+
+	err := sandwichjson.Unmarshal(ctx.PostBody(), &guildIDs)
+	if err != nil {
+		writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
+			Ok:    false,
+			Error: err.Error(),
+		})
+
+		return
+	}
+
+	results := make([]int, len(guildIDs))
+
+	for i, guildID := range guildIDs {
+		if sg.State.Guilds.Has(guildID) {
+			results[i] = 1 // Guild found
+		} else {
+			results[i] = 0 // Guild not found
+		}
+	}
+
+	writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
+		Ok:   true,
+		Data: results,
 	})
 }
 

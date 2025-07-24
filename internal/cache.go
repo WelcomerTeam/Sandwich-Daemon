@@ -16,6 +16,14 @@ func (c *Cache[K, V]) Load(key K) (value V, ok bool) {
 	return c.inner.Load(key)
 }
 
+func (c *Cache[K, V]) Has(key K) bool {
+	if c.inner == nil {
+		return false
+	}
+
+	return c.inner.Has(key)
+}
+
 func (c *Cache[K, V]) Store(key K, value V) {
 	if c.inner == nil {
 		c.inner = csmap.Create(
