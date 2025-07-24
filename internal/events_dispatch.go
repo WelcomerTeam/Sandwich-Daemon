@@ -904,6 +904,7 @@ func OnMessageCreate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 		Data: msg.Data,
 		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageCreatePayload.GuildID,
+			UserID:  &messageCreatePayload.Author.ID,
 		},
 	}, true, nil
 }
@@ -923,6 +924,7 @@ func OnMessageUpdate(ctx StateCtx, msg discord.GatewayPayload, trace sandwich_st
 		Data: msg.Data,
 		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageUpdatePayload.GuildID,
+			UserID:  &messageUpdatePayload.Author.ID,
 		},
 	}, true, nil
 }
@@ -979,6 +981,7 @@ func OnMessageReactionAdd(ctx StateCtx, msg discord.GatewayPayload, trace sandwi
 		Data: msg.Data,
 		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: &messageReactionAddPayload.GuildID,
+			UserID:  &messageReactionAddPayload.UserID,
 		},
 	}, true, nil
 }
@@ -997,6 +1000,7 @@ func OnMessageReactionRemove(ctx StateCtx, msg discord.GatewayPayload, trace san
 		Data: msg.Data,
 		EventDispatchIdentifier: &sandwich_structs.EventDispatchIdentifier{
 			GuildID: messageReactionRemovePayload.GuildID,
+			UserID:  &messageReactionRemovePayload.UserID,
 		},
 	}, true, nil
 }
