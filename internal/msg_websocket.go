@@ -48,6 +48,13 @@ type chatServer struct {
 	// address
 	address string
 
+	// quick start, if this flag is set, the following
+	// optimizations are applied:
+	//
+	// - initial GUILD_CREATE events are not sent
+	// - Ready payload will not contain guilds
+	quickStart bool
+
 	// serveMux routes the various endpoints to the appropriate handler.
 	serveMux http.ServeMux
 
@@ -178,21 +185,22 @@ func (s *subscriber) dispatchInitial() error {
 	s.cs.manager.Logger.Info().Msgf("[WS] Shard %d/%d (now dispatching events) %v", s.shard[0], s.shard[1], s.shard)
 
 	// Get all guilds
+	var unavailableGuilds = make([]discord.UnavailableGuild, 0)
 	var guildIdShardIdMap = make(map[discord.GuildID]int32)
 
-	unavailableGuilds := make([]discord.UnavailableGuild, 0)
-
-	s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.GuildID, _ discord.Guild) bool {
-		shardId := int32(s.cs.manager.GetShardIdOfGuild(id, s.cs.manager.ConsumerShardCount()))
-		guildIdShardIdMap[id] = shardId // We need this when dispatching guilds
-		if shardId == s.shard[0] {
-			unavailableGuilds = append(unavailableGuilds, discord.UnavailableGuild{
-				ID:          id,
-				Unavailable: false,
-			})
-		}
-		return false
-	})
+	if !s.cs.quickStart {
+		s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.GuildID, _ discord.Guild) bool {
+			shardId := int32(s.cs.manager.GetShardIdOfGuild(id, s.cs.manager.ConsumerShardCount()))
+			guildIdShardIdMap[id] = shardId // We need this when dispatching guilds
+			if shardId == s.shard[0] {
+				unavailableGuilds = append(unavailableGuilds, discord.UnavailableGuild{
+					ID:          id,
+					Unavailable: false,
+				})
+			}
+			return false
+		})
+	}
 
 	// First send READY event with our initial state
 	readyPayload := map[string]any{
@@ -230,45 +238,47 @@ func (s *subscriber) dispatchInitial() error {
 	}
 
 	// Next dispatch guilds
-	s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.GuildID, _ discord.Guild) bool {
-		shardId, ok := guildIdShardIdMap[id]
+	if !s.cs.quickStart {
+		s.cs.manager.Sandwich.State.Guilds.Range(func(id discord.GuildID, _ discord.Guild) bool {
+			shardId, ok := guildIdShardIdMap[id]
 
-		if !ok {
-			// Get shard id
-			shardId = int32(s.cs.manager.GetShardIdOfGuild(id, s.cs.manager.ConsumerShardCount()))
-		}
+			if !ok {
+				// Get shard id
+				shardId = int32(s.cs.manager.GetShardIdOfGuild(id, s.cs.manager.ConsumerShardCount()))
+			}
 
-		if shardId != s.shard[0] {
-			return false // Skip to next guild if the shard id is not the same
-		}
+			if shardId != s.shard[0] {
+				return false // Skip to next guild if the shard id is not the same
+			}
 
-		guild, ok := s.cs.manager.Sandwich.State.GetGuild(id)
+			guild, ok := s.cs.manager.Sandwich.State.GetGuild(id)
 
-		if !ok {
-			s.cs.manager.Logger.Error().Msgf("[WS] Failed to get guild: %d", id)
-			return false
-		}
+			if !ok {
+				s.cs.manager.Logger.Error().Msgf("[WS] Failed to get guild: %d", id)
+				return false
+			}
 
-		serializedGuild, err := sandwichjson.Marshal(guild)
+			serializedGuild, err := sandwichjson.Marshal(guild)
 
-		if err != nil {
-			s.cs.manager.Logger.Error().Msgf("[WS] Failed to marshal guild: %s [shard %d]", err.Error(), s.shard[0])
-			return false
-		}
+			if err != nil {
+				s.cs.manager.Logger.Error().Msgf("[WS] Failed to marshal guild: %s [shard %d]", err.Error(), s.shard[0])
+				return false
+			}
 
-		s.writeNormal <- structs.SandwichPayload{
-			Op:   discord.GatewayOpDispatch,
-			Data: serializedGuild,
-			Type: "GUILD_CREATE",
-		}
+			s.writeNormal <- structs.SandwichPayload{
+				Op:   discord.GatewayOpDispatch,
+				Data: serializedGuild,
+				Type: "GUILD_CREATE",
+			}
 
-		select {
-		case <-s.context.Done():
-			return true
-		default:
-			return false
-		}
-	})
+			select {
+			case <-s.context.Done():
+				return true
+			default:
+				return false
+			}
+		})
+	}
 
 	s.cs.manager.Logger.Info().Msgf("[WS] Shard %d (initial state dispatched successfully)", s.shard[0])
 
@@ -854,6 +864,7 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	var address string
 	var externalAddress string
 	var expectedToken string
+	var quickStart bool
 
 	if address, ok = GetEntry(args, "Address").(string); !ok {
 		return errors.New("websocketMQ connect: string type assertion failed for Address")
@@ -873,6 +884,10 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 		return errors.New("websocketMQ connect: string type assertion failed for ExpectedToken")
 	}
 
+	if quickStart, ok = GetEntry(args, "QuickStart").(bool); !ok {
+		quickStart = true // Default to true
+	}
+
 	l, err := net.Listen("tcp", address)
 	if err != nil {
 		return errors.New("websocketMQ listen: " + err.Error())
@@ -883,6 +898,7 @@ func (mq *WebsocketClient) Connect(ctx context.Context, manager *Manager, client
 	mq.cs.manager = manager
 	mq.cs.address = address
 	mq.cs.externalAddress = externalAddress
+	mq.cs.quickStart = quickStart
 	s := &http.Server{Handler: mq.cs}
 
 	switch subscriberMessageBuffer := GetEntry(args, "SubscriberMessageBuffer").(type) {
