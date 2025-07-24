@@ -938,51 +938,6 @@ func (sg *Sandwich) StateEndpoint(ctx *fasthttp.RequestCtx) {
 				Data: nil,
 			})
 		}
-	case "derived.has_guild_id":
-		idInt64, err := strconv.ParseInt(gotils_strconv.B2S(id), 10, 64)
-
-		if err != nil {
-			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
-				Ok:    false,
-				Error: err.Error(),
-			})
-
-			return
-		}
-
-		if ctx.IsGet() {
-			sh, err := findShardOfGuild(gotils_strconv.B2S(id), mg)
-
-			if err != nil {
-				writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
-					Ok:    false,
-					Error: err.Error(),
-				})
-				return
-			}
-
-			var found bool
-			var lookingForGuildId = discord.GuildID(idInt64)
-			sh.Guilds.Range(func(guildId discord.GuildID, _ struct{}) bool {
-				if guildId == lookingForGuildId {
-					found = true
-					return true
-				}
-
-				return false
-			})
-
-			writeResponse(ctx, fasthttp.StatusOK, sandwich_structs.BaseRestResponse{
-				Ok:   true,
-				Data: found,
-			})
-		} else {
-			writeResponse(ctx, fasthttp.StatusBadRequest, sandwich_structs.BaseRestResponse{
-				Ok:    false,
-				Error: "Cannot edit a derived property",
-			})
-			return // Not implemented
-		}
 	}
 }
 
