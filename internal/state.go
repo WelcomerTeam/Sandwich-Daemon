@@ -144,6 +144,7 @@ func (ss *SandwichState) GetGuild(guildID discord.GuildID) (guild discord.Guild,
 	}
 
 	guild.Members = members
+	guild.ApproximateMemberCount = guild.MemberCount
 	ok = true
 
 	return
