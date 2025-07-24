@@ -524,7 +524,14 @@ func (sg *Sandwich) prometheusGatherer() {
 	t := time.NewTicker(prometheusGatherInterval)
 
 	for range t.C {
-		stateGuilds := sg.State.Guilds.Count()
+		stateTotalMemberCount := 0
+		stateGuilds := 0
+
+		sg.State.Guilds.Range(func(guildID discord.GuildID, guild discord.Guild) bool {
+			stateTotalMemberCount += int(guild.MemberCount)
+			stateGuilds++
+			return false
+		})
 
 		stateMembers := 0
 		stateRoles := 0
@@ -579,6 +586,7 @@ func (sg *Sandwich) prometheusGatherer() {
 		sg.Logger.Debug().
 			Int("guilds", stateGuilds).
 			Int("members", stateMembers).
+			Int("totalMembers", stateTotalMemberCount).
 			Int("roles", stateRoles).
 			Int("emojis", stateEmojis).
 			Int("users", stateUsers).
