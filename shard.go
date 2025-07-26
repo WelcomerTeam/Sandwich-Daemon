@@ -325,6 +325,8 @@ func (shard *Shard) Start(ctx context.Context) error {
 				return nil
 			}
 
+			shard.SetStatus(ShardStatusFailed)
+
 			shard.error <- err
 
 			var closeError websocket.CloseError
