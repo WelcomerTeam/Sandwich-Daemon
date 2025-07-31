@@ -36,6 +36,10 @@ func (s *UserID) UnmarshalJSON(b []byte) error {
 	return toSnowflake(b, (*Snowflake)(s))
 }
 
+func (s UserID) MarshalJSON() ([]byte, error) {
+        return Snowflake(s).MarshalJSON()
+}
+
 type RoleID Snowflake
 
 func (s *RoleID) UnmarshalJSON(b []byte) error {
