@@ -105,13 +105,13 @@ ready:
 	default:
 	}
 
-	// ctx.SetStatus(sandwich_structs.ShardStatusReady)
-
 	configuration := shard.Application.Configuration.Load()
 
 	if configuration.ChunkGuildsOnStart {
 		shard.chunkAllGuilds(ctx)
 	}
+
+	shard.SetStatus(ShardStatusReady)
 
 	return DispatchResult{nil, nil}, false, nil
 }
