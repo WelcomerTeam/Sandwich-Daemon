@@ -93,11 +93,7 @@ ready:
 			shard.Logger.Error("Failed to dispatch event", "error", err)
 		}
 
-		if msg != nil {
-			shard.gatewayPayloadPool.Put(msg)
-		} else {
-			shard.Logger.Warn("Attempt to put nil message into pool", "loc", "OnReady")
-		}
+		shard.gatewayPayloadPool.Put(msg)
 	}
 
 	shard.Logger.Debug("Finished lazy loading guilds", "guilds", guildCreateEvents)
@@ -828,11 +824,11 @@ func OnGuildRoleCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 
 	defer onDispatchEvent(shard, msg.Type)
 
-	if guildRoleCreatePayload.GuildID != nil {
-		ctx = WithGuildID(ctx, *guildRoleCreatePayload.GuildID)
+	if !guildRoleCreatePayload.GuildID.IsNil() {
+		ctx = WithGuildID(ctx, guildRoleCreatePayload.GuildID)
 	}
 
-	shard.Sandwich.stateProvider.SetGuildRole(ctx, *guildRoleCreatePayload.GuildID, discord.Role(guildRoleCreatePayload))
+	shard.Sandwich.stateProvider.SetGuildRole(ctx, guildRoleCreatePayload.GuildID, discord.Role(guildRoleCreatePayload.Role))
 
 	return DispatchResult{
 		Data:  msg.Data,

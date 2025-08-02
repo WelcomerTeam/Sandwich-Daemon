@@ -237,7 +237,7 @@ readyConsumer:
 	}
 
 	// We need to append the v10 and encoding=json to the URL.
-	websocketURL = websocketURL + "?v=10&encoding=json"
+	websocketURL += "?v=10&encoding=json"
 
 	shard.Logger.Debug("Dialing websocket", "url", websocketURL)
 
@@ -270,11 +270,7 @@ readyConsumer:
 		return fmt.Errorf("failed to unmarshal hello: %w", err)
 	}
 
-	if payload != nil {
-		shard.gatewayPayloadPool.Put(payload)
-	} else {
-		shard.Logger.Error("Attempt to put nil message into pool", "loc", "Shard.Connect")
-	}
+	shard.gatewayPayloadPool.Put(payload)
 
 	if hello.HeartbeatInterval <= 0 {
 		return ErrShardInvalidHeartbeatInterval
@@ -385,11 +381,7 @@ func (shard *Shard) Listen(ctx context.Context) error {
 				shard.Logger.Error("Failed to handle event", "error", err)
 			}
 
-			if msg != nil {
-				shard.gatewayPayloadPool.Put(msg)
-			} else {
-				shard.Logger.Error("Attempt to put nil message into pool", "loc", "Shard.Listen(recv)")
-			}
+			shard.gatewayPayloadPool.Put(msg)
 
 			continue
 		}
@@ -416,8 +408,6 @@ func (shard *Shard) Listen(ctx context.Context) error {
 
 		if msg != nil {
 			shard.gatewayPayloadPool.Put(msg)
-		} else {
-			shard.Logger.Error("Attempt to put nil message into pool", "loc", "Shard.Listen(marshal)")
 		}
 
 		shard.Logger.Error("Shard received error", "error", err, "message", string(msgs))
@@ -682,7 +672,7 @@ func (shard *Shard) read(ctx context.Context, websocketConn *websocket.Conn) (*d
 
 	err = json.Unmarshal(data, &gatewayPayload)
 	if err != nil {
-		return gatewayPayload, fmt.Errorf("failed to unmarshal payload: %w (payload: %s)", err, string(data))
+		return nil, fmt.Errorf("failed to unmarshal payload: %w (payload: %s)", err, string(data))
 	}
 
 	return gatewayPayload, nil
