@@ -270,7 +270,11 @@ readyConsumer:
 		return fmt.Errorf("failed to unmarshal hello: %w", err)
 	}
 
-	shard.gatewayPayloadPool.Put(payload)
+	if payload != nil {
+		shard.gatewayPayloadPool.Put(payload)
+	} else {
+		shard.Logger.Warn("Received nil GatewayPayload, this should not happen")
+	}
 
 	if hello.HeartbeatInterval <= 0 {
 		return ErrShardInvalidHeartbeatInterval
@@ -381,7 +385,11 @@ func (shard *Shard) Listen(ctx context.Context) error {
 				shard.Logger.Error("Failed to handle event", "error", err)
 			}
 
-			shard.gatewayPayloadPool.Put(msg)
+			if msg != nil {
+				shard.gatewayPayloadPool.Put(msg)
+			} else {
+				shard.Logger.Warn("Received nil GatewayPayload, this should not happen")
+			}
 
 			continue
 		}
@@ -408,6 +416,8 @@ func (shard *Shard) Listen(ctx context.Context) error {
 
 		if msg != nil {
 			shard.gatewayPayloadPool.Put(msg)
+		} else {
+			shard.Logger.Warn("Received nil GatewayPayload, this should not happen")
 		}
 
 		shard.Logger.Error("Shard received error", "error", err, "message", string(msgs))

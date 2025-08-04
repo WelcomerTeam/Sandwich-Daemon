@@ -93,7 +93,11 @@ ready:
 			shard.Logger.Error("Failed to dispatch event", "error", err)
 		}
 
-		shard.gatewayPayloadPool.Put(msg)
+		if msg != nil {
+			shard.gatewayPayloadPool.Put(msg)
+		} else {
+			shard.Logger.Warn("Received nil GatewayPayload during READY event, this should not happen")
+		}
 	}
 
 	shard.Logger.Debug("Finished lazy loading guilds", "guilds", guildCreateEvents)
