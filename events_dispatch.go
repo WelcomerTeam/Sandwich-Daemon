@@ -126,6 +126,8 @@ func OnResumed(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *
 	default:
 	}
 
+	shard.SetStatus(ShardStatusReady)
+
 	return DispatchResult{
 		Data:  msg.Data,
 		Extra: nil,
@@ -1280,14 +1282,12 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 		guildID = *voiceStateUpdatePayload.GuildID
 	}
 
-	beforeVoiceState, _ := shard.Sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
-	// if !ok {
-	// 	shard.Logger.Warn("Received "+discord.DiscordEventVoiceStateUpdate+" event, but previous voice state not present in state", "guild_id", guildID, "user_id", voiceStateUpdatePayload.UserID)
-	// }
+	beforeVoiceState, ok := shard.Sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
+	if ok {
+		shard.Sandwich.stateProvider.RemoveVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
+	}
 
-	if voiceStateUpdatePayload.ChannelID.IsNil() {
-		shard.Sandwich.stateProvider.RemoveVoiceState(ctx, *voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID)
-	} else {
+	if !voiceStateUpdatePayload.ChannelID.IsNil() {
 		shard.Sandwich.stateProvider.SetVoiceState(ctx, *voiceStateUpdatePayload.GuildID, discord.VoiceState(voiceStateUpdatePayload))
 	}
 

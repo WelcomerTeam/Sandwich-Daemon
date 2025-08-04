@@ -671,6 +671,37 @@ func (s *StateProviderMemoryOptimized) GetVoiceState(_ context.Context, guildID,
 	return &voiceState, true
 }
 
+func (s *StateProviderMemoryOptimized) updateGuildChannelMemberCount(guildID, channelID discord.Snowflake) {
+	voiceStatesState, ok := s.VoiceStates.Load(guildID)
+	if !ok {
+		return
+	}
+
+	guildChannelsState, ok := s.GuildChannels.Load(guildID)
+	if !ok {
+		return
+	}
+
+	guildChannel, ok := guildChannelsState.Load(channelID)
+	if !ok {
+		return
+	}
+
+	var memberCount int32
+
+	voiceStatesState.Range(func(_ discord.Snowflake, value StateVoiceState) bool {
+		if value.ChannelID == channelID {
+			memberCount++
+		}
+
+		return true
+	})
+
+	guildChannel.MemberCount = memberCount
+	guildChannelsState.Store(channelID, guildChannel)
+	s.GuildChannels.Store(guildID, guildChannelsState)
+}
+
 func (s *StateProviderMemoryOptimized) SetVoiceState(_ context.Context, guildID discord.Snowflake, voiceState discord.VoiceState) {
 	voiceStatesState, ok := s.VoiceStates.Load(guildID)
 	if !ok {
@@ -680,15 +711,21 @@ func (s *StateProviderMemoryOptimized) SetVoiceState(_ context.Context, guildID 
 	}
 
 	voiceStatesState.Store(voiceState.UserID, DiscordToStateVoiceState(voiceState))
+
+	if !voiceState.ChannelID.IsNil() {
+		s.updateGuildChannelMemberCount(guildID, voiceState.ChannelID)
+	}
 }
 
 func (s *StateProviderMemoryOptimized) RemoveVoiceState(_ context.Context, guildID, userID discord.Snowflake) {
-	voiceStatesState, ok := s.VoiceStates.Load(guildID)
+	voiceStates, ok := s.VoiceStates.Load(guildID)
 	if !ok {
 		return
 	}
 
-	voiceStatesState.Delete(userID)
+	voiceStates.Delete(userID)
+
+	s.updateGuildChannelMemberCount(guildID, userID)
 }
 
 func (s *StateProviderMemoryOptimized) GetUser(_ context.Context, userID discord.Snowflake) (*discord.User, bool) {
