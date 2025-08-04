@@ -576,6 +576,8 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildDeletePayload discord.GuildDelete
 
+	println("GUILDDELETE", string(msg.Data), msg.Type)
+
 	err := unmarshalPayload(msg, &guildDeletePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err

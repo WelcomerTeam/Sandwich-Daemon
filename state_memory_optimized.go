@@ -26,50 +26,50 @@ type StateProviderMemoryOptimized struct {
 
 func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
 	stateProvider := &StateProviderMemoryOptimized{
-		Guilds: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, StateGuild](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		Guilds: csmap.Create[discord.Snowflake, StateGuild](
+		// csmap.WithCustomHasher[discord.Snowflake, StateGuild](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		GuildMembers: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateGuildMember]](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		GuildMembers: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateGuildMember]](
+		// csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateGuildMember]](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		GuildChannels: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateChannel]](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		GuildChannels: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateChannel]](
+		// csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateChannel]](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		GuildRoles: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		GuildRoles: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]](
+		// csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateRole]](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		GuildEmojis: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		GuildEmojis: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]](
+		// csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateEmoji]](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		VoiceStates: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		VoiceStates: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]](
+		// csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateVoiceState]](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		GuildStickers: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		GuildStickers: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]](
+		// csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		Users: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, StateUser](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		Users: csmap.Create[discord.Snowflake, StateUser](
+		// csmap.WithCustomHasher[discord.Snowflake, StateUser](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
-		UserMutuals: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		UserMutuals: csmap.Create[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](
+		// csmap.WithCustomHasher[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
 	}
 

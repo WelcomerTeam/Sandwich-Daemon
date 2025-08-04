@@ -66,10 +66,10 @@ func NewApplication(sandwich *Sandwich, config *ApplicationConfiguration) *Appli
 		readyWg: sync.WaitGroup{},
 
 		Shards: &syncmap.Map[int32, *Shard]{},
-		guilds: csmap.Create(
-			csmap.WithCustomHasher[discord.Snowflake, bool](func(key discord.Snowflake) uint64 {
-				return uint64(key)
-			}),
+		guilds: csmap.Create[discord.Snowflake, bool](
+		// csmap.WithCustomHasher[discord.Snowflake, bool](func(key discord.Snowflake) uint64 {
+		// 	return uint64(key)
+		// }),
 		),
 
 		startedAt: &atomic.Pointer[time.Time]{},
