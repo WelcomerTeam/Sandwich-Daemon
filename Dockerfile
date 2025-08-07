@@ -9,6 +9,8 @@ RUN go mod download
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 LD_LIBRARY_PATH='/usr/local/lib' \
     go build -a --trimpath -o ./out/sandwich ./main.go
 
+RUN cd web && npm i && npm run build
+
 FROM alpine:3
 RUN apk add ca-certificates libc6-compat curl
 COPY --from=build_base /usr/local/lib /usr/local/lib
