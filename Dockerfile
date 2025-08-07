@@ -7,11 +7,9 @@ WORKDIR /go/src/app
 COPY . .
 RUN go mod download
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 LD_LIBRARY_PATH='/usr/local/lib' \
-    go build -a --trimpath -o ./out/sandwich ./main.go
+    go build -a --trimpath -o /app/sandwich ./main.go
 
 RUN apt add ca-certificates curl
-COPY --from=build_base /usr/local/lib /usr/local/lib
-COPY --from=build_base ./out/sandwich /app/sandwich
 
 #RUN apt install -y npm
 #RUN cd web && npm i --force && npm run build
