@@ -9,7 +9,7 @@ RUN go mod download
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 LD_LIBRARY_PATH='/usr/local/lib' \
     go build -a --trimpath -o /app/sandwich ./main.go
 
-RUN apt add ca-certificates curl
+RUN apt install ca-certificates curl
 
 #RUN apt install -y npm
 #RUN cd web && npm i --force && npm run build
