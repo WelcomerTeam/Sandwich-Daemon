@@ -10,7 +10,7 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 LD_LIBRARY_PATH='/usr/local/lib' \
     go build -a --trimpath -o ./out/sandwich ./main.go
 
 RUN apt install -y npm
-RUN cd web && npm i && npm run build
+RUN cd web && npm i --force && npm run build
 
 FROM alpine:3
 RUN apk add ca-certificates libc6-compat curl
