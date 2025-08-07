@@ -9,13 +9,12 @@ RUN go mod download
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 LD_LIBRARY_PATH='/usr/local/lib' \
     go build -a --trimpath -o ./out/sandwich ./main.go
 
-RUN apt install -y npm
-RUN cd web && npm i --force && npm run build
-
-FROM alpine:3
-RUN apk add ca-certificates libc6-compat curl
+RUN apt add ca-certificates curl
 COPY --from=build_base /usr/local/lib /usr/local/lib
 COPY --from=build_base ./out/sandwich /app/sandwich
+
+#RUN apt install -y npm
+#RUN cd web && npm i --force && npm run build
 #COPY --from=build_base ./web/dist /web/dist
 CMD ["/app/sandwich"]
 
