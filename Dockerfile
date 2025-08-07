@@ -1,4 +1,4 @@
-FROM golang:1.22 AS build_base
+FROM golang:1.24 AS build_base
 
 RUN apt update -y \
     && apt install -y git build-essential cmake zlib1g-dev
