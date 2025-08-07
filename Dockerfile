@@ -1,4 +1,4 @@
-FROM golang:1.24 AS build_base
+FROM golang:1.24-bookworm AS build_base
 
 RUN apt update -y \
     && apt install -y git build-essential cmake zlib1g-dev
@@ -9,7 +9,7 @@ RUN go mod download
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 LD_LIBRARY_PATH='/usr/local/lib' \
     go build -a --trimpath -o ./out/sandwich ./main.go
 
-RUN apk add npm
+RUN apt install npm
 RUN cd web && npm i && npm run build
 
 FROM alpine:3
