@@ -16,7 +16,7 @@ FROM alpine:3
 RUN apk add ca-certificates libc6-compat curl
 COPY --from=build_base /usr/local/lib /usr/local/lib
 COPY --from=build_base ./out/sandwich /app/sandwich
-COPY --from=build_base ./web/dist /web/dist
+#COPY --from=build_base ./web/dist /web/dist
 CMD ["/app/sandwich"]
 
 LABEL org.opencontainers.image.source https://github.com/Anti-Raid/Sandwich-Daemon
