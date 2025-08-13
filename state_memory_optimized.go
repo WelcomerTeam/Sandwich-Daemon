@@ -723,9 +723,10 @@ func (s *StateProviderMemoryOptimized) RemoveVoiceState(_ context.Context, guild
 		return
 	}
 
-	voiceStates.Delete(userID)
-
-	s.updateGuildChannelMemberCount(guildID, userID)
+	voiceState, ok := voiceStates.LoadAndDelete(userID)
+	if ok {
+		s.updateGuildChannelMemberCount(guildID, voiceState.ChannelID)
+	}
 }
 
 func (s *StateProviderMemoryOptimized) GetUser(_ context.Context, userID discord.Snowflake) (*discord.User, bool) {
