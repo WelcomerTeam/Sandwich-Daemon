@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var Version = "2.1.4"
+var Version = "2.1.5"
 
 type Sandwich struct {
 	Logger *slog.Logger
@@ -33,6 +33,7 @@ type Sandwich struct {
 	identifyProvider IdentifyProvider
 	producerProvider ProducerProvider
 	stateProvider    StateProvider
+	dedupeProvider   DedupeProvider
 
 	Client *http.Client
 
@@ -64,7 +65,7 @@ type GuildChunkPartial struct {
 	nonce      string
 }
 
-func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *http.Client, eventProvider EventProvider, identifyProvider IdentifyProvider, producerProvider ProducerProvider, stateProvider StateProvider) *Sandwich {
+func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *http.Client, eventProvider EventProvider, identifyProvider IdentifyProvider, producerProvider ProducerProvider, stateProvider StateProvider, dedupeProvider DedupeProvider) *Sandwich {
 	return &Sandwich{
 		Logger: logger,
 
@@ -75,6 +76,7 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 		identifyProvider: identifyProvider,
 		producerProvider: producerProvider,
 		stateProvider:    stateProvider,
+		dedupeProvider:   dedupeProvider,
 
 		Client: client,
 

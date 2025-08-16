@@ -3,6 +3,7 @@ package sandwich
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 
 const (
 	ReadyTimeout = 1 * time.Second
+
+	StandardDeduplicationTimeout = time.Millisecond * 500
 )
 
 func onDispatchEvent(shard *Shard, eventType string) {
@@ -138,15 +141,22 @@ func OnResumed(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *
 	}, true, nil
 }
 
-func OnApplicationCommandCreate(_ context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
+func OnApplicationCommandCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var applicationCommandCreatePayload discord.ApplicationCommandCreate
 
 	err := unmarshalPayload(msg, &applicationCommandCreatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, applicationCommandCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -155,14 +165,21 @@ func OnApplicationCommandCreate(_ context.Context, shard *Shard, msg *discord.Ga
 }
 
 func OnApplicationCommandUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var applicationCommandUpdatePayload discord.ApplicationCommandUpdate
 
 	err := unmarshalPayload(msg, &applicationCommandUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, applicationCommandUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -171,14 +188,21 @@ func OnApplicationCommandUpdate(ctx context.Context, shard *Shard, msg *discord.
 }
 
 func OnApplicationCommandDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var applicationCommandDeletePayload discord.ApplicationCommandDelete
 
 	err := unmarshalPayload(msg, &applicationCommandDeletePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, applicationCommandDeletePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -194,7 +218,14 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, guildCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildCreatePayload.ID.IsNil() {
 		ctx = WithGuildID(ctx, guildCreatePayload.ID)
@@ -221,14 +252,21 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 }
 
 func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var guildMembersChunkPayload discord.GuildMembersChunk
 
 	err := unmarshalPayload(msg, &guildMembersChunkPayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%d", msg.Type, guildMembersChunkPayload.GuildID, guildMembersChunkPayload.ChunkIndex),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	for _, member := range guildMembersChunkPayload.Members {
 		shard.Sandwich.stateProvider.SetGuildMember(ctx, guildMembersChunkPayload.GuildID, member)
@@ -268,7 +306,14 @@ func OnChannelCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, channelCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if channelCreatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *channelCreatePayload.GuildID)
@@ -290,7 +335,14 @@ func OnChannelUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, channelUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if channelUpdatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *channelUpdatePayload.GuildID)
@@ -317,7 +369,14 @@ func OnChannelDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, channelDeletePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if channelDeletePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *channelDeletePayload.GuildID)
@@ -344,7 +403,14 @@ func OnChannelPinsUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, channelPinsUpdatePayload.ChannelID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !channelPinsUpdatePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, channelPinsUpdatePayload.GuildID)
@@ -357,14 +423,21 @@ func OnChannelPinsUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 }
 
 func OnThreadCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var threadCreatePayload discord.ThreadCreate
 
 	err := unmarshalPayload(msg, &threadCreatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, threadCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -373,14 +446,21 @@ func OnThreadCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 }
 
 func OnThreadUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var threadUpdatePayload discord.ThreadUpdate
 
 	err := unmarshalPayload(msg, &threadUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, threadUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	beforeChannel, ok := shard.Sandwich.stateProvider.GetGuildChannel(ctx, *threadUpdatePayload.GuildID, threadUpdatePayload.ID)
 	if !ok {
@@ -394,14 +474,21 @@ func OnThreadUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 }
 
 func OnThreadDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var threadDeletePayload discord.ThreadDelete
 
 	err := unmarshalPayload(msg, &threadDeletePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, threadDeletePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -410,14 +497,21 @@ func OnThreadDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 }
 
 func OnThreadListSync(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var threadListSyncPayload discord.ThreadListSync
 
 	err := unmarshalPayload(msg, &threadListSyncPayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, threadListSyncPayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -426,14 +520,21 @@ func OnThreadListSync(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 }
 
 func OnThreadMemberUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var threadMemberUpdatePayload discord.ThreadMemberUpdate
 
 	err := unmarshalPayload(msg, &threadMemberUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, threadMemberUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -442,14 +543,21 @@ func OnThreadMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gatewa
 }
 
 func OnThreadMembersUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var threadMembersUpdatePayload discord.ThreadMembersUpdate
 
 	err := unmarshalPayload(msg, &threadMembersUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, threadMembersUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -458,14 +566,21 @@ func OnThreadMembersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 }
 
 func OnGuildAuditLogEntryCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var threadMembersUpdatePayload discord.GuildAuditLogEntryCreate
 
 	err := unmarshalPayload(msg, &threadMembersUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, threadMembersUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -474,14 +589,21 @@ func OnGuildAuditLogEntryCreate(ctx context.Context, shard *Shard, msg *discord.
 }
 
 func OnEntitlementCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var entitlementCreatePayload discord.Entitlement
 
 	err := unmarshalPayload(msg, &entitlementCreatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, entitlementCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -490,14 +612,21 @@ func OnEntitlementCreate(ctx context.Context, shard *Shard, msg *discord.Gateway
 }
 
 func OnEntitlementUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var entitlementUpdatePayload discord.Entitlement
 
 	err := unmarshalPayload(msg, &entitlementUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, entitlementUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -506,14 +635,21 @@ func OnEntitlementUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 }
 
 func OnEntitlementDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var entitlementUpdatePayload discord.Entitlement
 
 	err := unmarshalPayload(msg, &entitlementUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, entitlementUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -529,7 +665,14 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, guildUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildUpdatePayload.ID.IsNil() {
 		ctx = WithGuildID(ctx, guildUpdatePayload.ID)
@@ -576,14 +719,19 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var guildDeletePayload discord.GuildDelete
 
-	println("GUILDDELETE", string(msg.Data), msg.Type)
-
 	err := unmarshalPayload(msg, &guildDeletePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, guildDeletePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildDeletePayload.ID.IsNil() {
 		ctx = WithGuildID(ctx, guildDeletePayload.ID)
@@ -618,7 +766,14 @@ func OnGuildBanAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildBanAddPayload.GuildID, guildBanAddPayload.User.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if guildBanAddPayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *guildBanAddPayload.GuildID)
@@ -638,7 +793,14 @@ func OnGuildBanRemove(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildBanRemovePayload.GuildID, guildBanRemovePayload.User.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if guildBanRemovePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *guildBanRemovePayload.GuildID)
@@ -658,7 +820,14 @@ func OnGuildEmojisUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, guildEmojisUpdatePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildEmojisUpdatePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildEmojisUpdatePayload.GuildID)
@@ -685,7 +854,14 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, guildStickersUpdatePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildStickersUpdatePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildStickersUpdatePayload.GuildID)
@@ -712,7 +888,14 @@ func OnGuildIntegrationsUpdate(ctx context.Context, shard *Shard, msg *discord.G
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, guildIntegrationsUpdatePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildIntegrationsUpdatePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildIntegrationsUpdatePayload.GuildID)
@@ -732,14 +915,21 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 		return DispatchResult{nil, nil}, false, err
 	}
 
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
+
 	guild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, *guildMemberAddPayload.GuildID)
 
 	if exists {
 		guild.MemberCount++
 		shard.Sandwich.stateProvider.SetGuild(ctx, *guildMemberAddPayload.GuildID, *guild)
 	}
-
-	defer onDispatchEvent(shard, msg.Type)
 
 	if guildMemberAddPayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *guildMemberAddPayload.GuildID)
@@ -762,7 +952,14 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	// TODO: Implement deduping.
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	guild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, guildMemberRemovePayload.GuildID)
 
@@ -771,16 +968,11 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 		shard.Sandwich.stateProvider.SetGuild(ctx, guildMemberRemovePayload.GuildID, *guild)
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
-
 	if !guildMemberRemovePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildMemberRemovePayload.GuildID)
 	}
 
 	guildMember, _ := shard.Sandwich.stateProvider.GetGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
-	// if !ok {
-	// 	shard.Logger.Warn("Received "+discord.DiscordEventGuildMemberRemove+" event, but previous guild member not present in state", "guild_id", guildMemberRemovePayload.GuildID, "user_id", guildMemberRemovePayload.User.ID)
-	// }
 
 	shard.Sandwich.stateProvider.RemoveGuildMember(ctx, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID)
 	shard.Sandwich.stateProvider.RemoveUserMutualGuild(ctx, guildMemberRemovePayload.User.ID, guildMemberRemovePayload.GuildID)
@@ -799,7 +991,14 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if guildMemberUpdatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *guildMemberUpdatePayload.GuildID)
@@ -810,9 +1009,6 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		*guildMemberUpdatePayload.GuildID,
 		guildMemberUpdatePayload.User.ID,
 	)
-	// if !ok {
-	// 	shard.Logger.Warn("Received "+discord.DiscordEventGuildMemberUpdate+" event, but previous guild member not present in state", "guild_id", *guildMemberUpdatePayload.GuildID, "user_id", guildMemberUpdatePayload.User.ID)
-	// }
 
 	shard.Sandwich.stateProvider.SetGuildMember(ctx, *guildMemberUpdatePayload.GuildID, discord.GuildMember(guildMemberUpdatePayload))
 
@@ -830,7 +1026,14 @@ func OnGuildRoleCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildRoleCreatePayload.GuildID, guildRoleCreatePayload.Role.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildRoleCreatePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildRoleCreatePayload.GuildID)
@@ -852,16 +1055,20 @@ func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildRoleUpdatePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildRoleUpdatePayload.GuildID)
 	}
 
 	beforeRole, _ := shard.Sandwich.stateProvider.GetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID)
-	// if !ok {
-	// 	shard.Logger.Warn("Received "+discord.DiscordEventGuildRoleUpdate+" event, but previous guild role not present in state", "guild_id", guildRoleUpdatePayload.GuildID, "role_id", guildRoleUpdatePayload.Role.ID)
-	// }
 
 	shard.Sandwich.stateProvider.SetGuildRole(ctx, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role)
 
@@ -879,7 +1086,14 @@ func OnGuildRoleDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildRoleDeletePayload.GuildID, guildRoleDeletePayload.RoleID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !guildRoleDeletePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildRoleDeletePayload.GuildID)
@@ -894,14 +1108,21 @@ func OnGuildRoleDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 }
 
 func OnIntegrationCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var integrationCreatePayload discord.IntegrationCreate
 
 	err := unmarshalPayload(msg, &integrationCreatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, integrationCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -910,14 +1131,21 @@ func OnIntegrationCreate(ctx context.Context, shard *Shard, msg *discord.Gateway
 }
 
 func OnIntegrationUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var integrationUpdatePayload discord.IntegrationUpdate
 
 	err := unmarshalPayload(msg, &integrationUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, integrationUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -926,14 +1154,21 @@ func OnIntegrationUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 }
 
 func OnIntegrationDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var integrationDeletePayload discord.IntegrationDelete
 
 	err := unmarshalPayload(msg, &integrationDeletePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, integrationDeletePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -942,14 +1177,21 @@ func OnIntegrationDelete(ctx context.Context, shard *Shard, msg *discord.Gateway
 }
 
 func OnInteractionCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var interactionCreatePayload discord.InteractionCreate
 
 	err := unmarshalPayload(msg, &interactionCreatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, interactionCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -965,7 +1207,14 @@ func OnInviteCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, inviteCreatePayload.Code),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if inviteCreatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *inviteCreatePayload.GuildID)
@@ -985,7 +1234,14 @@ func OnInviteDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, inviteDeletePayload.Code),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if inviteDeletePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *inviteDeletePayload.GuildID)
@@ -1005,7 +1261,14 @@ func OnMessageCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, messageCreatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if messageCreatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *messageCreatePayload.GuildID)
@@ -1025,7 +1288,14 @@ func OnMessageUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, messageUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if messageUpdatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *messageUpdatePayload.GuildID)
@@ -1045,7 +1315,14 @@ func OnMessageDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, messageDeletePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if messageDeletePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *messageDeletePayload.GuildID)
@@ -1065,7 +1342,14 @@ func OnMessageDeleteBulk(ctx context.Context, shard *Shard, msg *discord.Gateway
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, messageDeleteBulkPayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if messageDeleteBulkPayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *messageDeleteBulkPayload.GuildID)
@@ -1085,7 +1369,14 @@ func OnMessageReactionAdd(ctx context.Context, shard *Shard, msg *discord.Gatewa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s:%s", msg.Type, messageReactionAddPayload.GuildID, messageReactionAddPayload.ChannelID, messageReactionAddPayload.MessageID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !messageReactionAddPayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, messageReactionAddPayload.GuildID)
@@ -1105,7 +1396,14 @@ func OnMessageReactionRemove(ctx context.Context, shard *Shard, msg *discord.Gat
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s:%s", msg.Type, messageReactionRemovePayload.GuildID, messageReactionRemovePayload.ChannelID, messageReactionRemovePayload.MessageID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if messageReactionRemovePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *messageReactionRemovePayload.GuildID)
@@ -1125,7 +1423,14 @@ func OnMessageReactionRemoveAll(ctx context.Context, shard *Shard, msg *discord.
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, messageReactionRemoveAllPayload.GuildID, messageReactionRemoveAllPayload.ChannelID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !messageReactionRemoveAllPayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, messageReactionRemoveAllPayload.GuildID)
@@ -1145,7 +1450,14 @@ func OnMessageReactionRemoveEmoji(ctx context.Context, shard *Shard, msg *discor
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s:%s", msg.Type, messageReactionRemoveEmojiPayload.GuildID, messageReactionRemoveEmojiPayload.ChannelID, messageReactionRemoveEmojiPayload.MessageID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if messageReactionRemoveEmojiPayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *messageReactionRemoveEmojiPayload.GuildID)
@@ -1165,7 +1477,14 @@ func OnPresenceUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, presenceUpdatePayload.User.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if !presenceUpdatePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, presenceUpdatePayload.GuildID)
@@ -1178,14 +1497,21 @@ func OnPresenceUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 }
 
 func OnStageInstanceCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var stageInstanceCreatePayload discord.StageInstanceCreate
 
 	err := unmarshalPayload(msg, &stageInstanceCreatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, stageInstanceCreatePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1194,14 +1520,21 @@ func OnStageInstanceCreate(ctx context.Context, shard *Shard, msg *discord.Gatew
 }
 
 func OnStageInstanceUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var stageInstanceUpdatePayload discord.StageInstanceUpdate
 
 	err := unmarshalPayload(msg, &stageInstanceUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, stageInstanceUpdatePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1210,14 +1543,21 @@ func OnStageInstanceUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 }
 
 func OnStageInstanceDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var stageInstanceDeletePayload discord.StageInstanceDelete
 
 	err := unmarshalPayload(msg, &stageInstanceDeletePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, stageInstanceDeletePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1233,7 +1573,14 @@ func OnTypingStart(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, typingStartPayload.GuildID, typingStartPayload.UserID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if typingStartPayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *typingStartPayload.GuildID)
@@ -1246,8 +1593,6 @@ func OnTypingStart(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 }
 
 func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var userUpdatePayload discord.UserUpdate
 
 	err := unmarshalPayload(msg, &userUpdatePayload)
@@ -1255,10 +1600,16 @@ func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload
 		return DispatchResult{nil, nil}, false, err
 	}
 
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, userUpdatePayload.ID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
+
 	beforeUser, _ := shard.Sandwich.stateProvider.GetUser(ctx, userUpdatePayload.ID)
-	// if !ok {
-	// 	shard.Logger.Warn("Received "+discord.DiscordEventUserUpdate+" event, but previous user not present in state", "user_id", userUpdatePayload.ID)
-	// }
 
 	shard.Sandwich.stateProvider.SetUser(ctx, userUpdatePayload.ID, discord.User(userUpdatePayload))
 
@@ -1276,7 +1627,14 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	defer onDispatchEvent(shard, msg.Type)
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	if voiceStateUpdatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *voiceStateUpdatePayload.GuildID)
@@ -1304,14 +1662,21 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 }
 
 func OnVoiceServerUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var voiceServerUpdatePayload discord.VoiceServerUpdate
 
 	err := unmarshalPayload(msg, &voiceServerUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, voiceServerUpdatePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1320,14 +1685,21 @@ func OnVoiceServerUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 }
 
 func OnWebhookUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var webhookUpdatePayload discord.WebhookUpdate
 
 	err := unmarshalPayload(msg, &webhookUpdatePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s", msg.Type, webhookUpdatePayload.GuildID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,
@@ -1336,14 +1708,21 @@ func OnWebhookUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 }
 
 func OnGuildJoinRequestDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
-	onDispatchEvent(shard, msg.Type)
-
 	var guildJoinRequestDeletePayload discord.GuildJoinRequestDelete
 
 	err := unmarshalPayload(msg, &guildJoinRequestDeletePayload)
 	if err != nil {
 		return DispatchResult{nil, nil}, false, err
 	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s", msg.Type, guildJoinRequestDeletePayload.GuildID, guildJoinRequestDeletePayload.UserID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
 
 	return DispatchResult{
 		Data:  msg.Data,

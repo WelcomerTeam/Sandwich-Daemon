@@ -96,6 +96,8 @@ func main() {
 		// Replace this with whatever state provider you want to use. Sandwich includes a memory based
 		// state provider however you can implement your own.
 		stateProvider,
+
+		sandwich.NewInMemoryDedupeProvider(),
 	).WithPanicHandler(func(_ *sandwich.Sandwich, r any) {
 		slog.Error("Panic occurred", "error", r)
 
