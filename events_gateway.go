@@ -31,6 +31,12 @@ func GatewayOpDispatch(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 }
 
 func GatewayOpHeartbeat(ctx context.Context, shard *Shard, _ *discord.GatewayPayload, _ *Trace) error {
+	// Update last heartbeat sent time when discord requests a heartbeat.
+	// This will handle rare circumstances where the main heartbeater goroutine is dead.
+
+	now := time.Now()
+	shard.LastHeartbeatSent.Store(&now)
+
 	err := shard.SendEvent(ctx, discord.GatewayOpHeartbeat, shard.sequence.Load())
 	if err != nil {
 		err = shard.reconnect(ctx, websocket.StatusNormalClosure)
