@@ -9,7 +9,9 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/url"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,6 +34,8 @@ var (
 
 	MemberChunkTimeout = time.Second * 3
 )
+
+var IgnoreHeartbeatTimeouts = strings.ToLower(os.Getenv("SANDWICH_IGNORE_HEARTBEAT_TIMEOUTS")) == "true"
 
 var gatewayURL = url.URL{
 	Scheme: "wss",
@@ -559,14 +563,24 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 			now := time.Now()
 			shard.LastHeartbeatSent.Store(&now)
 
-			if err != nil || now.Sub(*shard.LastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
-				if err != nil {
-					shard.Logger.Error("Heartbeat failed", "error", err)
-				} else {
-					shard.Logger.Error("Heartbeat failed", "error", "timeout")
-				}
+			if IgnoreHeartbeatTimeouts {
+				if err != nil || now.Sub(*shard.LastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
+					if err != nil {
+						shard.Logger.Error("Heartbeat failed", "error", err)
+					}
 
-				return
+					return
+				}
+			} else {
+				if err != nil || now.Sub(*shard.LastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
+					if err != nil {
+						shard.Logger.Error("Heartbeat failed", "error", err)
+					} else {
+						shard.Logger.Error("Heartbeat failed", "error", "timeout")
+					}
+
+					return
+				}
 			}
 		}
 	}
