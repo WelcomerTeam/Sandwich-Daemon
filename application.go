@@ -13,7 +13,6 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 	"github.com/WelcomerTeam/Sandwich-Daemon/pkg/syncmap"
 	"github.com/coder/websocket"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 type Application struct {
@@ -37,7 +36,7 @@ type Application struct {
 	readyWg sync.WaitGroup
 
 	Shards *syncmap.Map[int32, *Shard]
-	guilds *csmap.CsMap[discord.Snowflake, bool]
+	guilds *syncmap.Map[discord.Snowflake, bool]
 
 	startedAt *atomic.Pointer[time.Time]
 
@@ -66,11 +65,7 @@ func NewApplication(sandwich *Sandwich, config *ApplicationConfiguration) *Appli
 		readyWg: sync.WaitGroup{},
 
 		Shards: &syncmap.Map[int32, *Shard]{},
-		guilds: csmap.Create[discord.Snowflake, bool](
-		// csmap.WithCustomHasher[discord.Snowflake, bool](func(key discord.Snowflake) uint64 {
-		// 	return uint64(key)
-		// }),
-		),
+		guilds: &syncmap.Map[discord.Snowflake, bool]{},
 
 		startedAt: &atomic.Pointer[time.Time]{},
 
