@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
@@ -18,6 +19,103 @@ const (
 
 func onDispatchEvent(shard *Shard, eventType string) {
 	RecordEvent(shard.Application.Identifier, eventType)
+}
+
+// Optimized for the hot path event deduplication
+
+// buildDedupeKeyStr efficiently constructs deduplication keys with a string value (for invite codes)
+func buildDedupeKeyStr(eventType string, str string) string {
+	buf := make([]byte, 0, len(eventType)+len(str)+1)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	buf = append(buf, str...)
+	return string(buf)
+}
+
+// buildDedupeKey efficiently constructs deduplication keys without fmt.Sprintf allocations
+func buildDedupeKey(eventType string, id discord.Snowflake) string {
+	// Pre-calculate required capacity: len(eventType) + 1 (colon) + max 20 digits for snowflake
+	buf := make([]byte, 0, len(eventType)+21)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id), 10)
+	return string(buf)
+}
+
+// buildDedupeKey2 efficiently constructs deduplication keys for two IDs
+func buildDedupeKey2(eventType string, id1, id2 discord.Snowflake) string {
+	// Pre-calculate: len(eventType) + 2 colons + 2*20 digits for snowflakes
+	buf := make([]byte, 0, len(eventType)+42)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id1), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id2), 10)
+	return string(buf)
+}
+
+// buildDedupeKey3 efficiently constructs deduplication keys for three IDs
+func buildDedupeKey3(eventType string, id1, id2, id3 discord.Snowflake) string {
+	// Pre-calculate: len(eventType) + 3 colons + 3*20 digits for snowflakes
+	buf := make([]byte, 0, len(eventType)+63)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id1), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id2), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id3), 10)
+	return string(buf)
+}
+
+// buildDedupeKeyPtr efficiently constructs deduplication keys for pointer snowflakes
+func buildDedupeKeyPtr(eventType string, id *discord.Snowflake) string {
+	buf := make([]byte, 0, len(eventType)+21)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	if id != nil {
+		buf = strconv.AppendUint(buf, uint64(*id), 10)
+	}
+	return string(buf)
+}
+
+// buildDedupeKey2Ptr efficiently constructs deduplication keys for pointer snowflakes
+func buildDedupeKey2Ptr(eventType string, id1 *discord.Snowflake, id2 discord.Snowflake) string {
+	buf := make([]byte, 0, len(eventType)+42)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	if id1 != nil {
+		buf = strconv.AppendUint(buf, uint64(*id1), 10)
+	}
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id2), 10)
+	return string(buf)
+}
+
+// buildDedupeKey3Ptr efficiently constructs deduplication keys for three pointer snowflakes
+func buildDedupeKey3Ptr(eventType string, id1 *discord.Snowflake, id2, id3 discord.Snowflake) string {
+	buf := make([]byte, 0, len(eventType)+63)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	if id1 != nil {
+		buf = strconv.AppendUint(buf, uint64(*id1), 10)
+	}
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id2), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id3), 10)
+	return string(buf)
+}
+
+// buildDedupeKeyInt efficiently constructs deduplication keys with an int value
+func buildDedupeKeyInt(eventType string, id discord.Snowflake, value int32) string {
+	buf := make([]byte, 0, len(eventType)+32)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(id), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendInt(buf, int64(value), 10)
+	return string(buf)
 }
 
 // OnReady handles the READY event.
@@ -151,7 +249,7 @@ func OnApplicationCommandCreate(ctx context.Context, shard *Shard, msg *discord.
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, applicationCommandCreatePayload.ID),
+		buildDedupeKeyPtr(msg.Type, applicationCommandCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -174,7 +272,7 @@ func OnApplicationCommandUpdate(ctx context.Context, shard *Shard, msg *discord.
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, applicationCommandUpdatePayload.ID),
+		buildDedupeKeyPtr(msg.Type, applicationCommandUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -197,7 +295,7 @@ func OnApplicationCommandDelete(ctx context.Context, shard *Shard, msg *discord.
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, applicationCommandDeletePayload.ID),
+		buildDedupeKeyPtr(msg.Type, applicationCommandDeletePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -220,7 +318,7 @@ func OnGuildCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, guildCreatePayload.ID),
+		buildDedupeKey(msg.Type, guildCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -261,7 +359,7 @@ func OnGuildMembersChunk(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%d", msg.Type, guildMembersChunkPayload.GuildID, guildMembersChunkPayload.ChunkIndex),
+		buildDedupeKeyInt(msg.Type, guildMembersChunkPayload.GuildID, guildMembersChunkPayload.ChunkIndex),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -308,7 +406,7 @@ func OnChannelCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, channelCreatePayload.ID),
+		buildDedupeKey(msg.Type, channelCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -337,7 +435,7 @@ func OnChannelUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, channelUpdatePayload.ID),
+		buildDedupeKey(msg.Type, channelUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -371,7 +469,7 @@ func OnChannelDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, channelDeletePayload.ID),
+		buildDedupeKey(msg.Type, channelDeletePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -405,7 +503,7 @@ func OnChannelPinsUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, channelPinsUpdatePayload.ChannelID),
+		buildDedupeKey(msg.Type, channelPinsUpdatePayload.ChannelID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -432,7 +530,7 @@ func OnThreadCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, threadCreatePayload.ID),
+		buildDedupeKey(msg.Type, threadCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -455,7 +553,7 @@ func OnThreadUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, threadUpdatePayload.ID),
+		buildDedupeKey(msg.Type, threadUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -483,7 +581,7 @@ func OnThreadDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, threadDeletePayload.ID),
+		buildDedupeKey(msg.Type, threadDeletePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -506,7 +604,7 @@ func OnThreadListSync(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, threadListSyncPayload.GuildID),
+		buildDedupeKey(msg.Type, threadListSyncPayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -529,7 +627,7 @@ func OnThreadMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gatewa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, threadMemberUpdatePayload.ID),
+		buildDedupeKeyPtr(msg.Type, threadMemberUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -552,7 +650,7 @@ func OnThreadMembersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, threadMembersUpdatePayload.ID),
+		buildDedupeKey(msg.Type, threadMembersUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -575,7 +673,7 @@ func OnGuildAuditLogEntryCreate(ctx context.Context, shard *Shard, msg *discord.
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, threadMembersUpdatePayload.ID),
+		buildDedupeKey(msg.Type, threadMembersUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -598,7 +696,7 @@ func OnEntitlementCreate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, entitlementCreatePayload.ID),
+		buildDedupeKey(msg.Type, entitlementCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -621,7 +719,7 @@ func OnEntitlementUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, entitlementUpdatePayload.ID),
+		buildDedupeKey(msg.Type, entitlementUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -644,7 +742,7 @@ func OnEntitlementDelete(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, entitlementUpdatePayload.ID),
+		buildDedupeKey(msg.Type, entitlementUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -667,7 +765,7 @@ func OnGuildUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, guildUpdatePayload.ID),
+		buildDedupeKey(msg.Type, guildUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -726,7 +824,7 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, guildDeletePayload.ID),
+		buildDedupeKey(msg.Type, guildDeletePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -768,7 +866,7 @@ func OnGuildBanAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildBanAddPayload.GuildID, guildBanAddPayload.User.ID),
+		buildDedupeKey2Ptr(msg.Type, guildBanAddPayload.GuildID, guildBanAddPayload.User.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -795,7 +893,7 @@ func OnGuildBanRemove(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildBanRemovePayload.GuildID, guildBanRemovePayload.User.ID),
+		buildDedupeKey2Ptr(msg.Type, guildBanRemovePayload.GuildID, guildBanRemovePayload.User.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -822,7 +920,7 @@ func OnGuildEmojisUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, guildEmojisUpdatePayload.GuildID),
+		buildDedupeKey(msg.Type, guildEmojisUpdatePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -856,7 +954,7 @@ func OnGuildStickersUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, guildStickersUpdatePayload.GuildID),
+		buildDedupeKey(msg.Type, guildStickersUpdatePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -890,7 +988,7 @@ func OnGuildIntegrationsUpdate(ctx context.Context, shard *Shard, msg *discord.G
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, guildIntegrationsUpdatePayload.GuildID),
+		buildDedupeKey(msg.Type, guildIntegrationsUpdatePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -917,7 +1015,7 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID),
+		buildDedupeKey2Ptr(msg.Type, guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -954,7 +1052,7 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID),
+		buildDedupeKey2(msg.Type, guildMemberRemovePayload.GuildID, guildMemberRemovePayload.User.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -993,7 +1091,7 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID),
+		buildDedupeKey2Ptr(msg.Type, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1028,7 +1126,7 @@ func OnGuildRoleCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildRoleCreatePayload.GuildID, guildRoleCreatePayload.Role.ID),
+		buildDedupeKey2(msg.Type, guildRoleCreatePayload.GuildID, guildRoleCreatePayload.Role.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1057,7 +1155,7 @@ func OnGuildRoleUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID),
+		buildDedupeKey2(msg.Type, guildRoleUpdatePayload.GuildID, guildRoleUpdatePayload.Role.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1088,7 +1186,7 @@ func OnGuildRoleDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildRoleDeletePayload.GuildID, guildRoleDeletePayload.RoleID),
+		buildDedupeKey2(msg.Type, guildRoleDeletePayload.GuildID, guildRoleDeletePayload.RoleID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1117,7 +1215,7 @@ func OnIntegrationCreate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, integrationCreatePayload.ID),
+		buildDedupeKey(msg.Type, integrationCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1140,7 +1238,7 @@ func OnIntegrationUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, integrationUpdatePayload.ID),
+		buildDedupeKey(msg.Type, integrationUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1163,7 +1261,7 @@ func OnIntegrationDelete(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, integrationDeletePayload.ID),
+		buildDedupeKey(msg.Type, integrationDeletePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1186,7 +1284,7 @@ func OnInteractionCreate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, interactionCreatePayload.ID),
+		buildDedupeKey(msg.Type, interactionCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1209,7 +1307,7 @@ func OnInviteCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, inviteCreatePayload.Code),
+		buildDedupeKeyStr(msg.Type, inviteCreatePayload.Code),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1236,7 +1334,7 @@ func OnInviteDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, inviteDeletePayload.Code),
+		buildDedupeKeyStr(msg.Type, inviteDeletePayload.Code),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1263,7 +1361,7 @@ func OnMessageCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, messageCreatePayload.ID),
+		buildDedupeKey(msg.Type, messageCreatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1290,7 +1388,7 @@ func OnMessageUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, messageUpdatePayload.ID),
+		buildDedupeKey(msg.Type, messageUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1317,7 +1415,7 @@ func OnMessageDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, messageDeletePayload.ID),
+		buildDedupeKey(msg.Type, messageDeletePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1344,7 +1442,7 @@ func OnMessageDeleteBulk(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, messageDeleteBulkPayload.GuildID),
+		buildDedupeKeyPtr(msg.Type, messageDeleteBulkPayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1371,7 +1469,7 @@ func OnMessageReactionAdd(ctx context.Context, shard *Shard, msg *discord.Gatewa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s:%s", msg.Type, messageReactionAddPayload.GuildID, messageReactionAddPayload.ChannelID, messageReactionAddPayload.MessageID),
+		buildDedupeKey3(msg.Type, messageReactionAddPayload.GuildID, messageReactionAddPayload.ChannelID, messageReactionAddPayload.MessageID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1398,7 +1496,7 @@ func OnMessageReactionRemove(ctx context.Context, shard *Shard, msg *discord.Gat
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s:%s", msg.Type, messageReactionRemovePayload.GuildID, messageReactionRemovePayload.ChannelID, messageReactionRemovePayload.MessageID),
+		buildDedupeKey3Ptr(msg.Type, messageReactionRemovePayload.GuildID, messageReactionRemovePayload.ChannelID, messageReactionRemovePayload.MessageID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1425,7 +1523,7 @@ func OnMessageReactionRemoveAll(ctx context.Context, shard *Shard, msg *discord.
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, messageReactionRemoveAllPayload.GuildID, messageReactionRemoveAllPayload.ChannelID),
+		buildDedupeKey2(msg.Type, messageReactionRemoveAllPayload.GuildID, messageReactionRemoveAllPayload.ChannelID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1452,7 +1550,7 @@ func OnMessageReactionRemoveEmoji(ctx context.Context, shard *Shard, msg *discor
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s:%s", msg.Type, messageReactionRemoveEmojiPayload.GuildID, messageReactionRemoveEmojiPayload.ChannelID, messageReactionRemoveEmojiPayload.MessageID),
+		buildDedupeKey3Ptr(msg.Type, messageReactionRemoveEmojiPayload.GuildID, messageReactionRemoveEmojiPayload.ChannelID, messageReactionRemoveEmojiPayload.MessageID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1479,7 +1577,7 @@ func OnPresenceUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, presenceUpdatePayload.User.ID),
+		buildDedupeKey(msg.Type, presenceUpdatePayload.User.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1506,7 +1604,7 @@ func OnStageInstanceCreate(ctx context.Context, shard *Shard, msg *discord.Gatew
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, stageInstanceCreatePayload.GuildID),
+		buildDedupeKey(msg.Type, stageInstanceCreatePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1529,7 +1627,7 @@ func OnStageInstanceUpdate(ctx context.Context, shard *Shard, msg *discord.Gatew
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, stageInstanceUpdatePayload.GuildID),
+		buildDedupeKey(msg.Type, stageInstanceUpdatePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1552,7 +1650,7 @@ func OnStageInstanceDelete(ctx context.Context, shard *Shard, msg *discord.Gatew
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, stageInstanceDeletePayload.GuildID),
+		buildDedupeKey(msg.Type, stageInstanceDeletePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1575,7 +1673,7 @@ func OnTypingStart(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, typingStartPayload.GuildID, typingStartPayload.UserID),
+		buildDedupeKey2Ptr(msg.Type, typingStartPayload.GuildID, typingStartPayload.UserID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1602,7 +1700,7 @@ func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, userUpdatePayload.ID),
+		buildDedupeKey(msg.Type, userUpdatePayload.ID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1678,7 +1776,7 @@ func OnVoiceServerUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, voiceServerUpdatePayload.GuildID),
+		buildDedupeKey(msg.Type, voiceServerUpdatePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1701,7 +1799,7 @@ func OnWebhookUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s", msg.Type, webhookUpdatePayload.GuildID),
+		buildDedupeKey(msg.Type, webhookUpdatePayload.GuildID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
@@ -1724,7 +1822,7 @@ func OnGuildJoinRequestDelete(ctx context.Context, shard *Shard, msg *discord.Ga
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, guildJoinRequestDeletePayload.GuildID, guildJoinRequestDeletePayload.UserID),
+		buildDedupeKey2(msg.Type, guildJoinRequestDeletePayload.GuildID, guildJoinRequestDeletePayload.UserID),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
