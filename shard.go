@@ -550,6 +550,11 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-shard.heartbeater.C:
+			// Check context again before processing to prevent blocking operations on cancelled context
+			if ctx.Err() != nil {
+				return
+			}
+
 			if hasJitter {
 				hasJitter = false
 
@@ -736,6 +741,8 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 	done := make(chan struct{})
 
 	go func() {
+		defer close(done)
+
 		guildIDs := make([]discord.Snowflake, 0)
 
 		shard.Guilds.Range(func(key discord.Snowflake, _ bool) bool {
@@ -747,6 +754,14 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 		shard.Logger.Debug("Chunking all guilds", "count", len(guildIDs))
 
 		for _, guildID := range guildIDs {
+			// Check context cancellation before each chunk
+			select {
+			case <-ctx.Done():
+				shard.Logger.Debug("Context cancelled, stopping guild chunking")
+				return
+			default:
+			}
+
 			err := shard.chunkGuild(ctx, guildID, false)
 			if err != nil {
 				shard.Logger.Error("Failed to chunk guild", "error", err)
@@ -754,8 +769,6 @@ func (shard *Shard) chunkAllGuilds(ctx context.Context) chan struct{} {
 		}
 
 		shard.Logger.Debug("Chunked all guilds")
-
-		close(done)
 	}()
 
 	return done
