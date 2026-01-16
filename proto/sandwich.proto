@@ -47,6 +47,8 @@ service Sandwich {
     
     // WhereIsGuild returns a list of WhereIsGuildLocations based on guildId.
     rpc WhereIsGuild(WhereIsGuildRequest) returns (WhereIsGuildResponse) {}
+
+    rpc FetchAllGuildIDs(FetchGuildIDsRequest) returns (FetchGuildIDsResponse) {}
     
     rpc FetchGuild(FetchGuildRequest) returns (FetchGuildResponse) {}
     rpc FetchGuildMember(FetchGuildMemberRequest) returns (FetchGuildMemberResponse) {}
@@ -57,6 +59,7 @@ service Sandwich {
     rpc FetchGuildVoiceState(FetchGuildVoiceStateRequest) returns (FetchGuildVoiceStateResponse) {}
     rpc FetchUser(FetchUserRequest) returns (FetchUserResponse) {}
     rpc FetchUserMutualGuilds(FetchUserMutualGuildsRequest) returns (FetchUserMutualGuildsResponse) {}
+    rpc FetchVoiceStates(FetchVoiceStatesRequest) returns (FetchVoiceStatesResponse) {}
 }
 
 message BaseResponse {
@@ -257,4 +260,22 @@ message FetchUserMutualGuildsRequest {
 message FetchUserMutualGuildsResponse {
     BaseResponse base_response = 1;
     map<int64, Guild> guilds = 2;
+}
+
+message FetchGuildIDsRequest {
+    string identifier = 1;
+}
+
+message FetchGuildIDsResponse {
+    BaseResponse base_response = 1;
+    repeated int64 guild_ids = 2;
+}
+
+message FetchVoiceStatesRequest {
+    repeated int64 guild_ids = 1;
+}
+
+message FetchVoiceStatesResponse {
+    BaseResponse base_response = 1;
+    map<int64, VoiceState> voice_states = 2;
 }
