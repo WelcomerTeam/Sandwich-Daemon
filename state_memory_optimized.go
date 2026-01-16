@@ -24,6 +24,10 @@ type StateProviderMemoryOptimized struct {
 }
 
 func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
+	return NewStateProviderMemoryOptimizedWithContext(context.Background())
+}
+
+func NewStateProviderMemoryOptimizedWithContext(ctx context.Context) *StateProviderMemoryOptimized {
 	stateProvider := &StateProviderMemoryOptimized{
 		Guilds:        &syncmap.Map[discord.Snowflake, StateGuild]{},
 		GuildMembers:  &syncmap.Map[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateGuildMember]]{},
@@ -40,8 +44,13 @@ func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
 		t := time.NewTicker(10 * time.Second)
 		defer t.Stop()
 
-		for range t.C {
-			stateProvider.UpdateStateMetricsFromStateProvider()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				stateProvider.UpdateStateMetricsFromStateProvider()
+			}
 		}
 	}()
 
@@ -213,7 +222,8 @@ func (s *StateProviderMemoryOptimized) GetGuildMembers(_ context.Context, guildI
 		return nil, false
 	}
 
-	var guildMembers []*discord.GuildMember
+	// Pre-allocate with exact capacity to avoid reallocations
+	guildMembers := make([]*discord.GuildMember, 0, guildMembersState.Count())
 
 	guildMembersState.Range(func(_ discord.Snowflake, value StateGuildMember) bool {
 		guildMember := StateGuildMemberToDiscord(value)
@@ -297,7 +307,8 @@ func (s *StateProviderMemoryOptimized) GetGuildChannels(_ context.Context, guild
 		return nil, false
 	}
 
-	var guildChannels []*discord.Channel
+	// Pre-allocate with exact capacity to avoid reallocations
+	guildChannels := make([]*discord.Channel, 0, guildChannelsState.Count())
 
 	guildChannelsState.Range(func(_ discord.Snowflake, value StateChannel) bool {
 		guildChannel := StateChannelToDiscord(value)
@@ -373,7 +384,8 @@ func (s *StateProviderMemoryOptimized) GetGuildRoles(_ context.Context, guildID 
 		return nil, false
 	}
 
-	var guildRoles []*discord.Role
+	// Pre-allocate with exact capacity to avoid reallocations
+	guildRoles := make([]*discord.Role, 0, guildRolesState.Count())
 
 	guildRolesState.Range(func(_ discord.Snowflake, value StateRole) bool {
 		guildRole := StateRoleToDiscord(value)
@@ -449,7 +461,8 @@ func (s *StateProviderMemoryOptimized) GetGuildEmojis(_ context.Context, guildID
 		return nil, false
 	}
 
-	var guildEmojis []*discord.Emoji
+	// Pre-allocate with exact capacity to avoid reallocations
+	guildEmojis := make([]*discord.Emoji, 0, guildEmojisState.Count())
 
 	guildEmojisState.Range(func(_ discord.Snowflake, value StateEmoji) bool {
 		guildEmoji := StateEmojiToDiscord(value)
@@ -601,7 +614,8 @@ func (s *StateProviderMemoryOptimized) GetVoiceStates(_ context.Context, guildID
 		return nil, false
 	}
 
-	var voiceStates []*discord.VoiceState
+	// Pre-allocate with exact capacity to avoid reallocations
+	voiceStates := make([]*discord.VoiceState, 0, voiceStatesState.Count())
 
 	voiceStatesState.Range(func(_ discord.Snowflake, value StateVoiceState) bool {
 		voiceState := StateVoiceStateToDiscord(value)
