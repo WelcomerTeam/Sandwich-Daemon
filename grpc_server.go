@@ -821,3 +821,94 @@ func (grpcServer *GRPCServer) FetchUserMutualGuilds(ctx context.Context, req *sa
 		Guilds: mutualGuilds,
 	}, nil
 }
+
+func (grpcServer *GRPCServer) FetchAllGuildIDs(ctx context.Context, req *sandwich_protobuf.FetchGuildIDsRequest) (*sandwich_protobuf.FetchGuildIDsResponse, error) {
+	RecordGRPCRequest()
+
+	guildIDMap := make(map[int64]struct{})
+
+	grpcServer.sandwich.Applications.Range(func(_ string, application *Application) bool {
+		if req.GetIdentifier() != "" && application.Identifier != req.GetIdentifier() {
+			return true
+		}
+
+		application.Shards.Range(func(_ int32, shard *Shard) bool {
+			shard.Guilds.Range(func(key discord.Snowflake, value bool) bool {
+				guildIDMap[int64(key)] = struct{}{}
+
+				return true
+			})
+
+			return true
+		})
+
+		return true
+	})
+
+	guildIDs := make([]int64, 0, len(guildIDMap))
+	for guildID := range guildIDMap {
+		guildIDs = append(guildIDs, guildID)
+	}
+
+	return &sandwich_protobuf.FetchGuildIDsResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
+			Ok: true,
+		},
+		GuildIds: guildIDs,
+	}, nil
+}
+
+func (grpcServer *GRPCServer) FetchVoiceStates(ctx context.Context, req *sandwich_protobuf.FetchVoiceStatesRequest) (*sandwich_protobuf.FetchVoiceStatesResponse, error) {
+	RecordGRPCRequest()
+
+	voiceStates := make(map[int64]*sandwich_protobuf.VoiceState)
+
+	guildIDMap := make(map[discord.Snowflake]struct{})
+
+	for _, guildID := range req.GetGuildIds() {
+		guildIDMap[discord.Snowflake(guildID)] = struct{}{}
+	}
+
+	hasGuildFilter := len(guildIDMap) > 0
+
+	if hasGuildFilter {
+		for guildID := range guildIDMap {
+			stateVoiceStates, ok := grpcServer.sandwich.stateProvider.GetVoiceStates(ctx, guildID)
+			if !ok {
+				continue
+			}
+
+			for _, stateVoiceState := range stateVoiceStates {
+				voiceStates[int64(stateVoiceState.UserID)] = sandwich_protobuf.VoiceStateToPB(stateVoiceState)
+			}
+		}
+	} else {
+		grpcServer.sandwich.Applications.Range(func(_ string, application *Application) bool {
+			application.Shards.Range(func(_ int32, shard *Shard) bool {
+				shard.Guilds.Range(func(guildID discord.Snowflake, _ bool) bool {
+					stateVoiceStates, ok := grpcServer.sandwich.stateProvider.GetVoiceStates(ctx, guildID)
+					if !ok {
+						return true
+					}
+
+					for _, stateVoiceState := range stateVoiceStates {
+						voiceStates[int64(stateVoiceState.UserID)] = sandwich_protobuf.VoiceStateToPB(stateVoiceState)
+					}
+
+					return true
+				})
+
+				return true
+			})
+
+			return true
+		})
+	}
+
+	return &sandwich_protobuf.FetchVoiceStatesResponse{
+		BaseResponse: &sandwich_protobuf.BaseResponse{
+			Ok: true,
+		},
+		VoiceStates: voiceStates,
+	}, nil
+}

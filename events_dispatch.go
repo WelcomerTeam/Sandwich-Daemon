@@ -24,7 +24,7 @@ func onDispatchEvent(shard *Shard, eventType string) {
 // Optimized for the hot path event deduplication
 
 // buildDedupeKeyStr efficiently constructs deduplication keys with a string value (for invite codes)
-func buildDedupeKeyStr(eventType string, str string) string {
+func buildDedupeKeyStr(eventType, str string) string {
 	buf := make([]byte, 0, len(eventType)+len(str)+1)
 	buf = append(buf, eventType...)
 	buf = append(buf, ':')

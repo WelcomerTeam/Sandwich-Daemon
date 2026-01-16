@@ -65,7 +65,7 @@ func (d *inMemoryDedupeProvider) Deduplicate(ctx context.Context, key string, tt
 
 	d.mu.Lock()
 	existingTime, exists := d.keys[key]
-	
+
 	// Check if key exists and is still valid
 	if exists && existingTime.After(now) {
 		d.mu.Unlock()
