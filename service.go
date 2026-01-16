@@ -66,7 +66,7 @@ type GuildChunkPartial struct {
 }
 
 func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *http.Client, eventProvider EventProvider, identifyProvider IdentifyProvider, producerProvider ProducerProvider, stateProvider StateProvider, dedupeProvider DedupeProvider) *Sandwich {
-	return &Sandwich{
+	sandwich := &Sandwich{
 		Logger: logger,
 
 		configProvider: configProvider,
@@ -92,6 +92,11 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 		listenerCounter: &atomic.Int32{},
 		listeners:       &syncmap.Map[int32, chan *listenerData]{},
 	}
+
+	// Start background cleanup for completed guild chunks
+	go sandwich.cleanupGuildChunks(context.Background())
+
+	return sandwich
 }
 
 func (sandwich *Sandwich) WithPanicHandler(panicHandler PanicHandler) *Sandwich {
@@ -419,5 +424,41 @@ func applicationToPB(application *Application) *pb.SandwichApplication {
 		UserId:                userID,
 		Values:                valuesJSON,
 		Shards:                shards,
+	}
+}
+
+// cleanupGuildChunks periodically removes completed guild chunks to prevent memory leaks
+func (sandwich *Sandwich) cleanupGuildChunks(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			now := time.Now()
+			var toDelete []discord.Snowflake
+
+			// Find chunks that have been completed for more than 10 minutes
+			sandwich.guildChunks.Range(func(guildID discord.Snowflake, chunk *GuildChunk) bool {
+				if chunk.complete.Load() {
+					completedAt := chunk.completedAt.Load()
+					if completedAt != nil && now.Sub(*completedAt) > 10*time.Minute {
+						toDelete = append(toDelete, guildID)
+					}
+				}
+				return true
+			})
+
+			// Delete old completed chunks
+			for _, guildID := range toDelete {
+				sandwich.guildChunks.Delete(guildID)
+			}
+
+			if len(toDelete) > 0 {
+				sandwich.Logger.Debug("Cleaned up completed guild chunks", "count", len(toDelete))
+			}
+		}
 	}
 }
