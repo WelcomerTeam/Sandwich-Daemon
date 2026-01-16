@@ -297,7 +297,9 @@ readyConsumer:
 
 	shard.Logger.Debug("Shard is ready", "heartbeat_interval", heartbeatInterval.Milliseconds(), "heartbeat_failure_interval", heartbeatFailureInterval.Milliseconds())
 
-	go shard.heartbeat(ctx)
+	if !shard.HeartbeatActive.Load() {
+		go shard.heartbeat(ctx)
+	}
 
 	sequence := shard.sequence.Load()
 	sessionID := shard.sessionID.Load()
