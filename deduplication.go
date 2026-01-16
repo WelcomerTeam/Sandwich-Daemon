@@ -47,7 +47,8 @@ func NewInMemoryDedupeProvider() *inMemoryDedupeProvider {
 	}
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Minute) // Cleanup every minute
+		// Cleanup every 15 seconds instead of 1 minute to prevent unbounded growth under high load
+		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 
 		for range ticker.C {
@@ -62,15 +63,16 @@ func (d *inMemoryDedupeProvider) Deduplicate(ctx context.Context, key string, tt
 	now := time.Now()
 	expiration := now.Add(ttl)
 
-	d.mu.RLock()
+	d.mu.Lock()
 	existingTime, exists := d.keys[key]
-	d.mu.RUnlock()
-
+	
+	// Check if key exists and is still valid
 	if exists && existingTime.After(now) {
+		d.mu.Unlock()
 		return false // Key is already being processed
 	}
 
-	d.mu.Lock()
+	// Set the key atomically within the same lock
 	d.keys[key] = expiration
 	d.mu.Unlock()
 
