@@ -1627,15 +1627,6 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 		return DispatchResult{nil, nil}, false, err
 	}
 
-	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
-		ctx,
-		fmt.Sprintf("%s:%s:%s", msg.Type, voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID),
-		StandardDeduplicationTimeout); !ok {
-		return DispatchResult{nil, nil}, false, nil
-	}
-
-	onDispatchEvent(shard, msg.Type)
-
 	if voiceStateUpdatePayload.GuildID != nil {
 		ctx = WithGuildID(ctx, *voiceStateUpdatePayload.GuildID)
 	}
@@ -1646,8 +1637,24 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 		guildID = *voiceStateUpdatePayload.GuildID
 	}
 
-	beforeVoiceState, ok := shard.Sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
-	if ok {
+	beforeVoiceState, beforeVoiceStateOk := shard.Sandwich.stateProvider.GetVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
+
+	var beforeVoiceStateChannelID discord.Snowflake
+
+	if beforeVoiceStateOk {
+		beforeVoiceStateChannelID = beforeVoiceState.ChannelID
+	}
+
+	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
+		ctx,
+		fmt.Sprintf("%s:%s:%s:%s:%s", msg.Type, voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID, beforeVoiceStateChannelID, voiceStateUpdatePayload.ChannelID),
+		StandardDeduplicationTimeout); !ok {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
+	onDispatchEvent(shard, msg.Type)
+
+	if beforeVoiceStateOk {
 		shard.Sandwich.stateProvider.RemoveVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
 	}
 
