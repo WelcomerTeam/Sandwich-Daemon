@@ -840,6 +840,11 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 		shard.Logger.Warn("Received "+discord.DiscordEventGuildDelete+" event, but previous guild not present in state", "guild_id", guildDeletePayload.ID)
 	}
 
+	// If both before and after are unavailable, ignore the event.
+	if ok && beforeGuild.Unavailable && guildDeletePayload.Unavailable {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
 	if guildDeletePayload.Unavailable {
 		shard.UnavailableGuilds.Store(guildDeletePayload.ID, true)
 	} else {
