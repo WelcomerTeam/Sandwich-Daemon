@@ -3,7 +3,6 @@ package sandwich
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"strconv"
 	"time"
@@ -70,6 +69,7 @@ func buildDedupeKey3(eventType string, id1, id2, id3 discord.Snowflake) string {
 
 // buildDedupeKeyPtr efficiently constructs deduplication keys for pointer snowflakes
 func buildDedupeKeyPtr(eventType string, id *discord.Snowflake) string {
+	// Pre-calculate required capacity: len(eventType) + 1 (colon) + max 20 digits for snowflake
 	buf := make([]byte, 0, len(eventType)+21)
 	buf = append(buf, eventType...)
 	buf = append(buf, ':')
@@ -81,6 +81,7 @@ func buildDedupeKeyPtr(eventType string, id *discord.Snowflake) string {
 
 // buildDedupeKey2Ptr efficiently constructs deduplication keys for pointer snowflakes
 func buildDedupeKey2Ptr(eventType string, id1 *discord.Snowflake, id2 discord.Snowflake) string {
+	// Pre-calculate: len(eventType) + 2 colons + max 20 digits for snowflake
 	buf := make([]byte, 0, len(eventType)+42)
 	buf = append(buf, eventType...)
 	buf = append(buf, ':')
@@ -94,6 +95,7 @@ func buildDedupeKey2Ptr(eventType string, id1 *discord.Snowflake, id2 discord.Sn
 
 // buildDedupeKey3Ptr efficiently constructs deduplication keys for three pointer snowflakes
 func buildDedupeKey3Ptr(eventType string, id1 *discord.Snowflake, id2, id3 discord.Snowflake) string {
+	// Pre-calculate: len(eventType) + 3 colons + max 20 digits for snowflake
 	buf := make([]byte, 0, len(eventType)+63)
 	buf = append(buf, eventType...)
 	buf = append(buf, ':')
@@ -109,12 +111,31 @@ func buildDedupeKey3Ptr(eventType string, id1 *discord.Snowflake, id2, id3 disco
 
 // buildDedupeKeyInt efficiently constructs deduplication keys with an int value
 func buildDedupeKeyInt(eventType string, id discord.Snowflake, value int32) string {
+	// Pre-calculate required capacity: len(eventType) + 1 (colon) + max 20 digits for snowflake + 1 (colon) + max 11 digits for int32
 	buf := make([]byte, 0, len(eventType)+32)
 	buf = append(buf, eventType...)
 	buf = append(buf, ':')
 	buf = strconv.AppendUint(buf, uint64(id), 10)
 	buf = append(buf, ':')
 	buf = strconv.AppendInt(buf, int64(value), 10)
+	return string(buf)
+}
+
+// buildDedupeKeyVoiceState efficiently constructs deduplication keys for voice state updates
+func buildDedupeKeyVoiceState(eventType string, guildID discord.Snowflake, userID discord.Snowflake, beforeChannelID, afterChannelID discord.Snowflake, flags uint8) string {
+	// Pre-calculate required capacity: len(eventType) + 4 colons + 5*20 digits for snowflakes + max 3 digits for flags
+	buf := make([]byte, 0, len(eventType)+85)
+	buf = append(buf, eventType...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(guildID), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(userID), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(beforeChannelID), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(afterChannelID), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(flags), 10)
 	return string(buf)
 }
 
@@ -1722,6 +1743,36 @@ func OnUserUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload
 	}, true, nil
 }
 
+func flagsFromVoiceStateUpdate(vsu discord.VoiceStateUpdate) uint8 {
+	var flags uint8
+
+	if vsu.Mute {
+		flags |= 1 << 1 // User is muted
+	}
+
+	if vsu.Deaf {
+		flags |= 1 << 2 // User is deafened
+	}
+
+	if vsu.SelfMute {
+		flags |= 1 << 3 // User self-muted
+	}
+
+	if vsu.SelfDeaf {
+		flags |= 1 << 4 // User self-deafened
+	}
+
+	if vsu.SelfStream {
+		flags |= 1 << 5 // User is streaming
+	}
+
+	if vsu.Suppress {
+		flags |= 1 << 6 // User is suppressed
+	}
+
+	return flags
+}
+
 func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayload, _ *Trace) (DispatchResult, bool, error) {
 	var voiceStateUpdatePayload discord.VoiceStateUpdate
 
@@ -1750,7 +1801,7 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		fmt.Sprintf("%s:%s:%s:%s:%s", msg.Type, voiceStateUpdatePayload.GuildID, voiceStateUpdatePayload.UserID, beforeVoiceStateChannelID, voiceStateUpdatePayload.ChannelID),
+		buildDedupeKeyVoiceState(msg.Type, guildID, voiceStateUpdatePayload.UserID, beforeVoiceStateChannelID, voiceStateUpdatePayload.ChannelID, flagsFromVoiceStateUpdate(voiceStateUpdatePayload)),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}
