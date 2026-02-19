@@ -11,7 +11,7 @@ type ProducedPayload struct {
 	discord.GatewayPayload
 
 	Extra    map[string]json.RawMessage `json:"__extra,omitempty"`
-	Metadata ProducedMetadata           `json:"__metadata,omitempty"`
+	Metadata ProducedMetadata           `json:"__metadata"`
 	Trace    Trace                      `json:"__trace,omitempty"`
 }
 

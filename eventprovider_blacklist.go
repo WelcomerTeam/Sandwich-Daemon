@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -35,10 +36,8 @@ func NewEventProviderWithBlacklist(dispatchProvider EventDispatchProvider) *Even
 func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard, event *discord.GatewayPayload, trace *Trace) error {
 	eventBlacklist := shard.Application.Configuration.Load().EventBlacklist
 
-	for _, blacklistedEvent := range eventBlacklist {
-		if blacklistedEvent == event.Type {
-			return nil
-		}
+	if slices.Contains(eventBlacklist, event.Type) {
+		return nil
 	}
 
 	result, continuable, err := p.dispatchProvider.Dispatch(ctx, shard, event, trace)
@@ -54,10 +53,8 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 
 	produceBlacklist := shard.Application.Configuration.Load().ProduceBlacklist
 
-	for _, blacklistedEvent := range produceBlacklist {
-		if blacklistedEvent == event.Type {
-			return nil
-		}
+	if slices.Contains(produceBlacklist, event.Type) {
+		return nil
 	}
 
 	if trace == nil {
