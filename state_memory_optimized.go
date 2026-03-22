@@ -227,8 +227,8 @@ func (s *StateProviderMemoryOptimized) RemoveGuild(_ context.Context, guildID di
 	usersToRemove := make([]discord.Snowflake, 0)
 
 	s.UserMutuals.Range(func(userID discord.Snowflake, value *syncmap.Map[discord.Snowflake, bool]) bool {
-		_, present := value.Load(guildID)
-		if present && value.Count() <= 1 {
+		_, present := value.LoadAndDelete(guildID)
+		if present && value.Count() == 0 {
 			usersToRemove = append(usersToRemove, userID)
 		}
 
