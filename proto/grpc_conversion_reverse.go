@@ -53,6 +53,10 @@ func PBToGuild(pbGuild *Guild) *discord.Guild {
 		Stickers:                    PBToStickers(pbGuild.Stickers),
 		GuildScheduledEvents:        PBToScheduledEvents(pbGuild.GuildScheduledEvents),
 		PremiumProgressBarEnabled:   pbGuild.PremiumProgressBarEnabled,
+		HomeHeader:                  pbGuild.HomeHeader,
+		MaxStageVideoChannelUsers:   int32(pbGuild.MaxStageVideoChannelUsers),
+		PremiumProgressBarEnabledUserUpdatedAt: pbGuild.PremiumProgressBarEnabledUserUpdatedAt,
+		NSFW:                        pbGuild.NSFW,
 	}
 
 	// Handle optional fields
@@ -106,6 +110,11 @@ func PBToGuild(pbGuild *Guild) *discord.Guild {
 		guild.RulesChannelID = &rulesChannelID
 	}
 
+	if pbGuild.SafetyAlertsChannelID != 0 {
+		safetyAlertsChannelID := discord.Snowflake(pbGuild.SafetyAlertsChannelID)
+		guild.SafetyAlertsChannelID = &safetyAlertsChannelID
+	}
+
 	// Parse JoinedAt time
 	if pbGuild.JoinedAt != "" {
 		if joinedAt, err := time.Parse(time.RFC3339, pbGuild.JoinedAt); err == nil {
@@ -141,6 +150,12 @@ func PBToChannel(pbChannel *Channel) *discord.Channel {
 		ThreadMetadata:             PBToThreadMetadata(pbChannel.ThreadMetadata),
 		ThreadMember:               PBToThreadMember(pbChannel.ThreadMember),
 		DefaultAutoArchiveDuration: int32(pbChannel.DefaultAutoArchiveDuration),
+		Flags:                      int32(pbChannel.Flags),
+		DefaultThreadRateLimitPerUser: int32(pbChannel.DefaultThreadRateLimitPerUser),
+		DefaultForumLayout:         int32(pbChannel.DefaultForumLayout),
+		DefaultReactionEmoji:       PBToDefaultReactionEmoji(pbChannel.DefaultReactionEmoji),
+		HDStreamingUntil:           pbChannel.HDStreamingUntil,
+		AvailableTags:              PBToForumTags(pbChannel.AvailableTags),
 	}
 
 	// Handle optional fields
@@ -178,6 +193,16 @@ func PBToChannel(pbChannel *Channel) *discord.Channel {
 	if pbChannel.Permissions != 0 {
 		permissions := discord.Int64(pbChannel.Permissions)
 		channel.Permissions = &permissions
+	}
+
+	if pbChannel.DefaultSortOrder != 0 {
+		defaultSortOrder := int32(pbChannel.DefaultSortOrder)
+		channel.DefaultSortOrder = &defaultSortOrder
+	}
+
+	if pbChannel.HDStreamingBuyerID != 0 {
+		hdStreamingBuyerID := discord.Snowflake(pbChannel.HDStreamingBuyerID)
+		channel.HDStreamingBuyerID = &hdStreamingBuyerID
 	}
 
 	return channel
@@ -233,6 +258,14 @@ func PBToUser(pbUser *User) *discord.User {
 		Flags:         discord.UserFlags(pbUser.Flags),
 		PremiumType:   discord.UserPremiumType(pbUser.PremiumType),
 		PublicFlags:   discord.UserFlags(pbUser.PublicFlags),
+		GlobalName:    pbUser.GlobalName,
+		AvatarDecorationData: PBToAvatarDecorationData(pbUser.AvatarDecorationData),
+		PrimaryGuild:  PBToUserPrimaryGuild(pbUser.PrimaryGuild),
+	}
+
+	if pbUser.DMChannelID != 0 {
+		dmChannelID := discord.Snowflake(pbUser.DMChannelID)
+		user.DMChannelID = &dmChannelID
 	}
 
 	return user
@@ -267,6 +300,9 @@ func PBToRole(pbRole *Role) *discord.Role {
 		Managed:      pbRole.Managed,
 		Mentionable:  pbRole.Mentionable,
 		Tags:         PBToRoleTags(pbRole.Tags),
+		Description:  pbRole.Description,
+		Flags:        pbRole.Flags,
+		Colors:       PBToRoleColors(pbRole.Colors),
 	}
 
 	if pbRole.GuildID != 0 {
@@ -294,6 +330,21 @@ func PBToRoleTags(pbTags *RoleTag) *discord.RoleTag {
 	if pbTags.IntegrationID != 0 {
 		integrationID := discord.Snowflake(pbTags.IntegrationID)
 		tags.IntegrationID = &integrationID
+	}
+
+	if pbTags.SubscriptionListingID != 0 {
+		subscriptionListingID := discord.Snowflake(pbTags.SubscriptionListingID)
+		tags.SubscriptionListingID = &subscriptionListingID
+	}
+
+	if pbTags.AvailableForPurchase {
+		v := true
+		tags.AvailableForPurchase = &v
+	}
+
+	if pbTags.GuildConnections {
+		v := true
+		tags.GuildConnections = &v
 	}
 
 	return tags
@@ -414,10 +465,12 @@ func PBToGuildMember(pbMember *GuildMember) *discord.GuildMember {
 		GuildID: nil,
 		Nick:    pbMember.Nick,
 		Avatar:  pbMember.Avatar,
+		Banner:  pbMember.Banner,
 		Roles:   PBToSnowflakes(pbMember.Roles),
 		Deaf:    pbMember.Deaf,
 		Mute:    pbMember.Mute,
 		Pending: pbMember.Pending,
+		Flags:   discord.UserFlags(pbMember.Flags),
 	}
 
 	guildIDSnowflake := discord.Snowflake(pbMember.GuildID)
@@ -554,7 +607,7 @@ func PBToStageInstances(pbInstances []*StageInstance) []discord.StageInstance {
 
 	instances := make([]discord.StageInstance, len(pbInstances))
 	for i, instance := range pbInstances {
-		instances[i] = discord.StageInstance{
+		si := discord.StageInstance{
 			ID:                   discord.Snowflake(instance.ID),
 			GuildID:              discord.Snowflake(instance.GuildID),
 			ChannelID:            discord.Snowflake(instance.ChannelID),
@@ -562,6 +615,13 @@ func PBToStageInstances(pbInstances []*StageInstance) []discord.StageInstance {
 			PrivacyLabel:         discord.StageChannelPrivacyLevel(instance.PrivacyLabel),
 			DiscoverableDisabled: instance.DiscoverableDisabled,
 		}
+
+		if instance.GuildScheduledEventID != 0 {
+			guildScheduledEventID := discord.Snowflake(instance.GuildScheduledEventID)
+			si.GuildScheduledEventID = &guildScheduledEventID
+		}
+
+		instances[i] = si
 	}
 	return instances
 }
@@ -638,6 +698,11 @@ func PBToScheduledEvent(pbEvent *ScheduledEvent) *discord.ScheduledEvent {
 		EntityMetadata:     PBToEventMetadata(pbEvent.EntityMetadata),
 		Creator:            PBToUser(pbEvent.Creator),
 		UserCount:          int32(pbEvent.UserCount),
+	}
+
+	if pbEvent.Image != "" {
+		image := pbEvent.Image
+		event.Image = &image
 	}
 
 	if pbEvent.ChannelID != 0 {
@@ -719,4 +784,118 @@ func PBToThreadMember(pbMember *ThreadMember) *discord.ThreadMember {
 	}
 
 	return member
+}
+
+func PBToAvatarDecorationData(pb *AvatarDecorationData) *discord.AvatarDecorationData {
+	if pb == nil {
+		return nil
+	}
+
+	data := &discord.AvatarDecorationData{
+		Asset: pb.Asset,
+	}
+
+	if pb.SKUID != 0 {
+		skuID := discord.Snowflake(pb.SKUID)
+		data.SKUID = &skuID
+	}
+
+	return data
+}
+
+func PBToUserPrimaryGuild(pb *UserPrimaryGuild) *discord.UserPrimaryGuild {
+	if pb == nil {
+		return nil
+	}
+
+	guild := &discord.UserPrimaryGuild{}
+
+	if pb.IdentityGuildID != 0 {
+		identityGuildID := discord.Snowflake(pb.IdentityGuildID)
+		guild.IdentityGuildID = &identityGuildID
+	}
+
+	if pb.IdentityEnabled {
+		v := pb.IdentityEnabled
+		guild.IdentityEnabled = &v
+	}
+
+	if pb.Tag != "" {
+		tag := pb.Tag
+		guild.Tag = &tag
+	}
+
+	if pb.Badge != "" {
+		badge := pb.Badge
+		guild.Badge = &badge
+	}
+
+	return guild
+}
+
+func PBToRoleColors(pb *RoleColors) *discord.RoleColors {
+	if pb == nil {
+		return nil
+	}
+
+	colors := &discord.RoleColors{
+		PrimaryColor: pb.PrimaryColor,
+	}
+
+	if pb.SecondaryColor != 0 {
+		v := pb.SecondaryColor
+		colors.SecondaryColor = &v
+	}
+
+	if pb.TertiaryColor != 0 {
+		v := pb.TertiaryColor
+		colors.TertiaryColor = &v
+	}
+
+	return colors
+}
+
+func PBToDefaultReactionEmoji(pb *DefaultReactionEmoji) *discord.DefaultReactionEmoji {
+	if pb == nil {
+		return nil
+	}
+
+	emoji := &discord.DefaultReactionEmoji{
+		EmojiName: pb.EmojiName,
+	}
+
+	if pb.EmojiID != 0 {
+		emojiID := discord.Snowflake(pb.EmojiID)
+		emoji.EmojiID = &emojiID
+	}
+
+	return emoji
+}
+
+func PBToForumTag(pb *ForumTag) discord.ForumTag {
+	tag := discord.ForumTag{
+		Name:      pb.Name,
+		EmojiName: pb.EmojiName,
+		ID:        discord.Snowflake(pb.ID),
+		Moderated: pb.Moderated,
+	}
+
+	if pb.EmojiID != 0 {
+		emojiID := discord.Snowflake(pb.EmojiID)
+		tag.EmojiID = &emojiID
+	}
+
+	return tag
+}
+
+func PBToForumTags(pb []*ForumTag) []discord.ForumTag {
+	if pb == nil {
+		return nil
+	}
+
+	tags := make([]discord.ForumTag, len(pb))
+	for i, tag := range pb {
+		tags[i] = PBToForumTag(tag)
+	}
+	return tags
 }

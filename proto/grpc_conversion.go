@@ -35,6 +35,14 @@ func UserToPB(user *discord.User) *User {
 		userPB.DMChannelID = int64(*user.DMChannelID)
 	}
 
+	if user.AvatarDecorationData != nil {
+		userPB.AvatarDecorationData = avatarDecorationDataToPB(user.AvatarDecorationData)
+	}
+
+	if user.PrimaryGuild != nil {
+		userPB.PrimaryGuild = userPrimaryGuildToPB(user.PrimaryGuild)
+	}
+
 	return userPB
 }
 
@@ -54,6 +62,7 @@ func GuildMemberToPB(guildMember *discord.GuildMember) *GuildMember {
 		GuildID:                    0,
 		Nick:                       guildMember.Nick,
 		Avatar:                     guildMember.Avatar,
+		Banner:                     guildMember.Banner,
 		Roles:                      snowflakeListToInt64List(guildMember.Roles),
 		JoinedAt:                   guildMember.JoinedAt.Format(time.RFC3339),
 		PremiumSince:               "",
@@ -62,6 +71,7 @@ func GuildMemberToPB(guildMember *discord.GuildMember) *GuildMember {
 		Pending:                    guildMember.Pending,
 		Permissions:                0,
 		CommunicationDisabledUntil: "",
+		Flags:                      int32(guildMember.Flags),
 	}
 
 	if guildMember.User != nil {
@@ -143,6 +153,11 @@ func GuildToPB(guild *discord.Guild) *Guild {
 		PremiumTier:                 0,
 		PublicUpdatesChannelID:      0,
 		RulesChannelID:              0,
+		SafetyAlertsChannelID:       0,
+		HomeHeader:                  guild.HomeHeader,
+		MaxStageVideoChannelUsers:   int32(guild.MaxStageVideoChannelUsers),
+		PremiumProgressBarEnabledUserUpdatedAt: guild.PremiumProgressBarEnabledUserUpdatedAt,
+		NSFW:                        guild.NSFW,
 	}
 
 	if guild.OwnerID != nil {
@@ -185,6 +200,10 @@ func GuildToPB(guild *discord.Guild) *Guild {
 		pbGuild.RulesChannelID = int64(*guild.RulesChannelID)
 	}
 
+	if guild.SafetyAlertsChannelID != nil {
+		pbGuild.SafetyAlertsChannelID = int64(*guild.SafetyAlertsChannelID)
+	}
+
 	return pbGuild
 }
 
@@ -219,6 +238,14 @@ func ChannelToPB(channel *discord.Channel) *Channel {
 		ThreadMember:               ThreadMemberToPB(channel.ThreadMember),
 		DefaultAutoArchiveDuration: int32(channel.DefaultAutoArchiveDuration),
 		Permissions:                int64(ptrInt64(channel.Permissions)),
+		Flags:                      int32(channel.Flags),
+		DefaultThreadRateLimitPerUser: int32(channel.DefaultThreadRateLimitPerUser),
+		DefaultForumLayout:         int32(channel.DefaultForumLayout),
+		DefaultReactionEmoji:       defaultReactionEmojiToPB(channel.DefaultReactionEmoji),
+		DefaultSortOrder:           int32(ptrInt32(channel.DefaultSortOrder)),
+		HDStreamingBuyerID:         int64(ptrSnowflake(channel.HDStreamingBuyerID)),
+		HDStreamingUntil:           channel.HDStreamingUntil,
+		AvailableTags:              forumTagsToPB(channel.AvailableTags),
 	}
 }
 
@@ -270,11 +297,131 @@ func ptrTimeToString(t *time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
+func ptrStringToString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func ptrVideoQualityMode(vqm *discord.VideoQualityMode) discord.VideoQualityMode {
 	if vqm == nil {
 		return 0
 	}
 	return *vqm
+}
+
+func ptrInt32(i *int32) int32 {
+	if i == nil {
+		return 0
+	}
+	return *i
+}
+
+func avatarDecorationDataToPB(data *discord.AvatarDecorationData) *AvatarDecorationData {
+	if data == nil {
+		return nil
+	}
+
+	pb := &AvatarDecorationData{
+		Asset: data.Asset,
+		SKUID: 0,
+	}
+
+	if data.SKUID != nil {
+		pb.SKUID = int64(*data.SKUID)
+	}
+
+	return pb
+}
+
+func userPrimaryGuildToPB(guild *discord.UserPrimaryGuild) *UserPrimaryGuild {
+	if guild == nil {
+		return nil
+	}
+
+	pb := &UserPrimaryGuild{}
+
+	if guild.IdentityGuildID != nil {
+		pb.IdentityGuildID = int64(*guild.IdentityGuildID)
+	}
+
+	if guild.IdentityEnabled != nil {
+		pb.IdentityEnabled = *guild.IdentityEnabled
+	}
+
+	if guild.Tag != nil {
+		pb.Tag = *guild.Tag
+	}
+
+	if guild.Badge != nil {
+		pb.Badge = *guild.Badge
+	}
+
+	return pb
+}
+
+func roleColorsToPB(colors *discord.RoleColors) *RoleColors {
+	if colors == nil {
+		return nil
+	}
+
+	pb := &RoleColors{
+		PrimaryColor: colors.PrimaryColor,
+	}
+
+	if colors.SecondaryColor != nil {
+		pb.SecondaryColor = *colors.SecondaryColor
+	}
+
+	if colors.TertiaryColor != nil {
+		pb.TertiaryColor = *colors.TertiaryColor
+	}
+
+	return pb
+}
+
+func defaultReactionEmojiToPB(emoji *discord.DefaultReactionEmoji) *DefaultReactionEmoji {
+	if emoji == nil {
+		return nil
+	}
+
+	pb := &DefaultReactionEmoji{
+		EmojiName: emoji.EmojiName,
+	}
+
+	if emoji.EmojiID != nil {
+		pb.EmojiID = int64(*emoji.EmojiID)
+	}
+
+	return pb
+}
+
+func forumTagToPB(tag discord.ForumTag) *ForumTag {
+	pb := &ForumTag{
+		Name:      tag.Name,
+		EmojiName: tag.EmojiName,
+		ID:        int64(tag.ID),
+		Moderated: tag.Moderated,
+	}
+
+	if tag.EmojiID != nil {
+		pb.EmojiID = int64(*tag.EmojiID)
+	}
+
+	return pb
+}
+
+func forumTagsToPB(tags []discord.ForumTag) []*ForumTag {
+	if tags == nil {
+		return nil
+	}
+
+	pbTags := make([]*ForumTag, len(tags))
+	for i, tag := range tags {
+		pbTags[i] = forumTagToPB(tag)
+	}
+	return pbTags
 }
 
 func RolesToPB(roles []discord.Role) []*Role {
@@ -497,6 +644,7 @@ func stageInstancesToPB(instances []discord.StageInstance) []*StageInstance {
 			Topic:                instance.Topic,
 			PrivacyLabel:         uint32(instance.PrivacyLabel),
 			DiscoverableDisabled: instance.DiscoverableDisabled,
+			GuildScheduledEventID: int64(ptrSnowflake(instance.GuildScheduledEventID)),
 		}
 	}
 	return pbInstances
@@ -525,6 +673,7 @@ func ScheduledEventsToPB(events []discord.ScheduledEvent) []*ScheduledEvent {
 			EntityMetadata:     nil,
 			Creator:            nil,
 			UserCount:          int32(event.UserCount),
+			Image:              ptrStringToString(event.Image),
 		}
 
 		if event.EntityMetadata != nil {
@@ -555,11 +704,22 @@ func roleTagsToPB(tags *discord.RoleTag) *RoleTag {
 		return nil
 	}
 
-	return &RoleTag{
+	pb := &RoleTag{
 		PremiumSubscriber: tags.PremiumSubscriber,
 		BotID:             int64(ptrSnowflake(tags.BotID)),
 		IntegrationID:     int64(ptrSnowflake(tags.IntegrationID)),
+		SubscriptionListingID: int64(ptrSnowflake(tags.SubscriptionListingID)),
 	}
+
+	if tags.AvailableForPurchase != nil {
+		pb.AvailableForPurchase = *tags.AvailableForPurchase
+	}
+
+	if tags.GuildConnections != nil {
+		pb.GuildConnections = *tags.GuildConnections
+	}
+
+	return pb
 }
 
 func RoleToPB(role *discord.Role) *Role {
@@ -579,6 +739,9 @@ func RoleToPB(role *discord.Role) *Role {
 		Managed:      role.Managed,
 		Mentionable:  role.Mentionable,
 		Tags:         roleTagsToPB(role.Tags),
+		Description:  role.Description,
+		Flags:        role.Flags,
+		Colors:       roleColorsToPB(role.Colors),
 		GuildID:      0,
 	}
 

@@ -45,7 +45,14 @@ func TestGuildToPB(t *testing.T) {
 		ApproximatePresenceCount:    50,
 		NSFWLevel:                   1,
 		PremiumProgressBarEnabled:   true,
+		HomeHeader:                  "test_header",
+		MaxStageVideoChannelUsers:   int32(50),
+		PremiumProgressBarEnabledUserUpdatedAt: "2024-01-01T00:00:00Z",
+		NSFW:                        true,
 	}
+
+	safetyAlertsChannelID := discord.Snowflake(606)
+	guild.SafetyAlertsChannelID = &safetyAlertsChannelID
 
 	ownerID := discord.Snowflake(456)
 	guild.OwnerID = &ownerID
@@ -111,6 +118,11 @@ func TestGuildToPB(t *testing.T) {
 	assertEqual(t, int32(50), pbGuild.ApproximatePresenceCount)
 	assertEqual(t, uint32(1), pbGuild.NSFWLevel)
 	assert.True(t, pbGuild.PremiumProgressBarEnabled)
+	assertEqual(t, "test_header", pbGuild.HomeHeader)
+	assertEqual(t, int32(50), pbGuild.MaxStageVideoChannelUsers)
+	assertEqual(t, "2024-01-01T00:00:00Z", pbGuild.PremiumProgressBarEnabledUserUpdatedAt)
+	assert.True(t, pbGuild.NSFW)
+	assertEqual(t, int64(606), pbGuild.SafetyAlertsChannelID)
 	assertEqual(t, int64(456), pbGuild.OwnerID)
 	assertEqual(t, int64(123456), pbGuild.Permissions)
 	assertEqual(t, int64(789), pbGuild.AFKChannelID)
@@ -142,6 +154,27 @@ func TestChannelToPB(t *testing.T) {
 		MessageCount:               100,
 		MemberCount:                50,
 		DefaultAutoArchiveDuration: 1440,
+		Flags:                      int32(3),
+		DefaultThreadRateLimitPerUser: int32(5),
+		DefaultForumLayout:         int32(2),
+		HDStreamingUntil:           "2024-01-01T00:00:00Z",
+	}
+
+	defaultSortOrder := int32(1)
+	channel.DefaultSortOrder = &defaultSortOrder
+
+	hdStreamingBuyerID := discord.Snowflake(999)
+	channel.HDStreamingBuyerID = &hdStreamingBuyerID
+
+	reactionEmojiID := discord.Snowflake(111)
+	channel.DefaultReactionEmoji = &discord.DefaultReactionEmoji{
+		EmojiID:   &reactionEmojiID,
+		EmojiName: "👍",
+	}
+
+	forumTagEmojiID := discord.Snowflake(222)
+	channel.AvailableTags = []discord.ForumTag{
+		{ID: discord.Snowflake(333), Name: "tag1", EmojiID: &forumTagEmojiID, EmojiName: "😀", Moderated: true},
 	}
 
 	guildID := discord.Snowflake(789)
@@ -190,6 +223,22 @@ func TestChannelToPB(t *testing.T) {
 	assertEqual(t, lastPinTimestamp.Format(time.RFC3339), pbChannel.LastPinTimestamp)
 	assertEqual(t, uint32(discord.VideoQualityModeAuto), pbChannel.VideoQualityMode)
 	assertEqual(t, int64(123456), pbChannel.Permissions)
+	assertEqual(t, int32(3), pbChannel.Flags)
+	assertEqual(t, int32(5), pbChannel.DefaultThreadRateLimitPerUser)
+	assertEqual(t, int32(2), pbChannel.DefaultForumLayout)
+	assertEqual(t, "2024-01-01T00:00:00Z", pbChannel.HDStreamingUntil)
+	assertEqual(t, int32(1), pbChannel.DefaultSortOrder)
+	assertEqual(t, int64(999), pbChannel.HDStreamingBuyerID)
+	assert.NotNil(t, pbChannel.DefaultReactionEmoji)
+	assertEqual(t, int64(111), pbChannel.DefaultReactionEmoji.EmojiID)
+	assertEqual(t, "👍", pbChannel.DefaultReactionEmoji.EmojiName)
+	assert.NotNil(t, pbChannel.AvailableTags)
+	assert.Len(t, pbChannel.AvailableTags, 1)
+	assertEqual(t, int64(333), pbChannel.AvailableTags[0].ID)
+	assertEqual(t, "tag1", pbChannel.AvailableTags[0].Name)
+	assertEqual(t, int64(222), pbChannel.AvailableTags[0].EmojiID)
+	assertEqual(t, "😀", pbChannel.AvailableTags[0].EmojiName)
+	assert.True(t, pbChannel.AvailableTags[0].Moderated)
 }
 
 func TestUserToPB(t *testing.T) {
@@ -209,6 +258,27 @@ func TestUserToPB(t *testing.T) {
 		Email:         "test@example.com",
 		Flags:         discord.UserFlagsDiscordEmployee,
 		PublicFlags:   discord.UserFlagsDiscordEmployee,
+		GlobalName:    "testglobal",
+	}
+
+	dmChannelID := discord.Snowflake(789)
+	user.DMChannelID = &dmChannelID
+
+	skuID := discord.Snowflake(222)
+	user.AvatarDecorationData = &discord.AvatarDecorationData{
+		Asset: "test_asset",
+		SKUID: &skuID,
+	}
+
+	identityGuildID := discord.Snowflake(333)
+	identityEnabled := true
+	tag := "TEST"
+	badge := "badge_url"
+	user.PrimaryGuild = &discord.UserPrimaryGuild{
+		IdentityGuildID: &identityGuildID,
+		IdentityEnabled: &identityEnabled,
+		Tag:             &tag,
+		Badge:           &badge,
 	}
 
 	pbUser := sandwich_protobuf.UserToPB(user)
@@ -227,6 +297,44 @@ func TestUserToPB(t *testing.T) {
 	assertEqual(t, "test@example.com", pbUser.Email)
 	assertEqual(t, int32(discord.UserFlagsDiscordEmployee), pbUser.Flags)
 	assertEqual(t, int32(discord.UserFlagsDiscordEmployee), pbUser.PublicFlags)
+	assertEqual(t, "testglobal", pbUser.GlobalName)
+	assertEqual(t, int64(789), pbUser.DMChannelID)
+	assert.NotNil(t, pbUser.AvatarDecorationData)
+	assertEqual(t, "test_asset", pbUser.AvatarDecorationData.Asset)
+	assertEqual(t, int64(222), pbUser.AvatarDecorationData.SKUID)
+	assert.NotNil(t, pbUser.PrimaryGuild)
+	assertEqual(t, int64(333), pbUser.PrimaryGuild.IdentityGuildID)
+	assert.True(t, pbUser.PrimaryGuild.IdentityEnabled)
+	assertEqual(t, "TEST", pbUser.PrimaryGuild.Tag)
+	assertEqual(t, "badge_url", pbUser.PrimaryGuild.Badge)
+}
+
+func TestGuildMemberToPB(t *testing.T) {
+	t.Parallel()
+
+	guildID := discord.Snowflake(456)
+	member := &discord.GuildMember{
+		Nick:    "testnick",
+		Avatar:  "test_avatar",
+		Banner:  "test_banner",
+		Deaf:    true,
+		Mute:    false,
+		Pending: true,
+		Flags:   discord.UserFlags(4),
+		GuildID: &guildID,
+	}
+
+	pbMember := sandwich_protobuf.GuildMemberToPB(member)
+
+	assert.NotNil(t, pbMember)
+	assertEqual(t, "testnick", pbMember.Nick)
+	assertEqual(t, "test_avatar", pbMember.Avatar)
+	assertEqual(t, "test_banner", pbMember.Banner)
+	assert.True(t, pbMember.Deaf)
+	assert.False(t, pbMember.Mute)
+	assert.True(t, pbMember.Pending)
+	assertEqual(t, int32(4), pbMember.Flags)
+	assertEqual(t, int64(456), pbMember.GuildID)
 }
 
 func TestRoleToPB(t *testing.T) {
@@ -243,13 +351,29 @@ func TestRoleToPB(t *testing.T) {
 		Permissions:  123456,
 		Managed:      true,
 		Mentionable:  true,
+		Description:  "Test Role Description",
+		Flags:        int32(5),
 	}
 
 	guildID := discord.Snowflake(456)
 	role.GuildID = &guildID
 
+	secondaryColor := int32(0x00FF00)
+	tertiaryColor := int32(0x0000FF)
+	role.Colors = &discord.RoleColors{
+		PrimaryColor:   int32(0xFF0000),
+		SecondaryColor: &secondaryColor,
+		TertiaryColor:  &tertiaryColor,
+	}
+
+	subscriptionListingID := discord.Snowflake(202)
+	availableForPurchase := true
+	guildConnections := true
 	tags := &discord.RoleTag{
-		PremiumSubscriber: true,
+		PremiumSubscriber:     true,
+		SubscriptionListingID: &subscriptionListingID,
+		AvailableForPurchase:  &availableForPurchase,
+		GuildConnections:      &guildConnections,
 	}
 	botID := discord.Snowflake(789)
 	tags.BotID = &botID
@@ -275,6 +399,15 @@ func TestRoleToPB(t *testing.T) {
 	assert.True(t, pbRole.Tags.PremiumSubscriber)
 	assertEqual(t, int64(789), pbRole.Tags.BotID)
 	assertEqual(t, int64(101), pbRole.Tags.IntegrationID)
+	assertEqual(t, int64(202), pbRole.Tags.SubscriptionListingID)
+	assert.True(t, pbRole.Tags.AvailableForPurchase)
+	assert.True(t, pbRole.Tags.GuildConnections)
+	assertEqual(t, "Test Role Description", pbRole.Description)
+	assertEqual(t, int32(5), pbRole.Flags)
+	assert.NotNil(t, pbRole.Colors)
+	assertEqual(t, int32(0xFF0000), pbRole.Colors.PrimaryColor)
+	assertEqual(t, int32(0x00FF00), pbRole.Colors.SecondaryColor)
+	assertEqual(t, int32(0x0000FF), pbRole.Colors.TertiaryColor)
 }
 
 func TestEmojiToPB(t *testing.T) {
@@ -515,6 +648,9 @@ func TestScheduledEventToPB(t *testing.T) {
 	}
 	event.Creator = creator
 
+	image := "test_image"
+	event.Image = &image
+
 	pbEvents := sandwich_protobuf.ScheduledEventsToPB([]discord.ScheduledEvent{*event})
 	pbEvent := pbEvents[0]
 
@@ -537,6 +673,7 @@ func TestScheduledEventToPB(t *testing.T) {
 	assert.NotNil(t, pbEvent.Creator)
 	assertEqual(t, int64(101), pbEvent.Creator.ID)
 	assertEqual(t, "testuser", pbEvent.Creator.Username)
+	assertEqual(t, "test_image", pbEvent.Image)
 }
 
 func TestThreadMetadataToPB(t *testing.T) {
@@ -635,6 +772,11 @@ func TestEmptyGuildToPB(t *testing.T) {
 	assertEqual(t, uint32(0), pbGuild.PremiumTier)
 	assertEqual(t, int64(0), pbGuild.PublicUpdatesChannelID)
 	assertEqual(t, int64(0), pbGuild.RulesChannelID)
+	assertEqual(t, "", pbGuild.HomeHeader)
+	assertEqual(t, int32(0), pbGuild.MaxStageVideoChannelUsers)
+	assertEqual(t, "", pbGuild.PremiumProgressBarEnabledUserUpdatedAt)
+	assert.False(t, pbGuild.NSFW)
+	assertEqual(t, int64(0), pbGuild.SafetyAlertsChannelID)
 }
 
 func TestEmptyChannelToPB(t *testing.T) {
@@ -666,6 +808,14 @@ func TestEmptyChannelToPB(t *testing.T) {
 	assertEqual(t, "", pbChannel.LastPinTimestamp)
 	assertEqual(t, uint32(0), pbChannel.VideoQualityMode)
 	assertEqual(t, int64(0), pbChannel.Permissions)
+	assertEqual(t, int32(0), pbChannel.Flags)
+	assertEqual(t, int32(0), pbChannel.DefaultThreadRateLimitPerUser)
+	assertEqual(t, int32(0), pbChannel.DefaultForumLayout)
+	assert.Nil(t, pbChannel.DefaultReactionEmoji)
+	assertEqual(t, int32(0), pbChannel.DefaultSortOrder)
+	assertEqual(t, int64(0), pbChannel.HDStreamingBuyerID)
+	assertEqual(t, "", pbChannel.HDStreamingUntil)
+	assert.Nil(t, pbChannel.AvailableTags)
 }
 
 func TestEmptyUserToPB(t *testing.T) {
@@ -688,6 +838,10 @@ func TestEmptyUserToPB(t *testing.T) {
 	assertEqual(t, "", pbUser.Email)
 	assertEqual(t, int32(0), pbUser.Flags)
 	assertEqual(t, int32(0), pbUser.PublicFlags)
+	assertEqual(t, "", pbUser.GlobalName)
+	assertEqual(t, int64(0), pbUser.DMChannelID)
+	assert.Nil(t, pbUser.AvatarDecorationData)
+	assert.Nil(t, pbUser.PrimaryGuild)
 }
 
 func TestEmptyRoleToPB(t *testing.T) {
@@ -709,6 +863,9 @@ func TestEmptyRoleToPB(t *testing.T) {
 	assert.False(t, pbRole.Mentionable)
 	assertEqual(t, int64(0), pbRole.GuildID)
 	assert.Nil(t, pbRole.Tags)
+	assertEqual(t, "", pbRole.Description)
+	assertEqual(t, int32(0), pbRole.Flags)
+	assert.Nil(t, pbRole.Colors)
 }
 
 func TestEmptyEmojiToPB(t *testing.T) {
@@ -814,6 +971,7 @@ func TestEmptyScheduledEventToPB(t *testing.T) {
 	assertEqual(t, int64(0), pbEvent.EntityID)
 	assert.Nil(t, pbEvent.EntityMetadata)
 	assert.Nil(t, pbEvent.Creator)
+	assertEqual(t, "", pbEvent.Image)
 }
 
 func TestEmptyThreadMetadataToPB(t *testing.T) {

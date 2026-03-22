@@ -206,6 +206,27 @@ message Channel {
   ThreadMember ThreadMember = 24;
   int32 DefaultAutoArchiveDuration = 25;
   int64 Permissions = 26;
+  int32 Flags = 27;
+  int32 DefaultThreadRateLimitPerUser = 28;
+  int32 DefaultForumLayout = 29;
+  DefaultReactionEmoji DefaultReactionEmoji = 30;
+  int32 DefaultSortOrder = 31;
+  int64 HDStreamingBuyerID = 32;
+  string HDStreamingUntil = 33;
+  repeated ForumTag AvailableTags = 34;
+}
+
+message DefaultReactionEmoji {
+  int64 EmojiID = 1;
+  string EmojiName = 2;
+}
+
+message ForumTag {
+  int64 EmojiID = 1;
+  string Name = 2;
+  string EmojiName = 3;
+  int64 ID = 4;
+  bool Moderated = 5;
 }
 
 message ChannelOverwrite {
@@ -237,6 +258,7 @@ message StageInstance {
   string Topic = 4;
   uint32 PrivacyLabel = 5;
   bool DiscoverableDisabled = 6;
+  int64 GuildScheduledEventID = 7;
 }
 
 // discord.go
@@ -370,6 +392,11 @@ message Guild {
   repeated Sticker Stickers = 48;
   repeated ScheduledEvent GuildScheduledEvents = 49;
   bool PremiumProgressBarEnabled = 50;
+  int64 SafetyAlertsChannelID = 51;
+  string HomeHeader = 52;
+  int32 MaxStageVideoChannelUsers = 53;
+  string PremiumProgressBarEnabledUserUpdatedAt = 54;
+  bool NSFW = 55;
 }
 
 message UnavailableGuild {
@@ -390,6 +417,8 @@ message GuildMember {
   bool Pending = 10;
   int64 Permissions = 11;
   string CommunicationDisabledUntil = 12;
+  string Banner = 13;
+  int32 Flags = 14;
 }
 
 message VoiceState {
@@ -479,6 +508,7 @@ message ScheduledEvent {
   EventMetadata EntityMetadata = 13;
   User Creator = 14;
   int32 UserCount = 15;
+  string Image = 16;
 }
 
 message EventMetadata {
@@ -635,12 +665,24 @@ message Role {
   bool Managed = 10;
   bool Mentionable = 11;
   RoleTag Tags = 12;
+  string Description = 13;
+  int32 Flags = 14;
+  RoleColors Colors = 15;
 }
 
 message RoleTag {
   bool PremiumSubscriber = 1;
   int64 BotID = 2;
   int64 IntegrationID = 3;
+  int64 SubscriptionListingID = 4;
+  bool AvailableForPurchase = 5;
+  bool GuildConnections = 6;
+}
+
+message RoleColors {
+  int32 PrimaryColor = 1;
+  int32 SecondaryColor = 2;
+  int32 TertiaryColor = 3;
 }
 
 // sticker.go
@@ -667,11 +709,23 @@ message MessageSticker {
 
 // user.go
 
+message AvatarDecorationData {
+  string Asset = 1;
+  int64 SKUID = 2;
+}
+
+message UserPrimaryGuild {
+  int64 IdentityGuildID = 1;
+  bool IdentityEnabled = 2;
+  string Tag = 3;
+  string Badge = 4;
+}
+
 message User {
   int64 ID = 1;
   string Username = 2;
   string Discriminator = 3;
-	string GlobalName = 4;
+  string GlobalName = 4;
   string Avatar = 5;
   bool Bot = 6;
   bool System = 7;
@@ -685,6 +739,8 @@ message User {
   int32 PremiumType = 15;
   int32 PublicFlags = 16;
   int64 DMChannelID = 17;
+  AvatarDecorationData AvatarDecorationData = 18;
+  UserPrimaryGuild PrimaryGuild = 19;
 }
 
 // webhook.go
