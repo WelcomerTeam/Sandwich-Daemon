@@ -1762,7 +1762,7 @@ func flagsFromVoiceStateUpdate(vsu discord.VoiceStateUpdate) uint8 {
 		flags |= 1 << 4 // User self-deafened
 	}
 
-	if vsu.SelfStream {
+	if vsu.SelfStream != nil && *vsu.SelfStream {
 		flags |= 1 << 5 // User is streaming
 	}
 
@@ -1795,13 +1795,19 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 
 	var beforeVoiceStateChannelID discord.Snowflake
 
-	if beforeVoiceStateOk {
-		beforeVoiceStateChannelID = beforeVoiceState.ChannelID
+	if beforeVoiceState.ChannelID != nil && beforeVoiceStateOk {
+		beforeVoiceStateChannelID = *beforeVoiceState.ChannelID
+	}
+
+	var channelID discord.Snowflake
+
+	if voiceStateUpdatePayload.ChannelID != nil {
+		channelID = *voiceStateUpdatePayload.ChannelID
 	}
 
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
-		buildDedupeKeyVoiceState(msg.Type, guildID, voiceStateUpdatePayload.UserID, beforeVoiceStateChannelID, voiceStateUpdatePayload.ChannelID, flagsFromVoiceStateUpdate(voiceStateUpdatePayload)),
+		buildDedupeKeyVoiceState(msg.Type, guildID, voiceStateUpdatePayload.UserID, beforeVoiceStateChannelID, channelID, flagsFromVoiceStateUpdate(voiceStateUpdatePayload)),
 		StandardDeduplicationTimeout); !ok {
 		return DispatchResult{nil, nil}, false, nil
 	}

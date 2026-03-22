@@ -321,16 +321,16 @@ func TestVoiceStateToPB(t *testing.T) {
 	now := time.Now()
 	state := &discord.VoiceState{
 		UserID:                  123,
-		ChannelID:               456,
+		ChannelID:               new(discord.Snowflake(456)),
 		SessionID:               "test_session",
 		Deaf:                    true,
 		Mute:                    true,
 		SelfDeaf:                true,
 		SelfMute:                true,
-		SelfStream:              true,
+		SelfStream:              new(true),
 		SelfVideo:               true,
 		Suppress:                true,
-		RequestToSpeakTimestamp: now,
+		RequestToSpeakTimestamp: &now,
 	}
 
 	guildID := discord.Snowflake(789)
@@ -747,7 +747,7 @@ func TestEmptyVoiceStateToPB(t *testing.T) {
 	assert.False(t, pbState.SelfStream)
 	assert.False(t, pbState.SelfVideo)
 	assert.False(t, pbState.Suppress)
-	assertEqual(t, NilDate.Format(time.RFC3339), pbState.RequestToSpeakTimestamp)
+	assertEqual(t, "", pbState.RequestToSpeakTimestamp)
 	assert.Nil(t, pbState.Member)
 }
 

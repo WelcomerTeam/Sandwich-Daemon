@@ -658,22 +658,34 @@ func VoiceStateToPB(state *discord.VoiceState) *VoiceState {
 
 	voiceState := &VoiceState{
 		UserID:                  int64(state.UserID),
-		ChannelID:               int64(state.ChannelID),
-		GuildID:                 0,
 		Member:                  nil,
 		SessionID:               state.SessionID,
 		Deaf:                    state.Deaf,
 		Mute:                    state.Mute,
 		SelfDeaf:                state.SelfDeaf,
 		SelfMute:                state.SelfMute,
-		SelfStream:              state.SelfStream,
 		SelfVideo:               state.SelfVideo,
 		Suppress:                state.Suppress,
-		RequestToSpeakTimestamp: state.RequestToSpeakTimestamp.Format(time.RFC3339),
+		ChannelID:               0,
+		GuildID:                 0,
+		SelfStream:              false,
+		RequestToSpeakTimestamp: "",
 	}
 
 	if state.GuildID != nil {
 		voiceState.GuildID = int64(*state.GuildID)
+	}
+
+	if state.ChannelID != nil {
+		voiceState.ChannelID = int64(*state.ChannelID)
+	}
+
+	if state.SelfStream != nil {
+		voiceState.SelfStream = *state.SelfStream
+	}
+
+	if state.RequestToSpeakTimestamp != nil {
+		voiceState.RequestToSpeakTimestamp = state.RequestToSpeakTimestamp.Format(time.RFC3339)
 	}
 
 	if state.Member != nil {

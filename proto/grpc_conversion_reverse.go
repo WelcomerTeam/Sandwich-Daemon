@@ -366,14 +366,14 @@ func PBToVoiceState(pbState *VoiceState) *discord.VoiceState {
 
 	state := &discord.VoiceState{
 		UserID:     discord.Snowflake(pbState.UserID),
-		ChannelID:  discord.Snowflake(pbState.ChannelID),
+		ChannelID:  new(discord.Snowflake(pbState.ChannelID)),
 		Member:     PBToGuildMember(pbState.Member),
 		SessionID:  pbState.SessionID,
 		Deaf:       pbState.Deaf,
 		Mute:       pbState.Mute,
 		SelfDeaf:   pbState.SelfDeaf,
 		SelfMute:   pbState.SelfMute,
-		SelfStream: pbState.SelfStream,
+		SelfStream: &pbState.SelfStream,
 		SelfVideo:  pbState.SelfVideo,
 		Suppress:   pbState.Suppress,
 	}
@@ -385,7 +385,7 @@ func PBToVoiceState(pbState *VoiceState) *discord.VoiceState {
 
 	if pbState.RequestToSpeakTimestamp != "" {
 		if timestamp, err := time.Parse(time.RFC3339, pbState.RequestToSpeakTimestamp); err == nil {
-			state.RequestToSpeakTimestamp = timestamp
+			state.RequestToSpeakTimestamp = &timestamp
 		}
 	}
 

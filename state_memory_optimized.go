@@ -690,8 +690,8 @@ func (s *StateProviderMemoryOptimized) SetVoiceState(_ context.Context, guildID 
 
 	voiceStatesState.Store(voiceState.UserID, DiscordToStateVoiceState(voiceState))
 
-	if !voiceState.ChannelID.IsNil() {
-		s.updateGuildChannelMemberCount(guildID, voiceState.ChannelID)
+	if voiceState.ChannelID != nil && !voiceState.ChannelID.IsNil() {
+		s.updateGuildChannelMemberCount(guildID, *voiceState.ChannelID)
 	}
 }
 
@@ -1241,22 +1241,31 @@ type StateVoiceState struct {
 
 func DiscordToStateVoiceState(v discord.VoiceState) StateVoiceState {
 	voiceState := StateVoiceState{
-		RequestToSpeakTimestamp: v.RequestToSpeakTimestamp,
-		ChannelID:               v.ChannelID,
-		GuildID:                 0,
-		UserID:                  v.UserID,
-		SessionID:               v.SessionID,
-		Deaf:                    v.Deaf,
-		Mute:                    v.Mute,
-		SelfDeaf:                v.SelfDeaf,
-		SelfMute:                v.SelfMute,
-		SelfStream:              v.SelfStream,
-		SelfVideo:               v.SelfVideo,
-		Suppress:                v.Suppress,
+		GuildID:   0,
+		UserID:    v.UserID,
+		SessionID: v.SessionID,
+		Deaf:      v.Deaf,
+		Mute:      v.Mute,
+		SelfDeaf:  v.SelfDeaf,
+		SelfMute:  v.SelfMute,
+		SelfVideo: v.SelfVideo,
+		Suppress:  v.Suppress,
 	}
 
 	if v.GuildID != nil {
 		voiceState.GuildID = *v.GuildID
+	}
+
+	if v.RequestToSpeakTimestamp != nil {
+		voiceState.RequestToSpeakTimestamp = *v.RequestToSpeakTimestamp
+	}
+
+	if v.ChannelID != nil {
+		voiceState.ChannelID = *v.ChannelID
+	}
+
+	if v.SelfStream != nil {
+		voiceState.SelfStream = *v.SelfStream
 	}
 
 	return voiceState
@@ -1264,14 +1273,14 @@ func DiscordToStateVoiceState(v discord.VoiceState) StateVoiceState {
 
 func StateVoiceStateToDiscord(v StateVoiceState) discord.VoiceState {
 	return discord.VoiceState{
-		RequestToSpeakTimestamp: v.RequestToSpeakTimestamp,
-		ChannelID:               v.ChannelID,
+		RequestToSpeakTimestamp: &v.RequestToSpeakTimestamp,
+		ChannelID:               &v.ChannelID,
 		SessionID:               v.SessionID,
 		Deaf:                    v.Deaf,
 		Mute:                    v.Mute,
 		SelfDeaf:                v.SelfDeaf,
 		SelfMute:                v.SelfMute,
-		SelfStream:              v.SelfStream,
+		SelfStream:              &v.SelfStream,
 		SelfVideo:               v.SelfVideo,
 		Suppress:                v.Suppress,
 		GuildID:                 &v.GuildID,
