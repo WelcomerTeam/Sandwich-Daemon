@@ -434,9 +434,11 @@ func OnChannelCreate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	onDispatchEvent(shard, msg.Type)
 
-	if channelCreatePayload.GuildID != nil {
-		ctx = WithGuildID(ctx, *channelCreatePayload.GuildID)
+	if channelCreatePayload.GuildID == nil {
+		return DispatchResult{nil, nil}, false, nil
 	}
+
+	ctx = WithGuildID(ctx, *channelCreatePayload.GuildID)
 
 	shard.Sandwich.stateProvider.SetGuildChannel(ctx, *channelCreatePayload.GuildID, discord.Channel(channelCreatePayload))
 
@@ -463,9 +465,11 @@ func OnChannelUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	onDispatchEvent(shard, msg.Type)
 
-	if channelUpdatePayload.GuildID != nil {
-		ctx = WithGuildID(ctx, *channelUpdatePayload.GuildID)
+	if channelUpdatePayload.GuildID == nil {
+		return DispatchResult{nil, nil}, false, nil
 	}
+
+	ctx = WithGuildID(ctx, *channelUpdatePayload.GuildID)
 
 	beforeChannel, ok := shard.Sandwich.stateProvider.GetGuildChannel(ctx, *channelUpdatePayload.GuildID, channelUpdatePayload.ID)
 	if !ok {
@@ -497,9 +501,11 @@ func OnChannelDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayl
 
 	onDispatchEvent(shard, msg.Type)
 
-	if channelDeletePayload.GuildID != nil {
-		ctx = WithGuildID(ctx, *channelDeletePayload.GuildID)
+	if channelDeletePayload.GuildID == nil {
+		return DispatchResult{nil, nil}, false, nil
 	}
+
+	ctx = WithGuildID(ctx, *channelDeletePayload.GuildID)
 
 	beforeChannel, ok := shard.Sandwich.stateProvider.GetGuildChannel(ctx, *channelDeletePayload.GuildID, channelDeletePayload.ID)
 	if !ok {
@@ -580,6 +586,10 @@ func OnThreadUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayPaylo
 	}
 
 	onDispatchEvent(shard, msg.Type)
+
+	if threadUpdatePayload.GuildID == nil {
+		return DispatchResult{nil, nil}, false, nil
+	}
 
 	beforeChannel, ok := shard.Sandwich.stateProvider.GetGuildChannel(ctx, *threadUpdatePayload.GuildID, threadUpdatePayload.ID)
 	if !ok {
@@ -1039,6 +1049,10 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 		return DispatchResult{nil, nil}, false, err
 	}
 
+	if guildMemberAddPayload.GuildID == nil || guildMemberAddPayload.User == nil {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
 		buildDedupeKey2Ptr(msg.Type, guildMemberAddPayload.GuildID, guildMemberAddPayload.User.ID),
@@ -1048,15 +1062,13 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 
 	onDispatchEvent(shard, msg.Type)
 
+	ctx = WithGuildID(ctx, *guildMemberAddPayload.GuildID)
+
 	guild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, *guildMemberAddPayload.GuildID)
 
 	if exists {
 		guild.MemberCount++
 		shard.Sandwich.stateProvider.SetGuild(ctx, *guildMemberAddPayload.GuildID, *guild)
-	}
-
-	if guildMemberAddPayload.GuildID != nil {
-		ctx = WithGuildID(ctx, *guildMemberAddPayload.GuildID)
 	}
 
 	shard.Sandwich.stateProvider.SetGuildMember(ctx, *guildMemberAddPayload.GuildID, discord.GuildMember(guildMemberAddPayload))
@@ -1115,6 +1127,10 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 		return DispatchResult{nil, nil}, false, err
 	}
 
+	if guildMemberUpdatePayload.GuildID == nil || guildMemberUpdatePayload.User == nil {
+		return DispatchResult{nil, nil}, false, nil
+	}
+
 	if ok := shard.Sandwich.dedupeProvider.Deduplicate(
 		ctx,
 		buildDedupeKey2Ptr(msg.Type, guildMemberUpdatePayload.GuildID, guildMemberUpdatePayload.User.ID),
@@ -1124,9 +1140,7 @@ func OnGuildMemberUpdate(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	onDispatchEvent(shard, msg.Type)
 
-	if guildMemberUpdatePayload.GuildID != nil {
-		ctx = WithGuildID(ctx, *guildMemberUpdatePayload.GuildID)
-	}
+	ctx = WithGuildID(ctx, *guildMemberUpdatePayload.GuildID)
 
 	beforeGuildMember, _ := shard.Sandwich.stateProvider.GetGuildMember(
 		ctx,
@@ -1795,7 +1809,7 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 
 	var beforeVoiceStateChannelID discord.Snowflake
 
-	if beforeVoiceState.ChannelID != nil && beforeVoiceStateOk {
+	if beforeVoiceStateOk && beforeVoiceState != nil && beforeVoiceState.ChannelID != nil {
 		beforeVoiceStateChannelID = *beforeVoiceState.ChannelID
 	}
 
@@ -1818,8 +1832,10 @@ func OnVoiceStateUpdate(ctx context.Context, shard *Shard, msg *discord.GatewayP
 		shard.Sandwich.stateProvider.RemoveVoiceState(ctx, guildID, voiceStateUpdatePayload.UserID)
 	}
 
-	if !voiceStateUpdatePayload.ChannelID.IsNil() {
-		shard.Sandwich.stateProvider.SetVoiceState(ctx, *voiceStateUpdatePayload.GuildID, discord.VoiceState(voiceStateUpdatePayload))
+	if voiceStateUpdatePayload.ChannelID != nil && !voiceStateUpdatePayload.ChannelID.IsNil() {
+		if voiceStateUpdatePayload.GuildID != nil {
+			shard.Sandwich.stateProvider.SetVoiceState(ctx, *voiceStateUpdatePayload.GuildID, discord.VoiceState(voiceStateUpdatePayload))
+		}
 	}
 
 	return DispatchResult{

@@ -800,7 +800,7 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 
 	guild, _ := shard.Sandwich.stateProvider.GetGuild(ctx, guildID)
 
-	if always || int(guild.MemberCount) > memberCount {
+	if always || (guild != nil && int(guild.MemberCount) > memberCount) {
 		nonce := randomHex(16)
 
 		err := shard.SendEvent(ctx, discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{

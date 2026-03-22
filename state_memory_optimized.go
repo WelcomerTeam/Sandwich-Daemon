@@ -245,11 +245,12 @@ func (s *StateProviderMemoryOptimized) SetGuildMembers(ctx context.Context, guil
 	}
 
 	for _, member := range guildMembers {
-		guildMembersState.Store(member.User.ID, DiscordToStateGuildMember(member))
-
-		if member.User != nil {
-			s.SetUser(ctx, member.User.ID, *member.User)
+		if member.User == nil {
+			continue
 		}
+
+		guildMembersState.Store(member.User.ID, DiscordToStateGuildMember(member))
+		s.SetUser(ctx, member.User.ID, *member.User)
 	}
 }
 
@@ -282,11 +283,12 @@ func (s *StateProviderMemoryOptimized) SetGuildMember(ctx context.Context, guild
 		s.GuildMembers.Store(guildID, guildMembersState)
 	}
 
-	guildMembersState.Store(member.User.ID, DiscordToStateGuildMember(member))
-
-	if member.User != nil {
-		s.SetUser(ctx, member.User.ID, *member.User)
+	if member.User == nil {
+		return
 	}
+
+	guildMembersState.Store(member.User.ID, DiscordToStateGuildMember(member))
+	s.SetUser(ctx, member.User.ID, *member.User)
 }
 
 func (s *StateProviderMemoryOptimized) RemoveGuildMember(_ context.Context, guildID, userID discord.Snowflake) {
@@ -1042,8 +1044,13 @@ type StateGuildMember struct {
 }
 
 func DiscordToStateGuildMember(v discord.GuildMember) StateGuildMember {
+	var userID discord.Snowflake
+	if v.User != nil {
+		userID = v.User.ID
+	}
+
 	return StateGuildMember{
-		UserID:                     v.User.ID,
+		UserID:                     userID,
 		Permissions:                v.Permissions,
 		JoinedAt:                   v.JoinedAt,
 		Roles:                      v.Roles,
