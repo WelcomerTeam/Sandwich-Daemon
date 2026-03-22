@@ -4,11 +4,15 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
 )
+
+var cleanupGuildOnRemove = strings.ToLower(os.Getenv("SANDWICH_CLEANUP_GUILD_ON_REMOVE")) == "true"
 
 const (
 	ReadyTimeout = 1 * time.Second
@@ -879,11 +883,28 @@ func OnGuildDelete(ctx context.Context, shard *Shard, msg *discord.GatewayPayloa
 	if guildDeletePayload.Unavailable {
 		shard.UnavailableGuilds.Store(guildDeletePayload.ID, true)
 	} else {
-		// We do not remove the actual guild as other applications may be using it.
-		// Dereferencing it locally ensures that if other applications are using it,
-		// it will stay.
 		shard.Guilds.Delete(guildDeletePayload.ID)
 		shard.Application.guilds.Delete(guildDeletePayload.ID)
+
+		if cleanupGuildOnRemove {
+			// Check if guild is present on other applications, else
+			// remove it from state.
+
+			includedInOtherApplications := false
+
+			shard.Sandwich.Applications.Range(func(_ string, application *Application) bool {
+				if _, present := application.guilds.Load(guildDeletePayload.ID); present {
+					includedInOtherApplications = true
+					return false
+				}
+
+				return true
+			})
+
+			if !includedInOtherApplications {
+				shard.Sandwich.stateProvider.RemoveGuild(ctx, guildDeletePayload.ID)
+			}
+		}
 	}
 
 	return DispatchResult{
