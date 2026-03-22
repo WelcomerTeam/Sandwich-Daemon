@@ -12,6 +12,7 @@ type StateProvider interface {
 
 	GetGuild(ctx context.Context, guildID discord.Snowflake) (*discord.Guild, bool)
 	SetGuild(ctx context.Context, guildID discord.Snowflake, guild discord.Guild)
+	RemoveGuild(ctx context.Context, guildID discord.Snowflake)
 
 	// Guild Members
 	GetGuildMembers(ctx context.Context, guildID discord.Snowflake) ([]*discord.GuildMember, bool)

@@ -213,6 +213,34 @@ func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID dis
 	s.Guilds.Store(guildID, DiscordToStateGuild(guild))
 }
 
+func (s *StateProviderMemoryOptimized) RemoveGuild(_ context.Context, guildID discord.Snowflake) {
+	s.Guilds.Delete(guildID)
+	s.GuildMembers.Delete(guildID)
+	s.GuildChannels.Delete(guildID)
+	s.GuildRoles.Delete(guildID)
+	s.GuildEmojis.Delete(guildID)
+	s.VoiceStates.Delete(guildID)
+	s.GuildStickers.Delete(guildID)
+
+	// Remove users who are only in this guild from the state as well.
+
+	usersToRemove := make([]discord.Snowflake, 0)
+
+	s.UserMutuals.Range(func(userID discord.Snowflake, value *syncmap.Map[discord.Snowflake, bool]) bool {
+		_, present := value.Load(guildID)
+		if present && value.Count() <= 1 {
+			usersToRemove = append(usersToRemove, userID)
+		}
+
+		return true
+	})
+
+	for _, userID := range usersToRemove {
+		s.UserMutuals.Delete(userID)
+		s.Users.Delete(userID)
+	}
+}
+
 func (s *StateProviderMemoryOptimized) GetGuildMembers(_ context.Context, guildID discord.Snowflake) ([]*discord.GuildMember, bool) {
 	RecordStateRequest()
 	guildMembersState, exists := s.GuildMembers.Load(guildID)
