@@ -90,19 +90,16 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 		}
 
 		resp, err := client.Do(req)
-		if err != nil {
-			defer resp.Body.Close()
-		}
 
 		var retryAfter time.Duration
 
-		if err == nil && (resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent) {
-			return nil
-		}
+		if err == nil {
+			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent {
+				resp.Body.Close()
 
-		if err != nil {
-			retryAfter = StandardIdentifyLimit
-		} else {
+				return nil
+			}
+
 			retryAfterHeader := resp.Header.Get("X-Retry-After-Ms")
 			retryAfterInt, _ := strconv.Atoi(retryAfterHeader)
 
@@ -111,6 +108,10 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 			} else {
 				retryAfter = StandardIdentifyLimit
 			}
+
+			resp.Body.Close()
+		} else {
+			retryAfter = StandardIdentifyLimit
 		}
 
 		time.Sleep(retryAfter)
