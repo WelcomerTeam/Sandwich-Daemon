@@ -109,9 +109,9 @@ func NewShard(sandwich *Sandwich, application *Application, shardID int32) *Shar
 		heartbeatInterval:        &atomic.Pointer[time.Duration]{},
 		heartbeatFailureInterval: &atomic.Pointer[time.Duration]{},
 
-		UnavailableGuilds: &syncmap.Map[discord.Snowflake, bool]{},
-		LazyGuilds:        &syncmap.Map[discord.Snowflake, bool]{},
-		Guilds:            &syncmap.Map[discord.Snowflake, bool]{},
+		UnavailableGuilds: syncmap.NewSyncMap[discord.Snowflake, bool](),
+		LazyGuilds:        syncmap.NewSyncMap[discord.Snowflake, bool](),
+		Guilds:            syncmap.NewSyncMap[discord.Snowflake, bool](),
 
 		sequence:  &atomic.Int32{},
 		sessionID: &atomic.Pointer[string]{},

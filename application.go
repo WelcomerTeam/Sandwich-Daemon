@@ -64,8 +64,8 @@ func NewApplication(sandwich *Sandwich, config *ApplicationConfiguration) *Appli
 		ready:   make(chan struct{}),
 		readyWg: sync.WaitGroup{},
 
-		Shards: &syncmap.Map[int32, *Shard]{},
-		guilds: &syncmap.Map[discord.Snowflake, bool]{},
+		Shards: syncmap.NewSyncMap[int32, *Shard](),
+		guilds: syncmap.NewSyncMap[discord.Snowflake, bool](),
 
 		startedAt: &atomic.Pointer[time.Time]{},
 

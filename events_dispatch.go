@@ -126,7 +126,7 @@ func buildDedupeKeyInt(eventType string, id discord.Snowflake, value int32) stri
 }
 
 // buildDedupeKeyVoiceState efficiently constructs deduplication keys for voice state updates
-func buildDedupeKeyVoiceState(eventType string, guildID discord.Snowflake, userID discord.Snowflake, beforeChannelID, afterChannelID discord.Snowflake, flags uint8) string {
+func buildDedupeKeyVoiceState(eventType string, guildID, userID, beforeChannelID, afterChannelID discord.Snowflake, flags uint8) string {
 	// Pre-calculate required capacity: len(eventType) + 4 colons + 5*20 digits for snowflakes + max 3 digits for flags
 	buf := make([]byte, 0, len(eventType)+85)
 	buf = append(buf, eventType...)

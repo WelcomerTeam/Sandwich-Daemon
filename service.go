@@ -83,14 +83,14 @@ func NewSandwich(logger *slog.Logger, configProvider ConfigProvider, client *htt
 		gatewayLimiter:  limiter.NewDurationLimiter(1, time.Second),
 		identifyBuckets: bucketstore.NewBucketStore(),
 
-		Applications: &syncmap.Map[string, *Application]{},
+		Applications: syncmap.NewSyncMap[string, *Application](),
 
-		guildChunks: &syncmap.Map[discord.Snowflake, *GuildChunk]{},
+		guildChunks: syncmap.NewSyncMap[discord.Snowflake, *GuildChunk](),
 
 		panicHandler: nil,
 
 		listenerCounter: &atomic.Int32{},
-		listeners:       &syncmap.Map[int32, chan *listenerData]{},
+		listeners:       syncmap.NewSyncMap[int32, chan *listenerData](),
 	}
 
 	// Start background cleanup for completed guild chunks
