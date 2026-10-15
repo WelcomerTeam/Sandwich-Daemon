@@ -28,7 +28,8 @@ type Application struct {
 
 	User *atomic.Pointer[discord.User]
 
-	producer Producer
+	producerMu sync.RWMutex
+	producer   Producer
 
 	ShardCount *atomic.Int32
 
@@ -140,21 +141,9 @@ func (application *Application) Initialize(ctx context.Context) error {
 	application.Gateway.Store(&gatewayBotResponse)
 	application.gatewaySessionStartLimitRemaining.Store(gatewayBotResponse.SessionStartLimit.Remaining)
 
-	configuration := application.Configuration.Load()
-
-	clientName := configuration.ClientName
-
-	// If the client name includes a random suffix, we need to add a random suffix to the client name.
-	if configuration.IncludeRandomSuffix {
-		clientName = fmt.Sprintf("%s-%s", clientName, randomHex(8))
-	}
-
-	producer, err := application.Sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
-	if err != nil {
+	if err := application.ensureProducer(ctx); err != nil {
 		return fmt.Errorf("failed to get producer: %w", err)
 	}
-
-	application.producer = producer
 
 	application.Logger.Debug("Application initialized")
 
@@ -165,6 +154,10 @@ func (application *Application) Start(ctx context.Context) error {
 	application.Logger.Info("Starting application")
 
 	application.SetStatus(ApplicationStatusStarting)
+	if err := application.ensureProducer(ctx); err != nil {
+		application.SetStatus(ApplicationStatusFailed)
+		return fmt.Errorf("failed to get producer: %w", err)
+	}
 
 	configuration := application.Configuration.Load()
 
@@ -182,12 +175,17 @@ func (application *Application) Start(ctx context.Context) error {
 	if err != nil {
 		application.Logger.Error("Failed to start shards", "error", err)
 
+		_ = application.Stop(ctx)
 		application.SetStatus(ApplicationStatusFailed)
 
 		return fmt.Errorf("failed to start: %w", err)
 	}
 
-	<-ready
+	if err := <-ready; err != nil {
+		_ = application.Stop(ctx)
+		application.SetStatus(ApplicationStatusFailed)
+		return fmt.Errorf("failed while waiting for shards to become ready: %w", err)
+	}
 
 	application.SetStatus(ApplicationStatusReady)
 
@@ -203,13 +201,60 @@ func (application *Application) Stop(ctx context.Context) error {
 		return true
 	})
 
-	if application.producer != nil {
-		application.producer.Close()
+	if err := application.closeProducer(); err != nil {
+		application.Logger.Error("Failed to close producer", "error", err)
 	}
 
 	application.SetStatus(ApplicationStatusStopped)
 
 	return nil
+}
+
+func (application *Application) ensureProducer(ctx context.Context) error {
+	application.producerMu.Lock()
+	defer application.producerMu.Unlock()
+
+	if application.producer != nil {
+		return nil
+	}
+
+	configuration := application.Configuration.Load()
+	clientName := configuration.ClientName
+	if configuration.IncludeRandomSuffix {
+		clientName = fmt.Sprintf("%s-%s", clientName, randomHex(8))
+	}
+
+	producer, err := application.Sandwich.producerProvider.GetProducer(ctx, configuration.ApplicationIdentifier, clientName)
+	if err != nil {
+		return err
+	}
+
+	application.producer = producer
+	return nil
+}
+
+func (application *Application) publish(ctx context.Context, shard *Shard, payload *ProducedPayload) error {
+	application.producerMu.RLock()
+	defer application.producerMu.RUnlock()
+
+	if application.producer == nil {
+		return fmt.Errorf("application producer is not initialized")
+	}
+
+	return application.producer.Publish(ctx, shard, payload)
+}
+
+func (application *Application) closeProducer() error {
+	application.producerMu.Lock()
+	defer application.producerMu.Unlock()
+
+	if application.producer == nil {
+		return nil
+	}
+
+	producer := application.producer
+	application.producer = nil
+	return producer.Close()
 }
 
 // GetInitialShardCount returns the shard IDs and shard count for the application.
@@ -259,10 +304,10 @@ func (application *Application) GetInitialShardCount(customShardCount int32, cus
 	return shardIDs, shardCount
 }
 
-func (application *Application) StartShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan struct{}, err error) {
+func (application *Application) StartShards(ctx context.Context, shardIDs []int32, shardCount int32) (ready chan error, err error) {
 	application.Logger.Info("Starting shards", "shard_count", shardCount, "shard_ids", shardIDs)
 
-	ready = make(chan struct{})
+	ready = make(chan error, 1)
 
 	now := time.Now()
 	application.startedAt.Store(&now)
@@ -305,7 +350,7 @@ func (application *Application) StartShards(ctx context.Context, shardIDs []int3
 
 	go initialShard.Start(ctx)
 
-	if err := initialShard.WaitForReady(); err != nil {
+	if err := initialShard.WaitForReady(ctx); err != nil {
 		application.Logger.Error("Failed to wait for initial shard", "error", err)
 
 		return ready, fmt.Errorf("failed to wait for initial shard: %w", err)
@@ -316,6 +361,8 @@ func (application *Application) StartShards(ctx context.Context, shardIDs []int3
 	application.SetStatus(ApplicationStatusConnected)
 
 	openWg := sync.WaitGroup{}
+	var connectErr error
+	var connectErrMu sync.Mutex
 
 	for _, shardID := range shardIDs[1:] {
 		shard, ok := application.Shards.Load(shardID)
@@ -329,6 +376,11 @@ func (application *Application) StartShards(ctx context.Context, shardIDs []int3
 			defer openWg.Done()
 
 			if err := shard.ConnectWithRetry(ctx); err != nil {
+				connectErrMu.Lock()
+				if connectErr == nil {
+					connectErr = fmt.Errorf("failed to connect shard %d: %w", shard.ShardID, err)
+				}
+				connectErrMu.Unlock()
 				return
 			}
 
@@ -337,24 +389,32 @@ func (application *Application) StartShards(ctx context.Context, shardIDs []int3
 	}
 
 	openWg.Wait()
+	if connectErr != nil {
+		return ready, connectErr
+	}
 
 	application.Logger.Debug("All shards connected")
 
 	// All shards have now connected, but are not ready yet.
 
 	go func() {
-		application.Shards.Range(func(index int32, shard *Shard) bool {
-			// Skip the initial shard
-			if index == 0 {
-				return true
+		for _, shardID := range shardIDs {
+			if shardID == shardIDs[0] {
+				continue
 			}
 
-			shard.WaitForReady()
+			shard, ok := application.Shards.Load(shardID)
+			if !ok {
+				ready <- fmt.Errorf("shard %d disappeared before becoming ready", shardID)
+				return
+			}
+			if err := shard.WaitForReady(ctx); err != nil {
+				ready <- fmt.Errorf("shard %d failed to become ready: %w", shardID, err)
+				return
+			}
+		}
 
-			return true
-		})
-
-		close(ready)
+		ready <- nil
 	}()
 
 	return ready, nil

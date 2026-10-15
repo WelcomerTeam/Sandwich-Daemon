@@ -33,7 +33,7 @@ func (sandwich *Sandwich) NewGRPCServer() *GRPCServer {
 func (grpcServer *GRPCServer) Listen(req *sandwich_protobuf.ListenRequest, stream sandwich_protobuf.Sandwich_ListenServer) error {
 	RecordGRPCRequest()
 
-	channel := make(chan *listenerData)
+	channel := make(chan *listenerData, 128)
 
 	counter := grpcServer.sandwich.AddListener(channel)
 	defer grpcServer.sandwich.RemoveListener(counter)
@@ -164,7 +164,7 @@ func (grpcServer *GRPCServer) StartApplication(ctx context.Context, req *sandwic
 		break
 	}
 
-	wait := make(chan error)
+	wait := make(chan error, 1)
 
 	go func() {
 		err := application.Start(ctx)
@@ -208,7 +208,7 @@ func (grpcServer *GRPCServer) StopApplication(ctx context.Context, req *sandwich
 
 	switch ApplicationStatus(application.Status.Load()) {
 	case ApplicationStatusStarting, ApplicationStatusConnecting, ApplicationStatusConnected, ApplicationStatusReady:
-		wait := make(chan error)
+		wait := make(chan error, 1)
 
 		go func() {
 			err := application.Stop(ctx)

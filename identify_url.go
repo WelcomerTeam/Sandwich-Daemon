@@ -78,6 +78,10 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 	client := http.DefaultClient
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, identifyURL, bytes.NewBuffer(body))
 		if err != nil {
 			return fmt.Errorf("failed to create identify request: %w", err)
@@ -100,6 +104,11 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 				return nil
 			}
 
+			if resp.StatusCode != http.StatusPaymentRequired && (resp.StatusCode < http.StatusInternalServerError || resp.StatusCode >= 600) {
+				resp.Body.Close()
+				return fmt.Errorf("identify endpoint returned unexpected status: %s", resp.Status)
+			}
+
 			retryAfterHeader := resp.Header.Get("X-Retry-After-Ms")
 			retryAfterInt, _ := strconv.Atoi(retryAfterHeader)
 
@@ -111,9 +120,18 @@ func (i *IdentifyViaURL) Identify(ctx context.Context, shard *Shard) error {
 
 			resp.Body.Close()
 		} else {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			retryAfter = StandardIdentifyLimit
 		}
 
-		time.Sleep(retryAfter)
+		timer := time.NewTimer(retryAfter)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 }

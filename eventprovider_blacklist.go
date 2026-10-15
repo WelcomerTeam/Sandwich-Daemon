@@ -75,7 +75,7 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 
 	packet.Trace.Set("publish", time.Now().UnixNano())
 
-	err = shard.Application.producer.Publish(ctx, shard, packet)
+	err = shard.Application.publish(ctx, shard, packet)
 	if err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}

@@ -180,7 +180,11 @@ func (shard *Shard) SetStatus(status ShardStatus) {
 func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 	for {
 		err := shard.Connect(ctx)
-		if err != nil && !errors.Is(err, context.Canceled) {
+		if err != nil {
+			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return err
+			}
+
 			newValue := shard.retriesRemaining.Add(-1)
 			if newValue <= 0 {
 				shard.SetStatus(ShardStatusFailed)
@@ -189,9 +193,10 @@ func (shard *Shard) ConnectWithRetry(ctx context.Context) error {
 			}
 
 			shard.Logger.Error("Failed to connect to shard", "error", err, "retries_remaining", newValue)
-		} else if err == nil {
-			break
+			continue
 		}
+
+		break
 	}
 
 	return nil
@@ -364,9 +369,11 @@ func (shard *Shard) Stop(ctx context.Context, code websocket.StatusCode) {
 
 	shard.SetStatus(ShardStatusStopping)
 
-	shard.stop <- struct{}{}
+	select {
+	case shard.stop <- struct{}{}:
+	default:
+	}
 
-	shard.Application.producer.Close()
 	shard.closeWS(ctx, code)
 
 	shard.SetStatus(ShardStatusStopped)
@@ -513,14 +520,17 @@ func (shard *Shard) closeWS(_ context.Context, code websocket.StatusCode) error 
 	return nil
 }
 
-func (shard *Shard) WaitForReady() error {
+func (shard *Shard) WaitForReady(ctx context.Context) error {
 	shard.Logger.Debug("Shard is waiting for ready")
 
 	since := time.Now()
 	ticker := time.NewTicker(time.Second * 15)
+	defer ticker.Stop()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-shard.ready:
 			shard.SetStatus(ShardStatusReady)
 
@@ -542,6 +552,9 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 	// We will use a jitter to avoid the heartbeat interval from being the same for all shards.
 	hasJitter := true
 	heartbeatJitter := time.Millisecond * time.Duration(rand.Int64N(shard.heartbeatInterval.Load().Milliseconds()+1))
+	if heartbeatJitter <= 0 {
+		heartbeatJitter = time.Millisecond
+	}
 
 	if shard.heartbeater == nil {
 		shard.heartbeater = time.NewTicker(heartbeatJitter)
@@ -576,24 +589,17 @@ func (shard *Shard) heartbeat(ctx context.Context) {
 			now := time.Now()
 			shard.LastHeartbeatSent.Store(&now)
 
-			if IgnoreHeartbeatTimeouts {
-				if err != nil || now.Sub(*shard.LastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
-					if err != nil {
-						shard.Logger.Error("Heartbeat failed", "error", err)
-					}
-
-					return
+			heartbeatTimedOut := now.Sub(*shard.LastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load()
+			if err != nil || (heartbeatTimedOut && !IgnoreHeartbeatTimeouts) {
+				if err != nil {
+					shard.Logger.Error("Heartbeat failed", "error", err)
+				} else {
+					shard.Logger.Error("Heartbeat failed", "error", "timeout")
 				}
-			} else {
-				if err != nil || now.Sub(*shard.LastHeartbeatAck.Load()) > *shard.heartbeatFailureInterval.Load() {
-					if err != nil {
-						shard.Logger.Error("Heartbeat failed", "error", err)
-					} else {
-						shard.Logger.Error("Heartbeat failed", "error", "timeout")
-					}
 
-					return
-				}
+				// Force the blocking websocket read to return so Listen can reconnect.
+				_ = shard.closeWS(ctx, websocket.StatusNormalClosure)
+				return
 			}
 		}
 	}

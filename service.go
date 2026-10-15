@@ -346,7 +346,20 @@ func (sandwich *Sandwich) Broadcast(eventType string, data any) error {
 	}
 
 	sandwich.listeners.Range(func(_ int32, listener chan *listenerData) bool {
-		listener <- listenData
+		select {
+		case listener <- listenData:
+		default:
+			// Status/config broadcasts represent current state. Keep the newest
+			// update for a slow consumer without blocking the shard lifecycle.
+			select {
+			case <-listener:
+			default:
+			}
+			select {
+			case listener <- listenData:
+			default:
+			}
+		}
 
 		return true
 	})
