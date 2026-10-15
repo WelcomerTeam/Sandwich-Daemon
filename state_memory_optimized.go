@@ -2,6 +2,7 @@ package sandwich
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/WelcomerTeam/Discord/discord"
@@ -21,6 +22,9 @@ type StateProviderMemoryOptimized struct {
 	GuildStickers *syncmap.Map[discord.Snowflake, *syncmap.Map[discord.Snowflake, StateSticker]]
 	Users         *syncmap.Map[discord.Snowflake, StateUser]
 	UserMutuals   *syncmap.Map[discord.Snowflake, *syncmap.Map[discord.Snowflake, bool]]
+
+	userMutualsMu   sync.Mutex
+	voiceStateLocks [256]sync.Mutex
 }
 
 func NewStateProviderMemoryOptimized() *StateProviderMemoryOptimized {
@@ -214,12 +218,18 @@ func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID dis
 }
 
 func (s *StateProviderMemoryOptimized) RemoveGuild(_ context.Context, guildID discord.Snowflake) {
+	s.userMutualsMu.Lock()
+	defer s.userMutualsMu.Unlock()
+
 	s.Guilds.Delete(guildID)
 	s.GuildMembers.Delete(guildID)
 	s.GuildChannels.Delete(guildID)
 	s.GuildRoles.Delete(guildID)
 	s.GuildEmojis.Delete(guildID)
+	voiceStateLock := s.getVoiceStateLock(guildID)
+	voiceStateLock.Lock()
 	s.VoiceStates.Delete(guildID)
+	voiceStateLock.Unlock()
 	s.GuildStickers.Delete(guildID)
 
 	// Remove users who are only in this guild from the state as well.
@@ -265,20 +275,8 @@ func (s *StateProviderMemoryOptimized) GetGuildMembers(_ context.Context, guildI
 }
 
 func (s *StateProviderMemoryOptimized) SetGuildMembers(ctx context.Context, guildID discord.Snowflake, guildMembers []discord.GuildMember) {
-	guildMembersState, ok := s.GuildMembers.Load(guildID)
-	if !ok {
-		guildMembersState = syncmap.NewSyncMap[discord.Snowflake, StateGuildMember]()
-
-		s.GuildMembers.Store(guildID, guildMembersState)
-	}
-
 	for _, member := range guildMembers {
-		if member.User == nil {
-			continue
-		}
-
-		guildMembersState.Store(member.User.ID, DiscordToStateGuildMember(member))
-		s.SetUser(ctx, member.User.ID, *member.User)
+		s.SetGuildMember(ctx, guildID, member)
 	}
 }
 
@@ -304,19 +302,22 @@ func (s *StateProviderMemoryOptimized) GetGuildMember(_ context.Context, guildID
 }
 
 func (s *StateProviderMemoryOptimized) SetGuildMember(ctx context.Context, guildID discord.Snowflake, member discord.GuildMember) {
-	guildMembersState, ok := s.GuildMembers.Load(guildID)
-	if !ok {
-		guildMembersState = syncmap.NewSyncMap[discord.Snowflake, StateGuildMember]()
-
-		s.GuildMembers.Store(guildID, guildMembersState)
-	}
-
 	if member.User == nil {
 		return
 	}
 
+	s.userMutualsMu.Lock()
+	defer s.userMutualsMu.Unlock()
+
+	guildMembersState, ok := s.GuildMembers.Load(guildID)
+	if !ok {
+		guildMembersState = syncmap.NewSyncMap[discord.Snowflake, StateGuildMember]()
+		s.GuildMembers.Store(guildID, guildMembersState)
+	}
+
 	guildMembersState.Store(member.User.ID, DiscordToStateGuildMember(member))
-	s.SetUser(ctx, member.User.ID, *member.User)
+	s.Users.Store(member.User.ID, DiscordToStateUser(*member.User))
+	s.addUserMutualGuildLocked(member.User.ID, guildID)
 }
 
 func (s *StateProviderMemoryOptimized) RemoveGuildMember(_ context.Context, guildID, userID discord.Snowflake) {
@@ -710,7 +711,15 @@ func (s *StateProviderMemoryOptimized) updateGuildChannelMemberCount(guildID, ch
 	s.GuildChannels.Store(guildID, guildChannelsState)
 }
 
+func (s *StateProviderMemoryOptimized) getVoiceStateLock(guildID discord.Snowflake) *sync.Mutex {
+	return &s.voiceStateLocks[uint64(guildID)%uint64(len(s.voiceStateLocks))]
+}
+
 func (s *StateProviderMemoryOptimized) SetVoiceState(_ context.Context, guildID discord.Snowflake, voiceState discord.VoiceState) {
+	voiceStateLock := s.getVoiceStateLock(guildID)
+	voiceStateLock.Lock()
+	defer voiceStateLock.Unlock()
+
 	voiceStatesState, ok := s.VoiceStates.Load(guildID)
 	if !ok {
 		voiceStatesState = syncmap.NewSyncMap[discord.Snowflake, StateVoiceState]()
@@ -726,6 +735,10 @@ func (s *StateProviderMemoryOptimized) SetVoiceState(_ context.Context, guildID 
 }
 
 func (s *StateProviderMemoryOptimized) RemoveVoiceState(_ context.Context, guildID, userID discord.Snowflake) {
+	voiceStateLock := s.getVoiceStateLock(guildID)
+	voiceStateLock.Lock()
+	defer voiceStateLock.Unlock()
+
 	voiceStates, ok := s.VoiceStates.Load(guildID)
 	if !ok {
 		return
@@ -734,6 +747,9 @@ func (s *StateProviderMemoryOptimized) RemoveVoiceState(_ context.Context, guild
 	voiceState, ok := voiceStates.LoadAndDelete(userID)
 	if ok {
 		s.updateGuildChannelMemberCount(guildID, voiceState.ChannelID)
+		if voiceStates.Count() == 0 {
+			s.VoiceStates.Delete(guildID)
+		}
 	}
 }
 
@@ -752,6 +768,9 @@ func (s *StateProviderMemoryOptimized) GetUser(_ context.Context, userID discord
 }
 
 func (s *StateProviderMemoryOptimized) SetUser(_ context.Context, userID discord.Snowflake, user discord.User) {
+	s.userMutualsMu.Lock()
+	defer s.userMutualsMu.Unlock()
+
 	s.Users.Store(userID, DiscordToStateUser(user))
 }
 
@@ -777,23 +796,37 @@ func (s *StateProviderMemoryOptimized) GetUserMutualGuilds(_ context.Context, us
 }
 
 func (s *StateProviderMemoryOptimized) AddUserMutualGuild(_ context.Context, userID, guildID discord.Snowflake) {
+	s.userMutualsMu.Lock()
+	defer s.userMutualsMu.Unlock()
+
+	s.addUserMutualGuildLocked(userID, guildID)
+}
+
+func (s *StateProviderMemoryOptimized) addUserMutualGuildLocked(userID, guildID discord.Snowflake) {
 	userMutualsState, ok := s.UserMutuals.Load(userID)
 	if !ok {
 		userMutualsState = syncmap.NewSyncMap[discord.Snowflake, bool]()
 
-		s.UserMutuals.Store(userID, userMutualsState)
+		userMutualsState, _ = s.UserMutuals.LoadOrStore(userID, userMutualsState)
 	}
 
 	userMutualsState.Store(guildID, true)
 }
 
 func (s *StateProviderMemoryOptimized) RemoveUserMutualGuild(_ context.Context, userID, guildID discord.Snowflake) {
+	s.userMutualsMu.Lock()
+	defer s.userMutualsMu.Unlock()
+
 	userMutualsState, ok := s.UserMutuals.Load(userID)
 	if !ok {
 		return
 	}
 
 	userMutualsState.Delete(guildID)
+	if userMutualsState.Count() == 0 {
+		s.UserMutuals.Delete(userID)
+		s.Users.Delete(userID)
+	}
 }
 
 type StateGuild struct {
