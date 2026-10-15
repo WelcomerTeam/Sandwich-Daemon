@@ -333,7 +333,13 @@ func (shard *Shard) Start(ctx context.Context) error {
 
 			shard.SetStatus(ShardStatusFailed)
 
-			shard.error <- err
+			// WaitForReady consumes startup errors, but no receiver is guaranteed
+			// to remain after the shard is running. Never let a full notification
+			// channel stop the listener from making another recovery attempt.
+			select {
+			case shard.error <- err:
+			default:
+			}
 
 			var closeError websocket.CloseError
 
@@ -464,6 +470,10 @@ func (shard *Shard) reconnect(ctx context.Context, code websocket.StatusCode) er
 	wait := time.Second
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		err := shard.Connect(ctx)
 		if err == nil {
 			shard.retriesRemaining.Store(ShardConnectRetries)
@@ -471,19 +481,15 @@ func (shard *Shard) reconnect(ctx context.Context, code websocket.StatusCode) er
 			return nil
 		}
 
-		retries := shard.retriesRemaining.Add(-1)
-		if retries <= 0 {
-			_ = shard.closeWS(ctx, code)
+		shard.Logger.Error("Failed to reconnect to shard", "error", err, "retry_in", wait)
 
-			err = shard.Connect(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to reconnect: %w", err)
-			}
-
-			return nil
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
 		}
-
-		time.Sleep(wait)
 
 		wait *= 2
 		if wait > time.Minute {
