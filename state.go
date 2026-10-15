@@ -6,6 +6,27 @@ import (
 	"github.com/WelcomerTeam/Discord/discord"
 )
 
+// GuildMemberCountAdjuster is an optional fast path for metadata-only updates.
+type GuildMemberCountAdjuster interface {
+	AdjustGuildMemberCount(ctx context.Context, guildID discord.Snowflake, delta int32)
+}
+
+// GuildMemberCounter avoids materializing full guild/member objects for counts.
+type GuildMemberCounter interface {
+	GetGuildMemberCounts(ctx context.Context, guildID discord.Snowflake) (cached, reported int, ok bool)
+}
+
+func adjustGuildMemberCount(ctx context.Context, state StateProvider, guildID discord.Snowflake, delta int32) {
+	if adjuster, ok := state.(GuildMemberCountAdjuster); ok {
+		adjuster.AdjustGuildMemberCount(ctx, guildID, delta)
+		return
+	}
+	if guild, ok := state.GetGuild(ctx, guildID); ok {
+		guild.MemberCount += delta
+		state.SetGuild(ctx, guildID, *guild)
+	}
+}
+
 type StateProvider interface {
 	// Guilds
 	GetGuilds(ctx context.Context) ([]*discord.Guild, bool)

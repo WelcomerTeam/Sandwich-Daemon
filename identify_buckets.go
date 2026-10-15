@@ -29,7 +29,7 @@ func (i *IdentifyViaBuckets) Identify(_ context.Context, shard *Shard) error {
 	bucketName := fmt.Sprintf(
 		"identify:%s:%d",
 		tokenHash,
-		shard.ShardID%shard.Application.Gateway.Load().SessionStartLimit.MaxConcurrency,
+		shard.ShardID%(max(1, shard.Application.Gateway.Load().SessionStartLimit.MaxConcurrency)),
 	)
 
 	// Create the bucket if it doesn't exist with a limit of 1 request per IdentifyRateLimit.

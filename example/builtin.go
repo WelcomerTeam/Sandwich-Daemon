@@ -118,7 +118,7 @@ func main() {
 		}
 	}).WithPrometheusAnalytics(
 		&http.Server{
-			Addr:              ":10000",
+			Addr:              ":40000",
 			WriteTimeout:      time.Second * 10,
 			ReadTimeout:       time.Second * 10,
 			ReadHeaderTimeout: time.Second * 10,
@@ -130,7 +130,7 @@ func main() {
 	).WithGRPCServer(
 		nil,
 		"tcp",
-		":10001",
+		":40001",
 		grpc.NewServer(),
 	)
 

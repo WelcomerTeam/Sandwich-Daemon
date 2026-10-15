@@ -63,7 +63,7 @@ func NewStateProviderMemoryOptimizedWithContext(ctx context.Context) *StateProvi
 
 func (s *StateProviderMemoryOptimized) UpdateStateMetricsFromStateProvider() {
 	guildChannelsCount := 0
-	s.GuildChannels.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateChannel]) bool {
+	s.GuildChannels.RangeReadLocked(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateChannel]) bool {
 		guildChannelsCount += value.Count()
 
 		return true
@@ -71,42 +71,35 @@ func (s *StateProviderMemoryOptimized) UpdateStateMetricsFromStateProvider() {
 
 	guildRolesCount := 0
 
-	s.GuildRoles.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateRole]) bool {
+	s.GuildRoles.RangeReadLocked(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateRole]) bool {
 		guildRolesCount += value.Count()
 
 		return true
 	})
 
 	guildEmojisCount := 0
-	s.GuildEmojis.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateEmoji]) bool {
+	s.GuildEmojis.RangeReadLocked(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateEmoji]) bool {
 		guildEmojisCount += value.Count()
 
 		return true
 	})
 
 	guildMembersCount := 0
-	s.GuildMembers.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateGuildMember]) bool {
+	s.GuildMembers.RangeReadLocked(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateGuildMember]) bool {
 		guildMembersCount += value.Count()
 
 		return true
 	})
 
-	userMutualsCount := 0
-	s.UserMutuals.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, bool]) bool {
-		userMutualsCount += value.Count()
-
-		return true
-	})
-
 	stickersCount := 0
-	s.GuildStickers.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateSticker]) bool {
+	s.GuildStickers.RangeReadLocked(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateSticker]) bool {
 		stickersCount += value.Count()
 
 		return true
 	})
 
 	voiceStatesCount := 0
-	s.VoiceStates.Range(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateVoiceState]) bool {
+	s.VoiceStates.RangeReadLocked(func(_ discord.Snowflake, value *syncmap.Map[discord.Snowflake, StateVoiceState]) bool {
 		voiceStatesCount += value.Count()
 
 		return true
@@ -146,6 +139,7 @@ func (s *StateProviderMemoryOptimized) fillGuild(guildState StateGuild) *discord
 	guild := StateGuildToDiscord(guildState)
 
 	if guildChannels, exists := s.GuildChannels.Load(guildState.ID); exists {
+		guild.Channels = make([]discord.Channel, 0, guildChannels.Count())
 		guildChannels.Range(func(_ discord.Snowflake, value StateChannel) bool {
 			guild.Channels = append(guild.Channels, StateChannelToDiscord(value))
 
@@ -154,6 +148,7 @@ func (s *StateProviderMemoryOptimized) fillGuild(guildState StateGuild) *discord
 	}
 
 	if guildRoles, exists := s.GuildRoles.Load(guildState.ID); exists {
+		guild.Roles = make([]discord.Role, 0, guildRoles.Count())
 		guildRoles.Range(func(_ discord.Snowflake, value StateRole) bool {
 			guild.Roles = append(guild.Roles, StateRoleToDiscord(value))
 
@@ -162,6 +157,7 @@ func (s *StateProviderMemoryOptimized) fillGuild(guildState StateGuild) *discord
 	}
 
 	if guildEmojis, exists := s.GuildEmojis.Load(guildState.ID); exists {
+		guild.Emojis = make([]discord.Emoji, 0, guildEmojis.Count())
 		guildEmojis.Range(func(_ discord.Snowflake, value StateEmoji) bool {
 			guild.Emojis = append(guild.Emojis, StateEmojiToDiscord(value))
 
@@ -170,6 +166,7 @@ func (s *StateProviderMemoryOptimized) fillGuild(guildState StateGuild) *discord
 	}
 
 	if guildStickers, exists := s.GuildStickers.Load(guildState.ID); exists {
+		guild.Stickers = make([]discord.Sticker, 0, guildStickers.Count())
 		guildStickers.Range(func(_ discord.Snowflake, value StateSticker) bool {
 			guild.Stickers = append(guild.Stickers, StateStickerToDiscord(value))
 
@@ -191,6 +188,25 @@ func (s *StateProviderMemoryOptimized) GetGuild(_ context.Context, guildID disco
 
 	RecordStateHit()
 	return s.fillGuild(guildState), true
+}
+
+// AdjustGuildMemberCount changes only guild metadata, without reconstructing
+// and rewriting the guild's channels, roles, emojis, and stickers.
+func (s *StateProviderMemoryOptimized) AdjustGuildMemberCount(_ context.Context, guildID discord.Snowflake, delta int32) {
+	s.Guilds.Update(guildID, func(guild StateGuild) StateGuild {
+		guild.MemberCount += delta
+		return guild
+	})
+}
+
+// GetGuildMemberCounts returns cached and reported member counts without
+// materializing Discord guild/member objects.
+func (s *StateProviderMemoryOptimized) GetGuildMemberCounts(_ context.Context, guildID discord.Snowflake) (cached, reported int, ok bool) {
+	if members, exists := s.GuildMembers.Load(guildID); exists {
+		cached = members.Count()
+	}
+	guild, ok := s.Guilds.Load(guildID)
+	return cached, int(guild.MemberCount), ok
 }
 
 func (s *StateProviderMemoryOptimized) SetGuild(ctx context.Context, guildID discord.Snowflake, guild discord.Guild) {
@@ -691,14 +707,9 @@ func (s *StateProviderMemoryOptimized) updateGuildChannelMemberCount(guildID, ch
 		return
 	}
 
-	guildChannel, ok := guildChannelsState.Load(channelID)
-	if !ok {
-		return
-	}
-
 	var memberCount int32
 
-	voiceStatesState.Range(func(_ discord.Snowflake, value StateVoiceState) bool {
+	voiceStatesState.RangeReadLocked(func(_ discord.Snowflake, value StateVoiceState) bool {
 		if value.ChannelID == channelID {
 			memberCount++
 		}
@@ -706,9 +717,10 @@ func (s *StateProviderMemoryOptimized) updateGuildChannelMemberCount(guildID, ch
 		return true
 	})
 
-	guildChannel.MemberCount = memberCount
-	guildChannelsState.Store(channelID, guildChannel)
-	s.GuildChannels.Store(guildID, guildChannelsState)
+	guildChannelsState.Update(channelID, func(channel StateChannel) StateChannel {
+		channel.MemberCount = memberCount
+		return channel
+	})
 }
 
 func (s *StateProviderMemoryOptimized) getVoiceStateLock(guildID discord.Snowflake) *sync.Mutex {
@@ -727,10 +739,17 @@ func (s *StateProviderMemoryOptimized) SetVoiceState(_ context.Context, guildID 
 		s.VoiceStates.Store(guildID, voiceStatesState)
 	}
 
-	voiceStatesState.Store(voiceState.UserID, DiscordToStateVoiceState(voiceState))
+	previous, existed := voiceStatesState.Load(voiceState.UserID)
+	current := DiscordToStateVoiceState(voiceState)
+	voiceStatesState.Store(voiceState.UserID, current)
 
-	if voiceState.ChannelID != nil && !voiceState.ChannelID.IsNil() {
-		s.updateGuildChannelMemberCount(guildID, *voiceState.ChannelID)
+	if !existed || previous.ChannelID != current.ChannelID {
+		if existed && previous.ChannelID != 0 {
+			s.updateGuildChannelMemberCount(guildID, previous.ChannelID)
+		}
+		if current.ChannelID != 0 {
+			s.updateGuildChannelMemberCount(guildID, current.ChannelID)
+		}
 	}
 }
 

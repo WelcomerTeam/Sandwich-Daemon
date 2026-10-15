@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"slices"
 	"sync"
 	"time"
@@ -62,6 +61,11 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 	}
 
 	packet := p.producedPayloadPool.Get().(*ProducedPayload)
+	defer func() {
+		// Drop references; do not clear maps or byte slices borrowed from callers.
+		*packet = ProducedPayload{}
+		p.producedPayloadPool.Put(packet)
+	}()
 
 	packet.GatewayPayload = *event
 	packet.Metadata = *shard.Metadata.Load()
@@ -78,12 +82,6 @@ func (p *EventProviderWithBlacklist) Dispatch(ctx context.Context, shard *Shard,
 	err = shard.Application.publish(ctx, shard, packet)
 	if err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
-	}
-
-	if packet != nil {
-		p.producedPayloadPool.Put(packet)
-	} else {
-		slog.Error("Attempt to insert nil packet into pool", "loc", "EventProviderWithBlacklist.Dispatch")
 	}
 
 	return nil

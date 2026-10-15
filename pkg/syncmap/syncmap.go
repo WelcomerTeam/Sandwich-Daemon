@@ -104,6 +104,34 @@ func (m *Map[K, V]) Range(f func(key K, value V) bool) {
 	}
 }
 
+// RangeReadLocked visits entries without allocating a snapshot. The callback
+// must not mutate this map or call any of its methods (including reads).
+// Keep callbacks short: writers are blocked until iteration completes.
+func (m *Map[K, V]) RangeReadLocked(f func(key K, value V) bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for k, v := range m.m {
+		if !f(k, v) {
+			return
+		}
+	}
+}
+
+// Update atomically changes an existing value. The callback must not call
+// methods on this map. It is not called if the key is absent.
+func (m *Map[K, V]) Update(key K, f func(V) V) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	value, ok := m.m[key]
+	if !ok {
+		return false
+	}
+	m.m[key] = f(value)
+	return true
+}
+
 // Count returns the number of items in the map
 // This is an O(1) operation using len(map)
 func (m *Map[K, V]) Count() int {

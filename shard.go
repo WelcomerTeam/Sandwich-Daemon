@@ -280,7 +280,7 @@ readyConsumer:
 	}
 
 	if payload != nil {
-		shard.gatewayPayloadPool.Put(payload)
+		shard.releaseGatewayPayload(payload)
 	} else {
 		shard.Logger.Warn("Received nil GatewayPayload, this should not happen")
 	}
@@ -405,7 +405,7 @@ func (shard *Shard) Listen(ctx context.Context) error {
 			}
 
 			if msg != nil {
-				shard.gatewayPayloadPool.Put(msg)
+				shard.releaseGatewayPayload(msg)
 			} else {
 				shard.Logger.Warn("Received nil GatewayPayload, this should not happen")
 			}
@@ -434,7 +434,7 @@ func (shard *Shard) Listen(ctx context.Context) error {
 		}
 
 		if msg != nil {
-			shard.gatewayPayloadPool.Put(msg)
+			shard.releaseGatewayPayload(msg)
 		} else {
 			shard.Logger.Warn("Received nil GatewayPayload, this should not happen")
 		}
@@ -684,7 +684,7 @@ func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data 
 		shard.websocketRatelimit.Lock()
 	}
 
-	shard.Logger.Debug("Sending payload", "payload", string(payload))
+	shard.Logger.Debug("Sending payload", "op", gatewayOp, "bytes", len(payload))
 
 	err = shard.websocketConn.Write(ctx, websocket.MessageText, payload)
 	if err != nil {
@@ -692,6 +692,14 @@ func (shard *Shard) send(ctx context.Context, gatewayOp discord.GatewayOp, data 
 	}
 
 	return nil
+}
+
+func (shard *Shard) releaseGatewayPayload(payload *discord.GatewayPayload) {
+	if payload == nil {
+		return
+	}
+	*payload = discord.GatewayPayload{}
+	shard.gatewayPayloadPool.Put(payload)
 }
 
 func (shard *Shard) read(ctx context.Context, websocketConn *websocket.Conn) (*discord.GatewayPayload, error) {
@@ -712,9 +720,11 @@ func (shard *Shard) read(ctx context.Context, websocketConn *websocket.Conn) (*d
 	}
 
 	gatewayPayload := shard.gatewayPayloadPool.Get().(*discord.GatewayPayload)
+	*gatewayPayload = discord.GatewayPayload{}
 
-	err = json.Unmarshal(data, &gatewayPayload)
+	err = json.Unmarshal(data, gatewayPayload)
 	if err != nil {
+		shard.releaseGatewayPayload(gatewayPayload)
 		return nil, fmt.Errorf("failed to unmarshal payload: %w (payload: %s)", err, string(data))
 	}
 
@@ -803,16 +813,32 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 	}
 
 	guildChunk.complete.Store(false)
+	defer func() {
+		// Complete means the attempt has finished, including failed attempts.
+		now := time.Now()
+		guildChunk.completedAt.Store(&now)
+		guildChunk.complete.Store(true)
+	}()
 
 	now := time.Now()
 	guildChunk.startedAt.Store(&now)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
-	guildMembers, _ := shard.Sandwich.stateProvider.GetGuildMembers(ctx, guildID)
-	memberCount := len(guildMembers)
+	needsChunk := always
+	if !needsChunk {
+		if counter, ok := shard.Sandwich.stateProvider.(GuildMemberCounter); ok {
+			cached, reported, exists := counter.GetGuildMemberCounts(ctx, guildID)
+			needsChunk = exists && reported > cached
+		} else {
+			members, _ := shard.Sandwich.stateProvider.GetGuildMembers(ctx, guildID)
+			guild, _ := shard.Sandwich.stateProvider.GetGuild(ctx, guildID)
+			needsChunk = guild != nil && int(guild.MemberCount) > len(members)
+		}
+	}
 
-	guild, _ := shard.Sandwich.stateProvider.GetGuild(ctx, guildID)
-
-	if always || (guild != nil && int(guild.MemberCount) > memberCount) {
+	if needsChunk {
 		nonce := randomHex(16)
 
 		err := shard.SendEvent(ctx, discord.GatewayOpRequestGuildMembers, discord.RequestGuildMembers{
@@ -828,10 +854,13 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 		var totalChunks int32
 
 		timeout := time.NewTimer(MemberChunkTimeout)
+		defer timeout.Stop()
 
 	guildChunkLoop:
 		for {
 			select {
+			case <-ctx.Done():
+				return ctx.Err()
 			case guildChunkPartial := <-guildChunk.chunkingChannel:
 				if guildChunkPartial.nonce != nonce {
 					continue
@@ -856,14 +885,7 @@ func (shard *Shard) chunkGuild(ctx context.Context, guildID discord.Snowflake, a
 				break guildChunkLoop
 			}
 		}
-
-		timeout.Stop()
 	}
-
-	guildChunk.complete.Store(true)
-
-	now = time.Now()
-	guildChunk.completedAt.Store(&now)
 
 	shard.Logger.Debug("Chunked guild", "guildID", guildID)
 

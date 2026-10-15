@@ -220,7 +220,7 @@ ready:
 		}
 
 		if msg != nil {
-			shard.gatewayPayloadPool.Put(msg)
+			shard.releaseGatewayPayload(msg)
 		} else {
 			shard.Logger.Warn("Received nil GatewayPayload during READY event, this should not happen")
 		}
@@ -1085,12 +1085,7 @@ func OnGuildMemberAdd(ctx context.Context, shard *Shard, msg *discord.GatewayPay
 
 	ctx = WithGuildID(ctx, *guildMemberAddPayload.GuildID)
 
-	guild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, *guildMemberAddPayload.GuildID)
-
-	if exists {
-		guild.MemberCount++
-		shard.Sandwich.stateProvider.SetGuild(ctx, *guildMemberAddPayload.GuildID, *guild)
-	}
+	adjustGuildMemberCount(ctx, shard.Sandwich.stateProvider, *guildMemberAddPayload.GuildID, 1)
 
 	shard.Sandwich.stateProvider.SetGuildMember(ctx, *guildMemberAddPayload.GuildID, discord.GuildMember(guildMemberAddPayload))
 	shard.Sandwich.stateProvider.AddUserMutualGuild(ctx, guildMemberAddPayload.User.ID, *guildMemberAddPayload.GuildID)
@@ -1118,12 +1113,7 @@ func OnGuildMemberRemove(ctx context.Context, shard *Shard, msg *discord.Gateway
 
 	onDispatchEvent(shard, msg.Type)
 
-	guild, exists := shard.Sandwich.stateProvider.GetGuild(ctx, guildMemberRemovePayload.GuildID)
-
-	if exists {
-		guild.MemberCount--
-		shard.Sandwich.stateProvider.SetGuild(ctx, guildMemberRemovePayload.GuildID, *guild)
-	}
+	adjustGuildMemberCount(ctx, shard.Sandwich.stateProvider, guildMemberRemovePayload.GuildID, -1)
 
 	if !guildMemberRemovePayload.GuildID.IsNil() {
 		ctx = WithGuildID(ctx, guildMemberRemovePayload.GuildID)
