@@ -34,13 +34,11 @@ func TestAdjustMemberCountPreservesCollections(t *testing.T) {
 	s.SetGuildChannel(ctx, 1, discord.Channel{ID: 10, Name: "newest"})
 	var wg sync.WaitGroup
 	for range 16 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 100 {
 				adjustGuildMemberCount(ctx, s, 1, 1)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	_, reported, ok := s.GetGuildMemberCounts(ctx, 1)
